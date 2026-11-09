@@ -205,6 +205,13 @@ cython_debug/
 # Temporary file for partial code execution
 tempCodeRunnerFile.py
 
+# Local development files
+/.local/
+/.agents/
+/AGENTS.md
+/docs/agent-workflow.md
+/docs/mobile-plan.md
+
 # Ruff stuff:
 .ruff_cache/
 
