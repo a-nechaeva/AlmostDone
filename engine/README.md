@@ -96,7 +96,8 @@ catalog = catalog_from_dict(row["catalog"])
 - **Ингредиент:** `code`, `name`, `is_staple`, `package_g`, `package_price`, `kcal`/`protein`/`fat`/`carbs`
   на 100 г, `allergens` (коды), `aliases`, `display_unit` (`g`/`ml`/`pcs`), `grams_per_piece`.
 - **Рецепт:** `id`, `title`, `servings`, `cook_time_min`, `needs_microwave`/`needs_stove`/`needs_oven`,
-  `steps`, `description`, `items` — список `{code, qty_g, is_optional}`. Граммы — на весь рецепт.
+  `steps`, `description`, `items` — список `{code, qty_g, is_optional}`. Граммы — на весь рецепт;
+  `qty_g: null` — количество не указано (так в БД у ингредиентов «по вкусу»).
 - **`is_staple`** (соль, вода, масло, перец, сахар) — «есть всегда»: не докупаем, но в КБЖУ и цене порции считаем.
 - **`is_optional`** — «по вкусу»: не докупаем и не считаем в КБЖУ, аллергенах и цене порции.
 - **Коды аллергенов:** `gluten`, `milk`, `eggs`, `fish`, `crustaceans`, `molluscs`, `peanuts`, `nuts`,
@@ -133,7 +134,10 @@ catalog = catalog_from_dict(row["catalog"])
 ## Как считаются метрики
 
 - **Недостающее** — обязательные ингредиенты, которых нет в кладовке или меньше, чем нужно
-  (продукт без количества считается достаточным).
+  (продукт без количества считается достаточным). Если в рецепте граммы не указаны: продукт есть — хватает,
+  нет — нужна одна упаковка.
+- **nutrition_complete** — `false`, если у обязательного ингредиента не указаны граммы: его вклад в КБЖУ
+  и цену порции неизвестен (аллергены учитываются всегда).
 - **buy_cost** — `Σ ceil(не хватает г / package_g) × package_price` (`Catalog.pack_cost`).
 - **portion_cost** — `Σ(qty_g / package_g × package_price) / servings` по обязательным ингредиентам.
 - **КБЖУ на порцию** — `Σ(qty_g / 100 × значение на 100 г) / servings`, как `recipe_nutrition` в БД.

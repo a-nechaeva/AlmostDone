@@ -27,7 +27,7 @@ class Ingredient:
 @dataclass(frozen=True)
 class RecipeItem:
     code: str  # код ингредиента
-    qty_g: float  # граммы на весь рецепт (на все порции)
+    qty_g: float | None  # граммы на весь рецепт (на все порции); None — количество не указано
     is_optional: bool = False  # «по вкусу»: не докупаем, не считаем в КБЖУ
 
 

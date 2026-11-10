@@ -152,3 +152,53 @@ def test_to_dict(catalog):
     assert d["missing"] == [{"code": "milk", "name": "Milk", "missing_g": 200.0, "packs": 1, "cost": 80.0}]
     assert d["allergens"] == ["milk"]
     assert d["equipment"] == ["microwave"]
+
+
+# --- граммы в рецепте не указаны (qty_g = NULL в БД) ----------------------------------------
+
+def _with_recipe(*items):
+    import copy
+
+    from dishgraph import catalog_from_dict
+
+    from .conftest import SMALL, recipe
+
+    data = copy.deepcopy(SMALL)
+    data["recipes"].append(recipe("no_grams", 15, 2, *items))
+    return catalog_from_dict(data)
+
+
+def test_optional_without_grams_loads_and_ignored():
+    cat = _with_recipe(("egg", 100), ("herb", None, True))
+    assert levels(reachable_dishes({"egg"}, cat))["no_grams"] == 0
+
+
+def test_required_without_grams_missing_means_one_pack():
+    cat = _with_recipe(("egg", 100), ("cheese", None))
+    opt = dish_option(cat.recipe("no_grams"), {"egg"}, cat)
+    assert opt.missing == {"cheese"}
+    assert opt.to_dict(cat)["missing"][0]["packs"] == 1
+    assert opt.metrics.buy_cost == 200  # одна упаковка сыра
+
+
+def test_required_without_grams_present_is_enough():
+    cat = _with_recipe(("egg", 100), ("cheese", None))
+    assert dish_option(cat.recipe("no_grams"), {"egg": None, "cheese": 10}, cat).level == 0
+
+
+def test_required_without_grams_marks_nutrition_incomplete():
+    cat = _with_recipe(("egg", 100), ("cheese", None))
+    m = dish_option(cat.recipe("no_grams"), {}, cat).metrics
+    assert m.nutrition_complete is False
+    assert m.kcal == 75  # только яйцо: 150 ккал / 2 порции
+    assert "milk" in m.allergens  # аллерген сыра учтён, хоть граммы и не указаны
+    assert dish_option(cat.recipe("omelette"), {}, cat).metrics.nutrition_complete is True
+
+
+def test_zero_grams_still_rejected():
+    import pytest as _pytest
+
+    from dishgraph import CatalogError
+
+    with _pytest.raises(CatalogError, match="qty_g"):
+        _with_recipe(("egg", 0))
