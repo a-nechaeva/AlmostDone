@@ -7,6 +7,11 @@ plugins {
 }
 
 val robolectricSdk by configurations.creating
+val androidTestSuite = providers.gradleProperty("androidTestSuite").getOrElse("all")
+
+require(androidTestSuite in setOf("all", "unit", "ui", "screenshots")) {
+    "Unknown androidTestSuite: $androidTestSuite"
+}
 
 android {
     namespace = "com.example.mobile_android"
@@ -44,6 +49,24 @@ android {
     testOptions {
         unitTests.isIncludeAndroidResources = true
         unitTests.all {
+            it.inputs.property("androidTestSuite", androidTestSuite)
+            it.useJUnit {
+                when (androidTestSuite) {
+                    "unit" ->
+                        excludeCategories(
+                            "com.example.mobile_android.ui.UiSmoke",
+                            "com.example.mobile_android.ui.Screenshot",
+                        )
+                    "ui" -> includeCategories("com.example.mobile_android.ui.UiSmoke")
+                    "screenshots" -> includeCategories("com.example.mobile_android.ui.Screenshot")
+                }
+            }
+            it.reports.junitXml.outputLocation.set(
+                layout.buildDirectory.dir("test-results/${it.name}/$androidTestSuite")
+            )
+            it.reports.html.outputLocation.set(
+                layout.buildDirectory.dir("reports/tests/${it.name}/$androidTestSuite")
+            )
             it.maxHeapSize = "2g"
             it.maxParallelForks = 1
             it.systemProperty("user.language", "ru")
