@@ -36,23 +36,14 @@ class RoomHouseholdRepository(
     private suspend fun snapshot(): Household {
         val favorites = dao.favorites()
         return Household(
-            pantry = dao.pantry().map { PantryItem(it.ingredientId, quantity(it.amount, it.unit)) },
+            pantry = dao.pantry().map { it.toDomain() },
             favoriteRecipes = favorites.filterNot { it.ingredient }.map { it.itemId }.toSet(),
             favoriteIngredients = favorites.filter { it.ingredient }.map { it.itemId }.toSet(),
             plan = dao.plan().map { PlannedRecipe(it.recipeId, it.servings) },
-            manualPurchases =
-                dao.manual().map {
-                    ManualPurchase(
-                        it.ingredientId,
-                        Quantity(it.amount, QuantityUnit.valueOf(it.unit)),
-                    )
-                },
+            manualPurchases = dao.manual().map { it.toDomain() },
             checkedPurchases = dao.checked().map { it.ingredientId }.toSet(),
         )
     }
-
-    private fun quantity(value: Double?, unit: String?) =
-        if (value == null || unit == null) null else Quantity(value, QuantityUnit.valueOf(unit))
 
     private suspend fun save(item: PantryItem) {
         if (item.quantity?.value == 0.0) dao.removePantry(item.ingredientId)
@@ -68,7 +59,7 @@ class RoomHouseholdRepository(
             save(PantryItem(id, added))
             return
         }
-        val old = quantity(previous.amount, previous.unit)
+        val old = storedQuantity(previous.amount, previous.unit)
         require(old == null || added == null || old.unit == added.unit) {
             "Несовместимые единицы. Измените количество продукта вручную."
         }

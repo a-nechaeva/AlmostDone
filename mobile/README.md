@@ -18,13 +18,63 @@
 при попытке входа. Между запусками сохраняется только признак демо-сессии.
 
 ```bash
-./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug
+./gradlew :app:assembleDebug :app:lintDebug
 ./gradlew :app:connectedDebugAndroidTest
 
 ```
 
 Второй команде нужно подключённое устройство или эмулятор. APK находится
 в `app/build/outputs/apk/debug/app-debug.apk`.
+
+## Автоматические проверки
+
+Из корня репозитория с работающим Docker:
+
+```bash
+bash .github/android/check.sh
+
+```
+
+Команда выполняет JVM-тесты, Robolectric UI smoke, проверку Roborazzi,
+Android Lint и сборку debug APK. Используются реальные ViewModel и экраны,
+фиксированный демо-каталог и fake-репозитории. Backend, аккаунты и OAuth
+не нужны. HTTP DTO в текущем каркасе отсутствуют; преобразования локальных
+записей в domain проверяются на фиксированных примерах. Instrumented-тесты
+из `androidTest` запускаются отдельно на устройстве.
+
+Окружение рендера общее для CI и локального запуска: закреплённый digest
+Linux x86 образа Ubuntu 24.04 с Temurin 21.0.9+10, Gradle Wrapper 8.13,
+SDK 36 revision 2, build-tools 35.0.0 и platform-tools 37.0.1. Robolectric 4.16 использует SDK 36.
+Зафиксированы ru-RU, UTC, начальные Android-часы 2025-01-01T00:00:00Z, экран
+400 × 900 dp, density 2, светлая тема и font scale 1 / 1.5.
+Compose синхронизирует анимации тестовыми часами; фотографии находятся в ресурсах.
+
+Отчёты и APK этого запуска находятся в `.local/android-ci/build/`:
+`reports/`, `test-results/`, `outputs/roborazzi/` и
+`outputs/apk/debug/app-debug.apk`. Cache SDK и Gradle хранится рядом.
+Первый запуск скачивает build-зависимости. Для него требуется доступ к Google,
+Maven Central, Gradle Plugin Portal и Docker Hub.
+
+Эталоны находятся в `app/src/test/screenshots/`. Для осознанного обновления
+после изменения UI выполните из корня репозитория:
+
+```bash
+bash .github/android/check.sh :app:recordRoborazziDebug --tests '*AppSmokeTest.dishes*Screenshot'
+bash .github/android/check.sh
+
+```
+
+Проверьте изображения и добавьте изменённые PNG в тот же коммит. CI выполняет
+только сравнение: отличие или отсутствие эталона завершает прогон с ошибкой.
+Восстановление эталонов из Gradle cache отключено при проверке; каталог PNG
+в CI доступен контейнеру только для чтения.
+В артефактах сохраняются отчёты, expected, actual и diff; срок хранения — 5 дней.
+
+Workflow запускается на PR и push в `main` при изменениях Android-кода,
+его workflow или скриптов `.github/android/`. Markdown и backend не запускают
+Android-проверки. Не назначайте пропускаемый `Android / checks` обязательным
+для всех PR: GitHub оставит ожидаемый статус Pending для изменений вне фильтра.
+Настройки защиты веток этим workflow не меняются.
 
 ## Структура
 

@@ -1,0 +1,59 @@
+name: Android
+on:
+  pull_request:
+    paths:
+      - 'mobile/**'
+      - '!mobile/**/*.md'
+      - '.github/workflows/android.yml'
+      - '.github/android/**'
+  push:
+    branches: [main]
+    paths:
+      - 'mobile/**'
+      - '!mobile/**/*.md'
+      - '.github/workflows/android.yml'
+      - '.github/android/**'
+permissions:
+  contents: read
+concurrency:
+  group: android-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .local/android-ci/gradle/caches
+            .local/android-ci/gradle/wrapper
+            .local/android-ci/sdk
+          key: android-linux-jdk21-${{ hashFiles('mobile/**/*.gradle.kts', 'mobile/gradle/**', 'mobile/gradle.properties', '.github/android/**') }}
+          restore-keys: android-linux-jdk21-
+      - name: Unit, Robolectric, Roborazzi verify, lint and debug APK
+        run: bash .github/android/check.sh
+      - name: Reports and screenshot evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-reports
+          include-hidden-files: true
+          retention-days: 5
+          path: |
+            .local/android-ci/build/reports/
+            .local/android-ci/build/test-results/
+            .local/android-ci/build/outputs/roborazzi/
+            mobile/app/src/test/screenshots/
+      - name: Debug APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-debug
+          include-hidden-files: true
+          retention-days: 5
+          if-no-files-found: error
+          path: .local/android-ci/build/outputs/apk/debug/app-debug.apk
