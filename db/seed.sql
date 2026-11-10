@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict vtxzK2VbhGAwfTqpQPIBcKySguLBdOA0JokuoGIfdlzCDiXCygwqzZcw9pdAh3c
+\restrict wZuiBWjcRb6IDO91BhB8l31NDcNY0VaUH5ovwHebZglqejhqHhUmHptlCEFwACF
 
 -- Dumped from database version 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1)
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1)
@@ -11269,8 +11269,8 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 49	Фейжоада	Чёрная фасоль, томлённая с несколькими видами копчёной и солёной свинины, с апельсином и капустой на гарнир.	8	180	f	t	f	https://theunitools.com/recipes/feijoada.jpg	\N	f
 50	Пан-ди-кейжу	Сырные шарики из тапиоковой муки — снаружи корочка, внутри тягучая пустота. Без пшеницы и без дрожжей.	6	25	f	f	t	https://theunitools.com/recipes/pao-de-queijo.jpg	\N	f
 51	Пад кра пао	Свиной фарш, обжаренный с чили, чесноком и священным базиликом. Пять минут от начала до тарелки.	2	8	f	t	f	https://theunitools.com/recipes/pad-krapow-moo.jpg	\N	f
-27	Гаспачо	Холодный томатный суп, который взбивают с хлебом и маслом до состояния эмульсии — от этого он и получается плотным, а не водянистым.	4	0	f	f	f	https://theunitools.com/recipes/gazpacho.jpg	\N	t
 26	Тирамису	Савоярди в кофе под кремом из маскарпоне. Без выпечки, но с двумя местами, где всё может пойти не так.	6	32	f	t	f	https://theunitools.com/recipes/tiramisu.jpg	\N	f
+27	Гаспачо	Холодный томатный суп, который взбивают с хлебом и маслом до состояния эмульсии — от этого он и получается плотным, а не водянистым.	4	20	f	f	f	https://theunitools.com/recipes/gazpacho.jpg	\N	t
 52	Гюдон	Тонко нарезанная говядина, припущенная с луком в даси с соевым соусом и мирином, поверх риса.	2	15	f	t	f	https://theunitools.com/recipes/gyudon.jpg	\N	f
 53	Солянка мясная сборная	Суп на крепком бульоне с несколькими видами мяса, солёными огурцами, оливками и лимоном.	6	120	f	t	f	https://theunitools.com/recipes/solyanka.jpg	\N	f
 54	Тажин с курицей и лимоном	Курица, томлённая с солёными лимонами и оливками. Кислота идёт от кожуры лимона, а не от мякоти.	4	70	f	t	f	https://theunitools.com/recipes/tagine-de-poulet.jpg	\N	f
@@ -11318,8 +11318,8 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 100	Доро уот	Курица в густом соусе из бербере, где килограмм лука томят всухую до полного распада.	6	120	f	t	f	https://theunitools.com/recipes/doro-wat.jpg	\N	f
 102	Ропа вьеха	Говядина, разобранная на волокна и тушённая в софрито с перцем и оливками. Мясо варят целым куском заранее.	6	150	f	t	f	https://theunitools.com/recipes/ropa-vieja.jpg	\N	f
 103	Морос и кристианос	Рис, сваренный в отваре из-под чёрной фасоли, отчего становится тёмным и вбирает весь её вкус.	6	90	f	t	f	https://theunitools.com/recipes/moros-y-cristianos.jpg	\N	f
-78	Табуле	Салат из петрушки с небольшим количеством булгура, а не наоборот. Зелени здесь в десять раз больше крупы.	4	0	f	f	f	https://theunitools.com/recipes/tabbouleh.jpg	\N	t
 79	Киббе нейе	Сырое киббе: свежайшая баранина, растёртая с булгуром и специями, под оливковым маслом.	4	40	f	t	f	https://theunitools.com/recipes/kibbeh-nayyeh.jpg	\N	f
+78	Табуле	Салат из петрушки с небольшим количеством булгура, а не наоборот. Зелени здесь в десять раз больше крупы.	4	44	f	f	f	https://theunitools.com/recipes/tabbouleh.jpg	\N	t
 104	Курица джерк	Курица в маринаде на скотч-боннете и душистом перце, копчёная на дровах пименто.	6	120	f	t	t	https://theunitools.com/recipes/jerk-chicken.jpg	\N	f
 105	Аки с солёной рыбой	Национальное блюдо Ямайки: плод аки, по виду и текстуре напоминающий яичницу, с вымоченной солёной треской.	4	25	f	t	f	https://theunitools.com/recipes/ackee-and-saltfish.jpg	\N	f
 106	Джоллоф рис	Рис, сваренный в густом соусе из помидоров, перца и лука. Соус уваривают до тёмного цвета до закладки риса.	6	60	f	t	f	https://theunitools.com/recipes/jollof-rice.jpg	\N	f
@@ -11394,7 +11394,7 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 183	Сукума-вики	Тушёная листовая капуста с луком и помидорами. Ежедневный гарнир к угали по всей Восточной Африке.	4	20	f	t	f	https://theunitools.com/recipes/sukuma-wiki.jpg	\N	f
 184	Ваакье	Рис с чёрными бобами, сваренный с листьями сорго, которые красят его в бордовый цвет.	6	80	f	t	f	https://theunitools.com/recipes/waakye.jpg	\N	f
 158	Масгуф	Речная рыба, распластанная и запечённая стоя у открытого огня. Багдадское блюдо с берегов Тигра.	4	75	f	f	f	https://theunitools.com/recipes/masgouf.jpg	\N	t
-171	Кама	Десерт из смеси обжаренных зерновых мук на кефире. Эстонский завтрак и летний десерт разом.	4	0	f	f	f	https://theunitools.com/recipes/kama.jpg	\N	t
+171	Кама	Десерт из смеси обжаренных зерновых мук на кефире. Эстонский завтрак и летний десерт разом.	4	31	f	f	f	https://theunitools.com/recipes/kama.jpg	\N	t
 185	Банку с тиляпией	Ферментированное кукурузно-маниоковое тесто, вымешанное до гладкости, с жареной рыбой и острым перечным соусом.	4	45	f	t	f	https://theunitools.com/recipes/banku-with-tilapia.jpg	\N	f
 186	Тьебуджен	Рис, сваренный в томатном бульоне от рыбы, с фаршированной зеленью рыбой и овощами. Национальное блюдо Сенегала.	6	90	f	t	f	https://theunitools.com/recipes/thieboudienne.jpg	\N	f
 187	Ясса с курицей	Курица, маринованная в лимоне, под горой карамелизованного лука с горчицей.	4	75	f	t	f	https://theunitools.com/recipes/yassa-poulet.jpg	\N	f
@@ -11439,7 +11439,7 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 239	Бюрек со шпинатом	Пирог из тонкого теста со шпинатом и брынзой, слоями, залитыми маслом.	8	45	f	t	f	https://theunitools.com/recipes/byrek-me-spinaq.jpg	\N	f
 240	Плацинда	Плоский пирог из вытянутого теста с брынзой, тыквой или яблоками, жаренный на сухой сковороде.	6	30	f	t	f	https://theunitools.com/recipes/placinta.jpg	\N	f
 222	Шорше илиш	Хилса в соусе из молотой горчицы, приготовленная на пару. Главная рыба Бенгалии.	4	25	f	f	f	https://theunitools.com/recipes/shorshe-ilish.jpg	\N	t
-225	Там мак хунг	Салат из зелёной папайи, растёртый в ступке. Лаосская версия — с ферментированной рыбой падэк.	4	0	f	f	f	https://theunitools.com/recipes/tam-mak-hoong.jpg	\N	t
+225	Там мак хунг	Салат из зелёной папайи, растёртый в ступке. Лаосская версия — с ферментированной рыбой падэк.	4	35	f	f	f	https://theunitools.com/recipes/tam-mak-hoong.jpg	\N	t
 242	Копчёная шейка с бобами	Копчёная свиная шейка, вымоченная и отваренная, с бобами в сливочном соусе. Национальное блюдо Люксембурга.	4	100	f	t	f	https://theunitools.com/recipes/judd-mat-gaardebounen.jpg	\N	f
 246	Кабса	Рис с курицей на пряном бульоне с сушёным лаймом и томатом. Главное блюдо саудовского стола.	6	75	f	t	f	https://theunitools.com/recipes/kabsa.jpg	\N	f
 248	Сальта	Мясное рагу, поданное кипящим в каменном горшке, под взбитой пеной из пажитника хульба.	4	90	f	t	f	https://theunitools.com/recipes/saltah.jpg	\N	f
@@ -11545,7 +11545,7 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 390	Хопперы	Тонкие чашеобразные блины из сброженного рисового теста с кокосовым молоком, часто с яйцом.	6	40	f	t	f	https://theunitools.com/recipes/hoppers.jpg	\N	f
 392	Сель роти	Кольцо из сброженного рисового теста, обжаренное во фритюре, хрустящее снаружи и мягкое внутри.	8	40	f	t	f	https://theunitools.com/recipes/sel-roti.jpg	\N	f
 365	Лече флан	Плотный карамельный флан на одних желтках, приготовленный на пару в металлической форме.	8	45	f	f	f	https://theunitools.com/recipes/leche-flan.jpg	\N	t
-388	Таратор	Холодный суп из йогурта с огурцом, чесноком, укропом и грецкими орехами.	4	0	f	f	f	https://theunitools.com/recipes/tarator.jpg	\N	t
+388	Таратор	Холодный суп из йогурта с огурцом, чесноком, укропом и грецкими орехами.	4	51	f	f	f	https://theunitools.com/recipes/tarator.jpg	\N	t
 394	Халим	Мясо, пшеница и бобовые, вываренные и взбитые в однородную густую массу за шесть часов.	10	360	f	t	f	https://theunitools.com/recipes/haleem.jpg	\N	f
 395	Сикх-кебаб	Фарш с луком и специями, налепленный на шампур и зажаренный на углях.	5	20	f	t	f	https://theunitools.com/recipes/seekh-kebab.jpg	\N	f
 396	Кенийская чапати	Слоёная мягкая лепёшка из пшеничного теста, свёрнутого спиралью перед раскаткой.	8	30	f	t	f	https://theunitools.com/recipes/chapati-kenyan.jpg	\N	f
@@ -11621,17 +11621,17 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 498	Хуушуур	Монгольские жареные чебуреки с бараниной, плоские и хрустящие, к Наадаму.	6	35	f	t	f	https://theunitools.com/recipes/khuushuur.jpg	\N	f
 499	Сутэй цай	Монгольский солёный чай с молоком и маслом, который варят, а не заваривают.	6	25	f	t	f	https://theunitools.com/recipes/suutei-tsai.jpg	\N	f
 501	Болани	Афганская лепёшка с картофельной или луковой начинкой, обжаренная на сухой сковороде.	6	30	f	t	f	https://theunitools.com/recipes/bolani.jpg	\N	f
-8	Гуакамоле	Авокадо, лайм, лук и чили, размятые вилкой. Ни блендера, ни сметаны — от них получается соус, а не гуакамоле.	4	0	f	f	f	https://theunitools.com/recipes/guacamole.jpg	\N	t
-14	Хориатики	Деревенский салат без листьев: помидоры, огурец, лук, оливки и целый кусок феты сверху.	4	0	f	f	f	https://theunitools.com/recipes/horiatiki-salata.jpg	\N	t
-17	Песто алла дженовезе	Базилик, растёртый с чесноком и кедровыми орехами. Ни нагрева, ни блендера — только ступка и холод.	4	0	f	f	f	https://theunitools.com/recipes/pesto-alla-genovese.jpg	\N	t
-29	Севиче	Сырая рыба в соке лайма с луком и перцем ахи. Маринуется минуты, а не часы — иначе получается варёная.	4	0	f	f	f	https://theunitools.com/recipes/ceviche.jpg	\N	t
-65	Чимичурри	Соус из петрушки, орегано, чеснока и уксуса. Не блендер, а нож: текстура здесь важнее гладкости.	8	0	f	f	f	https://theunitools.com/recipes/chimichurri.jpg	\N	t
 361	Гата	Слоёная сдоба с сухой сладкой начинкой хориз из муки, масла и сахара.	10	40	f	f	f	https://theunitools.com/recipes/gata.jpg	\N	t
-121	Пол самбол	Кокосовая стружка, растёртая с чили, луком и лаймом. Готовится за пять минут и подаётся ко всему.	6	0	f	f	f	https://theunitools.com/recipes/pol-sambol.jpg	\N	t
 128	Шопский салат	Помидоры, огурцы и перец под шапкой тёртой брынзы. Овощи режут крупно, брынзу натирают мелко.	4	10	f	f	f	https://theunitools.com/recipes/shopska-salata.jpg	\N	t
 195	Боснийский бурек	Спираль из тончайшего вытянутого теста с мясной начинкой. В Боснии буреком называют только мясной.	6	45	f	f	f	https://theunitools.com/recipes/burek-bosanski.jpg	\N	t
 198	Ламингтоны	Кубики бисквита, обмакнутые в шоколадную глазурь и обвалянные в кокосовой стружке.	12	30	f	f	f	https://theunitools.com/recipes/lamingtons.jpg	\N	t
-497	Чакка	Откинутый кисломолочный сыр с зеленью и чесноком, таджикская закуска к лепёшке.	6	0	f	f	f	https://theunitools.com/recipes/chakka.jpg	\N	t
+121	Пол самбол	Кокосовая стружка, растёртая с чили, луком и лаймом. Готовится за пять минут и подаётся ко всему.	6	15	f	f	f	https://theunitools.com/recipes/pol-sambol.jpg	\N	t
+29	Севиче	Сырая рыба в соке лайма с луком и перцем ахи. Маринуется минуты, а не часы — иначе получается варёная.	4	22	f	f	f	https://theunitools.com/recipes/ceviche.jpg	\N	t
+14	Хориатики	Деревенский салат без листьев: помидоры, огурец, лук, оливки и целый кусок феты сверху.	4	10	f	f	f	https://theunitools.com/recipes/horiatiki-salata.jpg	\N	t
+497	Чакка	Откинутый кисломолочный сыр с зеленью и чесноком, таджикская закуска к лепёшке.	6	52	f	f	f	https://theunitools.com/recipes/chakka.jpg	\N	t
+8	Гуакамоле	Авокадо, лайм, лук и чили, размятые вилкой. Ни блендера, ни сметаны — от них получается соус, а не гуакамоле.	4	14	f	f	f	https://theunitools.com/recipes/guacamole.jpg	\N	t
+65	Чимичурри	Соус из петрушки, орегано, чеснока и уксуса. Не блендер, а нож: текстура здесь важнее гладкости.	8	20	f	f	f	https://theunitools.com/recipes/chimichurri.jpg	\N	t
+17	Песто алла дженовезе	Базилик, растёртый с чесноком и кедровыми орехами. Ни нагрева, ни блендера — только ступка и холод.	4	20	f	f	f	https://theunitools.com/recipes/pesto-alla-genovese.jpg	\N	t
 \.
 
 
@@ -12214,5 +12214,5 @@ ALTER TABLE ONLY public.users
 -- PostgreSQL database dump complete
 --
 
-\unrestrict vtxzK2VbhGAwfTqpQPIBcKySguLBdOA0JokuoGIfdlzCDiXCygwqzZcw9pdAh3c
+\unrestrict wZuiBWjcRb6IDO91BhB8l31NDcNY0VaUH5ovwHebZglqejhqHhUmHptlCEFwACF
 
