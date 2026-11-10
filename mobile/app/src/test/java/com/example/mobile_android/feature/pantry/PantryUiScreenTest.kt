@@ -29,6 +29,8 @@ import com.example.mobile_android.ui.components.LoadContent
 import com.example.mobile_android.ui.theme.AlmostReadyTheme
 import com.github.takahirom.roborazzi.RoborazziOptions
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.yandex.authsdk.YandexAuthOptions
+import com.yandex.authsdk.YandexAuthSdk
 import java.io.File
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.cancel
@@ -41,6 +43,7 @@ import org.junit.Test
 import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.robolectric.shadows.ShadowDialog
@@ -441,6 +444,9 @@ class PantryUiScreenTest {
 }
 
 private class PantryUiAppDependencies(override val household: PantryUiHousehold) : AppDependencies {
+    override val yandexAuth by lazy {
+        YandexAuthSdk.create(YandexAuthOptions(RuntimeEnvironment.getApplication()))
+    }
     override val catalog = DemoCatalogRepository()
     override val preferences =
         object : PreferencesRepository {
@@ -454,6 +460,8 @@ private class PantryUiAppDependencies(override val household: PantryUiHousehold)
             override val signedIn = flowOf(true)
 
             override suspend fun signIn(login: String, password: String) = error("unused")
+
+            override suspend fun signInWithToken(token: String) = error("unused")
 
             override suspend fun signOut() = error("unused")
         }
