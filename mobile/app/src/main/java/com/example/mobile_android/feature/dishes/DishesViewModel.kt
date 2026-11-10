@@ -52,9 +52,11 @@ class DishesViewModel(
     private val refresh = MutableStateFlow(0)
     val actions = ScreenActions(viewModelScope)
     val view = savedState.getStateFlow("dishesView", DishesView.LIST.name)
+    // Text input must update before asynchronous recipe matching finishes.
+    val query = savedState.getStateFlow("query", "")
     private val filters =
         combine(
-            savedState.getStateFlow("query", ""),
+            query,
             savedState.getStateFlow("minutes", 180),
             savedState.getStateFlow("kcal", 3000),
             savedState.getStateFlow("method", ""),
