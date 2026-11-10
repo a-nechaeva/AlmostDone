@@ -123,11 +123,52 @@ def test_max_minutes_and_kcal(catalog):
 
 def test_equipment_filter(catalog):
     only_microwave = set(levels(reachable_dishes(ALL_CODES, catalog, equipment={"microwave"})))
-    assert only_microwave == {"milk_drink", "herb_egg"}  # herb_egg техники не требует
+    assert only_microwave == {"milk_drink"}  # herb_egg без сведений о технике — не обещаем
     nothing = set(levels(reachable_dishes(ALL_CODES, catalog, equipment=set())))
-    assert nothing == {"herb_egg"}
+    assert nothing == set()
     no_oven = set(levels(reachable_dishes(ALL_CODES, catalog, equipment={"stove", "microwave"})))
-    assert "cheese_pancakes" not in no_oven and "pancakes" in no_oven
+    assert "cheese_pancakes" not in no_oven and "pancakes" in no_oven and "herb_egg" not in no_oven
+    everything = set(levels(reachable_dishes(ALL_CODES, catalog, equipment={"stove", "oven", "microwave"})))
+    assert "herb_egg" in everything  # без сведений — проходит, только если есть вся техника
+
+
+def test_no_cook_always_fits():
+    import copy
+    from dishgraph import catalog_from_dict
+    from .conftest import SMALL, recipe
+    data = copy.deepcopy(SMALL)
+    data["recipes"].append({**recipe("salad", 5, 1, ("herb", 50)), "no_cook": True})
+    cat = catalog_from_dict(data)
+    assert "salad" in levels(reachable_dishes(ALL_CODES, cat, equipment=set()))
+    assert cat.recipe("salad").methods == ("no_cook",)
+    assert cat.recipe("omelette").methods == ("stove",)
+    assert cat.recipe("herb_egg").methods == ()  # нет сведений
+
+
+def test_no_cook_with_equipment_rejected():
+    import copy
+    import pytest as _pytest
+    from dishgraph import CatalogError, catalog_from_dict
+    from .conftest import SMALL
+    data = copy.deepcopy(SMALL)
+    data["recipes"][0]["no_cook"] = True  # у омлета needs_stove
+    with _pytest.raises(CatalogError, match="no_cook"):
+        catalog_from_dict(data)
+
+
+def test_servings_scale_missing(catalog):
+    # омлет на 2 порции: 100 г яиц и 100 г молока; на 6 порций — втрое больше
+    opt = dish_option(catalog.recipe("omelette"), {"egg": 200, "milk": None}, catalog, servings=6)
+    assert opt.missing_g == {"egg": 100.0}  # нужно 300 г, есть 200
+    assert opt.metrics.buy_cost == 100  # одна упаковка яиц (500 г)
+    assert opt.to_dict(catalog)["servings"] == 6
+    assert opt.metrics.kcal == 100  # на порцию не меняется
+
+
+def test_servings_change_level(catalog):
+    lv2 = levels(reachable_dishes({"egg": 200, "milk": None}, catalog))
+    lv6 = levels(reachable_dishes({"egg": 200, "milk": None}, catalog, servings=6))
+    assert lv2["omelette"] == 0 and lv6["omelette"] == 1
 
 
 def test_equipment_unknown_rejected(catalog):

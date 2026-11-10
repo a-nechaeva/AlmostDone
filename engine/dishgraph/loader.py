@@ -80,6 +80,8 @@ def _recipe(raw: dict[str, Any], ingredients: dict[str, Ingredient]) -> Recipe:
         needs_oven=bool(raw.get("needs_oven", False)),
         steps=tuple(raw.get("steps", [])),
         description=raw.get("description"),
+        no_cook=bool(raw.get("no_cook", False)),
+        image_url=raw.get("image_url"),
     )
     rid = recipe.id
     if recipe.servings <= 0:
@@ -95,6 +97,8 @@ def _recipe(raw: dict[str, Any], ingredients: dict[str, Ingredient]) -> Recipe:
         if it.qty_g is not None and it.qty_g <= 0:
             raise CatalogError(f"В рецепте {rid!r} qty_g должен быть > 0 или не указан")
         seen.add(it.code)
+    if recipe.no_cook and recipe.equipment:
+        raise CatalogError(f"У рецепта {rid!r} одновременно no_cook и нужна техника")
     if not recipe.required_items:
         raise CatalogError(f"У рецепта {rid!r} нет обязательных ингредиентов")
     return recipe
