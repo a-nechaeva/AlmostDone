@@ -90,11 +90,27 @@ bash .github/android/check.sh
 в CI доступен контейнеру только для чтения.
 В артефактах сохраняются отчёты, expected, actual и diff; срок хранения — 5 дней.
 
-Workflow запускается на PR и push в `main` при изменениях Android-кода,
-его workflow или скриптов `.github/android/`. Markdown и backend не запускают
-Android-проверки. Не назначайте пропускаемые Android-проверки обязательными
-для всех PR: GitHub оставит ожидаемый статус Pending для изменений вне фильтра.
-Настройки защиты веток этим workflow не меняются.
+На каждом PR служебная job `Android changes` определяет изменённые файлы.
+Пять Android-проверок запускаются только при изменениях кода в `mobile/`,
+его workflow или скриптов `.github/android/`. Markdown в `mobile/` и backend
+не запускают Android-проверки. На push в `main` workflow по-прежнему ограничен
+этими Android-путями.
+
+Итоговый статус `Merge gate` ожидает все пять отдельных jobs и проверяет каждый
+результат через `needs`, без агрегирования matrix. При ошибке, отмене,
+неожиданном пропуске Android-проверок или ошибке определения файлов он красный.
+Если Android не затронут, пять проверок пропускаются, а `Merge gate` проходит.
+Для определения изменений используется полный Git diff без ограничения числа
+файлов; удаление и перенос файлов из Android также требуют проверок.
+
+Для защиты `main` владелец открывает Settings → Rules → Rulesets и создаёт
+branch ruleset `main-protection` для ветки `main`. Включает Require a pull request
+before merging (approvals могут быть 0) и Require status checks to pass, добавляя
+**только `Merge gate`** с источником GitHub Actions. Сначала статус должен появиться
+в успешном PR-прогоне. В Bypass list можно добавить Repository admin с режимом
+For pull requests only для явных исключений через PR. Затем включить Active.
+Не назначайте пять условных Android-проверок обязательными отдельно.
+Настройки защиты ветки этим workflow не меняются.
 
 ## Структура
 

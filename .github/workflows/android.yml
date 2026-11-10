@@ -1,11 +1,6 @@
 name: Android
 on:
   pull_request:
-    paths:
-      - 'mobile/**'
-      - '!mobile/**/*.md'
-      - '.github/workflows/android.yml'
-      - '.github/android/**'
   push:
     branches: [main]
     paths:
@@ -19,25 +14,35 @@ concurrency:
   group: android-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
-  checks:
-    name: ${{ matrix.name }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - suite: unit
-            name: Unit
-          - suite: ui
-            name: UI
-          - suite: screenshots
-            name: Screenshots
-          - suite: lint
-            name: Lint
-          - suite: build
-            name: Build
+  changes:
+    name: Android changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      android: ${{ steps.paths.outputs.android }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check merge gate rules
+        run: python3 -m unittest discover -s .github/android -p 'test_*.py' -v
+      - name: Detect Android changes
+        id: paths
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          DIFF_MODE: ${{ github.event_name == 'pull_request' && 'pr' || 'push' }}
+        run: python3 .github/android/merge_gate.py changes
+  unit:
+    name: Unit
+    needs: changes
+    if: needs.changes.outputs.android == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    steps:
+    env:
+      ANDROID_SUITE: unit
+    steps: &android-check-steps
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
@@ -50,22 +55,22 @@ jobs:
             .local/android-ci/sdk
           key: android-linux-jdk21-${{ hashFiles('mobile/**/*.gradle.kts', 'mobile/gradle/**', 'mobile/gradle.properties', '.github/android/**') }}
           restore-keys: android-linux-jdk21-
-      - name: Run ${{ matrix.name }}
-        run: bash .github/android/check.sh "${{ matrix.suite }}"
+      - name: Run ${{ env.ANDROID_SUITE }}
+        run: bash .github/android/check.sh "${{ env.ANDROID_SUITE }}"
       - name: Reports and screenshot evidence
-        if: always() && matrix.suite != 'build'
+        if: always() && env.ANDROID_SUITE != 'build'
         uses: actions/upload-artifact@v4
         with:
-          name: android-${{ matrix.suite }}-reports
+          name: android-${{ env.ANDROID_SUITE }}-reports
           include-hidden-files: true
           retention-days: 5
           path: |
             .local/android-ci/build/reports/
             .local/android-ci/build/test-results/
             .local/android-ci/build/outputs/roborazzi/
-            ${{ matrix.suite == 'screenshots' && 'mobile/app/src/test/screenshots/' || '' }}
+            ${{ env.ANDROID_SUITE == 'screenshots' && 'mobile/app/src/test/screenshots/' || '' }}
       - name: Debug APK
-        if: success() && matrix.suite == 'build'
+        if: success() && env.ANDROID_SUITE == 'build'
         uses: actions/upload-artifact@v4
         with:
           name: android-debug
@@ -74,7 +79,7 @@ jobs:
           if-no-files-found: error
           path: .local/android-ci/build/outputs/apk/debug/app-debug.apk
       - name: Save Gradle and SDK cache
-        if: success() && matrix.suite == 'unit' && steps.gradle-cache.outputs.cache-hit != 'true'
+        if: success() && env.ANDROID_SUITE == 'unit' && steps.gradle-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: |
@@ -82,3 +87,59 @@ jobs:
             .local/android-ci/gradle/wrapper
             .local/android-ci/sdk
           key: ${{ steps.gradle-cache.outputs.cache-primary-key }}
+  ui:
+    name: UI
+    needs: changes
+    if: needs.changes.outputs.android == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      ANDROID_SUITE: ui
+    steps: *android-check-steps
+  screenshots:
+    name: Screenshots
+    needs: changes
+    if: needs.changes.outputs.android == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      ANDROID_SUITE: screenshots
+    steps: *android-check-steps
+  lint:
+    name: Lint
+    needs: changes
+    if: needs.changes.outputs.android == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      ANDROID_SUITE: lint
+    steps: *android-check-steps
+  build:
+    name: Build
+    needs: changes
+    if: needs.changes.outputs.android == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      ANDROID_SUITE: build
+    steps: *android-check-steps
+  merge-gate:
+    name: Merge gate
+    needs: [changes, unit, ui, screenshots, lint, build]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Require successful applicable checks
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          ANDROID_CHANGED: ${{ needs.changes.outputs.android }}
+          CHECK_UNIT: ${{ needs.unit.result }}
+          CHECK_UI: ${{ needs.ui.result }}
+          CHECK_SCREENSHOTS: ${{ needs.screenshots.result }}
+          CHECK_LINT: ${{ needs.lint.result }}
+          CHECK_BUILD: ${{ needs.build.result }}
+        run: python3 .github/android/merge_gate.py gate
