@@ -63,7 +63,16 @@ class FakeHousehold : HouseholdRepository {
     }
 
     override suspend fun addManualPurchase(id: String, quantity: Quantity) {
-        error("Not used in this fake")
+        if (failWrite) throw IOException("storage unavailable")
+        require(quantity.value > 0)
+        require(DemoCatalog.catalog.ingredient(id)?.unit == quantity.unit)
+        values.update {
+            it.copy(
+                manualPurchases =
+                    it.manualPurchases.filterNot { row -> row.ingredientId == id } +
+                        ManualPurchase(id, quantity)
+            )
+        }
     }
 
     override suspend fun removeManualPurchase(id: String) {
