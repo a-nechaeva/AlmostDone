@@ -33,6 +33,7 @@ fun RecipeScreen(
     addToShopping: () -> Unit,
     shopping: () -> Unit,
     dismiss: () -> Unit,
+    showFavoriteInCard: Boolean = true,
 ) {
     val match = state.match
     if (match == null) {
@@ -85,16 +86,8 @@ fun RecipeScreen(
                             lineHeight = 32.sp,
                             fontWeight = FontWeight.Bold,
                         )
-                        IconToggleButton(
-                            checked = state.favorite,
-                            onCheckedChange = { favorite() },
-                            enabled = !action.pending,
-                        ) {
-                            Icon(
-                                if (state.favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                if (state.favorite) "Убрать рецепт из избранного" else "Сохранить рецепт в избранное",
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
+                        if (showFavoriteInCard) {
+                            RecipeFavoriteButton(state, action, favorite)
                         }
                     }
                 }
