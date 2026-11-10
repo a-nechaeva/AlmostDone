@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 from almostdone_server.main import create_app
 from almostdone_server.repositories.postgres import PostgresStore
 from almostdone_server.errors import StorageUnavailable
-from ..support.http import check, mutation, png
+from ..support.http import check, mutation, png, FILTERS
 
 DSN = os.environ.get("ALMOSTDONE_TEST_DATABASE_URL")
 pytestmark = pytest.mark.skipif(not DSN, reason="Dedicated PostgreSQL integration database is not configured")
@@ -200,3 +200,27 @@ def test_statement_timeout_is_reported_as_temporary_storage_failure(database):
         with store.transaction() as db:
             db.execute("SET LOCAL statement_timeout = '1ms'")
             db.execute("SELECT pg_sleep(0.05)")
+
+
+def test_seed_catalog_partial_recipes_do_not_block_recommendations(database):
+    app = application(database)
+    catalog = app.state.service.catalog
+    assert any(item.get("qty_g") is None and item.get("is_optional")
+               for raw in catalog.recipes.values() for item in raw["items"]), "Exercise nullable optional quantities in the actual seed catalogue"
+    with TestClient(app) as client:
+        headers, _ = login(client)
+        body = {"request_id": str(uuid4()), "servings": 2, "filters": FILTERS, "visibility": "visible", "limit": 100}
+        first = check(app, client.post("/api/v1/recommendations", json=body, headers=headers), "RecommendationPage", 201)
+        assert first["visible_total"] == len(catalog.recipes)
+        ids = [card["id"] for card in first["items"]]
+        page = first
+        while page["page"]["has_more"]:
+            page = check(app, client.get("/api/v1/recommendations/" + first["snapshot_id"],
+                                        params={"cursor": page["page"]["next_cursor"]}, headers=headers), "RecommendationPage")
+            ids.extend(card["id"] for card in page["items"])
+        assert len(ids) == len(set(ids)) == len(catalog.recipes)
+        assert set(ids) == set(catalog.recipes)
+        partial_id = next(rid for rid, raw in catalog.recipes.items() if raw["servings"] != 2)
+        detail = check(app, client.get("/api/v1/recipes/" + partial_id, headers=headers), "RecipeDetail")
+        assert detail["recipe"]["availability"]["status"] == "unknown"
+        assert detail["recipe"]["buy_cost"] is None

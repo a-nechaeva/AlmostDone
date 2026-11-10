@@ -36,8 +36,13 @@ class DishgraphGateway:
             try:
                 if raw.get("no_cook") and any(raw.get("needs_" + method) for method in self.engine.EQUIPMENT):
                     raise ValueError("Contradictory no_cook is not supported by the engine model")
-                loaded = self.engine.catalog_from_dict({"ingredients": [self.ingredients[item["code"]] for item in raw["items"]],
-                                                        "recipes": [raw]})
+                # The API permits unknown quantities for optional ingredients.
+                # Engine calculations use required_items only, so project that
+                # same required-only composition into its strict input model.
+                # Preserve all original optional rows for API presentation.
+                required = [item for item in raw["items"] if not item.get("is_optional")]
+                loaded = self.engine.catalog_from_dict({"ingredients": [self.ingredients[item["code"]] for item in required],
+                                                        "recipes": [{**raw, "items": required}]})
                 loaded_recipes.append(loaded.recipes[0])
             except (TypeError, ValueError, KeyError):
                 self.unsupported_recipes.add(recipe_id)

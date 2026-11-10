@@ -69,9 +69,10 @@ def test_unconvertible_stock_is_not_sent_to_engine_as_unlimited_presence():
     assert error.value.details[0]["field"] == "pantry_unit_conversion:rice"
 
 
-def test_incomplete_allergen_data_is_not_evaluated_by_server_rules():
+def test_incomplete_allergen_data_is_reported_without_rejecting_the_recipe():
     catalog, user = make_catalog(custom_catalog()), default_user()
     user["preferences"]["excluded_allergens"] = ["milk"]
-    with pytest.raises(APIError) as error:
-        catalog.detail("tomato_cheese", user, 2)
-    assert error.value.details[0]["field"] == "incomplete_allergen_data"
+    detail, _ = catalog.detail("tomato_cheese", user, 2)
+    assert detail["recipe"]["allergens"]["completeness"] == "incomplete"
+    assert detail["recipe"]["suitability"]["status"] == "hidden"
+    assert any(reason["code"] == "incomplete_allergen_data" for reason in detail["recipe"]["suitability"]["reasons"])

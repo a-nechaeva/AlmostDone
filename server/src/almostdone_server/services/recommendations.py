@@ -23,7 +23,7 @@ class RecommendationService:
                         "visible_total": len(visible), "hidden_total": len(hidden),
                         "unknown_total": sum(d["recipe"]["suitability"]["status"] == "unknown" for d in visible),
                         "details": visible if body["visibility"] == "visible" else hidden, "limit": body["limit"],
-                        "engine_options": [option for detail, option in matches if
+                        "engine_options": [option for detail, option in matches if option is not None and
                                            (detail["recipe"]["suitability"]["status"] != "hidden") == (body["visibility"] == "visible")]}
             sid = self.runtime.put_object(db, uid, "snapshot", snapshot, 600)
             _, expires = self.runtime.get_object(db, sid, uid, "snapshot")
