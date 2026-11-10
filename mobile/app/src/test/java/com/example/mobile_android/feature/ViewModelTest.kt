@@ -313,6 +313,10 @@ class ViewModelTest {
                     value.value = true
                 }
 
+                override suspend fun signInWithToken(token: String) {
+                    value.value = true
+                }
+
                 override suspend fun signOut() {
                     value.value = false
                 }
@@ -404,6 +408,8 @@ class ViewModelTest {
 
                 override suspend fun signIn(login: String, password: String) = Unit
 
+                override suspend fun signInWithToken(token: String) = Unit
+
                 override suspend fun signOut() {
                     throw java.io.IOException("storage unavailable")
                 }
@@ -431,6 +437,8 @@ class ViewModelTest {
                 }
 
                 override suspend fun signIn(login: String, password: String) = Unit
+
+                override suspend fun signInWithToken(token: String) = Unit
 
                 override suspend fun signOut() = Unit
             }

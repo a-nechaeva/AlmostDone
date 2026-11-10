@@ -21,6 +21,8 @@ import com.example.mobile_android.feature.FakePreferences
 import com.example.mobile_android.navigation.AppRoot
 import com.example.mobile_android.ui.theme.AlmostReadyTheme
 import com.github.takahirom.roborazzi.RoborazziOptions
+import com.yandex.authsdk.YandexAuthOptions
+import com.yandex.authsdk.YandexAuthSdk
 import com.github.takahirom.roborazzi.captureRoboImage
 import java.io.File
 import kotlinx.coroutines.flow.*
@@ -31,6 +33,7 @@ import org.junit.Test
 import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
@@ -377,6 +380,10 @@ private class SmokeSession : SessionRepository {
         value.value = true
     }
 
+    override suspend fun signInWithToken(token: String) {
+        value.value = true
+    }
+
     override suspend fun signOut() {
         value.value = false
     }
@@ -393,4 +400,7 @@ private class SmokeDependencies : AppDependencies {
     override val household = FakeHousehold()
     override val preferences = FakePreferences()
     override val session = SmokeSession()
+    override val yandexAuth by lazy {
+        YandexAuthSdk.create(YandexAuthOptions(RuntimeEnvironment.getApplication()))
+    }
 }
