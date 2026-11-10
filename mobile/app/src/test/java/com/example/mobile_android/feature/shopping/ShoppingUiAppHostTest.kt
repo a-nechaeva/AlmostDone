@@ -17,6 +17,8 @@ import com.example.mobile_android.ui.UiSmoke
 import com.example.mobile_android.ui.theme.AlmostReadyTheme
 import com.github.takahirom.roborazzi.RoborazziOptions
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.yandex.authsdk.YandexAuthOptions
+import com.yandex.authsdk.YandexAuthSdk
 import java.io.File
 import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertTrue
@@ -26,6 +28,7 @@ import org.junit.Test
 import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
@@ -49,8 +52,13 @@ class ShoppingUiAppHostTest {
 
                     override suspend fun signIn(login: String, password: String) = Unit
 
+                    override suspend fun signInWithToken(token: String) = Unit
+
                     override suspend fun signOut() = Unit
                 }
+            override val yandexAuth by lazy {
+                YandexAuthSdk.create(YandexAuthOptions(RuntimeEnvironment.getApplication()))
+            }
         }
 
     @Before
