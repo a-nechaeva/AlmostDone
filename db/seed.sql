@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict b7cn6pjuXzGBj5IPUrZQjlU7ZaIJsOPrq9zumRKaxcf5T0DaGioZpvA57cJhY4Y
+\restrict vtxzK2VbhGAwfTqpQPIBcKySguLBdOA0JokuoGIfdlzCDiXCygwqzZcw9pdAh3c
 
 -- Dumped from database version 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1)
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1)
@@ -19,6 +19,111 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+ALTER TABLE IF EXISTS ONLY public.users DROP CONSTRAINT IF EXISTS users_pevzner_diet_id_pevzner_kind_fkey;
+ALTER TABLE IF EXISTS ONLY public.user_pantry DROP CONSTRAINT IF EXISTS user_pantry_user_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.user_pantry DROP CONSTRAINT IF EXISTS user_pantry_ingredient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.user_diets DROP CONSTRAINT IF EXISTS user_diets_user_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.user_diets DROP CONSTRAINT IF EXISTS user_diets_diet_id_diet_kind_fkey;
+ALTER TABLE IF EXISTS ONLY public.user_allergens DROP CONSTRAINT IF EXISTS user_allergens_user_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.user_allergens DROP CONSTRAINT IF EXISTS user_allergens_allergen_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.recipes DROP CONSTRAINT IF EXISTS recipes_author_fk;
+ALTER TABLE IF EXISTS ONLY public.recipe_steps DROP CONSTRAINT IF EXISTS recipe_steps_recipe_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.recipe_ingredients DROP CONSTRAINT IF EXISTS recipe_ingredients_recipe_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.recipe_ingredients DROP CONSTRAINT IF EXISTS recipe_ingredients_ingredient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.recipe_cooking_methods DROP CONSTRAINT IF EXISTS recipe_cooking_methods_recipe_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.recipe_cooking_methods DROP CONSTRAINT IF EXISTS recipe_cooking_methods_method_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.ingredient_categories DROP CONSTRAINT IF EXISTS ingredient_categories_ingredient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.ingredient_categories DROP CONSTRAINT IF EXISTS ingredient_categories_category_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.ingredient_allergens DROP CONSTRAINT IF EXISTS ingredient_allergens_ingredient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.ingredient_allergens DROP CONSTRAINT IF EXISTS ingredient_allergens_allergen_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.ingredient_aliases DROP CONSTRAINT IF EXISTS ingredient_aliases_ingredient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.favorite_recipes DROP CONSTRAINT IF EXISTS favorite_recipes_user_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.favorite_recipes DROP CONSTRAINT IF EXISTS favorite_recipes_recipe_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.favorite_ingredients DROP CONSTRAINT IF EXISTS favorite_ingredients_user_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.favorite_ingredients DROP CONSTRAINT IF EXISTS favorite_ingredients_ingredient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.diet_excluded_methods DROP CONSTRAINT IF EXISTS diet_excluded_methods_method_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.diet_excluded_methods DROP CONSTRAINT IF EXISTS diet_excluded_methods_diet_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.diet_excluded_categories DROP CONSTRAINT IF EXISTS diet_excluded_categories_diet_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.diet_excluded_categories DROP CONSTRAINT IF EXISTS diet_excluded_categories_category_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.diet_excluded_allergens DROP CONSTRAINT IF EXISTS diet_excluded_allergens_diet_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.diet_excluded_allergens DROP CONSTRAINT IF EXISTS diet_excluded_allergens_allergen_id_fkey;
+DROP TRIGGER IF EXISTS favorite_recipes_access ON public.favorite_recipes;
+DROP INDEX IF EXISTS public.recipes_time_idx;
+DROP INDEX IF EXISTS public.recipes_author_idx;
+DROP INDEX IF EXISTS public.recipe_ingredients_ingr_idx;
+DROP INDEX IF EXISTS public.ingredients_name_uq;
+DROP INDEX IF EXISTS public.ingredient_aliases_uq;
+DROP INDEX IF EXISTS public.diets_name_uq;
+DROP INDEX IF EXISTS public.cooking_methods_name_uq;
+DROP INDEX IF EXISTS public.categories_name_uq;
+DROP INDEX IF EXISTS public.allergens_name_uq;
+ALTER TABLE IF EXISTS ONLY public.users DROP CONSTRAINT IF EXISTS users_pkey;
+ALTER TABLE IF EXISTS ONLY public.users DROP CONSTRAINT IF EXISTS users_login_key;
+ALTER TABLE IF EXISTS ONLY public.user_pantry DROP CONSTRAINT IF EXISTS user_pantry_pkey;
+ALTER TABLE IF EXISTS ONLY public.user_diets DROP CONSTRAINT IF EXISTS user_diets_pkey;
+ALTER TABLE IF EXISTS ONLY public.user_allergens DROP CONSTRAINT IF EXISTS user_allergens_pkey;
+ALTER TABLE IF EXISTS ONLY public.recipes DROP CONSTRAINT IF EXISTS recipes_pkey;
+ALTER TABLE IF EXISTS ONLY public.recipe_steps DROP CONSTRAINT IF EXISTS recipe_steps_pkey;
+ALTER TABLE IF EXISTS ONLY public.recipe_ingredients DROP CONSTRAINT IF EXISTS recipe_ingredients_pkey;
+ALTER TABLE IF EXISTS ONLY public.recipe_cooking_methods DROP CONSTRAINT IF EXISTS recipe_cooking_methods_pkey;
+ALTER TABLE IF EXISTS ONLY public.ingredients DROP CONSTRAINT IF EXISTS ingredients_pkey;
+ALTER TABLE IF EXISTS ONLY public.ingredients DROP CONSTRAINT IF EXISTS ingredients_code_key;
+ALTER TABLE IF EXISTS ONLY public.ingredient_categories DROP CONSTRAINT IF EXISTS ingredient_categories_pkey;
+ALTER TABLE IF EXISTS ONLY public.ingredient_allergens DROP CONSTRAINT IF EXISTS ingredient_allergens_pkey;
+ALTER TABLE IF EXISTS ONLY public.ingredient_aliases DROP CONSTRAINT IF EXISTS ingredient_aliases_pkey;
+ALTER TABLE IF EXISTS ONLY public.favorite_recipes DROP CONSTRAINT IF EXISTS favorite_recipes_pkey;
+ALTER TABLE IF EXISTS ONLY public.favorite_ingredients DROP CONSTRAINT IF EXISTS favorite_ingredients_pkey;
+ALTER TABLE IF EXISTS ONLY public.diets DROP CONSTRAINT IF EXISTS diets_pkey;
+ALTER TABLE IF EXISTS ONLY public.diets DROP CONSTRAINT IF EXISTS diets_id_kind_key;
+ALTER TABLE IF EXISTS ONLY public.diet_excluded_methods DROP CONSTRAINT IF EXISTS diet_excluded_methods_pkey;
+ALTER TABLE IF EXISTS ONLY public.diet_excluded_categories DROP CONSTRAINT IF EXISTS diet_excluded_categories_pkey;
+ALTER TABLE IF EXISTS ONLY public.diet_excluded_allergens DROP CONSTRAINT IF EXISTS diet_excluded_allergens_pkey;
+ALTER TABLE IF EXISTS ONLY public.cooking_methods DROP CONSTRAINT IF EXISTS cooking_methods_pkey;
+ALTER TABLE IF EXISTS ONLY public.categories DROP CONSTRAINT IF EXISTS categories_pkey;
+ALTER TABLE IF EXISTS ONLY public.allergens DROP CONSTRAINT IF EXISTS allergens_pkey;
+ALTER TABLE IF EXISTS ONLY public.allergens DROP CONSTRAINT IF EXISTS allergens_code_key;
+ALTER TABLE IF EXISTS public.users ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.recipes ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.ingredients ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.diets ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.cooking_methods ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.categories ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.allergens ALTER COLUMN id DROP DEFAULT;
+DROP SEQUENCE IF EXISTS public.users_id_seq;
+DROP VIEW IF EXISTS public.user_recipe_visibility;
+DROP TABLE IF EXISTS public.user_pantry;
+DROP TABLE IF EXISTS public.user_allergens;
+DROP VIEW IF EXISTS public.user_all_diets;
+DROP TABLE IF EXISTS public.users;
+DROP TABLE IF EXISTS public.user_diets;
+DROP SEQUENCE IF EXISTS public.recipes_id_seq;
+DROP TABLE IF EXISTS public.recipe_steps;
+DROP VIEW IF EXISTS public.recipe_nutrition;
+DROP TABLE IF EXISTS public.recipes;
+DROP TABLE IF EXISTS public.recipe_cooking_methods;
+DROP VIEW IF EXISTS public.recipe_categories;
+DROP VIEW IF EXISTS public.recipe_allergens;
+DROP TABLE IF EXISTS public.recipe_ingredients;
+DROP SEQUENCE IF EXISTS public.ingredients_id_seq;
+DROP TABLE IF EXISTS public.ingredients;
+DROP TABLE IF EXISTS public.ingredient_categories;
+DROP TABLE IF EXISTS public.ingredient_allergens;
+DROP TABLE IF EXISTS public.ingredient_aliases;
+DROP TABLE IF EXISTS public.favorite_recipes;
+DROP TABLE IF EXISTS public.favorite_ingredients;
+DROP SEQUENCE IF EXISTS public.diets_id_seq;
+DROP TABLE IF EXISTS public.diets;
+DROP TABLE IF EXISTS public.diet_excluded_methods;
+DROP TABLE IF EXISTS public.diet_excluded_categories;
+DROP TABLE IF EXISTS public.diet_excluded_allergens;
+DROP SEQUENCE IF EXISTS public.cooking_methods_id_seq;
+DROP TABLE IF EXISTS public.cooking_methods;
+DROP SEQUENCE IF EXISTS public.categories_id_seq;
+DROP TABLE IF EXISTS public.categories;
+DROP SEQUENCE IF EXISTS public.allergens_id_seq;
+DROP TABLE IF EXISTS public.allergens;
+DROP FUNCTION IF EXISTS public.check_favorite_recipe_access();
+DROP EXTENSION IF EXISTS citext;
 --
 -- Name: citext; Type: EXTENSION; Schema: -; Owner: -
 --
@@ -27,14 +132,14 @@ CREATE EXTENSION IF NOT EXISTS citext WITH SCHEMA public;
 
 
 --
--- Name: EXTENSION citext; Type: COMMENT; Schema: -; Owner: 
+-- Name: EXTENSION citext; Type: COMMENT; Schema: -; Owner: -
 --
 
 COMMENT ON EXTENSION citext IS 'data type for case-insensitive character strings';
 
 
 --
--- Name: check_favorite_recipe_access(); Type: FUNCTION; Schema: public; Owner: koma
+-- Name: check_favorite_recipe_access(); Type: FUNCTION; Schema: public; Owner: -
 --
 
 CREATE FUNCTION public.check_favorite_recipe_access() RETURNS trigger
@@ -50,14 +155,12 @@ BEGIN
 END $$;
 
 
-ALTER FUNCTION public.check_favorite_recipe_access() OWNER TO koma;
-
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
 
 --
--- Name: allergens; Type: TABLE; Schema: public; Owner: koma
+-- Name: allergens; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.allergens (
@@ -69,10 +172,8 @@ CREATE TABLE public.allergens (
 );
 
 
-ALTER TABLE public.allergens OWNER TO koma;
-
 --
--- Name: allergens_id_seq; Type: SEQUENCE; Schema: public; Owner: koma
+-- Name: allergens_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.allergens_id_seq
@@ -84,17 +185,15 @@ CREATE SEQUENCE public.allergens_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.allergens_id_seq OWNER TO koma;
-
 --
--- Name: allergens_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: koma
+-- Name: allergens_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.allergens_id_seq OWNED BY public.allergens.id;
 
 
 --
--- Name: categories; Type: TABLE; Schema: public; Owner: koma
+-- Name: categories; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.categories (
@@ -104,10 +203,8 @@ CREATE TABLE public.categories (
 );
 
 
-ALTER TABLE public.categories OWNER TO koma;
-
 --
--- Name: categories_id_seq; Type: SEQUENCE; Schema: public; Owner: koma
+-- Name: categories_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.categories_id_seq
@@ -119,17 +216,15 @@ CREATE SEQUENCE public.categories_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.categories_id_seq OWNER TO koma;
-
 --
--- Name: categories_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: koma
+-- Name: categories_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.categories_id_seq OWNED BY public.categories.id;
 
 
 --
--- Name: cooking_methods; Type: TABLE; Schema: public; Owner: koma
+-- Name: cooking_methods; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.cooking_methods (
@@ -139,10 +234,8 @@ CREATE TABLE public.cooking_methods (
 );
 
 
-ALTER TABLE public.cooking_methods OWNER TO koma;
-
 --
--- Name: cooking_methods_id_seq; Type: SEQUENCE; Schema: public; Owner: koma
+-- Name: cooking_methods_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.cooking_methods_id_seq
@@ -154,17 +247,15 @@ CREATE SEQUENCE public.cooking_methods_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.cooking_methods_id_seq OWNER TO koma;
-
 --
--- Name: cooking_methods_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: koma
+-- Name: cooking_methods_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.cooking_methods_id_seq OWNED BY public.cooking_methods.id;
 
 
 --
--- Name: diet_excluded_allergens; Type: TABLE; Schema: public; Owner: koma
+-- Name: diet_excluded_allergens; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.diet_excluded_allergens (
@@ -173,10 +264,8 @@ CREATE TABLE public.diet_excluded_allergens (
 );
 
 
-ALTER TABLE public.diet_excluded_allergens OWNER TO koma;
-
 --
--- Name: diet_excluded_categories; Type: TABLE; Schema: public; Owner: koma
+-- Name: diet_excluded_categories; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.diet_excluded_categories (
@@ -185,10 +274,8 @@ CREATE TABLE public.diet_excluded_categories (
 );
 
 
-ALTER TABLE public.diet_excluded_categories OWNER TO koma;
-
 --
--- Name: diet_excluded_methods; Type: TABLE; Schema: public; Owner: koma
+-- Name: diet_excluded_methods; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.diet_excluded_methods (
@@ -197,10 +284,8 @@ CREATE TABLE public.diet_excluded_methods (
 );
 
 
-ALTER TABLE public.diet_excluded_methods OWNER TO koma;
-
 --
--- Name: diets; Type: TABLE; Schema: public; Owner: koma
+-- Name: diets; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.diets (
@@ -213,10 +298,8 @@ CREATE TABLE public.diets (
 );
 
 
-ALTER TABLE public.diets OWNER TO koma;
-
 --
--- Name: diets_id_seq; Type: SEQUENCE; Schema: public; Owner: koma
+-- Name: diets_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.diets_id_seq
@@ -228,17 +311,15 @@ CREATE SEQUENCE public.diets_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.diets_id_seq OWNER TO koma;
-
 --
--- Name: diets_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: koma
+-- Name: diets_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.diets_id_seq OWNED BY public.diets.id;
 
 
 --
--- Name: favorite_ingredients; Type: TABLE; Schema: public; Owner: koma
+-- Name: favorite_ingredients; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.favorite_ingredients (
@@ -248,10 +329,8 @@ CREATE TABLE public.favorite_ingredients (
 );
 
 
-ALTER TABLE public.favorite_ingredients OWNER TO koma;
-
 --
--- Name: favorite_recipes; Type: TABLE; Schema: public; Owner: koma
+-- Name: favorite_recipes; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.favorite_recipes (
@@ -261,10 +340,8 @@ CREATE TABLE public.favorite_recipes (
 );
 
 
-ALTER TABLE public.favorite_recipes OWNER TO koma;
-
 --
--- Name: ingredient_aliases; Type: TABLE; Schema: public; Owner: koma
+-- Name: ingredient_aliases; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.ingredient_aliases (
@@ -274,10 +351,8 @@ CREATE TABLE public.ingredient_aliases (
 );
 
 
-ALTER TABLE public.ingredient_aliases OWNER TO koma;
-
 --
--- Name: ingredient_allergens; Type: TABLE; Schema: public; Owner: koma
+-- Name: ingredient_allergens; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.ingredient_allergens (
@@ -286,10 +361,8 @@ CREATE TABLE public.ingredient_allergens (
 );
 
 
-ALTER TABLE public.ingredient_allergens OWNER TO koma;
-
 --
--- Name: ingredient_categories; Type: TABLE; Schema: public; Owner: koma
+-- Name: ingredient_categories; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.ingredient_categories (
@@ -298,10 +371,8 @@ CREATE TABLE public.ingredient_categories (
 );
 
 
-ALTER TABLE public.ingredient_categories OWNER TO koma;
-
 --
--- Name: ingredients; Type: TABLE; Schema: public; Owner: koma
+-- Name: ingredients; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.ingredients (
@@ -332,10 +403,8 @@ CREATE TABLE public.ingredients (
 );
 
 
-ALTER TABLE public.ingredients OWNER TO koma;
-
 --
--- Name: ingredients_id_seq; Type: SEQUENCE; Schema: public; Owner: koma
+-- Name: ingredients_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.ingredients_id_seq
@@ -347,17 +416,15 @@ CREATE SEQUENCE public.ingredients_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.ingredients_id_seq OWNER TO koma;
-
 --
--- Name: ingredients_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: koma
+-- Name: ingredients_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.ingredients_id_seq OWNED BY public.ingredients.id;
 
 
 --
--- Name: recipe_ingredients; Type: TABLE; Schema: public; Owner: koma
+-- Name: recipe_ingredients; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.recipe_ingredients (
@@ -369,10 +436,8 @@ CREATE TABLE public.recipe_ingredients (
 );
 
 
-ALTER TABLE public.recipe_ingredients OWNER TO koma;
-
 --
--- Name: recipe_allergens; Type: VIEW; Schema: public; Owner: koma
+-- Name: recipe_allergens; Type: VIEW; Schema: public; Owner: -
 --
 
 CREATE VIEW public.recipe_allergens AS
@@ -383,10 +448,8 @@ CREATE VIEW public.recipe_allergens AS
   WHERE (NOT ri.is_optional);
 
 
-ALTER VIEW public.recipe_allergens OWNER TO koma;
-
 --
--- Name: recipe_categories; Type: VIEW; Schema: public; Owner: koma
+-- Name: recipe_categories; Type: VIEW; Schema: public; Owner: -
 --
 
 CREATE VIEW public.recipe_categories AS
@@ -397,10 +460,8 @@ CREATE VIEW public.recipe_categories AS
   WHERE (NOT ri.is_optional);
 
 
-ALTER VIEW public.recipe_categories OWNER TO koma;
-
 --
--- Name: recipe_cooking_methods; Type: TABLE; Schema: public; Owner: koma
+-- Name: recipe_cooking_methods; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.recipe_cooking_methods (
@@ -409,10 +470,8 @@ CREATE TABLE public.recipe_cooking_methods (
 );
 
 
-ALTER TABLE public.recipe_cooking_methods OWNER TO koma;
-
 --
--- Name: recipes; Type: TABLE; Schema: public; Owner: koma
+-- Name: recipes; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.recipes (
@@ -433,10 +492,8 @@ CREATE TABLE public.recipes (
 );
 
 
-ALTER TABLE public.recipes OWNER TO koma;
-
 --
--- Name: recipe_nutrition; Type: VIEW; Schema: public; Owner: koma
+-- Name: recipe_nutrition; Type: VIEW; Schema: public; Owner: -
 --
 
 CREATE VIEW public.recipe_nutrition AS
@@ -452,10 +509,8 @@ CREATE VIEW public.recipe_nutrition AS
   GROUP BY r.id, r.servings;
 
 
-ALTER VIEW public.recipe_nutrition OWNER TO koma;
-
 --
--- Name: recipe_steps; Type: TABLE; Schema: public; Owner: koma
+-- Name: recipe_steps; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.recipe_steps (
@@ -469,10 +524,8 @@ CREATE TABLE public.recipe_steps (
 );
 
 
-ALTER TABLE public.recipe_steps OWNER TO koma;
-
 --
--- Name: recipes_id_seq; Type: SEQUENCE; Schema: public; Owner: koma
+-- Name: recipes_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.recipes_id_seq
@@ -484,17 +537,15 @@ CREATE SEQUENCE public.recipes_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.recipes_id_seq OWNER TO koma;
-
 --
--- Name: recipes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: koma
+-- Name: recipes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.recipes_id_seq OWNED BY public.recipes.id;
 
 
 --
--- Name: user_diets; Type: TABLE; Schema: public; Owner: koma
+-- Name: user_diets; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.user_diets (
@@ -505,10 +556,8 @@ CREATE TABLE public.user_diets (
 );
 
 
-ALTER TABLE public.user_diets OWNER TO koma;
-
 --
--- Name: users; Type: TABLE; Schema: public; Owner: koma
+-- Name: users; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.users (
@@ -523,10 +572,8 @@ CREATE TABLE public.users (
 );
 
 
-ALTER TABLE public.users OWNER TO koma;
-
 --
--- Name: user_all_diets; Type: VIEW; Schema: public; Owner: koma
+-- Name: user_all_diets; Type: VIEW; Schema: public; Owner: -
 --
 
 CREATE VIEW public.user_all_diets AS
@@ -540,10 +587,8 @@ UNION
   WHERE (users.pevzner_diet_id IS NOT NULL);
 
 
-ALTER VIEW public.user_all_diets OWNER TO koma;
-
 --
--- Name: user_allergens; Type: TABLE; Schema: public; Owner: koma
+-- Name: user_allergens; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.user_allergens (
@@ -552,10 +597,8 @@ CREATE TABLE public.user_allergens (
 );
 
 
-ALTER TABLE public.user_allergens OWNER TO koma;
-
 --
--- Name: user_pantry; Type: TABLE; Schema: public; Owner: koma
+-- Name: user_pantry; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.user_pantry (
@@ -566,10 +609,8 @@ CREATE TABLE public.user_pantry (
 );
 
 
-ALTER TABLE public.user_pantry OWNER TO koma;
-
 --
--- Name: user_recipe_visibility; Type: VIEW; Schema: public; Owner: koma
+-- Name: user_recipe_visibility; Type: VIEW; Schema: public; Owner: -
 --
 
 CREATE VIEW public.user_recipe_visibility AS
@@ -622,10 +663,8 @@ CREATE VIEW public.user_recipe_visibility AS
    FROM flags f;
 
 
-ALTER VIEW public.user_recipe_visibility OWNER TO koma;
-
 --
--- Name: users_id_seq; Type: SEQUENCE; Schema: public; Owner: koma
+-- Name: users_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.users_id_seq
@@ -637,66 +676,64 @@ CREATE SEQUENCE public.users_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.users_id_seq OWNER TO koma;
-
 --
--- Name: users_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: koma
+-- Name: users_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
 
 
 --
--- Name: allergens id; Type: DEFAULT; Schema: public; Owner: koma
+-- Name: allergens id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.allergens ALTER COLUMN id SET DEFAULT nextval('public.allergens_id_seq'::regclass);
 
 
 --
--- Name: categories id; Type: DEFAULT; Schema: public; Owner: koma
+-- Name: categories id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.categories ALTER COLUMN id SET DEFAULT nextval('public.categories_id_seq'::regclass);
 
 
 --
--- Name: cooking_methods id; Type: DEFAULT; Schema: public; Owner: koma
+-- Name: cooking_methods id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.cooking_methods ALTER COLUMN id SET DEFAULT nextval('public.cooking_methods_id_seq'::regclass);
 
 
 --
--- Name: diets id; Type: DEFAULT; Schema: public; Owner: koma
+-- Name: diets id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.diets ALTER COLUMN id SET DEFAULT nextval('public.diets_id_seq'::regclass);
 
 
 --
--- Name: ingredients id; Type: DEFAULT; Schema: public; Owner: koma
+-- Name: ingredients id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ingredients ALTER COLUMN id SET DEFAULT nextval('public.ingredients_id_seq'::regclass);
 
 
 --
--- Name: recipes id; Type: DEFAULT; Schema: public; Owner: koma
+-- Name: recipes id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.recipes ALTER COLUMN id SET DEFAULT nextval('public.recipes_id_seq'::regclass);
 
 
 --
--- Name: users id; Type: DEFAULT; Schema: public; Owner: koma
+-- Name: users id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
 
 
 --
--- Data for Name: allergens; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: allergens; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.allergens (id, code, name) FROM stdin;
@@ -718,7 +755,7 @@ COPY public.allergens (id, code, name) FROM stdin;
 
 
 --
--- Data for Name: categories; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: categories; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.categories (id, name) FROM stdin;
@@ -738,7 +775,7 @@ COPY public.categories (id, name) FROM stdin;
 
 
 --
--- Data for Name: cooking_methods; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: cooking_methods; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.cooking_methods (id, name) FROM stdin;
@@ -750,7 +787,7 @@ COPY public.cooking_methods (id, name) FROM stdin;
 
 
 --
--- Data for Name: diet_excluded_allergens; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: diet_excluded_allergens; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.diet_excluded_allergens (diet_id, allergen_id) FROM stdin;
@@ -760,7 +797,7 @@ COPY public.diet_excluded_allergens (diet_id, allergen_id) FROM stdin;
 
 
 --
--- Data for Name: diet_excluded_categories; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: diet_excluded_categories; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.diet_excluded_categories (diet_id, category_id) FROM stdin;
@@ -774,7 +811,7 @@ COPY public.diet_excluded_categories (diet_id, category_id) FROM stdin;
 
 
 --
--- Data for Name: diet_excluded_methods; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: diet_excluded_methods; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.diet_excluded_methods (diet_id, method_id) FROM stdin;
@@ -784,7 +821,7 @@ COPY public.diet_excluded_methods (diet_id, method_id) FROM stdin;
 
 
 --
--- Data for Name: diets; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: diets; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.diets (id, kind, name, description) FROM stdin;
@@ -810,7 +847,7 @@ COPY public.diets (id, kind, name, description) FROM stdin;
 
 
 --
--- Data for Name: favorite_ingredients; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: favorite_ingredients; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.favorite_ingredients (user_id, ingredient_id, added_at) FROM stdin;
@@ -818,7 +855,7 @@ COPY public.favorite_ingredients (user_id, ingredient_id, added_at) FROM stdin;
 
 
 --
--- Data for Name: favorite_recipes; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: favorite_recipes; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.favorite_recipes (user_id, recipe_id, added_at) FROM stdin;
@@ -826,7 +863,7 @@ COPY public.favorite_recipes (user_id, recipe_id, added_at) FROM stdin;
 
 
 --
--- Data for Name: ingredient_aliases; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: ingredient_aliases; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.ingredient_aliases (ingredient_id, alias) FROM stdin;
@@ -1925,7 +1962,7 @@ COPY public.ingredient_aliases (ingredient_id, alias) FROM stdin;
 
 
 --
--- Data for Name: ingredient_allergens; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: ingredient_allergens; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.ingredient_allergens (ingredient_id, allergen_id) FROM stdin;
@@ -2085,7 +2122,7 @@ COPY public.ingredient_allergens (ingredient_id, allergen_id) FROM stdin;
 
 
 --
--- Data for Name: ingredient_categories; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: ingredient_categories; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.ingredient_categories (ingredient_id, category_id) FROM stdin;
@@ -2266,11 +2303,808 @@ COPY public.ingredient_categories (ingredient_id, category_id) FROM stdin;
 847	2
 848	2
 850	11
+1	1
+3	1
+8	1
+10	1
+16	1
+20	1
+23	1
+25	1
+30	1
+41	1
+54	1
+57	1
+66	1
+83	1
+92	1
+103	1
+114	1
+131	1
+140	1
+147	1
+149	1
+199	1
+209	1
+221	1
+241	1
+245	1
+261	1
+262	1
+264	1
+273	1
+289	1
+309	1
+310	1
+312	1
+322	1
+323	1
+340	1
+342	1
+343	1
+344	1
+345	1
+346	1
+347	1
+350	1
+374	1
+415	1
+494	1
+500	1
+501	1
+509	1
+534	1
+576	1
+594	1
+602	1
+603	1
+647	1
+648	1
+649	1
+650	1
+651	1
+652	1
+653	1
+654	1
+655	1
+661	1
+754	1
+763	1
+765	1
+781	1
+782	1
+783	1
+803	1
+826	1
+808	3
+809	3
+1	4
+2	4
+3	4
+6	4
+7	4
+8	4
+9	4
+10	4
+12	4
+13	4
+16	4
+17	4
+18	4
+19	4
+20	4
+22	4
+23	4
+25	4
+27	4
+28	4
+30	4
+31	4
+32	4
+33	4
+34	4
+36	4
+37	4
+39	4
+40	4
+41	4
+42	4
+43	4
+44	4
+47	4
+48	4
+51	4
+52	4
+53	4
+54	4
+55	4
+57	4
+58	4
+59	4
+60	4
+61	4
+62	4
+63	4
+64	4
+65	4
+66	4
+68	4
+69	4
+70	4
+71	4
+73	4
+75	4
+76	4
+77	4
+78	4
+79	4
+80	4
+81	4
+82	4
+83	4
+84	4
+85	4
+86	4
+87	4
+88	4
+89	4
+90	4
+91	4
+92	4
+93	4
+95	4
+98	4
+99	4
+101	4
+102	4
+103	4
+104	4
+105	4
+106	4
+108	4
+109	4
+110	4
+111	4
+112	4
+113	4
+114	4
+115	4
+116	4
+117	4
+118	4
+119	4
+120	4
+121	4
+122	4
+123	4
+124	4
+125	4
+126	4
+127	4
+128	4
+129	4
+130	4
+131	4
+132	4
+133	4
+134	4
+140	4
+141	4
+142	4
+143	4
+144	4
+145	4
+146	4
+147	4
+148	4
+149	4
+150	4
+151	4
+152	4
+153	4
+154	4
+155	4
+156	4
+157	4
+158	4
+159	4
+160	4
+162	4
+163	4
+164	4
+165	4
+168	4
+169	4
+171	4
+172	4
+173	4
+174	4
+175	4
+176	4
+177	4
+178	4
+179	4
+180	4
+181	4
+182	4
+183	4
+184	4
+185	4
+187	4
+188	4
+190	4
+191	4
+192	4
+193	4
+194	4
+197	4
+198	4
+199	4
+200	4
+203	4
+204	4
+205	4
+206	4
+207	4
+208	4
+209	4
+210	4
+211	4
+213	4
+214	4
+215	4
+216	4
+217	4
+218	4
+219	4
+220	4
+221	4
+222	4
+225	4
+226	4
+228	4
+229	4
+230	4
+231	4
+235	4
+237	4
+238	4
+239	4
+240	4
+241	4
+242	4
+243	4
+244	4
+245	4
+246	4
+247	4
+248	4
+249	4
+250	4
+251	4
+253	4
+254	4
+256	4
+257	4
+258	4
+259	4
+260	4
+261	4
+262	4
+263	4
+264	4
+265	4
+266	4
+270	4
+271	4
+273	4
+277	4
+278	4
+280	4
+281	4
+282	4
+283	4
+284	4
+286	4
+288	4
+289	4
+290	4
+292	4
+293	4
+294	4
+295	4
+297	4
+298	4
+299	4
+301	4
+302	4
+303	4
+304	4
+305	4
+306	4
+307	4
+308	4
+309	4
+310	4
+312	4
+313	4
+314	4
+315	4
+316	4
+317	4
+318	4
+319	4
+320	4
+321	4
+322	4
+323	4
+324	4
+326	4
+329	4
+330	4
+331	4
+333	4
+335	4
+337	4
+338	4
+339	4
+340	4
+341	4
+342	4
+343	4
+344	4
+345	4
+346	4
+347	4
+348	4
+349	4
+350	4
+351	4
+352	4
+353	4
+354	4
+355	4
+356	4
+357	4
+358	4
+359	4
+360	4
+364	4
+365	4
+366	4
+367	4
+369	4
+370	4
+371	4
+373	4
+374	4
+376	4
+377	4
+378	4
+380	4
+381	4
+382	4
+383	4
+384	4
+385	4
+386	4
+389	4
+390	4
+391	4
+392	4
+393	4
+394	4
+395	4
+396	4
+397	4
+398	4
+399	4
+405	4
+406	4
+408	4
+413	4
+414	4
+415	4
+416	4
+420	4
+424	4
+425	4
+426	4
+427	4
+428	4
+429	4
+430	4
+431	4
+432	4
+433	4
+434	4
+435	4
+437	4
+439	4
+440	4
+441	4
+444	4
+445	4
+446	4
+449	4
+452	4
+453	4
+454	4
+455	4
+456	4
+457	4
+458	4
+459	4
+460	4
+461	4
+462	4
+463	4
+465	4
+466	4
+468	4
+469	4
+470	4
+471	4
+472	4
+473	4
+474	4
+475	4
+476	4
+477	4
+478	4
+479	4
+480	4
+481	4
+482	4
+483	4
+484	4
+488	4
+489	4
+490	4
+491	4
+492	4
+494	4
+495	4
+496	4
+497	4
+499	4
+500	4
+501	4
+502	4
+504	4
+506	4
+509	4
+510	4
+512	4
+513	4
+514	4
+515	4
+516	4
+524	4
+525	4
+526	4
+527	4
+528	4
+529	4
+531	4
+532	4
+533	4
+534	4
+535	4
+536	4
+539	4
+540	4
+541	4
+542	4
+543	4
+544	4
+545	4
+546	4
+556	4
+557	4
+558	4
+559	4
+560	4
+561	4
+562	4
+563	4
+564	4
+567	4
+568	4
+569	4
+570	4
+571	4
+572	4
+573	4
+574	4
+575	4
+576	4
+577	4
+578	4
+579	4
+580	4
+581	4
+582	4
+585	4
+586	4
+588	4
+589	4
+590	4
+593	4
+594	4
+595	4
+597	4
+598	4
+599	4
+600	4
+601	4
+602	4
+603	4
+604	4
+605	4
+606	4
+607	4
+608	4
+609	4
+610	4
+611	4
+612	4
+613	4
+614	4
+615	4
+617	4
+618	4
+619	4
+620	4
+621	4
+622	4
+623	4
+624	4
+625	4
+626	4
+627	4
+629	4
+630	4
+631	4
+632	4
+633	4
+634	4
+635	4
+636	4
+637	4
+638	4
+639	4
+640	4
+641	4
+642	4
+643	4
+644	4
+645	4
+646	4
+647	4
+648	4
+649	4
+650	4
+651	4
+652	4
+653	4
+654	4
+655	4
+656	4
+658	4
+659	4
+660	4
+661	4
+662	4
+664	4
+665	4
+666	4
+667	4
+668	4
+669	4
+670	4
+671	4
+672	4
+673	4
+674	4
+675	4
+676	4
+677	4
+678	4
+679	4
+680	4
+681	4
+682	4
+683	4
+684	4
+685	4
+686	4
+687	4
+688	4
+689	4
+690	4
+691	4
+692	4
+693	4
+694	4
+695	4
+697	4
+698	4
+699	4
+700	4
+701	4
+702	4
+709	4
+710	4
+711	4
+712	4
+713	4
+714	4
+715	4
+717	4
+718	4
+719	4
+720	4
+721	4
+722	4
+723	4
+724	4
+725	4
+726	4
+727	4
+729	4
+731	4
+732	4
+734	4
+735	4
+736	4
+737	4
+738	4
+739	4
+741	4
+742	4
+743	4
+744	4
+745	4
+746	4
+747	4
+749	4
+750	4
+753	4
+754	4
+756	4
+757	4
+758	4
+759	4
+760	4
+761	4
+762	4
+763	4
+764	4
+765	4
+766	4
+767	4
+768	4
+769	4
+770	4
+771	4
+772	4
+773	4
+774	4
+775	4
+776	4
+777	4
+779	4
+780	4
+781	4
+782	4
+783	4
+784	4
+785	4
+786	4
+787	4
+790	4
+791	4
+794	4
+795	4
+796	4
+797	4
+798	4
+799	4
+802	4
+803	4
+804	4
+805	4
+807	4
+808	4
+809	4
+812	4
+814	4
+815	4
+816	4
+817	4
+818	4
+819	4
+820	4
+821	4
+822	4
+823	4
+824	4
+826	4
+827	4
+828	4
+829	4
+830	4
+831	4
+832	4
+833	4
+834	4
+835	4
+836	4
+837	4
+838	4
+839	4
+840	4
+841	4
+842	4
+843	4
+844	4
+845	4
+849	4
+851	4
+852	4
+853	4
+854	4
+855	4
+856	4
+857	4
+7	5
+12	5
+32	5
+33	5
+42	5
+76	5
+77	5
+85	5
+179	5
+214	5
+270	5
+318	5
+339	5
+359	5
+360	5
+367	5
+371	5
+373	5
+405	5
+424	5
+429	5
+465	5
+494	5
+501	5
+516	5
+597	5
+598	5
+599	5
+600	5
+702	5
+717	5
+720	5
+732	5
+735	5
+747	5
+759	5
+760	5
+761	5
+762	5
+771	5
+772	5
+773	5
 \.
 
 
 --
--- Data for Name: ingredients; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: ingredients; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.ingredients (id, code, name, is_staple, display_unit, grams_per_piece, kcal, protein, fat, carbs, package_g, package_price) FROM stdin;
@@ -3135,7 +3969,7 @@ COPY public.ingredients (id, code, name, is_staple, display_unit, grams_per_piec
 
 
 --
--- Data for Name: recipe_cooking_methods; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: recipe_cooking_methods; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.recipe_cooking_methods (recipe_id, method_id) FROM stdin;
@@ -3724,7 +4558,7 @@ COPY public.recipe_cooking_methods (recipe_id, method_id) FROM stdin;
 
 
 --
--- Data for Name: recipe_ingredients; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: recipe_ingredients; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FROM stdin;
@@ -3733,48 +4567,31 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 1	37	51.00	f
 1	5	50.00	f
 1	260	60.00	f
-1	103	\N	f
 1	2	\N	t
 2	679	320.00	f
-2	294	\N	f
 2	1	110.00	f
-2	49	\N	f
 2	7	80.00	f
 2	146	80.00	f
-2	47	\N	f
 2	2	\N	t
-3	57	\N	f
-3	241	\N	f
 3	23	238.00	f
 3	8	600.00	f
 3	1	110.00	f
 3	3	9.00	f
 3	14	82.62	f
-3	52	\N	f
-3	158	\N	f
 4	1	1000.00	f
 4	7	50.00	f
-4	6	\N	f
-4	49	\N	f
-4	68	\N	f
-4	183	\N	f
 4	239	150.00	f
-4	52	\N	f
 5	161	700.00	f
-5	177	\N	f
 5	44	300.00	f
 5	10	852.00	f
 5	16	61.00	f
 5	1	110.00	f
 5	25	32.00	f
-5	797	\N	f
 5	3	9.00	f
-5	22	\N	f
 5	32	\N	t
 6	6	400.00	f
 6	5	50.00	f
 6	7	40.00	f
-6	28	\N	f
 6	9	3.50	f
 6	744	250.00	f
 6	405	250.00	f
@@ -3782,27 +4599,24 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 7	11	800.00	f
 7	317	10.00	f
 7	503	15.00	f
-7	641	\N	f
 7	377	200.00	f
-7	440	\N	f
-7	20	\N	f
-8	122	\N	f
 8	24	67.00	f
-8	41	\N	f
-8	815	\N	f
-8	13	\N	f
 8	8	123.00	f
 8	2	\N	t
+2	47	\N	t
+3	52	\N	t
+4	52	\N	t
+5	22	\N	t
+7	20	\N	t
+8	13	\N	t
+10	27	\N	t
+10	58	\N	t
+10	83	\N	t
+11	82	\N	t
 10	831	200.00	f
-10	27	\N	f
-10	26	\N	f
-10	58	\N	f
-10	238	\N	f
 10	3	12.00	f
 10	1	110.00	f
 10	8	246.00	f
-10	83	\N	f
-10	286	\N	f
 10	2	\N	t
 11	21	400.00	f
 11	325	300.00	f
@@ -3810,30 +4624,22 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 11	539	100.00	f
 11	8	123.00	f
 11	14	55.08	f
-11	82	\N	f
-11	47	\N	f
-11	356	\N	f
 11	2	\N	t
 12	10	600.00	f
 12	1	110.00	f
 12	5	300.00	f
 12	14	367.20	f
 12	2	\N	t
-13	57	\N	f
 13	10	426.00	f
 13	1	110.00	f
 13	3	9.00	f
 13	149	400.00	f
-13	138	\N	f
-13	40	\N	f
 13	7	80.00	f
 13	6	80.00	f
 13	12	721.00	f
 13	37	34.00	f
 13	14	55.08	f
 14	8	492.00	f
-14	54	\N	f
-14	41	\N	f
 14	386	200.00	f
 14	625	80.00	f
 14	14	55.08	f
@@ -3844,24 +4650,14 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 15	446	200.00	f
 15	1	220.00	f
 15	17	80.00	f
-15	157	\N	f
-15	36	\N	f
-15	142	\N	f
 15	197	5.00	f
-15	50	\N	f
 15	9	10.50	f
 15	266	400.00	f
-16	183	\N	f
 16	136	400.00	f
 16	553	120.00	f
-16	132	\N	f
 16	16	61.00	f
 16	194	200.00	f
-16	380	\N	f
 16	9	21.00	f
-16	50	\N	f
-16	54	\N	f
-16	13	\N	t
 16	346	\N	t
 17	158	60.00	f
 17	111	30.00	f
@@ -3869,23 +4665,15 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 17	146	50.00	f
 17	260	25.00	f
 17	332	91.80	f
-17	119	\N	f
 18	136	700.00	f
-18	758	\N	f
-18	757	\N	f
 18	285	200.00	f
 18	635	30.00	f
-18	159	\N	f
 18	3	12.00	f
-18	31	\N	f
-18	207	\N	f
-18	326	\N	f
 18	24	\N	t
 19	8	492.00	f
 19	5	200.00	f
 19	7	20.00	f
 19	14	13.77	f
-19	391	\N	f
 19	65	1.00	f
 19	95	\N	t
 19	2	\N	t
@@ -3895,8 +4683,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 20	10	213.00	f
 20	25	16.00	f
 20	7	40.00	f
-20	70	\N	f
-20	82	\N	f
 20	15	\N	t
 20	2	\N	t
 21	6	500.00	f
@@ -3904,49 +4690,32 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 21	35	400.00	f
 21	107	200.00	f
 21	1	220.00	f
-21	13	\N	f
-21	31	\N	f
 21	103	\N	t
 21	2	\N	t
 22	252	700.00	f
 22	77	150.00	f
 22	17	20.00	f
 22	3	12.00	f
-22	141	\N	f
-22	246	\N	f
-22	27	\N	f
 22	149	400.00	f
 22	1	110.00	f
 22	7	60.00	f
-22	717	\N	f
 22	314	40.00	f
-22	502	\N	f
 22	2	\N	t
-23	362	\N	f
 23	6	40.00	f
 23	5	50.00	f
 23	633	80.00	f
 23	1	110.00	f
-23	143	\N	f
 23	43	50.40	f
-23	133	\N	f
 23	9	10.50	f
 23	71	400.00	f
 24	771	500.00	f
 24	5	50.00	f
-24	6	\N	f
 24	9	10.50	f
-24	231	\N	f
-24	2	\N	f
 25	683	200.00	f
 25	45	200.00	f
 25	660	100.00	f
 25	5	100.00	f
-25	120	\N	f
-25	50	\N	f
-25	106	\N	f
 25	3	9.00	f
-25	48	\N	f
 25	176	150.00	f
 25	20	50.00	f
 25	123	50.00	f
@@ -3957,15 +4726,11 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 26	225	66.00	f
 26	9	100.00	f
 26	691	300.00	f
-26	537	\N	f
-26	586	\N	f
 26	164	\N	t
 27	8	1000.00	f
-27	54	\N	f
 27	3	3.00	f
 27	397	80.00	f
 27	332	73.44	f
-27	381	\N	f
 27	2	\N	t
 28	816	150.00	f
 28	7	60.00	f
@@ -3973,73 +4738,57 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 28	1	55.00	f
 28	6	100.00	f
 28	12	721.00	f
-28	89	\N	f
 28	5	100.00	f
 28	81	150.00	f
 28	2	\N	t
 29	423	600.00	f
 29	24	670.00	f
-29	41	\N	f
-29	13	\N	f
-29	185	\N	f
 29	542	150.00	f
 29	2	\N	t
 30	127	600.00	f
-30	41	\N	f
 30	8	369.00	f
-30	416	\N	f
 30	43	67.20	f
-30	180	\N	f
 30	3	9.00	f
 30	312	600.00	f
 30	71	400.00	f
-30	13	\N	t
 30	4	41.40	f
 31	613	500.00	f
 31	56	150.00	f
-31	301	\N	f
-31	807	\N	f
-31	374	\N	f
 31	3	9.00	f
 31	17	15.00	f
-31	96	\N	f
-31	250	\N	f
-31	20	\N	f
 31	4	41.40	f
 32	167	500.00	f
 32	225	33.00	f
-32	250	\N	f
 32	109	80.00	f
-32	83	\N	f
-32	374	\N	f
-32	841	\N	f
 32	43	33.60	f
 32	9	7.00	f
 32	3	9.00	f
 32	17	15.00	f
-32	20	\N	f
 32	4	41.40	f
 33	21	1500.00	f
-33	138	\N	f
 33	79	150.00	f
 33	155	300.00	f
 33	1	250.00	f
 33	16	122.00	f
 33	3	12.00	f
-33	6	\N	f
-33	96	\N	f
 33	7	40.00	f
-34	85	\N	f
 34	37	85.00	f
 34	9	80.00	f
-34	743	\N	f
-34	699	\N	f
 35	6	400.00	f
 35	5	200.00	f
 35	1	330.00	f
 35	7	60.00	f
-35	89	\N	f
 35	2	\N	t
+11	47	\N	t
+13	40	\N	t
+15	36	\N	t
+16	13	\N	t
+18	31	\N	t
+20	70	\N	t
+20	82	\N	t
+21	13	\N	t
+21	31	\N	t
+22	141	\N	t
 37	678	600.00	f
 37	35	250.00	f
 37	121	200.00	f
@@ -4047,8 +4796,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 37	16	61.00	f
 37	283	150.00	f
 37	5	200.00	f
-37	321	\N	f
-37	130	\N	f
 37	43	33.60	f
 37	3	9.00	f
 37	69	\N	t
@@ -4056,29 +4803,19 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 38	72	300.00	f
 38	377	300.00	f
 38	1	110.00	f
-38	529	\N	f
-38	321	\N	f
 38	3	9.00	f
-38	20	\N	f
-38	130	\N	f
 39	136	800.00	f
 39	14	73.44	f
 39	15	58.00	f
 39	65	2.00	f
 39	3	9.00	f
-39	175	\N	f
 39	77	200.00	f
-39	54	\N	f
 40	60	500.00	f
 40	555	1000.00	f
 40	77	250.00	f
 40	1	330.00	f
 40	17	30.00	f
 40	3	18.00	f
-40	141	\N	f
-40	262	\N	f
-40	27	\N	f
-40	47	\N	f
 40	12	61.80	f
 40	2	\N	t
 41	551	1500.00	f
@@ -4086,14 +4823,10 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 41	317	10.00	f
 41	842	20.00	f
 41	43	224.00	f
-41	133	\N	f
-41	268	\N	f
 41	17	30.00	f
 41	3	12.00	f
 41	558	500.00	f
 41	5	200.00	f
-41	20	\N	f
-41	130	\N	f
 42	6	400.00	f
 42	11	200.00	f
 42	4	27.60	f
@@ -4102,18 +4835,13 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 42	1	330.00	f
 42	7	60.00	f
 42	32	\N	t
-43	673	\N	f
 43	422	500.00	f
 43	79	100.00	f
 43	1	110.00	f
 43	3	12.00	f
-43	579	\N	f
-43	270	\N	f
 43	5	200.00	f
 43	821	\N	t
 44	235	1500.00	f
-44	180	\N	f
-44	138	\N	f
 44	1	330.00	f
 44	16	122.00	f
 44	112	150.00	f
@@ -4122,34 +4850,23 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 44	9	10.50	f
 45	140	800.00	f
 45	1	110.00	f
-45	437	\N	f
-45	125	\N	f
-45	75	\N	f
 45	4	55.20	f
-45	20	\N	t
 46	433	400.00	f
 46	300	150.00	f
 46	350	400.00	f
 46	260	80.00	f
-46	83	\N	f
-46	49	\N	f
 46	2	\N	t
 47	149	800.00	f
 47	1	110.00	f
 47	3	12.00	f
 47	5	300.00	f
-47	31	\N	f
-47	208	\N	f
-47	153	\N	f
 47	14	41.31	f
 47	2	\N	t
 48	618	250.00	f
-48	73	\N	f
 48	219	150.00	f
 48	15	58.00	f
 48	3	6.00	f
 48	11	80.00	f
-48	31	\N	f
 48	14	\N	t
 48	2	\N	t
 49	154	700.00	f
@@ -4159,8 +4876,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 49	72	300.00	f
 49	1	220.00	f
 49	3	18.00	f
-49	22	\N	f
-49	227	\N	f
 49	243	300.00	f
 49	71	600.00	f
 49	4	27.60	f
@@ -4174,10 +4889,7 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 50	2	6.09	f
 51	56	300.00	f
 51	709	40.00	f
-51	766	\N	f
 51	3	15.00	f
-51	383	\N	f
-51	50	\N	f
 51	178	5.60	f
 51	9	3.50	f
 51	5	100.00	f
@@ -4185,10 +4897,7 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 51	4	55.20	f
 52	35	300.00	f
 52	1	110.00	f
-52	143	\N	f
 52	43	50.40	f
-52	133	\N	f
-52	268	\N	f
 52	9	10.50	f
 52	17	10.00	f
 52	71	400.00	f
@@ -4197,19 +4906,13 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 53	117	200.00	f
 53	443	150.00	f
 53	232	150.00	f
-53	340	\N	f
-53	623	\N	f
 53	1	220.00	f
 53	25	48.00	f
 53	15	\N	t
 54	21	1400.00	f
-54	733	\N	f
 54	162	150.00	f
 54	1	220.00	f
 54	3	12.00	f
-54	163	\N	f
-54	27	\N	f
-54	47	\N	f
 54	14	55.08	f
 54	11	200.00	f
 55	29	300.00	f
@@ -4217,15 +4920,9 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 55	828	100.00	f
 55	8	600.00	f
 55	1	110.00	f
-55	118	\N	f
-55	163	\N	f
-55	40	\N	f
-55	6	\N	f
 55	295	60.00	f
 55	15	\N	t
 56	1	1000.00	f
-56	82	\N	f
-56	151	\N	f
 56	23	238.00	f
 56	8	246.00	f
 56	10	400.00	f
@@ -4244,8 +4941,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 58	10	1000.00	f
 58	6	200.00	f
 58	53	50.00	f
-58	361	\N	f
-58	104	\N	f
 58	799	\N	t
 58	2	\N	t
 59	275	700.00	f
@@ -4254,13 +4949,8 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 59	16	122.00	f
 59	98	150.00	f
 59	25	32.00	f
-59	190	\N	f
-59	188	\N	f
-59	6	\N	f
 59	7	60.00	f
 59	12	123.60	f
-59	52	\N	f
-60	774	\N	f
 60	6	80.00	f
 60	5	150.00	f
 60	81	200.00	f
@@ -4271,7 +4961,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 61	4	41.40	f
 61	507	1000.00	f
 61	9	100.00	f
-61	40	\N	f
 61	38	80.00	f
 61	81	80.00	f
 61	7	120.00	f
@@ -4283,78 +4972,49 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 62	3	9.00	f
 62	14	73.44	f
 62	838	80.00	f
-62	18	\N	f
 63	271	400.00	f
 63	12	257.50	f
-63	85	\N	f
 63	9	200.00	f
 63	11	100.00	f
 63	6	40.00	f
 63	37	102.00	f
-63	36	\N	f
-63	74	\N	f
 64	35	600.00	f
 64	1	440.00	f
-64	20	\N	f
 64	5	150.00	f
 64	162	80.00	f
-64	82	\N	f
-64	31	\N	f
-64	92	\N	f
-64	776	\N	f
 64	2	\N	t
 65	18	60.00	f
-65	65	\N	f
 65	3	18.00	f
-65	92	\N	f
-65	180	\N	f
 65	14	165.24	f
 65	11	60.00	f
-65	119	\N	f
 66	71	600.00	f
 66	167	250.00	f
 66	45	150.00	f
-66	48	\N	f
 66	3	12.00	f
-66	535	\N	f
-66	536	\N	f
-66	313	\N	f
 66	5	200.00	f
 66	44	150.00	f
 66	4	55.20	f
 67	192	1200.00	f
-67	33	\N	f
-67	48	\N	f
 67	3	18.00	f
-67	83	\N	f
 67	126	40.00	f
 67	17	30.00	f
 67	145	20.00	f
-67	101	\N	f
-67	170	\N	f
 67	620	60.00	f
 67	2	\N	t
 68	202	1000.00	f
 68	43	134.40	f
 68	3	30.00	f
-68	22	\N	f
 68	114	2.90	f
-68	357	\N	f
 68	11	200.00	f
 68	4	27.60	f
 68	71	400.00	f
 69	212	800.00	f
-69	120	\N	f
 69	1	110.00	f
 69	8	369.00	f
 69	194	200.00	f
 69	181	150.00	f
-69	57	\N	f
-69	63	\N	f
-69	50	\N	f
 69	11	2000.00	f
 70	212	700.00	f
-70	177	\N	f
 70	44	400.00	f
 70	10	852.00	f
 70	16	61.00	f
@@ -4363,25 +5023,18 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 70	25	32.00	f
 70	740	80.00	f
 70	3	15.00	f
-70	61	\N	f
 70	32	\N	t
 71	6	450.00	f
-71	128	\N	f
 71	5	50.00	f
-71	73	\N	f
 71	234	600.00	f
 71	9	120.00	f
-71	250	\N	f
 71	7	50.00	f
 71	32	\N	t
-71	2	\N	f
 72	195	80.00	f
 72	16	183.00	f
 72	112	200.00	f
 72	320	150.00	f
 72	1	220.00	f
-72	85	\N	f
-72	125	\N	f
 72	15	58.00	f
 72	9	10.50	f
 72	431	\N	t
@@ -4394,17 +5047,12 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 73	5	100.00	f
 73	700	150.00	f
 73	62	100.00	f
-73	40	\N	f
 73	2	6.09	f
 74	46	400.00	f
 74	56	200.00	f
 74	110	60.00	f
-74	42	\N	f
 74	1	110.00	f
 74	5	50.00	f
-74	147	\N	f
-74	68	\N	f
-74	6	\N	f
 74	43	5.60	f
 74	7	60.00	f
 74	292	\N	t
@@ -4412,10 +5060,8 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 75	12	309.00	f
 75	28	10.00	f
 75	9	80.00	f
-75	78	\N	f
 75	330	100.00	f
 75	697	100.00	f
-75	40	\N	f
 75	5	50.00	f
 75	306	\N	t
 75	2	6.09	f
@@ -4426,88 +5072,59 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 76	1	440.00	f
 76	149	800.00	f
 76	3	18.00	f
-76	159	\N	f
-76	31	\N	f
-76	92	\N	f
 76	4	184.00	f
 76	2	\N	t
 77	745	400.00	f
 77	3	12.00	f
 77	15	116.00	f
 77	14	73.44	f
-77	31	\N	f
 77	8	246.00	f
-77	18	\N	f
-77	92	\N	t
 77	2	\N	t
 78	18	200.00	f
 78	90	30.00	f
 78	230	40.00	f
 78	8	492.00	f
-78	20	\N	f
 78	15	116.00	f
 78	14	55.08	f
-78	147	\N	f
 78	2	\N	t
 79	230	120.00	f
 79	29	500.00	f
 79	1	110.00	f
-79	725	\N	f
-79	70	\N	f
 79	11	100.00	f
 79	14	55.08	f
 80	29	800.00	f
 80	18	300.00	f
 80	13	200.00	f
-80	756	\N	f
 80	129	200.00	f
-80	137	\N	f
 80	1	220.00	f
-80	27	\N	f
 80	4	92.00	f
 80	71	600.00	f
 81	60	500.00	f
 81	10	426.00	f
-81	77	\N	f
-81	47	\N	f
 81	7	80.00	f
 81	4	41.40	f
 81	2	\N	t
 82	67	800.00	f
 82	100	100.00	f
 82	1	330.00	f
-82	826	\N	f
-82	58	\N	f
-82	288	\N	f
 82	64	100.00	f
-82	30	\N	f
 82	2	\N	t
 83	6	500.00	f
 83	11	250.00	f
 83	100	150.00	f
 83	29	500.00	f
 83	1	500.00	f
-83	58	\N	f
 83	5	50.00	f
 83	69	\N	t
 84	596	1500.00	f
 84	196	120.00	f
 84	140	500.00	f
 84	1	110.00	f
-84	118	\N	f
-84	270	\N	f
 84	12	309.00	f
-84	6	\N	f
-84	52	\N	f
-84	22	\N	f
 84	7	40.00	f
 84	731	\N	t
 85	552	1200.00	f
-85	104	\N	f
-85	627	\N	f
 85	7	80.00	f
-85	159	\N	f
-85	281	\N	f
 85	118	\N	t
 85	735	\N	t
 85	2	\N	t
@@ -4519,38 +5136,40 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 86	172	300.00	f
 86	158	20.00	f
 86	14	55.08	f
+22	27	\N	t
+28	89	\N	t
+29	13	\N	t
+30	13	\N	t
+31	20	\N	t
+32	83	\N	t
+32	20	\N	t
+35	89	\N	t
+38	20	\N	t
+40	141	\N	t
+40	27	\N	t
+40	47	\N	t
+41	20	\N	t
 88	121	600.00	f
 88	632	300.00	f
 88	1	110.00	f
 88	8	246.00	f
 88	17	20.00	f
 88	3	12.00	f
-88	63	\N	f
 88	240	2.10	f
-88	141	\N	f
-88	42	\N	f
-88	26	\N	f
 88	2	\N	t
 89	6	300.00	f
 89	26	60.00	f
-89	284	\N	f
 89	11	100.00	f
 89	10	600.00	f
 89	98	150.00	f
 89	240	2.10	f
-89	80	\N	f
-89	141	\N	f
-89	63	\N	f
 89	2	\N	t
 90	6	400.00	f
 90	11	200.00	f
 90	56	400.00	f
 90	645	400.00	f
-90	20	\N	f
 90	17	20.00	f
 90	43	33.60	f
-90	130	\N	f
-90	820	\N	f
 90	4	41.40	f
 90	840	\N	t
 90	2	\N	t
@@ -4560,26 +5179,18 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 91	442	100.00	f
 91	98	100.00	f
 91	16	61.00	f
-91	20	\N	f
-91	139	\N	f
 91	216	16.80	f
 91	4	41.40	f
-92	653	\N	f
 92	5	200.00	f
 92	6	80.00	f
 92	8	600.00	f
 92	1	110.00	f
 92	3	6.00	f
-92	207	\N	f
 92	2	\N	t
 93	135	1200.00	f
 93	540	800.00	f
-93	834	\N	f
-93	833	\N	f
 93	1	110.00	f
 93	3	18.00	f
-93	207	\N	f
-93	22	\N	f
 93	787	\N	t
 93	2	\N	t
 94	192	1200.00	f
@@ -4587,9 +5198,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 94	1	330.00	f
 94	17	40.00	f
 94	3	24.00	f
-94	712	\N	f
-94	246	\N	f
-94	257	\N	f
 94	26	120.00	f
 94	2	\N	t
 95	46	600.00	f
@@ -4597,26 +5205,16 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 95	8	246.00	f
 95	1	110.00	f
 95	197	10.00	f
-95	711	\N	f
-95	63	\N	f
 95	5	50.00	f
-95	13	\N	f
 95	26	120.00	f
 95	2	\N	t
 96	266	400.00	f
 96	45	300.00	f
 96	482	150.00	f
-96	33	\N	f
-96	101	\N	f
 96	126	30.00	f
-96	83	\N	f
-96	48	\N	f
-96	251	\N	f
-96	27	\N	f
 96	4	73.60	f
 97	6	500.00	f
 97	11	280.00	f
-97	214	\N	f
 97	5	50.00	f
 97	4	138.00	f
 97	2	6.09	f
@@ -4626,8 +5224,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 98	196	150.00	f
 98	12	154.50	f
 98	7	60.00	f
-98	75	\N	f
-98	615	\N	f
 99	468	125.00	f
 99	257	125.00	f
 99	12	412.00	f
@@ -4636,78 +5232,59 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 99	9	10.50	f
 99	7	80.00	f
 99	51	\N	t
-99	2	\N	f
 100	21	1400.00	f
 100	1	1000.00	f
-100	290	\N	f
 100	786	120.00	f
 100	3	18.00	f
 100	17	40.00	f
 100	5	300.00	f
 100	15	58.00	f
 100	2	\N	t
+45	20	\N	t
+46	83	\N	t
+47	31	\N	t
+48	31	\N	t
+49	22	\N	t
+54	27	\N	t
+54	47	\N	t
+55	40	\N	t
+56	82	\N	t
 102	237	1200.00	f
 102	1	220.00	f
 102	23	357.00	f
 102	3	18.00	f
 102	149	400.00	f
 102	162	100.00	f
-102	99	\N	f
-102	31	\N	f
-102	65	\N	f
-102	49	\N	f
 102	14	55.08	f
 102	71	600.00	f
 103	154	300.00	f
 103	105	400.00	f
 103	1	110.00	f
 103	3	15.00	f
-103	22	\N	f
-103	31	\N	f
-103	134	\N	f
-103	125	\N	f
 103	14	55.08	f
 103	2	\N	t
 104	21	1600.00	f
-104	66	\N	f
-104	209	\N	f
-104	20	\N	f
-104	52	\N	f
 104	17	30.00	f
 104	3	18.00	f
 104	43	67.20	f
 104	24	134.00	f
-104	357	\N	f
 104	4	55.20	f
 105	406	540.00	f
 105	272	300.00	f
 105	1	110.00	f
 105	23	119.00	f
 105	8	246.00	f
-105	20	\N	f
-105	52	\N	f
-105	66	\N	f
 105	4	41.40	f
 105	103	\N	t
 106	105	500.00	f
 106	8	600.00	f
-106	323	\N	f
 106	1	220.00	f
-106	66	\N	f
 106	25	48.00	f
-106	84	\N	f
-106	779	\N	f
-106	22	\N	f
-106	96	\N	f
 106	4	92.00	f
 106	2	\N	t
 107	127	600.00	f
 107	109	150.00	f
-107	163	\N	f
-107	281	\N	f
-107	310	\N	f
 107	55	4.60	f
-107	160	\N	f
 107	4	55.20	f
 107	2	\N	t
 108	666	250.00	f
@@ -4720,23 +5297,13 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 109	594	500.00	f
 109	140	400.00	f
 109	264	400.00	f
-109	541	\N	f
-109	471	\N	f
-109	20	\N	f
-109	13	\N	f
-109	42	\N	f
-109	99	\N	f
-109	122	\N	f
 109	2	\N	t
 110	6	250.00	f
 110	7	125.00	f
-110	855	\N	f
 110	11	30.00	f
 110	79	250.00	f
 110	5	150.00	f
-110	85	\N	f
 110	12	103.00	f
-110	89	\N	f
 111	256	500.00	f
 111	12	288.40	f
 111	303	15.00	f
@@ -4745,22 +5312,17 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 111	330	40.00	f
 111	588	280.00	f
 111	5	50.00	f
-112	45	\N	f
 112	6	150.00	f
 112	53	50.00	f
 112	5	50.00	f
 112	11	250.00	f
-112	143	\N	f
 112	43	56.00	f
-112	133	\N	f
 112	194	\N	t
 113	44	500.00	f
 113	6	150.00	f
 113	856	100.00	f
-113	143	\N	f
 113	5	200.00	f
 113	72	200.00	f
-113	20	\N	f
 113	791	40.00	f
 113	736	\N	t
 113	857	\N	t
@@ -4771,28 +5333,19 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 114	275	400.00	f
 114	1	110.00	f
 114	8	123.00	f
-114	656	\N	f
 114	18	20.00	f
-114	391	\N	f
 114	2	\N	t
 115	222	400.00	f
 115	26	300.00	f
 115	9	500.00	f
 115	11	400.00	f
-115	327	\N	f
 116	121	1000.00	f
 116	386	300.00	f
 116	220	450.00	f
-116	20	\N	f
 116	39	30.00	f
 116	5	150.00	f
 116	14	137.70	f
-116	89	\N	f
 117	10	800.00	f
-117	6	\N	f
-117	82	\N	f
-117	259	\N	f
-117	381	\N	f
 117	3	6.00	f
 117	14	41.31	f
 117	2	\N	t
@@ -4802,80 +5355,53 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 118	17	25.00	f
 118	3	15.00	f
 118	13	20.00	f
-118	763	\N	f
 118	8	400.00	f
-118	83	\N	f
-118	69	\N	f
 118	4	41.40	f
 118	2	\N	t
 119	827	250.00	f
 119	19	400.00	f
-119	27	\N	f
-119	26	\N	f
-119	284	\N	f
 119	240	2.10	f
-119	83	\N	f
 119	3	12.00	f
 119	1	110.00	f
 119	2	\N	t
 120	554	300.00	f
 120	5	150.00	f
 120	1	110.00	f
-120	131	\N	f
 120	16	61.00	f
 120	44	200.00	f
-120	548	\N	f
-120	63	\N	f
-120	84	\N	f
 120	4	55.20	f
 120	2	\N	t
 121	795	250.00	f
-121	92	\N	f
-121	41	\N	f
-121	328	\N	f
 121	24	67.00	f
 121	2	\N	t
 122	46	500.00	f
 122	275	300.00	f
 122	56	200.00	f
 122	3	18.00	f
-122	73	\N	f
 122	11	100.00	f
-122	82	\N	f
-122	576	\N	f
-122	562	\N	f
 123	534	3000.00	f
 123	57	600.00	f
 123	3	18.00	f
 123	4	230.00	f
-123	125	\N	f
 123	2	\N	t
 124	56	400.00	f
 124	801	200.00	f
 124	1	110.00	f
 124	5	50.00	f
-124	6	\N	f
 124	12	154.50	f
-124	147	\N	f
 124	7	60.00	f
 124	245	800.00	f
 124	532	\N	t
-125	675	\N	f
 125	7	100.00	f
 125	584	200.00	f
 125	45	200.00	f
 125	5	150.00	f
-125	573	\N	f
-125	41	\N	f
-125	132	\N	f
 125	39	20.00	f
-126	244	\N	f
 126	56	800.00	f
 126	116	150.00	f
 126	1	330.00	f
 126	117	300.00	f
 126	25	48.00	f
-126	22	\N	f
 126	4	55.20	f
 127	543	300.00	f
 127	11	1200.00	f
@@ -4884,28 +5410,19 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 127	32	\N	t
 127	2	12.17	f
 128	8	492.00	f
-128	54	\N	f
 128	1	55.00	f
 128	95	200.00	f
 128	18	20.00	f
-128	255	\N	f
-128	180	\N	f
 128	91	\N	t
 128	2	\N	t
 129	220	500.00	f
 129	95	500.00	f
 129	5	250.00	f
 129	76	250.00	f
-129	73	\N	f
 129	7	120.00	f
-129	255	\N	f
 130	808	500.00	f
 130	140	500.00	f
-130	131	\N	f
 130	16	61.00	f
-130	270	\N	f
-130	650	\N	f
-130	22	\N	f
 130	39	40.00	f
 130	7	40.00	f
 130	2	\N	t
@@ -4923,17 +5440,11 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 132	18	20.00	f
 133	6	350.00	f
 133	822	150.00	f
-133	644	\N	f
-133	73	\N	f
 133	2	6.09	f
-133	173	\N	f
 134	498	700.00	f
-134	825	\N	f
 134	677	320.00	f
 134	1	110.00	f
 134	3	12.00	f
-134	49	\N	f
-134	438	\N	f
 134	25	16.00	f
 134	18	20.00	f
 134	14	55.08	f
@@ -4942,41 +5453,34 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 135	4	27.60	f
 135	5	50.00	f
 135	371	600.00	f
-135	852	\N	f
 135	32	200.00	f
-135	42	\N	f
 135	7	60.00	f
 135	2	\N	t
+59	52	\N	t
+61	40	\N	t
+63	36	\N	t
+63	74	\N	t
+64	20	\N	t
+64	82	\N	t
+64	31	\N	t
+64	92	\N	t
 137	67	1500.00	f
 137	242	1500.00	f
-137	114	\N	f
-137	6	\N	f
 137	11	500.00	f
 137	245	1000.00	f
 137	2	\N	t
 138	334	2000.00	f
-138	48	\N	f
-138	118	\N	f
 138	3	12.00	f
-138	49	\N	f
 138	7	60.00	f
 138	18	30.00	f
 138	312	800.00	f
 138	103	\N	t
 139	298	1200.00	f
 139	1	800.00	f
-139	792	\N	f
-139	575	\N	f
-139	75	\N	f
-139	125	\N	f
 139	7	60.00	f
 140	239	400.00	f
 140	444	400.00	f
-140	49	\N	f
-140	53	\N	f
 140	3	3.00	f
-140	315	\N	f
-140	327	\N	f
 140	818	600.00	f
 141	140	1000.00	f
 141	26	60.00	f
@@ -4991,44 +5495,30 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 142	62	120.00	f
 142	87	80.00	f
 142	7	100.00	f
-142	59	\N	f
-142	40	\N	f
 142	2	\N	t
 143	475	120.00	f
 143	5	50.00	f
-143	6	\N	f
 143	1	110.00	f
 143	7	40.00	f
 143	13	20.00	f
-143	70	\N	f
 143	2	\N	t
 144	60	600.00	f
 144	29	700.00	f
-144	785	\N	f
 144	1	220.00	f
 144	247	200.00	f
 144	201	100.00	f
 144	38	80.00	f
 144	26	180.00	f
-144	47	\N	f
-144	27	\N	f
 145	29	500.00	f
 145	67	400.00	f
-145	19	\N	f
 145	64	150.00	f
 145	10	852.00	f
 145	1	220.00	f
-145	407	\N	f
-145	201	\N	f
-145	70	\N	f
-145	27	\N	f
 146	161	1500.00	f
 146	6	500.00	f
 146	5	100.00	f
 146	11	180.00	f
 146	1	440.00	f
-146	22	\N	f
-146	114	\N	f
 146	2	\N	t
 147	6	600.00	f
 147	12	309.00	f
@@ -5049,21 +5539,15 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 149	299	30.00	f
 149	1	220.00	f
 149	279	100.00	f
-149	82	\N	f
-149	6	\N	f
-149	32	\N	f
-149	22	\N	f
 150	113	1200.00	f
 150	46	700.00	f
 150	202	400.00	f
 150	1	440.00	f
 150	5	150.00	f
-150	206	\N	f
 150	38	60.00	f
 150	158	20.00	f
 150	12	257.50	f
 150	7	60.00	f
-150	31	\N	f
 150	9	31.50	f
 151	6	600.00	f
 151	97	120.00	f
@@ -5071,19 +5555,15 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 151	35	600.00	f
 151	1	550.00	f
 151	5	150.00	f
-151	206	\N	f
 151	38	60.00	f
 151	55	6.80	f
-151	31	\N	f
 152	237	800.00	f
 152	154	350.00	f
 152	105	350.00	f
-152	115	\N	f
 152	1	220.00	f
 152	23	238.00	f
 152	3	15.00	f
 152	8	400.00	f
-152	31	\N	f
 152	4	73.60	f
 153	113	800.00	f
 153	339	300.00	f
@@ -5099,26 +5579,19 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 154	98	150.00	f
 154	1	330.00	f
 154	305	20.00	f
-154	68	\N	f
-154	31	\N	f
 154	5	150.00	f
-154	91	\N	f
 155	35	600.00	f
 155	81	200.00	f
 155	19	300.00	f
 155	10	600.00	f
 155	5	200.00	f
 155	8	369.00	f
-155	41	\N	f
-155	177	\N	f
 155	18	20.00	f
 155	4	138.00	f
 156	789	700.00	f
 156	102	700.00	f
-156	41	\N	f
 156	8	369.00	f
 156	24	201.00	f
-156	31	\N	f
 156	13	30.00	f
 156	3	12.00	f
 156	4	36.80	f
@@ -5132,63 +5605,45 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 157	2	\N	t
 158	311	2000.00	f
 158	4	92.00	f
-158	27	\N	f
-158	120	\N	f
 158	1	220.00	f
 158	8	492.00	f
 158	15	116.00	f
-158	84	\N	f
 159	233	300.00	f
 159	116	400.00	f
 159	29	400.00	f
 159	23	476.00	f
 159	1	450.00	f
-159	57	\N	f
 159	8	492.00	f
 159	25	48.00	f
-159	193	\N	f
 159	15	116.00	f
 159	18	40.00	f
-159	124	\N	f
 159	4	92.00	f
 160	67	2000.00	f
 160	474	500.00	f
 160	105	700.00	f
-160	784	\N	f
 160	87	100.00	f
 160	111	60.00	f
 160	26	100.00	f
-160	78	\N	f
-160	27	\N	f
 160	18	30.00	f
 161	21	1200.00	f
 161	105	500.00	f
-161	57	\N	f
 161	393	500.00	f
 161	10	639.00	f
 161	1	110.00	f
-161	124	\N	f
-161	27	\N	f
-161	36	\N	f
 161	111	60.00	f
 161	4	184.00	f
 162	5	200.00	f
 162	274	200.00	f
 162	10	426.00	f
 162	1	110.00	f
-162	99	\N	f
 162	18	30.00	f
-162	153	\N	f
 162	15	58.00	f
 163	64	400.00	f
 163	397	300.00	f
 163	3	24.00	f
-163	153	\N	f
-163	31	\N	f
 163	5	200.00	f
 163	14	73.44	f
 163	91	80.00	f
-163	99	\N	f
 163	274	150.00	f
 163	15	58.00	f
 163	2	\N	t
@@ -5196,25 +5651,18 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 164	29	1000.00	f
 164	64	200.00	f
 164	16	244.00	f
-164	353	\N	f
-164	241	\N	f
 164	108	400.00	f
 164	1	220.00	f
 164	25	32.00	f
-164	668	\N	f
 164	7	80.00	f
 164	14	73.44	f
-164	153	\N	f
 165	29	500.00	f
 165	814	150.00	f
 165	64	150.00	f
 165	1	220.00	f
 165	8	400.00	f
 165	25	32.00	f
-165	118	\N	f
 165	13	30.00	f
-165	70	\N	f
-165	36	\N	f
 165	26	50.00	f
 165	15	58.00	f
 166	501	1500.00	f
@@ -5222,18 +5670,25 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 166	56	500.00	f
 166	1	220.00	f
 166	195	200.00	f
-166	32	\N	f
-166	199	\N	f
-166	171	\N	f
 167	177	500.00	f
-167	128	\N	f
-167	54	\N	f
 167	5	200.00	f
 167	39	40.00	f
 167	20	40.00	f
 167	10	800.00	f
-167	32	\N	f
 167	2	\N	t
+65	65	\N	t
+65	92	\N	t
+67	83	\N	t
+68	22	\N	t
+69	63	\N	t
+73	40	\N	t
+75	78	\N	t
+75	40	\N	t
+76	31	\N	t
+76	92	\N	t
+77	31	\N	t
+77	92	\N	t
+78	20	\N	t
 170	174	250.00	f
 170	10	1000.00	f
 170	79	250.00	f
@@ -5241,26 +5696,29 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 170	7	50.00	f
 170	12	154.50	f
 171	608	200.00	f
-171	128	\N	f
 171	9	31.50	f
-171	59	\N	f
 171	565	200.00	f
-171	42	\N	f
 171	2	\N	t
 172	10	1000.00	f
 172	1	110.00	f
 172	4	92.00	f
-172	32	\N	f
 172	39	20.00	f
+79	70	\N	t
+80	27	\N	t
+81	47	\N	t
+82	58	\N	t
+82	30	\N	t
+83	58	\N	t
+84	52	\N	t
+84	22	\N	t
+88	63	\N	t
+88	141	\N	t
 174	355	500.00	f
-174	101	\N	f
 174	17	40.00	f
 174	3	18.00	f
 174	1	330.00	f
 174	687	60.00	f
 174	258	40.00	f
-174	50	\N	f
-174	27	\N	f
 174	55	6.80	f
 174	5	300.00	f
 174	481	100.00	f
@@ -5275,27 +5733,16 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 175	3	18.00	f
 175	8	246.00	f
 175	44	200.00	f
-175	30	\N	f
 175	24	134.00	f
-175	50	\N	f
 175	4	55.20	f
 175	2	\N	t
 176	186	600.00	f
-176	33	\N	f
-176	516	\N	f
-176	101	\N	f
 176	126	30.00	f
 176	145	20.00	f
-176	170	\N	f
-176	48	\N	f
 176	3	15.00	f
 176	5	100.00	f
-176	50	\N	f
-176	106	\N	f
-176	94	\N	f
 176	2	\N	t
 177	127	600.00	f
-177	383	\N	f
 177	43	33.60	f
 177	3	15.00	f
 177	9	10.50	f
@@ -5303,8 +5750,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 177	24	201.00	f
 177	213	200.00	f
 177	8	369.00	f
-177	54	\N	f
-177	41	\N	f
 177	5	200.00	f
 177	4	36.80	f
 177	2	\N	t
@@ -5312,37 +5757,21 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 178	265	400.00	f
 178	17	80.00	f
 178	3	24.00	f
-178	20	\N	f
-178	130	\N	f
 178	43	67.20	f
-178	30	\N	f
 178	24	134.00	f
-178	54	\N	f
-178	168	\N	f
 178	2	\N	t
 179	530	1500.00	f
-179	782	\N	f
-179	642	\N	f
-179	346	\N	f
 179	3	24.00	f
 179	17	40.00	f
 179	5	100.00	f
 179	9	21.00	f
-179	380	\N	f
-179	96	\N	f
-179	53	\N	f
-179	435	\N	f
 179	4	73.60	f
 179	13	20.00	f
 179	2	\N	t
 180	72	700.00	f
-180	48	\N	f
 180	43	112.00	f
 180	178	16.80	f
-180	139	\N	f
 180	203	30.00	f
-180	724	\N	f
-180	157	\N	f
 180	3	15.00	f
 180	5	200.00	f
 180	19	400.00	f
@@ -5351,18 +5780,13 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 180	2	\N	t
 181	192	1000.00	f
 181	351	400.00	f
-181	301	\N	f
 181	43	112.00	f
-181	139	\N	f
 181	17	50.00	f
 181	3	24.00	f
 181	8	369.00	f
-181	157	\N	f
-181	36	\N	f
 181	203	30.00	f
 181	229	300.00	f
 181	205	100.00	f
-181	20	\N	f
 181	4	55.20	f
 181	2	\N	t
 182	513	2000.00	f
@@ -5370,22 +5794,17 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 182	3	18.00	f
 182	4	55.20	f
 182	8	492.00	f
-182	41	\N	f
 182	13	30.00	f
-182	30	\N	f
 182	88	400.00	f
 183	254	700.00	f
 183	1	220.00	f
 183	8	492.00	f
 183	3	12.00	f
 183	4	46.00	f
-183	31	\N	f
 183	15	58.00	f
 184	426	300.00	f
 184	105	500.00	f
 184	746	10.00	f
-184	73	\N	f
-184	115	\N	f
 184	5	300.00	f
 184	449	150.00	f
 184	738	100.00	f
@@ -5393,9 +5812,7 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 184	2	\N	t
 185	88	400.00	f
 185	582	200.00	f
-185	778	\N	f
 185	8	492.00	f
-185	345	\N	f
 185	1	220.00	f
 185	17	30.00	f
 185	3	12.00	f
@@ -5404,38 +5821,25 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 186	478	700.00	f
 186	18	60.00	f
 186	3	24.00	f
-186	30	\N	f
 186	25	150.00	f
 186	1	330.00	f
 186	102	400.00	f
 186	44	400.00	f
 186	16	183.00	f
-186	57	\N	f
 186	228	200.00	f
-186	768	\N	f
 186	4	138.00	f
 187	21	1400.00	f
 187	1	1500.00	f
 187	15	290.00	f
-187	460	\N	f
 187	3	18.00	f
-187	66	\N	f
-187	22	\N	f
 187	4	73.60	f
-187	96	\N	f
 187	19	400.00	f
 188	46	900.00	f
-188	110	\N	f
 188	12	412.00	f
 188	1	220.00	f
-188	84	\N	f
-188	27	\N	f
 188	201	100.00	f
 188	38	80.00	f
-188	404	\N	f
-188	61	\N	f
 188	5	150.00	f
-188	22	\N	f
 188	87	50.00	f
 188	4	36.80	f
 189	16	244.00	f
@@ -5443,12 +5847,19 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 189	1	220.00	f
 189	803	400.00	f
 189	8	400.00	f
-189	84	\N	f
 189	55	2.30	f
-189	30	\N	f
 189	3	12.00	f
 189	17	20.00	f
 189	4	46.00	f
+89	80	\N	t
+89	141	\N	t
+89	63	\N	t
+90	20	\N	t
+91	20	\N	t
+93	22	\N	t
+95	63	\N	t
+95	13	\N	t
+96	83	\N	t
 191	67	1200.00	f
 191	174	120.00	f
 191	10	500.00	f
@@ -5456,7 +5867,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 191	432	400.00	f
 191	1	220.00	f
 191	44	300.00	f
-191	753	\N	f
 192	6	700.00	f
 192	12	309.00	f
 192	28	10.00	f
@@ -5464,11 +5874,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 192	37	68.00	f
 192	9	120.00	f
 192	62	600.00	f
-192	42	\N	f
-192	59	\N	f
-192	688	\N	f
-192	40	\N	f
-192	74	\N	f
 192	2	6.09	f
 193	802	300.00	f
 193	10	500.00	f
@@ -5476,7 +5881,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 193	166	200.00	f
 193	1	110.00	f
 193	3	12.00	f
-193	22	\N	f
 193	4	36.80	f
 194	35	600.00	f
 194	29	600.00	f
@@ -5486,31 +5890,20 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 194	8	492.00	f
 194	23	357.00	f
 194	1	330.00	f
-194	320	\N	f
-194	3	\N	f
 194	195	150.00	f
-194	49	\N	f
-194	22	\N	f
 195	6	500.00	f
 195	11	280.00	f
 195	46	600.00	f
 195	1	220.00	f
 195	4	138.00	f
-195	61	\N	f
-195	76	\N	f
 196	187	500.00	f
 196	1	330.00	f
-196	82	\N	f
-196	754	\N	f
-196	6	\N	f
 196	4	92.00	f
-196	70	\N	f
 196	18	20.00	f
 197	136	700.00	f
 197	155	400.00	f
 197	1	220.00	f
 197	23	238.00	f
-197	49	\N	f
 197	25	32.00	f
 197	504	200.00	f
 197	3	12.00	f
@@ -5522,60 +5915,36 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 198	7	150.00	f
 198	5	200.00	f
 198	12	123.60	f
-198	104	\N	f
-198	34	\N	f
 198	51	400.00	f
 198	164	50.00	f
-198	465	\N	f
 198	144	250.00	f
-198	2	\N	f
 199	35	800.00	f
 199	1	220.00	f
-199	68	\N	f
-199	6	\N	f
-199	190	\N	f
 199	25	32.00	f
 199	263	500.00	f
 199	271	400.00	f
 199	5	50.00	f
-199	221	\N	f
 199	4	36.80	f
 200	225	198.00	f
 200	9	350.00	f
-200	53	\N	f
-200	159	\N	f
-200	34	\N	f
-200	85	\N	f
-200	505	\N	f
 200	402	250.00	f
-200	583	\N	f
 201	21	1800.00	f
 201	185	800.00	f
 201	10	700.00	f
 201	108	600.00	f
 201	44	400.00	f
 201	1	330.00	f
-201	524	\N	f
 201	7	80.00	f
-201	103	\N	f
 202	10	1200.00	f
 202	762	300.00	f
 202	7	40.00	f
 202	6	40.00	f
-202	68	\N	f
-202	96	\N	f
-202	190	\N	f
-202	382	\N	f
 203	56	700.00	f
 203	46	300.00	f
 203	10	400.00	f
 203	1	220.00	f
 203	3	9.00	f
-203	40	\N	f
 203	191	1.05	f
-203	209	\N	f
-203	89	\N	f
-203	96	\N	f
 203	263	700.00	f
 203	5	50.00	f
 204	71	600.00	f
@@ -5583,19 +5952,15 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 204	1	110.00	f
 204	23	119.00	f
 204	3	9.00	f
-204	369	\N	f
 204	13	30.00	f
 204	4	36.80	f
 204	5	200.00	f
-204	115	\N	f
 205	167	600.00	f
 205	19	350.00	f
 205	154	400.00	f
-205	115	\N	f
 205	16	122.00	f
 205	44	200.00	f
 205	8	246.00	f
-205	369	\N	f
 205	24	134.00	f
 205	3	12.00	f
 205	13	30.00	f
@@ -5620,8 +5985,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 208	11	170.00	f
 208	1	550.00	f
 208	100	100.00	f
-208	114	\N	f
-208	22	\N	f
 208	13	30.00	f
 208	2	\N	t
 209	6	500.00	f
@@ -5634,8 +5997,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 209	1	220.00	f
 209	3	18.00	f
 209	25	32.00	f
-209	58	\N	f
-209	80	\N	f
 209	4	110.40	f
 209	13	30.00	f
 210	556	200.00	f
@@ -5643,7 +6004,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 210	1	330.00	f
 210	4	92.00	f
 210	8	246.00	f
-210	54	\N	f
 210	13	40.00	f
 210	184	20.00	f
 210	2	\N	t
@@ -5651,9 +6011,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 211	100	150.00	f
 211	603	800.00	f
 211	1	330.00	f
-211	3	\N	f
-211	58	\N	f
-211	288	\N	f
 211	64	100.00	f
 211	2	\N	t
 212	67	1000.00	f
@@ -5664,31 +6021,19 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 212	222	50.00	f
 212	1	220.00	f
 212	9	42.00	f
-212	726	\N	f
-212	58	\N	f
-212	78	\N	f
 212	4	138.00	f
 213	6	500.00	f
 213	11	230.00	f
 213	46	500.00	f
 213	1	440.00	f
 213	307	200.00	f
-213	77	\N	f
 213	3	15.00	f
 213	25	32.00	f
-213	80	\N	f
-213	70	\N	f
 213	4	73.60	f
-214	175	\N	f
 214	8	492.00	f
-214	54	\N	f
-214	670	\N	f
 214	693	200.00	f
-214	20	\N	f
 214	18	40.00	f
 214	90	20.00	f
-214	218	\N	f
-214	193	\N	f
 214	15	116.00	f
 214	14	73.44	f
 214	3	6.00	f
@@ -5697,72 +6042,103 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 215	29	500.00	f
 215	1	330.00	f
 215	111	80.00	f
-215	124	\N	f
-215	40	\N	f
 215	14	110.16	f
+96	27	\N	t
+102	31	\N	t
+102	65	\N	t
+103	22	\N	t
+103	31	\N	t
+103	134	\N	t
+104	20	\N	t
+104	52	\N	t
+105	20	\N	t
+105	52	\N	t
+106	84	\N	t
+106	22	\N	t
+109	20	\N	t
+109	13	\N	t
+110	89	\N	t
+113	20	\N	t
+116	20	\N	t
+116	89	\N	t
+117	82	\N	t
+118	83	\N	t
+119	27	\N	t
+119	83	\N	t
+120	63	\N	t
+120	84	\N	t
+121	92	\N	t
+122	82	\N	t
+126	22	\N	t
+130	22	\N	t
+142	40	\N	t
+143	70	\N	t
+144	47	\N	t
+144	27	\N	t
+145	70	\N	t
+145	27	\N	t
+146	22	\N	t
+149	82	\N	t
+149	22	\N	t
+150	31	\N	t
+151	31	\N	t
+152	31	\N	t
+154	31	\N	t
 220	35	800.00	f
 220	60	600.00	f
 220	1	440.00	f
-220	142	\N	f
-220	78	\N	f
-220	36	\N	f
-220	58	\N	f
 220	114	2.90	f
 220	3	18.00	f
 220	17	40.00	f
 220	10	639.00	f
 220	4	92.00	f
 220	2	\N	t
+156	31	\N	t
+158	27	\N	t
+158	84	\N	t
+159	124	\N	t
+160	78	\N	t
+160	27	\N	t
+161	124	\N	t
+161	27	\N	t
+161	36	\N	t
+163	31	\N	t
 222	238	60.00	f
-222	63	\N	f
-222	27	\N	f
-222	331	\N	f
-222	280	\N	f
 222	19	400.00	f
 222	2	\N	t
 223	680	400.00	f
 223	830	250.00	f
 223	1	220.00	f
 223	17	40.00	f
-223	63	\N	f
-223	27	\N	f
-223	31	\N	f
-223	22	\N	f
-223	36	\N	f
-223	78	\N	f
 223	26	80.00	f
 223	10	639.00	f
 223	2	\N	t
 224	107	600.00	f
-224	316	\N	f
-224	50	\N	f
 224	24	268.00	f
-224	819	\N	f
-224	48	\N	f
-224	20	\N	f
 224	90	30.00	f
 224	13	30.00	f
 224	2	\N	t
 225	308	600.00	f
 225	24	201.00	f
 225	3	12.00	f
-225	30	\N	f
 225	661	150.00	f
 225	217	100.00	f
-225	106	\N	f
 225	765	100.00	f
 225	2	\N	t
 226	135	2500.00	f
 226	15	174.00	f
-226	65	\N	f
-226	506	\N	f
-226	41	\N	f
 226	8	369.00	f
 226	18	40.00	f
+165	70	\N	t
+165	36	\N	t
+174	27	\N	t
+175	30	\N	t
+178	20	\N	t
+178	30	\N	t
+181	36	\N	t
+181	20	\N	t
 228	325	1500.00	f
-228	138	\N	f
 228	3	30.00	f
-228	22	\N	f
 228	1	220.00	f
 228	25	48.00	f
 228	10	600.00	f
@@ -5778,7 +6154,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 229	18	30.00	f
 229	4	36.80	f
 230	127	500.00	f
-230	293	\N	f
 230	232	150.00	f
 230	421	150.00	f
 230	172	200.00	f
@@ -5788,18 +6163,24 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 230	162	60.00	f
 230	132	100.00	f
 230	4	27.60	f
+182	30	\N	t
+183	31	\N	t
+186	30	\N	t
+187	22	\N	t
+188	84	\N	t
+188	27	\N	t
+188	22	\N	t
+189	84	\N	t
+189	30	\N	t
 232	21	1500.00	f
 232	378	120.00	f
 232	69	60.00	f
-232	261	\N	f
-232	342	\N	f
 232	8	492.00	f
 232	273	300.00	f
 232	1	110.00	f
 232	3	15.00	f
 232	10	400.00	f
 232	181	200.00	f
-232	36	\N	f
 232	13	30.00	f
 232	19	350.00	f
 232	2	\N	t
@@ -5807,13 +6188,10 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 233	107	800.00	f
 233	97	200.00	f
 233	8	500.00	f
-233	261	\N	f
 233	378	80.00	f
 233	69	40.00	f
 233	1	110.00	f
 233	3	15.00	f
-233	94	\N	f
-233	91	\N	f
 233	23	119.00	f
 233	2	\N	t
 234	161	600.00	f
@@ -5821,44 +6199,45 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 234	21	600.00	f
 234	102	500.00	f
 234	185	400.00	f
-234	148	\N	f
-234	113	\N	f
 234	1	220.00	f
 234	23	238.00	f
 234	13	40.00	f
 234	3	24.00	f
-234	65	\N	f
 234	24	201.00	f
 234	4	55.20	f
-235	148	\N	f
-235	41	\N	f
-235	61	\N	f
 235	7	60.00	f
 235	694	200.00	f
 235	759	200.00	f
 235	5	200.00	f
 235	4	55.20	f
 235	2	\N	t
+192	40	\N	t
+192	74	\N	t
+193	22	\N	t
+194	22	\N	t
+196	82	\N	t
+196	70	\N	t
+198	34	\N	t
+200	34	\N	t
+203	40	\N	t
+203	89	\N	t
+208	22	\N	t
+209	58	\N	t
+209	80	\N	t
 237	228	250.00	f
-237	33	\N	f
 237	1	110.00	f
 237	3	15.00	f
 237	108	300.00	f
-237	66	\N	f
-237	52	\N	f
 237	7	40.00	f
 238	401	1000.00	f
-238	77	\N	f
 238	5	200.00	f
 238	6	60.00	f
 238	19	80.00	f
 238	7	80.00	f
 238	3	15.00	f
-238	65	\N	f
 239	220	500.00	f
 239	121	1000.00	f
 239	95	400.00	f
-239	20	\N	f
 239	14	165.24	f
 239	39	30.00	f
 240	6	500.00	f
@@ -5870,39 +6249,69 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 240	108	400.00	f
 240	9	31.50	f
 240	2	6.09	f
+211	58	\N	t
+212	58	\N	t
+212	78	\N	t
+213	80	\N	t
+213	70	\N	t
+214	20	\N	t
+215	124	\N	t
+215	40	\N	t
+220	78	\N	t
+220	36	\N	t
 242	523	1000.00	f
 242	427	1000.00	f
 242	79	150.00	f
 242	1	110.00	f
-242	42	\N	f
-242	6	\N	f
-242	395	\N	f
 242	10	800.00	f
-242	22	\N	f
+220	58	\N	t
+222	63	\N	t
+222	27	\N	t
+223	63	\N	t
+223	27	\N	t
+223	31	\N	t
+223	22	\N	t
+223	36	\N	t
+223	78	\N	t
+224	20	\N	t
+225	30	\N	t
+226	65	\N	t
+228	22	\N	t
+232	36	\N	t
+234	65	\N	t
+237	52	\N	t
+238	65	\N	t
+239	20	\N	t
+242	22	\N	t
+246	78	\N	t
+246	36	\N	t
+314	20	\N	t
 246	21	1600.00	f
 246	60	600.00	f
 246	1	220.00	f
 246	8	492.00	f
 246	25	32.00	f
-246	137	\N	f
 246	16	122.00	f
-246	420	\N	f
-246	78	\N	f
-246	36	\N	f
 246	3	15.00	f
 246	38	60.00	f
 246	87	60.00	f
 246	26	80.00	f
+315	20	\N	t
+317	34	\N	t
+318	22	\N	t
+319	34	\N	t
+319	74	\N	t
+320	20	\N	t
+322	27	\N	t
+324	27	\N	t
 248	215	60.00	f
 248	29	600.00	f
 248	10	300.00	f
 248	8	492.00	f
 248	1	220.00	f
 248	3	18.00	f
-248	370	\N	f
 248	5	100.00	f
 248	19	150.00	f
-248	253	\N	f
 248	4	55.20	f
 249	6	500.00	f
 249	5	150.00	f
@@ -5910,9 +6319,51 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 249	12	206.00	f
 249	26	300.00	f
 249	59	250.00	f
-249	280	\N	f
 249	9	10.50	f
 249	2	6.09	f
+324	40	\N	t
+324	47	\N	t
+1	103	100.00	f
+2	294	250.00	f
+2	49	100.00	f
+3	57	150.00	f
+3	241	100.00	f
+3	158	100.00	f
+4	6	120.00	f
+4	49	100.00	f
+4	68	250.00	f
+4	183	100.00	f
+5	177	100.00	f
+5	797	100.00	f
+6	28	100.00	f
+7	641	100.00	f
+7	440	100.00	f
+254	30	\N	t
+255	52	\N	t
+256	30	\N	t
+257	22	\N	t
+257	52	\N	t
+259	134	\N	t
+266	65	\N	t
+267	31	\N	t
+267	134	\N	t
+8	122	100.00	f
+8	41	80.00	f
+8	815	100.00	f
+10	26	20.00	f
+10	238	100.00	f
+10	286	100.00	f
+11	356	100.00	f
+13	57	150.00	f
+13	138	100.00	f
+14	54	100.00	f
+14	41	80.00	f
+15	157	100.00	f
+15	142	100.00	f
+15	50	30.00	f
+16	183	100.00	f
+16	132	100.00	f
+16	380	100.00	f
 254	123	300.00	f
 254	35	600.00	f
 254	45	300.00	f
@@ -5920,11 +6371,8 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 254	1	220.00	f
 254	3	18.00	f
 254	17	40.00	f
-254	30	\N	f
 254	4	110.40	f
-254	115	\N	f
 255	21	1400.00	f
-255	115	\N	f
 255	16	183.00	f
 255	181	200.00	f
 255	23	238.00	f
@@ -5932,15 +6380,11 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 255	8	369.00	f
 255	3	15.00	f
 255	17	30.00	f
-255	66	\N	f
-255	52	\N	f
 256	414	500.00	f
 256	1	330.00	f
 256	8	369.00	f
-256	30	\N	f
 256	3	15.00	f
 256	17	30.00	f
-256	160	\N	f
 256	15	116.00	f
 256	4	73.60	f
 257	21	1400.00	f
@@ -5950,18 +6394,21 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 257	23	119.00	f
 257	3	15.00	f
 257	17	30.00	f
-257	66	\N	f
-257	22	\N	f
-257	52	\N	f
+16	50	30.00	f
+16	54	100.00	f
+17	119	100.00	f
+18	758	100.00	f
+18	757	100.00	f
+18	159	100.00	f
+18	207	100.00	f
+18	326	100.00	f
+19	391	100.00	f
+22	246	100.00	f
 259	21	1600.00	f
-259	344	\N	f
 259	3	24.00	f
 259	15	174.00	f
-259	208	\N	f
 259	14	91.80	f
-259	61	\N	f
 259	7	50.00	f
-259	134	\N	f
 260	35	500.00	f
 260	107	300.00	f
 260	121	300.00	f
@@ -5974,7 +6421,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 260	4	36.80	f
 261	780	700.00	f
 261	72	700.00	f
-261	33	\N	f
 261	1	220.00	f
 261	3	18.00	f
 261	17	30.00	f
@@ -5984,21 +6430,16 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 262	11	220.00	f
 262	129	400.00	f
 262	1	110.00	f
-262	367	\N	f
 262	732	150.00	f
 262	5	200.00	f
-262	122	\N	f
 262	4	36.80	f
 262	2	\N	t
-263	33	\N	f
 263	102	400.00	f
-263	148	\N	f
 263	16	122.00	f
 263	1	110.00	f
 263	3	15.00	f
 263	23	119.00	f
 263	13	30.00	f
-263	156	\N	f
 263	24	134.00	f
 263	4	36.80	f
 264	71	600.00	f
@@ -6009,7 +6450,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 264	4	46.00	f
 264	13	20.00	f
 264	761	150.00	f
-264	115	\N	f
 265	200	800.00	f
 265	107	1000.00	f
 265	97	250.00	f
@@ -6018,16 +6458,11 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 265	1	220.00	f
 265	23	119.00	f
 265	8	246.00	f
-265	156	\N	f
 265	90	20.00	f
-265	91	\N	f
-265	94	\N	f
 266	21	1500.00	f
 266	619	800.00	f
 266	1	220.00	f
 266	3	18.00	f
-266	113	\N	f
-266	65	\N	f
 266	24	134.00	f
 266	19	350.00	f
 267	237	900.00	f
@@ -6037,9 +6472,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 267	25	32.00	f
 267	3	18.00	f
 267	162	80.00	f
-267	99	\N	f
-267	31	\N	f
-267	134	\N	f
 267	4	55.20	f
 267	19	350.00	f
 268	88	400.00	f
@@ -6051,23 +6483,25 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 269	324	500.00	f
 269	5	150.00	f
 269	12	123.60	f
-269	226	\N	f
 269	2	6.09	f
 270	6	600.00	f
 270	11	900.00	f
-270	32	\N	f
 270	7	150.00	f
-270	76	\N	f
 270	59	100.00	f
 270	2	12.17	f
 271	401	1000.00	f
 271	19	200.00	f
-271	77	\N	f
 271	5	200.00	f
 271	6	60.00	f
 271	7	100.00	f
 271	3	15.00	f
-271	65	\N	f
+271	65	\N	t
+276	30	\N	t
+279	30	\N	t
+283	20	\N	t
+284	30	\N	t
+286	74	\N	t
+290	36	\N	t
 273	88	300.00	f
 273	10	600.00	f
 273	597	300.00	f
@@ -6082,15 +6516,37 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 274	7	30.00	f
 274	249	350.00	f
 274	2	\N	t
+291	27	\N	t
+291	63	\N	t
+22	717	100.00	f
+22	502	100.00	f
+23	362	100.00	f
+23	143	100.00	f
+23	133	100.00	f
+24	6	120.00	f
+24	231	100.00	f
+24	2	100.00	f
 276	514	200.00	f
-276	41	\N	f
-276	30	\N	f
 276	24	201.00	f
-276	169	\N	f
 276	606	300.00	f
 276	11	160.00	f
 276	4	27.60	f
 276	2	\N	t
+25	120	100.00	f
+25	50	30.00	f
+25	106	100.00	f
+25	48	30.00	f
+26	537	100.00	f
+26	586	100.00	f
+27	54	100.00	f
+27	381	100.00	f
+29	41	80.00	f
+29	185	100.00	f
+30	41	80.00	f
+30	416	100.00	f
+30	180	100.00	f
+31	301	100.00	f
+31	807	100.00	f
 279	6	400.00	f
 279	11	240.00	f
 279	5	400.00	f
@@ -6098,27 +6554,35 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 279	8	369.00	f
 279	1	220.00	f
 279	16	61.00	f
-279	30	\N	f
 279	4	110.40	f
+31	374	100.00	f
+31	96	250.00	f
+31	250	100.00	f
+32	250	100.00	f
+32	374	100.00	f
+32	841	100.00	f
+33	138	100.00	f
+33	6	120.00	f
+33	96	250.00	f
+34	85	100.00	f
+34	743	100.00	f
+34	699	100.00	f
+37	321	100.00	f
+37	130	20.00	f
 282	21	1500.00	f
 282	614	800.00	f
 282	1	220.00	f
 282	3	18.00	f
 282	17	30.00	f
-282	343	\N	f
 282	15	116.00	f
-282	57	\N	f
 282	121	200.00	f
 282	4	46.00	f
 282	19	400.00	f
-283	94	\N	f
 283	8	492.00	f
 283	1	220.00	f
 283	3	18.00	f
 283	17	30.00	f
-283	343	\N	f
 283	15	116.00	f
-283	20	\N	f
 283	102	500.00	f
 284	93	350.00	f
 284	1	220.00	f
@@ -6126,75 +6590,96 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 284	44	300.00	f
 284	16	183.00	f
 284	10	400.00	f
-284	57	\N	f
-284	30	\N	f
 284	4	55.20	f
 284	19	450.00	f
-286	775	\N	f
+38	529	100.00	f
+38	321	100.00	f
+38	130	20.00	f
+39	175	100.00	f
+39	54	100.00	f
+40	262	100.00	f
+41	133	100.00	f
+41	268	100.00	f
+41	130	20.00	f
 286	6	60.00	f
 286	1	110.00	f
 286	16	61.00	f
-286	118	\N	f
-286	49	\N	f
-286	188	\N	f
 286	7	60.00	f
-286	74	\N	f
 286	3	6.00	f
 286	18	30.00	f
+43	673	100.00	f
+43	579	100.00	f
+43	270	100.00	f
+44	180	100.00	f
+44	138	100.00	f
+45	437	250.00	f
+45	125	100.00	f
+45	75	100.00	f
+46	49	100.00	f
+47	208	100.00	f
+47	153	100.00	f
+48	73	100.00	f
+49	227	100.00	f
+51	766	100.00	f
+51	383	30.00	f
+51	50	30.00	f
+52	143	100.00	f
+52	133	100.00	f
+52	268	100.00	f
+53	340	100.00	f
+53	623	100.00	f
+54	733	100.00	f
+54	163	100.00	f
+55	118	100.00	f
+55	163	100.00	f
+55	6	120.00	f
 290	67	1000.00	f
-290	76	\N	f
-290	246	\N	f
-290	385	\N	f
-290	749	\N	f
-290	286	\N	f
-290	839	\N	f
-290	36	\N	f
-290	142	\N	f
 290	26	100.00	f
 290	60	400.00	f
 290	2	\N	t
 291	19	300.00	f
 291	832	100.00	f
-291	215	\N	f
 291	10	800.00	f
 291	1	220.00	f
-291	238	\N	f
-291	169	\N	f
-291	27	\N	f
-291	63	\N	f
 291	17	30.00	f
 291	4	92.00	f
 291	13	30.00	f
 291	2	\N	t
 292	591	1000.00	f
 292	538	1200.00	f
-292	384	\N	f
 292	1	220.00	f
-292	131	\N	f
 292	8	500.00	f
 292	3	24.00	f
-292	47	\N	f
-292	223	\N	f
 292	10	500.00	f
 292	14	137.70	f
 292	37	17.00	f
-292	183	\N	f
+292	47	\N	t
+296	36	\N	t
+298	134	\N	t
+299	70	\N	t
+300	47	\N	t
+300	82	\N	t
+301	22	\N	t
+302	84	\N	t
 294	35	300.00	f
 294	10	700.00	f
 294	1	220.00	f
 294	16	61.00	f
-294	143	\N	f
 294	43	67.20	f
-294	133	\N	f
-294	268	\N	f
 294	9	10.50	f
 294	559	200.00	f
 294	4	18.40	f
 294	181	100.00	f
+302	27	\N	t
+303	36	\N	t
+303	78	\N	t
+303	22	\N	t
+306	22	\N	t
+308	22	\N	t
+56	151	100.00	f
+58	361	100.00	f
+58	104	100.00	f
 296	21	2000.00	f
-296	648	\N	f
-296	342	\N	f
-296	652	\N	f
 296	87	80.00	f
 296	123	60.00	f
 296	69	60.00	f
@@ -6203,76 +6688,56 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 296	273	200.00	f
 296	1	110.00	f
 296	3	18.00	f
-296	36	\N	f
-296	142	\N	f
 296	152	60.00	f
-296	398	\N	f
 296	97	120.00	f
 296	2	\N	t
+59	190	30.00	f
+59	188	250.00	f
+59	6	120.00	f
+60	774	100.00	f
+62	18	100.00	f
+63	85	100.00	f
+64	776	100.00	f
+65	180	100.00	f
+65	119	100.00	f
+66	48	30.00	f
+66	535	100.00	f
+66	536	100.00	f
 298	29	700.00	f
 298	561	400.00	f
-298	781	\N	f
 298	7	120.00	f
-298	77	\N	f
 298	1	110.00	f
 298	3	9.00	f
-298	639	\N	f
-298	134	\N	f
 298	4	36.80	f
 299	6	500.00	f
 299	5	100.00	f
 299	11	180.00	f
 299	29	300.00	f
 299	1	110.00	f
-299	77	\N	f
 299	3	12.00	f
 299	7	100.00	f
 299	55	6.80	f
-299	70	\N	f
-299	218	\N	f
 300	804	600.00	f
 300	224	250.00	f
 300	337	200.00	f
 300	79	200.00	f
-300	528	\N	f
 300	1	110.00	f
 300	3	12.00	f
-300	47	\N	f
-300	82	\N	f
 300	14	45.90	f
 300	2	\N	t
 301	628	2000.00	f
 301	10	800.00	f
-301	208	\N	f
-301	259	\N	f
 301	14	91.80	f
-301	119	\N	f
-301	22	\N	f
 301	1	110.00	f
 302	851	500.00	f
 302	549	800.00	f
-302	33	\N	f
-302	533	\N	f
-302	84	\N	f
-302	27	\N	f
-302	50	\N	f
-302	106	\N	f
-302	48	\N	f
 302	205	100.00	f
 302	24	201.00	f
 302	13	30.00	f
 303	35	900.00	f
-303	640	\N	f
-303	33	\N	f
 303	10	500.00	f
 303	1	220.00	f
 303	109	100.00	f
-303	120	\N	f
-303	106	\N	f
-303	50	\N	f
-303	36	\N	f
-303	78	\N	f
-303	22	\N	f
 303	265	400.00	f
 304	8	1456.00	f
 304	23	476.00	f
@@ -6290,7 +6755,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 305	15	174.00	f
 305	1	110.00	f
 305	16	61.00	f
-305	118	\N	f
 305	39	20.00	f
 305	14	27.54	f
 306	6	600.00	f
@@ -6300,28 +6764,17 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 306	107	400.00	f
 306	1	220.00	f
 306	578	50.00	f
-306	22	\N	f
 306	7	60.00	f
-306	32	\N	f
-306	61	\N	f
 307	127	700.00	f
 307	1	220.00	f
 307	155	300.00	f
-307	32	\N	f
-307	75	\N	f
-307	6	\N	f
-307	68	\N	f
 307	7	60.00	f
 307	4	27.60	f
 307	18	20.00	f
-308	706	\N	f
-308	379	\N	f
 308	1	220.00	f
 308	16	122.00	f
 308	112	200.00	f
 308	3	18.00	f
-308	151	\N	f
-308	22	\N	f
 308	165	600.00	f
 308	10	800.00	f
 309	6	150.00	f
@@ -6329,77 +6782,46 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 309	5	300.00	f
 309	9	200.00	f
 309	7	80.00	f
-309	85	\N	f
 309	305	10.00	f
 309	234	600.00	f
-309	315	\N	f
 309	152	150.00	f
 309	51	60.00	f
-309	2	\N	f
 310	135	4000.00	f
-310	208	\N	f
-310	150	\N	f
-310	463	\N	f
-310	281	\N	f
-310	310	\N	f
-310	75	\N	f
-310	382	\N	f
-310	850	\N	f
-310	293	\N	f
 311	7	110.00	f
 311	9	50.00	f
 311	214	400.00	f
 311	37	68.00	f
 311	24	536.00	f
-311	85	\N	f
 311	51	30.00	f
-311	2	\N	f
 312	72	400.00	f
 312	56	400.00	f
 312	354	400.00	f
-312	50	\N	f
 312	9	42.00	f
 312	24	201.00	f
 312	3	24.00	f
-312	48	\N	f
 312	16	61.00	f
-312	30	\N	f
 312	213	200.00	f
-312	103	\N	f
-313	682	\N	f
 313	45	400.00	f
 313	72	300.00	f
 313	354	150.00	f
 313	213	150.00	f
 313	90	30.00	f
 313	20	30.00	f
-313	93	\N	f
-313	737	\N	f
 313	109	50.00	f
 313	3	6.00	f
 313	2	\N	t
 314	297	1500.00	f
 314	43	168.00	f
-314	525	\N	f
 314	1	110.00	f
 314	3	30.00	f
 314	17	30.00	f
 314	9	31.50	f
-314	130	\N	f
-314	133	\N	f
 314	16	122.00	f
 314	194	300.00	f
 314	283	150.00	f
 314	247	150.00	f
-314	387	\N	f
-314	20	\N	f
-315	823	\N	f
 315	316	200.00	f
-315	526	\N	f
-315	387	\N	f
 315	3	48.00	f
-315	247	\N	f
-315	20	\N	f
 316	452	2000.00	f
 316	6	140.00	f
 316	5	200.00	f
@@ -6408,19 +6830,11 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 316	10	1000.00	f
 316	16	244.00	f
 316	1	220.00	f
-316	68	\N	f
-316	296	\N	f
-316	459	\N	f
 317	276	250.00	f
-317	73	\N	f
 317	6	200.00	f
 317	7	200.00	f
 317	794	300.00	f
 317	5	150.00	f
-317	104	\N	f
-317	85	\N	f
-317	34	\N	f
-317	2	\N	f
 318	165	1000.00	f
 318	242	1000.00	f
 318	135	600.00	f
@@ -6431,10 +6845,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 318	279	150.00	f
 318	1	330.00	f
 318	25	48.00	f
-318	138	\N	f
-318	595	\N	f
-318	22	\N	f
-318	209	\N	f
 318	4	55.20	f
 319	772	1000.00	f
 319	6	250.00	f
@@ -6442,27 +6852,18 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 319	9	250.00	f
 319	5	300.00	f
 319	199	50.00	f
-319	32	\N	f
-319	34	\N	f
-319	74	\N	f
 319	38	80.00	f
-319	104	\N	f
-319	2	\N	f
 320	186	1000.00	f
 320	45	300.00	f
-320	33	\N	f
-320	631	\N	f
 320	1	220.00	f
 320	8	492.00	f
 320	23	238.00	f
 320	3	18.00	f
 320	24	201.00	f
 320	13	50.00	f
-320	20	\N	f
 320	19	400.00	f
 321	167	600.00	f
 321	6	500.00	f
-321	96	\N	f
 321	7	60.00	f
 321	720	200.00	f
 321	1	110.00	f
@@ -6472,40 +6873,40 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 321	81	300.00	f
 321	18	30.00	f
 322	547	800.00	f
-322	341	\N	f
-322	110	\N	f
 322	12	412.00	f
 322	62	80.00	f
 322	146	60.00	f
 322	1	220.00	f
 322	3	15.00	f
-322	27	\N	f
 322	10	600.00	f
 322	5	200.00	f
 322	206	60.00	f
 322	19	350.00	f
 322	4	55.20	f
 323	500	1200.00	f
-323	341	\N	f
 323	24	268.00	f
 323	4	73.60	f
 323	274	400.00	f
 323	132	150.00	f
-323	41	\N	f
-323	122	\N	f
 323	5	150.00	f
 323	206	60.00	f
 323	13	20.00	f
 324	62	500.00	f
-324	466	\N	f
 324	1	220.00	f
 324	9	21.00	f
-324	27	\N	f
-324	40	\N	f
-324	47	\N	f
 324	4	55.20	f
 324	60	500.00	f
 324	490	100.00	f
+312	30	\N	t
+328	30	\N	t
+328	80	\N	t
+328	27	\N	t
+332	30	\N	t
+333	80	\N	t
+333	40	\N	t
+337	124	\N	t
+338	47	\N	t
+338	40	\N	t
 326	10	800.00	f
 326	243	300.00	f
 326	518	200.00	f
@@ -6515,27 +6916,49 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 326	546	300.00	f
 327	696	1500.00	f
 327	119	150.00	f
-327	473	\N	f
 327	10	800.00	f
 327	23	357.00	f
 327	14	91.80	f
 327	3	9.00	f
-327	125	\N	f
 327	18	20.00	f
 328	252	900.00	f
-328	313	\N	f
 328	109	250.00	f
-328	48	\N	f
 328	3	18.00	f
-328	30	\N	f
-328	80	\N	f
-328	27	\N	f
-328	120	\N	f
-328	106	\N	f
 328	24	134.00	f
 328	4	55.20	f
 328	19	400.00	f
 328	2	\N	t
+339	40	\N	t
+339	47	\N	t
+340	80	\N	t
+340	78	\N	t
+340	22	\N	t
+342	65	\N	t
+342	92	\N	t
+66	313	100.00	f
+67	33	200.00	f
+67	48	30.00	f
+67	101	100.00	f
+67	170	100.00	f
+68	357	100.00	f
+69	120	100.00	f
+69	57	150.00	f
+69	50	30.00	f
+70	177	100.00	f
+70	61	100.00	f
+71	128	100.00	f
+71	73	100.00	f
+71	250	100.00	f
+71	2	100.00	f
+72	85	100.00	f
+72	125	100.00	f
+74	42	100.00	f
+74	147	100.00	f
+74	68	250.00	f
+74	6	120.00	f
+76	159	100.00	f
+77	18	100.00	f
+78	147	100.00	f
 332	21	1500.00	f
 332	1	440.00	f
 332	8	800.00	f
@@ -6544,24 +6967,32 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 332	184	40.00	f
 332	399	30.00	f
 332	18	40.00	f
-332	392	\N	f
 332	7	50.00	f
-332	30	\N	f
 333	62	700.00	f
 333	1	330.00	f
 333	3	30.00	f
-333	392	\N	f
-333	492	\N	f
-333	80	\N	f
-333	40	\N	f
 333	191	1.05	f
-333	125	\N	f
 333	7	60.00	f
 333	2	\N	t
+79	725	100.00	f
+80	756	100.00	f
+80	137	100.00	f
+81	77	100.00	f
+82	826	10.00	f
+82	288	100.00	f
+84	118	100.00	f
+84	270	100.00	f
+84	6	120.00	f
+85	104	100.00	f
+85	627	30.00	f
+85	159	100.00	f
+85	281	100.00	f
+88	42	100.00	f
+88	26	20.00	f
+89	284	100.00	f
+90	130	20.00	f
+90	820	250.00	f
 336	64	400.00	f
-336	175	\N	f
-336	77	\N	f
-336	219	\N	f
 336	3	15.00	f
 336	15	58.00	f
 336	26	80.00	f
@@ -6575,9 +7006,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 337	29	600.00	f
 337	8	400.00	f
 337	1	220.00	f
-337	193	\N	f
-337	219	\N	f
-337	124	\N	f
 337	111	50.00	f
 337	14	55.08	f
 337	15	58.00	f
@@ -6586,76 +7014,70 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 338	1	440.00	f
 338	5	300.00	f
 338	7	150.00	f
-338	47	\N	f
-338	163	\N	f
-338	40	\N	f
 338	51	100.00	f
-338	189	\N	f
 338	13	40.00	f
 339	6	600.00	f
 339	69	200.00	f
 339	87	100.00	f
 339	7	100.00	f
-339	226	\N	f
-339	40	\N	f
-339	47	\N	f
-339	189	\N	f
-339	61	\N	f
 339	28	5.00	f
 339	59	800.00	f
 339	2	6.09	f
 340	572	500.00	f
 340	21	1200.00	f
 340	3	30.00	f
-340	80	\N	f
 340	26	80.00	f
-340	78	\N	f
-340	22	\N	f
 340	1	110.00	f
 340	19	400.00	f
 340	15	116.00	f
+91	139	100.00	f
+92	653	100.00	f
+92	207	100.00	f
+93	834	100.00	f
+93	833	100.00	f
+93	207	100.00	f
+94	712	100.00	f
+94	246	100.00	f
+94	257	120.00	f
 342	297	2500.00	f
 342	224	800.00	f
 342	337	500.00	f
 342	119	100.00	f
 342	18	80.00	f
 342	3	24.00	f
-342	65	\N	f
-342	180	\N	f
 342	14	183.60	f
-342	92	\N	f
 342	277	500.00	f
 343	53	300.00	f
 343	6	200.00	f
 343	7	200.00	f
 343	51	150.00	f
 343	37	51.00	f
-343	104	\N	f
-343	74	\N	f
-343	34	\N	f
-343	319	\N	f
 343	304	500.00	f
 343	144	100.00	f
-343	2	\N	f
 344	235	1800.00	f
 344	335	500.00	f
 344	16	183.00	f
 344	112	200.00	f
-344	131	\N	f
 344	1	220.00	f
-344	22	\N	f
-344	114	\N	f
 344	278	100.00	f
-344	400	\N	f
 344	20	30.00	f
 344	10	800.00	f
 344	7	60.00	f
+343	74	\N	t
+343	34	\N	t
+344	22	\N	t
+346	82	\N	t
+346	30	\N	t
+347	34	\N	t
+349	22	\N	t
+351	40	\N	t
+351	34	\N	t
+352	89	\N	t
+353	34	\N	t
+355	89	\N	t
 346	311	1500.00	f
 346	592	800.00	f
 346	1	800.00	f
-346	82	\N	f
-346	259	\N	f
-346	30	\N	f
 346	8	123.00	f
 346	23	119.00	f
 346	110	400.00	f
@@ -6666,11 +7088,8 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 347	7	250.00	f
 347	152	200.00	f
 347	51	150.00	f
-347	853	\N	f
 347	15	58.00	f
 347	389	100.00	f
-347	34	\N	f
-347	2	\N	f
 348	135	1500.00	f
 348	6	500.00	f
 348	12	257.50	f
@@ -6679,58 +7098,49 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 348	398	150.00	f
 348	165	700.00	f
 348	1	330.00	f
-348	151	\N	f
 348	9	10.50	f
 348	97	60.00	f
 348	3	12.00	f
 349	564	400.00	f
 349	10	600.00	f
-349	32	\N	f
-349	6	\N	f
 349	39	50.00	f
 349	5	250.00	f
-349	61	\N	f
-349	151	\N	f
-349	22	\N	f
 349	9	3.50	f
 349	7	40.00	f
+356	20	\N	t
+95	711	100.00	f
+96	33	200.00	f
+96	101	100.00	f
+96	48	30.00	f
+96	251	100.00	f
+97	214	100.00	f
+98	75	100.00	f
+98	615	100.00	f
 351	846	1000.00	f
 351	6	200.00	f
 351	7	150.00	f
 351	9	150.00	f
-351	40	\N	f
 351	173	80.00	f
 351	12	309.00	f
-351	42	\N	f
 351	37	68.00	f
-351	34	\N	f
-351	53	\N	f
-351	2	\N	f
 352	72	900.00	f
 352	10	1000.00	f
 352	12	515.00	f
 352	7	50.00	f
 352	6	50.00	f
 352	18	100.00	f
-352	89	\N	f
 352	710	200.00	f
 353	116	200.00	f
 353	12	1030.00	f
-353	85	\N	f
 353	87	150.00	f
 353	9	80.00	f
-353	34	\N	f
 353	234	500.00	f
 353	701	80.00	f
-353	53	\N	f
-353	817	\N	f
-353	2	\N	f
 354	458	500.00	f
 354	212	500.00	f
 354	72	300.00	f
 354	521	400.00	f
 354	112	300.00	f
-354	131	\N	f
 354	16	183.00	f
 354	10	400.00	f
 354	1	110.00	f
@@ -6739,41 +7149,72 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 355	35	500.00	f
 355	7	100.00	f
 355	6	120.00	f
-355	68	\N	f
 355	1	110.00	f
 355	18	30.00	f
-355	89	\N	f
 355	5	150.00	f
 355	81	250.00	f
 355	75	100.00	f
 356	10	1200.00	f
-356	20	\N	f
 356	12	257.50	f
 356	7	150.00	f
-356	42	\N	f
+99	2	100.00	f
+100	290	100.00	f
+102	99	100.00	f
+102	49	100.00	f
+103	125	100.00	f
+104	66	100.00	f
+104	209	100.00	f
+104	357	100.00	f
+105	66	100.00	f
+106	323	100.00	f
+106	66	100.00	f
+106	779	100.00	f
+106	96	250.00	f
+107	163	100.00	f
+107	281	100.00	f
+107	310	100.00	f
+107	160	250.00	f
+109	541	100.00	f
+109	471	100.00	f
+109	42	100.00	f
+109	99	100.00	f
+109	122	100.00	f
+110	855	100.00	f
+110	85	100.00	f
+112	45	100.00	f
+112	143	100.00	f
+112	133	100.00	f
+113	143	100.00	f
+114	656	100.00	f
+114	391	100.00	f
+115	327	100.00	f
+117	6	120.00	f
+117	259	100.00	f
+117	381	100.00	f
+118	763	100.00	f
+118	69	100.00	f
+119	26	20.00	f
+361	34	\N	t
+362	83	\N	t
+365	34	\N	t
+365	74	\N	t
+367	78	\N	t
+367	36	\N	t
+369	89	\N	t
+370	47	\N	t
+370	31	\N	t
 361	607	500.00	f
 361	7	200.00	f
-361	32	\N	f
 361	28	5.00	f
 361	338	250.00	f
 361	9	200.00	f
-361	34	\N	f
 361	37	17.00	f
-361	2	\N	f
 362	265	500.00	f
-362	33	\N	f
-362	168	\N	f
 362	17	30.00	f
-362	83	\N	f
-362	48	\N	f
 362	3	15.00	f
-362	251	\N	f
-362	120	\N	f
-362	106	\N	f
 362	752	100.00	f
 362	123	100.00	f
 362	5	250.00	f
-362	54	\N	f
 362	4	138.00	f
 362	2	\N	t
 363	685	400.00	f
@@ -6785,16 +7226,12 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 363	3	12.00	f
 363	178	16.80	f
 363	216	33.60	f
-363	695	\N	f
-363	97	\N	f
 363	9	3.50	f
 364	453	1500.00	f
 364	93	250.00	f
 364	19	60.00	f
-364	364	\N	f
 364	1	220.00	f
 364	3	18.00	f
-364	57	\N	f
 364	217	200.00	f
 364	229	300.00	f
 364	287	200.00	f
@@ -6802,68 +7239,73 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 364	4	55.20	f
 365	37	170.00	f
 365	214	400.00	f
-365	318	\N	f
 365	9	200.00	f
-365	34	\N	f
-365	74	\N	f
 365	11	60.00	f
 366	610	500.00	f
 366	11	1200.00	f
-366	483	\N	f
 366	2	6.09	f
 366	4	18.40	f
 367	127	700.00	f
 367	7	200.00	f
 367	17	30.00	f
 367	3	15.00	f
-367	78	\N	f
-367	36	\N	f
-367	629	\N	f
-367	723	\N	f
 367	790	300.00	f
-367	845	\N	f
 367	2	\N	t
+370	134	\N	t
+371	31	\N	t
+373	52	\N	t
+373	20	\N	t
+376	89	\N	t
+377	34	\N	t
+119	284	100.00	f
+120	131	80.00	f
+120	548	30.00	f
+121	41	80.00	f
+121	328	100.00	f
 369	6	500.00	f
 369	28	10.00	f
 369	9	100.00	f
 369	11	400.00	f
-369	89	\N	f
 369	2	6.09	f
 369	51	40.00	f
 370	21	1500.00	f
 370	681	500.00	f
-370	361	\N	f
-370	96	\N	f
 370	1	220.00	f
 370	23	238.00	f
 370	3	18.00	f
-370	221	\N	f
-370	47	\N	f
-370	31	\N	f
-370	134	\N	f
 370	98	200.00	f
 370	91	80.00	f
 370	24	134.00	f
 370	14	73.44	f
-371	148	\N	f
 371	3	24.00	f
 371	11	500.00	f
 371	14	55.08	f
 371	24	67.00	f
-371	31	\N	f
 371	2	\N	t
+122	73	100.00	f
+122	576	80.00	f
+122	562	100.00	f
+123	125	100.00	f
+124	6	120.00	f
+124	147	100.00	f
+125	675	100.00	f
+125	573	100.00	f
+125	41	80.00	f
+125	132	100.00	f
+126	244	100.00	f
+128	54	100.00	f
 373	129	250.00	f
 373	105	500.00	f
-373	33	\N	f
-373	66	\N	f
-373	52	\N	f
-373	20	\N	f
 373	3	12.00	f
-373	209	\N	f
 373	2	\N	t
+128	255	20.00	f
+128	180	100.00	f
+129	73	100.00	f
+129	255	20.00	f
+130	131	80.00	f
+130	270	100.00	f
 375	624	700.00	f
 375	7	80.00	f
-375	379	\N	f
 375	11	200.00	f
 375	1	110.00	f
 375	10	1000.00	f
@@ -6871,14 +7313,10 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 375	291	200.00	f
 375	340	150.00	f
 376	46	800.00	f
-376	199	\N	f
 376	11	200.00	f
 376	1	110.00	f
-376	163	\N	f
-376	89	\N	f
 376	7	60.00	f
 376	6	40.00	f
-376	68	\N	f
 376	98	300.00	f
 376	10	800.00	f
 376	291	150.00	f
@@ -6889,24 +7327,18 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 377	9	100.00	f
 377	86	4.00	f
 377	5	50.00	f
-377	599	\N	f
 377	37	51.00	f
 377	53	30.00	f
 377	51	200.00	f
 377	144	80.00	f
-377	34	\N	f
 377	2	6.09	f
 378	21	1400.00	f
-378	131	\N	f
 378	16	183.00	f
 378	112	200.00	f
 378	10	500.00	f
 378	1	110.00	f
 378	7	60.00	f
-378	42	\N	f
 378	37	51.00	f
-378	22	\N	f
-378	52	\N	f
 378	18	30.00	f
 378	15	58.00	f
 379	6	500.00	f
@@ -6916,20 +7348,43 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 379	5	100.00	f
 379	150	60.00	f
 379	306	250.00	f
-379	34	\N	f
-379	40	\N	f
 379	2	6.09	f
+378	22	\N	t
+378	52	\N	t
+379	34	\N	t
+379	40	\N	t
+383	74	\N	t
+383	34	\N	t
+384	82	\N	t
+384	22	\N	t
+386	30	\N	t
+387	74	\N	t
+387	34	\N	t
+390	92	\N	t
+394	141	\N	t
+394	27	\N	t
+394	63	\N	t
+130	650	100.00	f
+133	644	100.00	f
+133	73	100.00	f
+133	173	100.00	f
+134	825	100.00	f
+134	49	100.00	f
+134	438	250.00	f
+135	852	100.00	f
+135	42	100.00	f
+137	114	100.00	f
+137	6	120.00	f
+138	48	30.00	f
+138	118	100.00	f
+138	49	100.00	f
 383	6	400.00	f
 383	12	257.50	f
 383	28	7.00	f
 383	5	100.00	f
 383	9	80.00	f
 383	38	150.00	f
-383	74	\N	f
-383	223	\N	f
-383	34	\N	f
 383	51	50.00	f
-383	2	\N	f
 384	244	1500.00	f
 384	56	700.00	f
 384	46	300.00	f
@@ -6937,11 +7392,17 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 384	1	330.00	f
 384	117	500.00	f
 384	195	150.00	f
-384	82	\N	f
 384	25	32.00	f
-384	6	\N	f
-384	22	\N	f
 384	4	55.20	f
+139	792	100.00	f
+139	575	100.00	f
+139	75	100.00	f
+139	125	100.00	f
+140	49	100.00	f
+140	53	100.00	f
+140	315	100.00	f
+140	327	100.00	f
+142	59	100.00	f
 386	236	1200.00	f
 386	454	500.00	f
 386	16	122.00	f
@@ -6949,83 +7410,92 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 386	1	110.00	f
 386	3	36.00	f
 386	37	68.00	f
-386	42	\N	f
-386	61	\N	f
-386	114	\N	f
-386	30	\N	f
 386	2	\N	t
 387	179	500.00	f
 387	5	100.00	f
 387	6	250.00	f
 387	329	50.00	f
 387	9	60.00	f
-387	73	\N	f
-387	74	\N	f
-387	34	\N	f
-387	367	\N	f
 387	441	250.00	f
-387	2	\N	f
-388	429	\N	f
 388	54	500.00	f
 388	62	80.00	f
 388	3	9.00	f
 388	39	40.00	f
-388	255	\N	f
 388	11	200.00	f
 388	2	\N	t
+143	6	120.00	f
+144	785	100.00	f
+145	19	100.00	f
+145	407	100.00	f
+145	201	100.00	f
+146	114	100.00	f
+149	6	120.00	f
+149	32	50.00	f
+150	206	100.00	f
+151	206	100.00	f
+152	115	100.00	f
+154	68	250.00	f
 390	686	400.00	f
-390	33	\N	f
 390	28	5.00	f
 390	9	10.50	f
 390	11	250.00	f
 390	5	300.00	f
-390	41	\N	f
-390	92	\N	f
 390	24	134.00	f
-390	328	\N	f
 390	4	36.80	f
 390	2	\N	t
+154	91	100.00	f
+155	41	80.00	f
+155	177	100.00	f
+156	41	80.00	f
+158	120	100.00	f
+159	57	150.00	f
+159	193	30.00	f
+160	784	100.00	f
+161	57	150.00	f
+162	99	100.00	f
+162	153	100.00	f
+163	153	100.00	f
+163	99	100.00	f
 392	19	600.00	f
 392	9	150.00	f
 392	26	60.00	f
 392	12	154.50	f
-392	417	\N	f
 392	86	2.00	f
 392	191	1.05	f
-392	2	\N	f
+164	353	100.00	f
+164	241	100.00	f
+164	668	100.00	f
+164	153	100.00	f
+165	118	100.00	f
+166	32	50.00	f
+166	199	150.00	f
+166	171	100.00	f
+167	128	100.00	f
+167	54	100.00	f
+167	32	50.00	f
+171	128	100.00	f
+171	59	100.00	f
 394	161	1500.00	f
 394	394	300.00	f
 394	174	100.00	f
 394	477	150.00	f
 394	282	100.00	f
 394	1	550.00	f
-394	141	\N	f
-394	262	\N	f
-394	27	\N	f
 394	26	250.00	f
 394	17	60.00	f
-394	63	\N	f
 394	13	50.00	f
 394	15	174.00	f
 394	2	\N	t
 395	46	1000.00	f
 395	1	220.00	f
-395	63	\N	f
 395	13	50.00	f
-395	141	\N	f
-395	80	\N	f
-395	31	\N	f
-395	638	\N	f
-395	258	\N	f
 395	4	36.80	f
-395	560	\N	f
 396	6	600.00	f
 396	11	350.00	f
 396	4	138.00	f
 396	9	10.50	f
 396	2	9.13	f
 397	6	500.00	f
-397	33	\N	f
 397	9	80.00	f
 397	28	7.00	f
 397	5	50.00	f
@@ -7033,13 +7503,8 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 397	7	50.00	f
 397	2	3.04	f
 398	29	900.00	f
-398	110	\N	f
 398	1	330.00	f
 398	8	492.00	f
-398	479	\N	f
-398	169	\N	f
-398	36	\N	f
-398	78	\N	f
 398	10	400.00	f
 398	4	73.60	f
 398	602	200.00	f
@@ -7051,38 +7516,24 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 399	12	1030.00	f
 399	53	40.00	f
 399	338	40.00	f
-399	36	\N	f
 399	198	5.20	f
-399	34	\N	f
-399	2	\N	f
 400	129	400.00	f
 400	704	600.00	f
 400	46	400.00	f
 400	224	300.00	f
 400	19	350.00	f
-400	148	\N	f
-400	348	\N	f
 400	5	200.00	f
-400	413	\N	f
-400	122	\N	f
 400	1	220.00	f
 400	8	369.00	f
-400	31	\N	f
 400	4	138.00	f
 401	21	2000.00	f
 401	102	600.00	f
-401	148	\N	f
-401	113	\N	f
 401	10	600.00	f
 401	1	220.00	f
-401	20	\N	f
 401	8	492.00	f
 401	13	50.00	f
 401	3	18.00	f
-401	31	\N	f
-401	156	\N	f
 401	19	400.00	f
-401	122	\N	f
 401	4	55.20	f
 402	334	1500.00	f
 402	352	1000.00	f
@@ -7092,18 +7543,29 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 402	10	800.00	f
 402	6	200.00	f
 402	1	220.00	f
-402	49	\N	f
-402	242	\N	f
 402	13	40.00	f
 402	97	60.00	f
-403	368	\N	f
-403	434	\N	f
-403	122	\N	f
 403	8	492.00	f
 403	132	200.00	f
 403	15	58.00	f
 403	165	150.00	f
 403	734	50.00	f
+395	63	\N	t
+395	141	\N	t
+395	80	\N	t
+395	31	\N	t
+398	36	\N	t
+398	78	\N	t
+399	36	\N	t
+399	34	\N	t
+400	31	\N	t
+401	20	\N	t
+401	31	\N	t
+406	40	\N	t
+407	47	\N	t
+408	124	\N	t
+171	42	100.00	f
+172	32	50.00	f
 406	233	300.00	f
 406	29	600.00	f
 406	19	150.00	f
@@ -7113,7 +7575,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 406	39	30.00	f
 406	26	60.00	f
 406	3	12.00	f
-406	40	\N	f
 407	6	600.00	f
 407	12	206.00	f
 407	28	7.00	f
@@ -7122,10 +7583,7 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 407	62	500.00	f
 407	9	400.00	f
 407	86	2.00	f
-407	47	\N	f
 407	59	200.00	f
-407	349	\N	f
-407	2	\N	f
 408	21	1200.00	f
 408	60	600.00	f
 408	295	100.00	f
@@ -7134,33 +7592,57 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 408	10	426.00	f
 408	87	80.00	f
 408	38	80.00	f
-408	124	\N	f
-408	137	\N	f
 408	1	220.00	f
 408	25	32.00	f
 408	26	100.00	f
-412	323	\N	f
+174	101	100.00	f
+174	50	30.00	f
+175	50	30.00	f
+176	33	200.00	f
+176	516	100.00	f
+176	101	100.00	f
+176	170	100.00	f
+176	48	30.00	f
+176	50	30.00	f
+176	106	100.00	f
+176	94	100.00	f
+177	383	30.00	f
+177	54	100.00	f
+177	41	80.00	f
+178	130	20.00	f
+178	54	100.00	f
+178	168	100.00	f
+179	782	120.00	f
+179	642	100.00	f
+179	346	100.00	f
+179	380	100.00	f
+179	96	250.00	f
+179	53	100.00	f
+179	435	100.00	f
+180	48	30.00	f
+180	139	100.00	f
+180	724	100.00	f
+180	157	100.00	f
+181	301	100.00	f
+181	139	100.00	f
+181	157	100.00	f
+182	41	80.00	f
+184	73	100.00	f
+184	115	100.00	f
+185	778	100.00	f
 412	62	200.00	f
 412	81	80.00	f
-412	193	\N	f
-412	647	\N	f
 412	3	9.00	f
-412	31	\N	f
 412	15	58.00	f
 412	14	91.80	f
-412	175	\N	f
 412	2	\N	t
 413	6	400.00	f
 413	11	180.00	f
 413	29	400.00	f
 413	1	110.00	f
 413	111	50.00	f
-413	124	\N	f
-413	77	\N	f
-413	53	\N	f
 413	5	50.00	f
 413	3	18.00	f
-413	70	\N	f
 413	26	50.00	f
 413	19	300.00	f
 414	173	150.00	f
@@ -7168,61 +7650,72 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 414	144	100.00	f
 414	150	150.00	f
 414	7	150.00	f
-414	489	\N	f
-414	73	\N	f
 414	11	30.00	f
-414	2	\N	f
+412	31	\N	t
+413	124	\N	t
+413	70	\N	t
+418	34	\N	t
+422	83	\N	t
+426	27	\N	t
+426	20	\N	t
+427	27	\N	t
+427	92	\N	t
+185	345	100.00	f
+186	57	150.00	f
+186	768	100.00	f
+187	460	100.00	f
+187	66	100.00	f
+187	96	250.00	f
+188	110	100.00	f
+188	404	100.00	f
+188	61	100.00	f
+191	753	100.00	f
+192	42	100.00	f
+192	59	100.00	f
+192	688	100.00	f
+194	320	100.00	f
 418	6	300.00	f
 418	719	180.00	f
 418	11	80.00	f
 418	7	120.00	f
 418	150	200.00	f
-418	510	\N	f
 418	5	100.00	f
-418	34	\N	f
-418	61	\N	f
 418	38	100.00	f
-418	2	\N	f
+194	3	10.00	f
+194	49	100.00	f
+195	61	100.00	f
+195	76	100.00	f
+196	754	100.00	f
+196	6	120.00	f
+197	49	100.00	f
+198	104	100.00	f
+198	465	100.00	f
+198	2	100.00	f
 420	600	4132.00	f
-420	764	\N	f
 420	824	400.00	f
-420	42	\N	f
 420	9	60.00	f
 420	173	100.00	f
 421	210	500.00	f
 421	257	200.00	f
 421	12	618.00	f
 421	150	100.00	f
-421	104	\N	f
-421	73	\N	f
 421	7	100.00	f
 421	2	6.09	f
 422	684	400.00	f
 422	45	500.00	f
 422	352	300.00	f
-422	33	\N	f
-422	83	\N	f
-422	48	\N	f
 422	3	15.00	f
-422	101	\N	f
 422	126	30.00	f
 422	145	20.00	f
-422	251	\N	f
-422	626	\N	f
 422	372	40.00	f
 422	567	20.00	f
 422	176	150.00	f
 422	4	110.40	f
 422	2	\N	t
-423	110	\N	f
 423	5	200.00	f
-423	33	\N	f
 423	9	150.00	f
-423	168	\N	f
 423	7	120.00	f
-423	854	\N	f
 423	178	22.40	f
-423	289	\N	f
 424	6	500.00	f
 424	12	257.50	f
 424	28	7.00	f
@@ -7230,8 +7723,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 424	72	900.00	f
 424	43	112.00	f
 424	203	40.00	f
-424	139	\N	f
-424	157	\N	f
 424	205	200.00	f
 424	109	100.00	f
 424	13	40.00	f
@@ -7248,69 +7739,51 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 425	51	60.00	f
 425	37	34.00	f
 425	53	40.00	f
-425	2	\N	f
 426	266	400.00	f
 426	800	500.00	f
 426	8	600.00	f
-426	48	\N	f
 426	3	18.00	f
 426	55	6.80	f
-426	27	\N	f
-426	50	\N	f
 426	205	150.00	f
 426	109	80.00	f
-426	20	\N	f
 426	13	30.00	f
 426	4	73.60	f
 426	24	134.00	f
 426	2	\N	t
 427	351	500.00	f
 427	202	700.00	f
-427	33	\N	f
 427	258	60.00	f
 427	1	330.00	f
 427	3	18.00	f
 427	17	30.00	f
-427	27	\N	f
 427	55	6.80	f
-427	50	\N	f
 427	5	250.00	f
 427	24	201.00	f
-427	92	\N	f
 427	4	92.00	f
 427	2	\N	t
 428	355	500.00	f
 428	186	700.00	f
-428	33	\N	f
-428	101	\N	f
 428	126	40.00	f
 428	145	30.00	f
-428	170	\N	f
 428	287	200.00	f
 428	176	200.00	f
-428	54	\N	f
 428	217	150.00	f
 428	741	150.00	f
 428	2	\N	t
 429	107	500.00	f
 429	19	60.00	f
-429	101	\N	f
 429	126	30.00	f
 429	145	20.00	f
 429	3	15.00	f
-429	665	\N	f
 429	108	300.00	f
 429	308	300.00	f
 429	57	200.00	f
 429	217	150.00	f
-429	50	\N	f
-429	106	\N	f
 429	4	55.20	f
 429	2	\N	t
 430	6	500.00	f
 430	11	250.00	f
 430	97	80.00	f
-430	104	\N	f
 430	9	50.00	f
 430	304	200.00	f
 430	2	9.13	f
@@ -7320,71 +7793,57 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 431	79	150.00	f
 431	1	220.00	f
 431	16	183.00	f
-431	118	\N	f
 431	10	400.00	f
 431	8	400.00	f
-431	61	\N	f
-431	22	\N	f
 431	55	6.80	f
 431	14	55.08	f
 432	493	2000.00	f
-432	261	\N	f
-432	651	\N	f
 432	8	500.00	f
 432	273	200.00	f
 432	1	220.00	f
 432	3	18.00	f
 432	197	5.00	f
-432	156	\N	f
-432	612	\N	f
 432	90	20.00	f
-432	767	\N	f
 432	2	\N	t
-433	348	\N	f
 433	154	300.00	f
 433	9	120.00	f
 433	152	80.00	f
-433	40	\N	f
 433	191	1.05	f
 433	6	60.00	f
 433	51	40.00	f
-433	32	\N	f
-433	2	\N	f
+431	22	\N	t
+433	40	\N	t
+435	36	\N	t
+435	34	\N	t
+436	84	\N	t
+436	52	\N	t
+439	22	\N	t
+442	30	\N	t
+199	68	250.00	f
+199	6	120.00	f
+199	190	30.00	f
+199	221	120.00	f
+200	53	100.00	f
 435	129	400.00	f
-435	33	\N	f
-435	318	\N	f
 435	185	500.00	f
 435	9	250.00	f
-435	36	\N	f
-435	142	\N	f
 435	38	100.00	f
-435	34	\N	f
 435	7	40.00	f
 435	748	150.00	f
-435	2	\N	f
 436	6	700.00	f
 436	11	400.00	f
-436	104	\N	f
 436	4	138.00	f
 436	26	80.00	f
 436	21	1000.00	f
-436	84	\N	f
 436	3	18.00	f
-436	66	\N	f
 436	10	400.00	f
-436	52	\N	f
 436	2	12.17	f
 437	21	1200.00	f
 437	105	500.00	f
 437	457	300.00	f
-437	33	\N	f
-437	150	\N	f
-437	484	\N	f
 437	1	110.00	f
 437	16	61.00	f
 437	108	200.00	f
-437	66	\N	f
-437	248	\N	f
 437	4	55.20	f
 437	692	300.00	f
 438	544	1000.00	f
@@ -7393,24 +7852,15 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 438	21	500.00	f
 438	1	440.00	f
 438	23	357.00	f
-438	364	\N	f
 438	91	150.00	f
 438	38	120.00	f
-438	99	\N	f
-438	94	\N	f
-438	716	\N	f
 438	97	250.00	f
-438	188	\N	f
 439	235	2000.00	f
 439	1	330.00	f
 439	23	238.00	f
 439	16	183.00	f
-439	131	\N	f
 439	3	24.00	f
 439	8	500.00	f
-439	296	\N	f
-439	190	\N	f
-439	22	\N	f
 439	4	73.60	f
 439	19	500.00	f
 440	127	700.00	f
@@ -7420,32 +7870,50 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 440	1	220.00	f
 440	8	369.00	f
 440	23	119.00	f
-440	75	\N	f
 440	132	100.00	f
 440	248	100.00	f
+200	159	100.00	f
+200	85	100.00	f
+200	505	100.00	f
+200	583	100.00	f
+201	524	100.00	f
+201	103	100.00	f
+202	68	250.00	f
+202	96	250.00	f
 442	45	900.00	f
-442	41	\N	f
 442	24	536.00	f
-442	227	\N	f
 442	8	492.00	f
-442	248	\N	f
-442	75	\N	f
 442	13	50.00	f
-442	30	\N	f
 442	662	100.00	f
 442	835	150.00	f
 442	4	36.80	f
 442	2	\N	t
+202	190	30.00	f
+202	382	100.00	f
+203	209	100.00	f
+203	96	250.00	f
+204	369	30.00	f
+204	115	100.00	f
+205	115	100.00	f
+205	369	30.00	f
+208	114	100.00	f
+210	54	100.00	f
+211	3	10.00	f
+211	288	100.00	f
+212	726	100.00	f
+213	77	100.00	f
+214	175	100.00	f
+214	54	100.00	f
+214	670	100.00	f
+214	218	100.00	f
 444	102	1200.00	f
 444	46	400.00	f
 444	1	110.00	f
 444	23	119.00	f
 444	3	9.00	f
 444	25	16.00	f
-444	31	\N	f
 444	5	50.00	f
 445	105	500.00	f
-445	33	\N	f
 445	11	400.00	f
 445	9	21.00	f
 445	38	80.00	f
@@ -7455,46 +7923,64 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 446	1	330.00	f
 446	5	150.00	f
 446	12	206.00	f
-446	32	\N	f
-446	171	\N	f
 447	5	1000.00	f
 447	7	500.00	f
 447	9	400.00	f
 447	6	400.00	f
 447	199	100.00	f
-447	32	\N	f
-447	34	\N	f
-447	74	\N	f
-447	2	\N	f
 448	210	400.00	f
 448	11	180.00	f
 448	7	80.00	f
 448	10	500.00	f
 448	16	600.00	f
-448	32	\N	f
 448	5	100.00	f
 448	9	80.00	f
-448	151	\N	f
-448	40	\N	f
 448	2	6.09	f
-450	705	\N	f
+444	31	\N	t
+447	34	\N	t
+447	74	\N	t
+448	40	\N	t
+451	34	\N	t
+455	74	\N	t
+460	52	\N	t
 450	174	400.00	f
 450	269	250.00	f
 450	1	330.00	f
-450	171	\N	f
-450	147	\N	f
 450	363	300.00	f
 450	292	300.00	f
 450	7	60.00	f
 451	179	600.00	f
 451	7	100.00	f
 451	51	120.00	f
-451	34	\N	f
-451	42	\N	f
 451	152	300.00	f
 451	515	30.00	f
 451	38	60.00	f
-451	2	\N	f
+461	30	\N	t
+214	193	30.00	f
+220	142	100.00	f
+222	331	20.00	f
+222	280	100.00	f
+224	316	100.00	f
+224	50	30.00	f
+224	819	100.00	f
+224	48	30.00	f
+225	106	100.00	f
+226	506	100.00	f
+226	41	80.00	f
+228	138	100.00	f
+230	293	100.00	f
+232	261	100.00	f
+232	342	100.00	f
+233	261	100.00	f
+233	94	100.00	f
+233	91	100.00	f
+234	148	100.00	f
+234	113	100.00	f
+235	148	100.00	f
+235	41	80.00	f
+235	61	100.00	f
+237	33	200.00	f
+237	66	100.00	f
 455	6	600.00	f
 455	12	309.00	f
 455	28	10.00	f
@@ -7503,7 +7989,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 455	37	51.00	f
 455	718	300.00	f
 455	179	250.00	f
-455	74	\N	f
 455	51	40.00	f
 455	2	6.09	f
 456	6	400.00	f
@@ -7511,7 +7996,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 456	4	36.80	f
 456	179	700.00	f
 456	5	150.00	f
-456	32	\N	f
 456	9	100.00	f
 456	38	80.00	f
 456	399	20.00	f
@@ -7535,19 +8019,23 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 458	112	150.00	f
 458	1	110.00	f
 458	37	51.00	f
-458	32	\N	f
-458	6	\N	f
 458	7	50.00	f
 458	15	58.00	f
 458	18	30.00	f
-460	813	\N	f
+238	77	100.00	f
+242	42	100.00	f
+242	6	120.00	f
+242	395	100.00	f
+246	137	100.00	f
+246	420	100.00	f
+248	370	30.00	f
+248	253	100.00	f
+249	280	100.00	f
 460	15	174.00	f
 460	3	18.00	f
 460	18	40.00	f
-460	52	\N	f
 460	14	73.44	f
 460	10	800.00	f
-460	49	\N	f
 460	55	2.30	f
 461	6	500.00	f
 461	11	300.00	f
@@ -7556,12 +8044,9 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 461	136	600.00	f
 461	5	200.00	f
 461	55	4.60	f
-461	30	\N	f
 462	192	1200.00	f
 462	102	500.00	f
 462	108	400.00	f
-462	113	\N	f
-462	658	\N	f
 462	10	400.00	f
 462	16	183.00	f
 462	1	110.00	f
@@ -7569,22 +8054,37 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 462	13	40.00	f
 462	19	400.00	f
 462	24	134.00	f
-463	358	\N	f
 463	9	40.00	f
 463	5	50.00	f
 463	88	30.00	f
 463	7	40.00	f
 463	359	150.00	f
 463	2	6.09	f
+254	115	100.00	f
+255	115	100.00	f
+255	66	100.00	f
+256	160	250.00	f
+257	66	100.00	f
+259	344	100.00	f
+466	30	\N	t
+468	134	\N	t
+472	47	\N	t
+474	47	\N	t
+478	36	\N	t
+259	208	100.00	f
+259	61	100.00	f
+261	33	200.00	f
+262	367	50.00	f
+262	122	100.00	f
+263	33	200.00	f
+263	148	100.00	f
+263	156	100.00	f
 466	102	1200.00	f
 466	707	800.00	f
 466	44	500.00	f
 466	8	369.00	f
 466	1	110.00	f
-466	159	\N	f
 466	24	201.00	f
-466	30	\N	f
-466	94	\N	f
 466	2	\N	t
 467	456	1000.00	f
 467	200	150.00	f
@@ -7593,8 +8093,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 467	8	492.00	f
 467	3	15.00	f
 467	90	30.00	f
-467	411	\N	f
-467	182	\N	f
 467	4	55.20	f
 468	21	1400.00	f
 468	88	300.00	f
@@ -7604,8 +8102,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 468	8	369.00	f
 468	16	61.00	f
 468	5	50.00	f
-468	182	\N	f
-468	134	\N	f
 468	18	30.00	f
 468	4	46.00	f
 469	324	500.00	f
@@ -7617,30 +8113,38 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 470	1	1500.00	f
 470	218	60.00	f
 470	14	229.50	f
-470	563	\N	f
 470	111	80.00	f
-470	147	\N	f
 470	86	2.00	f
 470	198	2.60	f
-470	76	\N	f
+264	115	100.00	f
+265	156	100.00	f
+265	91	100.00	f
+265	94	100.00	f
+266	113	100.00	f
+267	99	100.00	f
+269	226	100.00	f
+270	32	50.00	f
 472	53	300.00	f
 472	9	700.00	f
 472	11	1500.00	f
 472	26	350.00	f
-472	267	\N	f
-472	47	\N	f
 472	86	4.00	f
 472	314	150.00	f
 472	59	100.00	f
+270	76	100.00	f
+271	77	100.00	f
+276	41	80.00	f
+276	169	100.00	f
+282	343	100.00	f
+282	57	150.00	f
+283	94	100.00	f
+283	343	100.00	f
+284	57	150.00	f
 474	29	1200.00	f
 474	60	600.00	f
 474	10	600.00	f
 474	1	330.00	f
-474	76	\N	f
-474	47	\N	f
 474	8	369.00	f
-474	366	\N	f
-474	499	\N	f
 474	38	80.00	f
 474	26	100.00	f
 475	29	1000.00	f
@@ -7648,12 +8152,29 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 475	8	492.00	f
 475	1	110.00	f
 475	3	18.00	f
-475	309	\N	f
 475	13	50.00	f
-475	366	\N	f
 475	15	58.00	f
-475	204	\N	f
 475	2	\N	t
+286	775	100.00	f
+286	118	100.00	f
+286	49	100.00	f
+286	188	250.00	f
+290	76	100.00	f
+290	246	100.00	f
+290	385	100.00	f
+290	749	100.00	f
+290	286	100.00	f
+290	839	100.00	f
+290	142	100.00	f
+291	215	100.00	f
+291	238	100.00	f
+291	169	100.00	f
+292	384	100.00	f
+292	131	80.00	f
+292	223	100.00	f
+292	183	100.00	f
+294	143	100.00	f
+294	133	100.00	f
 478	6	600.00	f
 478	11	280.00	f
 478	4	110.40	f
@@ -7661,8 +8182,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 478	353	500.00	f
 478	64	200.00	f
 478	1	220.00	f
-478	36	\N	f
-478	289	\N	f
 478	7	60.00	f
 478	2	\N	t
 479	329	600.00	f
@@ -7670,52 +8189,87 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 479	11	180.00	f
 479	276	500.00	f
 479	198	5.20	f
-479	223	\N	f
-479	189	\N	f
 479	59	500.00	f
-479	2	\N	f
 480	6	500.00	f
 480	11	550.00	f
 480	28	7.00	f
 480	9	10.50	f
 480	4	36.80	f
 480	2	6.09	f
+294	268	100.00	f
+296	648	100.00	f
+296	342	100.00	f
+296	652	100.00	f
+296	142	100.00	f
+296	398	100.00	f
+298	781	120.00	f
+298	77	100.00	f
+298	639	100.00	f
+299	77	100.00	f
+299	218	100.00	f
+300	528	100.00	f
+301	208	100.00	f
+301	259	100.00	f
+301	119	100.00	f
+302	33	200.00	f
+302	533	100.00	f
+302	50	30.00	f
+302	106	100.00	f
+302	48	30.00	f
 483	19	400.00	f
-483	33	\N	f
 483	9	120.00	f
 483	28	5.00	f
 483	86	2.00	f
 483	144	60.00	f
 483	4	110.40	f
-483	2	\N	f
 484	568	400.00	f
 484	445	800.00	f
-484	333	\N	f
 484	35	500.00	f
 484	236	300.00	f
 484	751	150.00	f
 484	336	50.00	f
 484	1	110.00	f
-484	30	\N	f
-484	160	\N	f
 484	2	\N	t
+484	30	\N	t
+486	65	\N	t
+486	36	\N	t
+486	22	\N	t
+489	74	\N	t
+490	30	\N	t
+491	34	\N	t
+493	74	\N	t
+493	34	\N	t
 486	418	2000.00	f
 486	10	1000.00	f
 486	3	30.00	f
 486	15	116.00	f
-486	65	\N	f
-486	36	\N	f
-486	22	\N	f
 486	14	91.80	f
 486	390	200.00	f
+494	58	\N	t
+501	92	\N	t
+303	640	100.00	f
+303	33	200.00	f
+303	120	100.00	f
+303	106	100.00	f
+303	50	30.00	f
+305	118	100.00	f
+306	32	50.00	f
+306	61	100.00	f
+307	32	50.00	f
+307	75	100.00	f
+307	6	120.00	f
+307	68	250.00	f
+308	706	100.00	f
+308	379	100.00	f
+308	151	100.00	f
+309	85	100.00	f
+309	315	100.00	f
+309	2	100.00	f
+310	208	100.00	f
+310	150	100.00	f
 489	6	500.00	f
 489	11	120.00	f
 489	276	600.00	f
-489	226	\N	f
-489	223	\N	f
-489	74	\N	f
-489	409	\N	f
-489	2	\N	f
 490	654	600.00	f
 490	8	400.00	f
 490	773	350.00	f
@@ -7723,15 +8277,20 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 490	1	110.00	f
 490	3	9.00	f
 490	7	60.00	f
-490	6	\N	f
-490	30	\N	f
 491	88	600.00	f
 491	7	300.00	f
 491	9	400.00	f
 491	37	102.00	f
-491	73	\N	f
-491	34	\N	f
-491	2	\N	f
+310	463	100.00	f
+310	281	100.00	f
+310	310	100.00	f
+310	75	100.00	f
+310	382	100.00	f
+310	850	100.00	f
+310	293	100.00	f
+311	85	100.00	f
+311	2	100.00	f
+312	50	30.00	f
 493	6	600.00	f
 493	12	288.40	f
 493	28	10.00	f
@@ -7740,24 +8299,35 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 493	5	100.00	f
 493	59	200.00	f
 493	62	200.00	f
-493	74	\N	f
-493	34	\N	f
 493	2	6.09	f
 494	29	1000.00	f
 494	100	200.00	f
 494	1	440.00	f
 494	10	600.00	f
 494	3	12.00	f
-494	58	\N	f
 494	13	40.00	f
-494	204	\N	f
+312	48	30.00	f
+312	103	100.00	f
+313	682	100.00	f
+313	93	100.00	f
+313	737	30.00	f
+314	525	100.00	f
+314	130	20.00	f
+314	133	100.00	f
+314	387	100.00	f
+315	823	100.00	f
+315	526	100.00	f
+315	387	100.00	f
+315	247	100.00	f
+316	68	250.00	f
+316	296	100.00	f
+316	459	100.00	f
 497	13	50.00	f
 497	39	40.00	f
 497	184	30.00	f
 497	3	12.00	f
 497	20	50.00	f
 497	4	36.80	f
-497	204	\N	f
 497	2	\N	t
 498	6	500.00	f
 498	11	220.00	f
@@ -7770,20 +8340,284 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 499	12	721.00	f
 499	7	40.00	f
 499	2	6.09	f
-499	609	\N	f
+317	73	100.00	f
+317	104	100.00	f
+317	85	100.00	f
+317	2	100.00	f
+318	138	100.00	f
+318	595	100.00	f
+318	209	100.00	f
+319	32	50.00	f
+319	104	100.00	f
+319	2	100.00	f
+320	33	200.00	f
 501	6	500.00	f
 501	11	280.00	f
 501	10	600.00	f
 501	20	200.00	f
 501	13	40.00	f
-501	92	\N	f
-501	494	\N	f
 501	4	55.20	f
+320	631	20.00	f
+321	96	250.00	f
+322	341	100.00	f
+322	110	100.00	f
+323	341	100.00	f
+323	41	80.00	f
+323	122	100.00	f
+324	466	100.00	f
+327	473	100.00	f
+327	125	100.00	f
+328	313	100.00	f
+328	48	30.00	f
+328	120	100.00	f
+328	106	100.00	f
+332	392	100.00	f
+333	392	100.00	f
+333	492	100.00	f
+333	125	100.00	f
+336	175	100.00	f
+336	77	100.00	f
+336	219	100.00	f
+337	193	30.00	f
+337	219	100.00	f
+338	163	100.00	f
+338	189	100.00	f
+339	226	100.00	f
+339	189	100.00	f
+339	61	100.00	f
+342	180	100.00	f
+343	104	100.00	f
+343	319	100.00	f
+343	2	100.00	f
+344	131	80.00	f
+344	114	100.00	f
+344	400	100.00	f
+346	259	100.00	f
+347	853	100.00	f
+347	2	100.00	f
+348	151	100.00	f
+349	32	50.00	f
+349	6	120.00	f
+349	61	100.00	f
+349	151	100.00	f
+351	42	100.00	f
+351	53	100.00	f
+351	2	100.00	f
+353	85	100.00	f
+353	53	100.00	f
+353	817	100.00	f
+353	2	100.00	f
+354	131	80.00	f
+355	68	250.00	f
+356	42	100.00	f
+361	32	50.00	f
+361	2	100.00	f
+362	33	200.00	f
+362	168	100.00	f
+362	48	30.00	f
+362	251	100.00	f
+362	120	100.00	f
+362	106	100.00	f
+362	54	100.00	f
+363	695	100.00	f
+363	97	100.00	f
+364	364	100.00	f
+364	57	150.00	f
+365	318	100.00	f
+366	483	100.00	f
+367	629	100.00	f
+367	723	100.00	f
+367	845	100.00	f
+370	361	100.00	f
+370	96	250.00	f
+370	221	120.00	f
+371	148	100.00	f
+373	33	200.00	f
+373	66	100.00	f
+373	209	100.00	f
+375	379	100.00	f
+376	199	150.00	f
+376	163	100.00	f
+376	68	250.00	f
+377	599	100.00	f
+378	131	80.00	f
+378	42	100.00	f
+383	223	100.00	f
+383	2	100.00	f
+384	6	120.00	f
+386	42	100.00	f
+386	61	100.00	f
+386	114	100.00	f
+387	73	100.00	f
+387	367	50.00	f
+387	2	100.00	f
+388	429	100.00	f
+388	255	20.00	f
+390	33	200.00	f
+390	41	80.00	f
+390	328	100.00	f
+392	417	100.00	f
+392	2	100.00	f
+394	262	100.00	f
+395	638	100.00	f
+395	258	120.00	f
+395	560	100.00	f
+397	33	200.00	f
+398	110	100.00	f
+398	479	100.00	f
+398	169	100.00	f
+399	2	100.00	f
+400	148	100.00	f
+400	348	100.00	f
+400	413	100.00	f
+400	122	100.00	f
+401	148	100.00	f
+401	113	100.00	f
+401	156	100.00	f
+401	122	100.00	f
+402	49	100.00	f
+402	242	100.00	f
+403	368	100.00	f
+403	434	100.00	f
+403	122	100.00	f
+407	349	100.00	f
+407	2	100.00	f
+408	137	100.00	f
+412	323	100.00	f
+412	193	30.00	f
+412	647	100.00	f
+412	175	100.00	f
+413	77	100.00	f
+413	53	100.00	f
+414	489	100.00	f
+414	73	100.00	f
+414	2	100.00	f
+418	510	100.00	f
+418	61	100.00	f
+418	2	100.00	f
+420	764	100.00	f
+420	42	100.00	f
+421	104	100.00	f
+421	73	100.00	f
+422	33	200.00	f
+422	48	30.00	f
+422	101	100.00	f
+422	251	100.00	f
+422	626	100.00	f
+423	110	100.00	f
+423	33	200.00	f
+423	168	100.00	f
+423	854	100.00	f
+423	289	100.00	f
+424	139	100.00	f
+424	157	100.00	f
+425	2	100.00	f
+426	48	30.00	f
+426	50	30.00	f
+427	33	200.00	f
+427	50	30.00	f
+428	33	200.00	f
+428	101	100.00	f
+428	170	100.00	f
+428	54	100.00	f
+429	101	100.00	f
+429	665	100.00	f
+429	50	30.00	f
+429	106	100.00	f
+430	104	100.00	f
+431	118	100.00	f
+431	61	100.00	f
+432	261	100.00	f
+432	651	100.00	f
+432	156	100.00	f
+432	612	100.00	f
+432	767	100.00	f
+433	348	100.00	f
+433	32	50.00	f
+433	2	100.00	f
+435	33	200.00	f
+435	318	100.00	f
+435	142	100.00	f
+435	2	100.00	f
+436	104	100.00	f
+436	66	100.00	f
+437	33	200.00	f
+437	150	100.00	f
+437	484	100.00	f
+437	66	100.00	f
+437	248	100.00	f
+438	364	100.00	f
+438	99	100.00	f
+438	94	100.00	f
+438	716	100.00	f
+438	188	250.00	f
+439	131	80.00	f
+439	296	100.00	f
+439	190	30.00	f
+440	75	100.00	f
+442	41	80.00	f
+442	227	100.00	f
+442	248	100.00	f
+442	75	100.00	f
+445	33	200.00	f
+446	32	50.00	f
+446	171	100.00	f
+447	32	50.00	f
+447	2	100.00	f
+448	32	50.00	f
+448	151	100.00	f
+450	705	100.00	f
+450	171	100.00	f
+450	147	100.00	f
+451	42	100.00	f
+451	2	100.00	f
+456	32	50.00	f
+458	32	50.00	f
+458	6	120.00	f
+460	813	100.00	f
+460	49	100.00	f
+462	113	100.00	f
+462	658	100.00	f
+463	358	100.00	f
+466	159	100.00	f
+466	94	100.00	f
+467	411	100.00	f
+467	182	100.00	f
+468	182	100.00	f
+470	563	100.00	f
+470	147	100.00	f
+470	76	100.00	f
+472	267	100.00	f
+474	76	100.00	f
+474	366	100.00	f
+474	499	100.00	f
+475	309	100.00	f
+475	366	100.00	f
+475	204	100.00	f
+478	289	100.00	f
+479	223	100.00	f
+479	189	100.00	f
+479	2	100.00	f
+483	33	200.00	f
+483	2	100.00	f
+484	333	20.00	f
+484	160	250.00	f
+489	226	100.00	f
+489	223	100.00	f
+489	409	100.00	f
+489	2	100.00	f
+490	6	120.00	f
+491	73	100.00	f
+491	2	100.00	f
+494	204	100.00	f
+497	204	100.00	f
+499	609	120.00	f
+501	494	10.00	f
 \.
 
 
 --
--- Data for Name: recipe_steps; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: recipe_steps; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.recipe_steps (recipe_id, step_no, instruction, duration_min) FROM stdin;
@@ -10388,7 +11222,7 @@ COPY public.recipe_steps (recipe_id, step_no, instruction, duration_min) FROM st
 
 
 --
--- Data for Name: recipes; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: recipes; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.recipes (id, title, description, servings, cook_time_min, needs_microwave, needs_stove, needs_oven, image_url, author_id, no_cook) FROM stdin;
@@ -10413,7 +11247,6 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 24	Сырники	Творожные оладьи, где творога должно быть много, а муки — ровно столько, чтобы они не развалились.	4	15	f	t	f	https://theunitools.com/recipes/syrniki.jpg	\N	f
 25	Пад тай	Рисовая лапша, обжаренная с тамариндом, рыбным соусом и пальмовым сахаром. Всё готовится за четыре минуты.	2	10	f	t	f	https://theunitools.com/recipes/pad-thai.jpg	\N	f
 7	Мисо-суп	Суп из даси и мисо, который готовится десять минут. Кипятить мисо нельзя — от этого пропадает и аромат, и польза.	4	15	f	f	f	https://theunitools.com/recipes/miso-soup.jpg	\N	t
-26	Тирамису	Савоярди в кофе под кремом из маскарпоне. Без выпечки, но с двумя местами, где всё может пойти не так.	6	0	f	t	f	https://theunitools.com/recipes/tiramisu.jpg	\N	f
 28	Крокеты с хамоном	Густая бешамель с хамоном, охлаждённая до плотности, обваленная в сухарях и обжаренная во фритюре.	4	25	f	t	f	https://theunitools.com/recipes/croquetas-de-jamon.jpg	\N	f
 30	Ломо сальтадо	Говядина, обжаренная в воке с луком и помидорами, поданная с картофелем фри и рисом одновременно.	4	20	f	t	f	https://theunitools.com/recipes/lomo-saltado.jpg	\N	f
 31	Мапо тофу	Тофу в остром соусе из доубаньцзяна с сычуаньским перцем, который не жжёт, а немеет.	4	15	f	t	f	https://theunitools.com/recipes/mapo-tofu.jpg	\N	f
@@ -10437,6 +11270,7 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 50	Пан-ди-кейжу	Сырные шарики из тапиоковой муки — снаружи корочка, внутри тягучая пустота. Без пшеницы и без дрожжей.	6	25	f	f	t	https://theunitools.com/recipes/pao-de-queijo.jpg	\N	f
 51	Пад кра пао	Свиной фарш, обжаренный с чили, чесноком и священным базиликом. Пять минут от начала до тарелки.	2	8	f	t	f	https://theunitools.com/recipes/pad-krapow-moo.jpg	\N	f
 27	Гаспачо	Холодный томатный суп, который взбивают с хлебом и маслом до состояния эмульсии — от этого он и получается плотным, а не водянистым.	4	0	f	f	f	https://theunitools.com/recipes/gazpacho.jpg	\N	t
+26	Тирамису	Савоярди в кофе под кремом из маскарпоне. Без выпечки, но с двумя местами, где всё может пойти не так.	6	32	f	t	f	https://theunitools.com/recipes/tiramisu.jpg	\N	f
 52	Гюдон	Тонко нарезанная говядина, припущенная с луком в даси с соевым соусом и мирином, поверх риса.	2	15	f	t	f	https://theunitools.com/recipes/gyudon.jpg	\N	f
 53	Солянка мясная сборная	Суп на крепком бульоне с несколькими видами мяса, солёными огурцами, оливками и лимоном.	6	120	f	t	f	https://theunitools.com/recipes/solyanka.jpg	\N	f
 54	Тажин с курицей и лимоном	Курица, томлённая с солёными лимонами и оливками. Кислота идёт от кожуры лимона, а не от мякоти.	4	70	f	t	f	https://theunitools.com/recipes/tagine-de-poulet.jpg	\N	f
@@ -10462,7 +11296,6 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 75	Кулебяка с корицей	Булочки с корицей и кардамоном, свёрнутые узлом. Кардамон в тесте важнее корицы в начинке.	12	15	f	f	t	https://theunitools.com/recipes/kanelbullar.jpg	\N	f
 76	Кушари	Рис, чечевица и макароны в одной тарелке под томатным соусом с уксусом и жареным луком.	6	60	f	t	f	https://theunitools.com/recipes/koshari.jpg	\N	f
 77	Фуль медамес	Бобы фава, томлённые до кремовой мягкости, с оливковым маслом, лимоном и зирой.	4	240	f	t	f	https://theunitools.com/recipes/ful-medames.jpg	\N	f
-79	Киббе нейе	Сырое киббе: свежайшая баранина, растёртая с булгуром и специями, под оливковым маслом.	4	0	f	t	f	https://theunitools.com/recipes/kibbeh-nayyeh.jpg	\N	f
 80	Гормэ сабзи	Тушёная баранина с горой зелени, фасолью и сушёным лаймом. Зелень жарят до почти чёрного цвета.	6	150	f	t	f	https://theunitools.com/recipes/ghormeh-sabzi.jpg	\N	f
 81	Тахдиг	Рис с золотой хрустящей коркой на дне кастрюли. Корку делают из риса, картофеля или лаваша.	6	60	f	t	f	https://theunitools.com/recipes/tahdig.jpg	\N	f
 82	Узбекский плов	Рис, доведённый паром над зирваком из баранины, моркови и лука. Рис не мешают с момента закладки.	6	100	f	t	f	https://theunitools.com/recipes/plov-uzbekskiy.jpg	\N	f
@@ -10486,6 +11319,7 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 102	Ропа вьеха	Говядина, разобранная на волокна и тушённая в софрито с перцем и оливками. Мясо варят целым куском заранее.	6	150	f	t	f	https://theunitools.com/recipes/ropa-vieja.jpg	\N	f
 103	Морос и кристианос	Рис, сваренный в отваре из-под чёрной фасоли, отчего становится тёмным и вбирает весь её вкус.	6	90	f	t	f	https://theunitools.com/recipes/moros-y-cristianos.jpg	\N	f
 78	Табуле	Салат из петрушки с небольшим количеством булгура, а не наоборот. Зелени здесь в десять раз больше крупы.	4	0	f	f	f	https://theunitools.com/recipes/tabbouleh.jpg	\N	t
+79	Киббе нейе	Сырое киббе: свежайшая баранина, растёртая с булгуром и специями, под оливковым маслом.	4	40	f	t	f	https://theunitools.com/recipes/kibbeh-nayyeh.jpg	\N	f
 104	Курица джерк	Курица в маринаде на скотч-боннете и душистом перце, копчёная на дровах пименто.	6	120	f	t	t	https://theunitools.com/recipes/jerk-chicken.jpg	\N	f
 105	Аки с солёной рыбой	Национальное блюдо Ямайки: плод аки, по виду и текстуре напоминающий яичницу, с вымоченной солёной треской.	4	25	f	t	f	https://theunitools.com/recipes/ackee-and-saltfish.jpg	\N	f
 106	Джоллоф рис	Рис, сваренный в густом соусе из помидоров, перца и лука. Соус уваривают до тёмного цвета до закладки риса.	6	60	f	t	f	https://theunitools.com/recipes/jollof-rice.jpg	\N	f
@@ -10506,11 +11340,11 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 122	Чевапи	Колбаски из рубленого мяса без оболочки, на углях, с луком и лепёшкой сомун.	4	15	f	t	f	https://theunitools.com/recipes/cevapi.jpg	\N	f
 123	Айвар	Икра из печёного красного перца и баклажана, уваренная в масле до густоты пасты.	10	90	f	t	t	https://theunitools.com/recipes/ajvar.jpg	\N	f
 124	Фрикаделлер	Датские мясные биточки, плоские, а не круглые, жаренные на сливочном масле до тёмной корочки.	4	25	f	t	f	https://theunitools.com/recipes/frikadeller.jpg	\N	f
-125	Смёрребрёд	Открытый бутерброд на ржаном хлебе с маслом. Порядок слоёв и толщина масла имеют значение.	4	0	f	t	f	https://theunitools.com/recipes/smorrebrod.jpg	\N	f
 126	Сармале	Голубцы в квашеных капустных листьях с фаршем и рисом, томлённые три часа под слоем капусты.	8	180	f	t	t	https://theunitools.com/recipes/sarmale.jpg	\N	f
 127	Мамалыга	Кукурузная каша плотной консистенции, которую режут ниткой, а не ножом.	6	40	f	t	f	https://theunitools.com/recipes/mamaliga.jpg	\N	f
 129	Баница	Спираль из фило с брынзой и яйцами, залитая йогуртом с содой перед выпечкой.	8	45	f	f	t	https://theunitools.com/recipes/banitsa.jpg	\N	f
 130	Лохикейтто	Финский суп с лососем, картофелем и сливками, с горой укропа и кусочком масла в тарелке.	4	40	f	t	f	https://theunitools.com/recipes/lohikeitto.jpg	\N	f
+125	Смёрребрёд	Открытый бутерброд на ржаном хлебе с маслом. Порядок слоёв и толщина масла имеют значение.	4	25	f	t	f	https://theunitools.com/recipes/smorrebrod.jpg	\N	f
 131	Карельские пирожки	Ржаная корзиночка с рисовой кашей, смазанная маслом после выпечки и поданная с яичным маслом.	8	25	f	t	t	https://theunitools.com/recipes/karjalanpiirakka.jpg	\N	f
 132	Ирландское рагу	Баранина с картофелем и луком, томлённая без обжарки. Мясо не подрумянивают — в этом весь смысл.	6	150	f	t	f	https://theunitools.com/recipes/irish-stew.jpg	\N	f
 133	Содовый хлеб	Хлеб на соде и пахте без дрожжей и без расстойки. От замеса до духовки — три минуты.	8	45	f	f	t	https://theunitools.com/recipes/soda-bread.jpg	\N	f
@@ -10802,7 +11636,7 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 
 
 --
--- Data for Name: user_allergens; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: user_allergens; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.user_allergens (user_id, allergen_id) FROM stdin;
@@ -10810,7 +11644,7 @@ COPY public.user_allergens (user_id, allergen_id) FROM stdin;
 
 
 --
--- Data for Name: user_diets; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: user_diets; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.user_diets (user_id, diet_id, diet_kind) FROM stdin;
@@ -10818,7 +11652,7 @@ COPY public.user_diets (user_id, diet_id, diet_kind) FROM stdin;
 
 
 --
--- Data for Name: user_pantry; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: user_pantry; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.user_pantry (user_id, ingredient_id, qty_g) FROM stdin;
@@ -10826,7 +11660,7 @@ COPY public.user_pantry (user_id, ingredient_id, qty_g) FROM stdin;
 
 
 --
--- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.users (id, login, password_hash, pevzner_diet_id, pevzner_kind, created_at) FROM stdin;
@@ -10834,56 +11668,56 @@ COPY public.users (id, login, password_hash, pevzner_diet_id, pevzner_kind, crea
 
 
 --
--- Name: allergens_id_seq; Type: SEQUENCE SET; Schema: public; Owner: koma
+-- Name: allergens_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.allergens_id_seq', 14, true);
 
 
 --
--- Name: categories_id_seq; Type: SEQUENCE SET; Schema: public; Owner: koma
+-- Name: categories_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.categories_id_seq', 12, true);
 
 
 --
--- Name: cooking_methods_id_seq; Type: SEQUENCE SET; Schema: public; Owner: koma
+-- Name: cooking_methods_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.cooking_methods_id_seq', 4, true);
 
 
 --
--- Name: diets_id_seq; Type: SEQUENCE SET; Schema: public; Owner: koma
+-- Name: diets_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.diets_id_seq', 18, true);
 
 
 --
--- Name: ingredients_id_seq; Type: SEQUENCE SET; Schema: public; Owner: koma
+-- Name: ingredients_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.ingredients_id_seq', 858, true);
 
 
 --
--- Name: recipes_id_seq; Type: SEQUENCE SET; Schema: public; Owner: koma
+-- Name: recipes_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.recipes_id_seq', 502, true);
 
 
 --
--- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: koma
+-- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.users_id_seq', 2, true);
 
 
 --
--- Name: allergens allergens_code_key; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: allergens allergens_code_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.allergens
@@ -10891,7 +11725,7 @@ ALTER TABLE ONLY public.allergens
 
 
 --
--- Name: allergens allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: allergens allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.allergens
@@ -10899,7 +11733,7 @@ ALTER TABLE ONLY public.allergens
 
 
 --
--- Name: categories categories_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: categories categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.categories
@@ -10907,7 +11741,7 @@ ALTER TABLE ONLY public.categories
 
 
 --
--- Name: cooking_methods cooking_methods_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: cooking_methods cooking_methods_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.cooking_methods
@@ -10915,7 +11749,7 @@ ALTER TABLE ONLY public.cooking_methods
 
 
 --
--- Name: diet_excluded_allergens diet_excluded_allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: diet_excluded_allergens diet_excluded_allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.diet_excluded_allergens
@@ -10923,7 +11757,7 @@ ALTER TABLE ONLY public.diet_excluded_allergens
 
 
 --
--- Name: diet_excluded_categories diet_excluded_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: diet_excluded_categories diet_excluded_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.diet_excluded_categories
@@ -10931,7 +11765,7 @@ ALTER TABLE ONLY public.diet_excluded_categories
 
 
 --
--- Name: diet_excluded_methods diet_excluded_methods_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: diet_excluded_methods diet_excluded_methods_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.diet_excluded_methods
@@ -10939,7 +11773,7 @@ ALTER TABLE ONLY public.diet_excluded_methods
 
 
 --
--- Name: diets diets_id_kind_key; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: diets diets_id_kind_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.diets
@@ -10947,7 +11781,7 @@ ALTER TABLE ONLY public.diets
 
 
 --
--- Name: diets diets_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: diets diets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.diets
@@ -10955,7 +11789,7 @@ ALTER TABLE ONLY public.diets
 
 
 --
--- Name: favorite_ingredients favorite_ingredients_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: favorite_ingredients favorite_ingredients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.favorite_ingredients
@@ -10963,7 +11797,7 @@ ALTER TABLE ONLY public.favorite_ingredients
 
 
 --
--- Name: favorite_recipes favorite_recipes_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: favorite_recipes favorite_recipes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.favorite_recipes
@@ -10971,7 +11805,7 @@ ALTER TABLE ONLY public.favorite_recipes
 
 
 --
--- Name: ingredient_aliases ingredient_aliases_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: ingredient_aliases ingredient_aliases_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ingredient_aliases
@@ -10979,7 +11813,7 @@ ALTER TABLE ONLY public.ingredient_aliases
 
 
 --
--- Name: ingredient_allergens ingredient_allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: ingredient_allergens ingredient_allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ingredient_allergens
@@ -10987,7 +11821,7 @@ ALTER TABLE ONLY public.ingredient_allergens
 
 
 --
--- Name: ingredient_categories ingredient_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: ingredient_categories ingredient_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ingredient_categories
@@ -10995,7 +11829,7 @@ ALTER TABLE ONLY public.ingredient_categories
 
 
 --
--- Name: ingredients ingredients_code_key; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: ingredients ingredients_code_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ingredients
@@ -11003,7 +11837,7 @@ ALTER TABLE ONLY public.ingredients
 
 
 --
--- Name: ingredients ingredients_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: ingredients ingredients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ingredients
@@ -11011,7 +11845,7 @@ ALTER TABLE ONLY public.ingredients
 
 
 --
--- Name: recipe_cooking_methods recipe_cooking_methods_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: recipe_cooking_methods recipe_cooking_methods_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.recipe_cooking_methods
@@ -11019,7 +11853,7 @@ ALTER TABLE ONLY public.recipe_cooking_methods
 
 
 --
--- Name: recipe_ingredients recipe_ingredients_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: recipe_ingredients recipe_ingredients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.recipe_ingredients
@@ -11027,7 +11861,7 @@ ALTER TABLE ONLY public.recipe_ingredients
 
 
 --
--- Name: recipe_steps recipe_steps_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: recipe_steps recipe_steps_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.recipe_steps
@@ -11035,7 +11869,7 @@ ALTER TABLE ONLY public.recipe_steps
 
 
 --
--- Name: recipes recipes_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: recipes recipes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.recipes
@@ -11043,7 +11877,7 @@ ALTER TABLE ONLY public.recipes
 
 
 --
--- Name: user_allergens user_allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: user_allergens user_allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.user_allergens
@@ -11051,7 +11885,7 @@ ALTER TABLE ONLY public.user_allergens
 
 
 --
--- Name: user_diets user_diets_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: user_diets user_diets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.user_diets
@@ -11059,7 +11893,7 @@ ALTER TABLE ONLY public.user_diets
 
 
 --
--- Name: user_pantry user_pantry_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: user_pantry user_pantry_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.user_pantry
@@ -11067,7 +11901,7 @@ ALTER TABLE ONLY public.user_pantry
 
 
 --
--- Name: users users_login_key; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: users users_login_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.users
@@ -11075,7 +11909,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.users
@@ -11083,77 +11917,77 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: allergens_name_uq; Type: INDEX; Schema: public; Owner: koma
+-- Name: allergens_name_uq; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX allergens_name_uq ON public.allergens USING btree (lower(name));
 
 
 --
--- Name: categories_name_uq; Type: INDEX; Schema: public; Owner: koma
+-- Name: categories_name_uq; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX categories_name_uq ON public.categories USING btree (lower(name));
 
 
 --
--- Name: cooking_methods_name_uq; Type: INDEX; Schema: public; Owner: koma
+-- Name: cooking_methods_name_uq; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX cooking_methods_name_uq ON public.cooking_methods USING btree (lower(name));
 
 
 --
--- Name: diets_name_uq; Type: INDEX; Schema: public; Owner: koma
+-- Name: diets_name_uq; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX diets_name_uq ON public.diets USING btree (lower(name));
 
 
 --
--- Name: ingredient_aliases_uq; Type: INDEX; Schema: public; Owner: koma
+-- Name: ingredient_aliases_uq; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX ingredient_aliases_uq ON public.ingredient_aliases USING btree (ingredient_id, lower(alias));
 
 
 --
--- Name: ingredients_name_uq; Type: INDEX; Schema: public; Owner: koma
+-- Name: ingredients_name_uq; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX ingredients_name_uq ON public.ingredients USING btree (lower(name));
 
 
 --
--- Name: recipe_ingredients_ingr_idx; Type: INDEX; Schema: public; Owner: koma
+-- Name: recipe_ingredients_ingr_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX recipe_ingredients_ingr_idx ON public.recipe_ingredients USING btree (ingredient_id);
 
 
 --
--- Name: recipes_author_idx; Type: INDEX; Schema: public; Owner: koma
+-- Name: recipes_author_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX recipes_author_idx ON public.recipes USING btree (author_id);
 
 
 --
--- Name: recipes_time_idx; Type: INDEX; Schema: public; Owner: koma
+-- Name: recipes_time_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX recipes_time_idx ON public.recipes USING btree (cook_time_min);
 
 
 --
--- Name: favorite_recipes favorite_recipes_access; Type: TRIGGER; Schema: public; Owner: koma
+-- Name: favorite_recipes favorite_recipes_access; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER favorite_recipes_access BEFORE INSERT OR UPDATE ON public.favorite_recipes FOR EACH ROW EXECUTE FUNCTION public.check_favorite_recipe_access();
 
 
 --
--- Name: diet_excluded_allergens diet_excluded_allergens_allergen_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: diet_excluded_allergens diet_excluded_allergens_allergen_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.diet_excluded_allergens
@@ -11161,7 +11995,7 @@ ALTER TABLE ONLY public.diet_excluded_allergens
 
 
 --
--- Name: diet_excluded_allergens diet_excluded_allergens_diet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: diet_excluded_allergens diet_excluded_allergens_diet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.diet_excluded_allergens
@@ -11169,7 +12003,7 @@ ALTER TABLE ONLY public.diet_excluded_allergens
 
 
 --
--- Name: diet_excluded_categories diet_excluded_categories_category_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: diet_excluded_categories diet_excluded_categories_category_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.diet_excluded_categories
@@ -11177,7 +12011,7 @@ ALTER TABLE ONLY public.diet_excluded_categories
 
 
 --
--- Name: diet_excluded_categories diet_excluded_categories_diet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: diet_excluded_categories diet_excluded_categories_diet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.diet_excluded_categories
@@ -11185,7 +12019,7 @@ ALTER TABLE ONLY public.diet_excluded_categories
 
 
 --
--- Name: diet_excluded_methods diet_excluded_methods_diet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: diet_excluded_methods diet_excluded_methods_diet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.diet_excluded_methods
@@ -11193,7 +12027,7 @@ ALTER TABLE ONLY public.diet_excluded_methods
 
 
 --
--- Name: diet_excluded_methods diet_excluded_methods_method_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: diet_excluded_methods diet_excluded_methods_method_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.diet_excluded_methods
@@ -11201,7 +12035,7 @@ ALTER TABLE ONLY public.diet_excluded_methods
 
 
 --
--- Name: favorite_ingredients favorite_ingredients_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: favorite_ingredients favorite_ingredients_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.favorite_ingredients
@@ -11209,7 +12043,7 @@ ALTER TABLE ONLY public.favorite_ingredients
 
 
 --
--- Name: favorite_ingredients favorite_ingredients_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: favorite_ingredients favorite_ingredients_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.favorite_ingredients
@@ -11217,7 +12051,7 @@ ALTER TABLE ONLY public.favorite_ingredients
 
 
 --
--- Name: favorite_recipes favorite_recipes_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: favorite_recipes favorite_recipes_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.favorite_recipes
@@ -11225,7 +12059,7 @@ ALTER TABLE ONLY public.favorite_recipes
 
 
 --
--- Name: favorite_recipes favorite_recipes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: favorite_recipes favorite_recipes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.favorite_recipes
@@ -11233,7 +12067,7 @@ ALTER TABLE ONLY public.favorite_recipes
 
 
 --
--- Name: ingredient_aliases ingredient_aliases_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: ingredient_aliases ingredient_aliases_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ingredient_aliases
@@ -11241,7 +12075,7 @@ ALTER TABLE ONLY public.ingredient_aliases
 
 
 --
--- Name: ingredient_allergens ingredient_allergens_allergen_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: ingredient_allergens ingredient_allergens_allergen_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ingredient_allergens
@@ -11249,7 +12083,7 @@ ALTER TABLE ONLY public.ingredient_allergens
 
 
 --
--- Name: ingredient_allergens ingredient_allergens_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: ingredient_allergens ingredient_allergens_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ingredient_allergens
@@ -11257,7 +12091,7 @@ ALTER TABLE ONLY public.ingredient_allergens
 
 
 --
--- Name: ingredient_categories ingredient_categories_category_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: ingredient_categories ingredient_categories_category_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ingredient_categories
@@ -11265,7 +12099,7 @@ ALTER TABLE ONLY public.ingredient_categories
 
 
 --
--- Name: ingredient_categories ingredient_categories_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: ingredient_categories ingredient_categories_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ingredient_categories
@@ -11273,7 +12107,7 @@ ALTER TABLE ONLY public.ingredient_categories
 
 
 --
--- Name: recipe_cooking_methods recipe_cooking_methods_method_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: recipe_cooking_methods recipe_cooking_methods_method_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.recipe_cooking_methods
@@ -11281,7 +12115,7 @@ ALTER TABLE ONLY public.recipe_cooking_methods
 
 
 --
--- Name: recipe_cooking_methods recipe_cooking_methods_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: recipe_cooking_methods recipe_cooking_methods_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.recipe_cooking_methods
@@ -11289,7 +12123,7 @@ ALTER TABLE ONLY public.recipe_cooking_methods
 
 
 --
--- Name: recipe_ingredients recipe_ingredients_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: recipe_ingredients recipe_ingredients_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.recipe_ingredients
@@ -11297,7 +12131,7 @@ ALTER TABLE ONLY public.recipe_ingredients
 
 
 --
--- Name: recipe_ingredients recipe_ingredients_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: recipe_ingredients recipe_ingredients_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.recipe_ingredients
@@ -11305,7 +12139,7 @@ ALTER TABLE ONLY public.recipe_ingredients
 
 
 --
--- Name: recipe_steps recipe_steps_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: recipe_steps recipe_steps_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.recipe_steps
@@ -11313,7 +12147,7 @@ ALTER TABLE ONLY public.recipe_steps
 
 
 --
--- Name: recipes recipes_author_fk; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: recipes recipes_author_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.recipes
@@ -11321,7 +12155,7 @@ ALTER TABLE ONLY public.recipes
 
 
 --
--- Name: user_allergens user_allergens_allergen_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: user_allergens user_allergens_allergen_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.user_allergens
@@ -11329,7 +12163,7 @@ ALTER TABLE ONLY public.user_allergens
 
 
 --
--- Name: user_allergens user_allergens_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: user_allergens user_allergens_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.user_allergens
@@ -11337,7 +12171,7 @@ ALTER TABLE ONLY public.user_allergens
 
 
 --
--- Name: user_diets user_diets_diet_id_diet_kind_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: user_diets user_diets_diet_id_diet_kind_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.user_diets
@@ -11345,7 +12179,7 @@ ALTER TABLE ONLY public.user_diets
 
 
 --
--- Name: user_diets user_diets_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: user_diets user_diets_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.user_diets
@@ -11353,7 +12187,7 @@ ALTER TABLE ONLY public.user_diets
 
 
 --
--- Name: user_pantry user_pantry_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: user_pantry user_pantry_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.user_pantry
@@ -11361,7 +12195,7 @@ ALTER TABLE ONLY public.user_pantry
 
 
 --
--- Name: user_pantry user_pantry_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: user_pantry user_pantry_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.user_pantry
@@ -11369,7 +12203,7 @@ ALTER TABLE ONLY public.user_pantry
 
 
 --
--- Name: users users_pevzner_diet_id_pevzner_kind_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: users users_pevzner_diet_id_pevzner_kind_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.users
@@ -11380,5 +12214,5 @@ ALTER TABLE ONLY public.users
 -- PostgreSQL database dump complete
 --
 
-\unrestrict b7cn6pjuXzGBj5IPUrZQjlU7ZaIJsOPrq9zumRKaxcf5T0DaGioZpvA57cJhY4Y
+\unrestrict vtxzK2VbhGAwfTqpQPIBcKySguLBdOA0JokuoGIfdlzCDiXCygwqzZcw9pdAh3c
 
