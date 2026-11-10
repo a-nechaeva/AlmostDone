@@ -2,6 +2,8 @@ openapi: 3.1.0
 info:
   title: AlmostDone OPEN API
   version: 0.3.0-draft
+servers:
+- url: /api/v1
 security:
 - BearerAuth: []
 paths:
@@ -123,7 +125,7 @@ paths:
                 type: integer
                 minimum: 1
               description: Секунды до повтора; для 503 может отсутствовать.
-      description: 'D1: flow и поля SDK требуют согласования. Сервер проверяет код у провайдера и его
+      description: 'Flow и поля SDK требуют согласования. Сервер проверяет код у провайдера и его
         client/redirect/PKCE binding; client_id и секрет провайдера — конфигурация backend. Identity=(provider,
         subject). Email не объединяет аккаунты. Серверные сессии изолированы по внутреннему user_id. Коды
         и токены не логировать.'
@@ -137,7 +139,7 @@ paths:
   /auth/yandex:
     post:
       operationId: auth_yandex
-      summary: Обмен доказательства входа yandex
+      summary: Обмен OAuth-токена Яндекса на сессию приложения
       tags:
       - auth
       x-issues:
@@ -152,7 +154,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Session'
         '401':
-          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          description: 'invalid_credentials: OAuth-токен недействителен, истёк, отозван или выдан другому приложению.'
           content:
             application/json:
               schema:
@@ -192,10 +194,13 @@ paths:
                 type: integer
                 minimum: 1
               description: Секунды до повтора; для 503 может отсутствовать.
-      description: 'D1: flow и поля SDK требуют согласования. Сервер проверяет код у провайдера и его
-        client/redirect/PKCE binding; client_id и секрет провайдера — конфигурация backend. Identity=(provider,
-        subject). Email не объединяет аккаунты. Серверные сессии изолированы по внутреннему user_id. Коды
-        и токены не логировать.'
+      description: 'Android передаёт OAuth-токен, полученный через LoginSDK Яндекс ID. Backend проверяет
+        его запросом GET https://login.yandex.ru/info?format=json с заголовком Authorization: OAuth <oauth_token>.
+        client_id из ответа должен совпадать с настроенным на backend client_id приложения; иначе 401
+        invalid_credentials. Недействительный, истёкший или отозванный токен также даёт 401 invalid_credentials;
+        недоступность Яндекса — 503 service_unavailable. Identity=(yandex, id из ответа Яндекса).
+        Email не объединяет аккаунты. Backend выдаёт собственную Session с изоляцией по внутреннему user_id.
+        OAuth-токен провайдера не является сессией приложения и не логируется.'
       security: []
       requestBody:
         required: true
@@ -259,7 +264,7 @@ paths:
                 type: integer
                 minimum: 1
               description: Секунды до повтора; для 503 может отсутствовать.
-      description: 'D2: старый refresh одноразовый, повторное использование отзывает семейство. Автоматически
+      description: 'Старый refresh одноразовый, повторное использование отзывает семейство. Автоматически
         повторять после timeout нельзя; повторный вход. Не требует access token.'
       security: []
       requestBody:
@@ -626,6 +631,7 @@ paths:
     get:
       operationId: catalog_dietary_options
       summary: Справочник dietary-options
+      description: Возвращает явные связи вариантов ограничений с полями Preferences; правила выбора и сброса заданы в DietaryOption.
       tags:
       - catalog
       x-issues:
@@ -637,7 +643,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Dictionary'
+                $ref: '#/components/schemas/DietaryOptions'
           headers:
             ETag:
               schema:
@@ -1246,7 +1252,7 @@ paths:
   /recommendations:
     post:
       operationId: recommendations_create
-      summary: Создать снимок подбора и страницу графа
+      summary: Создать снимок подбора и первую страницу карточек
       tags:
       - recommendations
       x-issues:
@@ -1317,7 +1323,8 @@ paths:
         не подтверждает его выполнение и исключается. unknown_total — подмножество visible_total. Порядок
         ready, missing, unknown; missing_count ASC; известная цена ASC, неизвестная в конце; id ASC. visibility
         определяет items, counts общие. Поля request_id и state_version позволяют Android отбросить устаревший
-        ответ. Graph относится ровно к items. D5: TTL снимка 10 минут.'
+        ответ. Граф всего снимка загружается отдельно через GET /recommendations/{snapshot_id}/graph
+        и не зависит от страницы items. TTL снимка 10 минут.'
       requestBody:
         required: true
         content:
@@ -1406,7 +1413,7 @@ paths:
               description: Секунды до повтора; для 503 может отсутствовать.
       description: 'Cursor получен из page.next_cursor; без него первая страница. Размер и фильтры закреплены
         в снимке. Snapshot принадлежит user_id. При изменении state/catalog — 409 context_changed; после
-        TTL — 409 snapshot_expired. Пустой результат: items/nodes/edges пусты, has_more=false, next_cursor=null.'
+        TTL — 409 snapshot_expired. Пустой список: items пуст, has_more=false, next_cursor=null. Граф загружается отдельно по snapshot_id.'
       parameters:
       - name: snapshot_id
         in: path
@@ -1417,6 +1424,99 @@ paths:
           maxLength: 128
           description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
       - $ref: '#/components/parameters/Cursor'
+  /recommendations/{snapshot_id}/graph:
+    get:
+      operationId: recommendations_graph
+      summary: Граф наборов покупок по всему снимку
+      tags:
+      - recommendations
+      x-issues:
+      - 6
+      - 19
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecommendationGraph'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '404':
+          description: Ресурс не найден или принадлежит другому пользователю; не раскрывать существование чужого
+            ресурса.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: unit_conflict, idempotency_conflict, operation_in_progress, context_changed, snapshot_expired
+            или already_imported. Для operation_in_progress вернуть Retry-After.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+      description: Возвращает весь граф без cursor и limit; filters, visibility и servings закреплены в снимке.
+        Чужой или неизвестный snapshot_id — 404; изменение state/catalog — 409 context_changed; истёкший TTL
+        — 409 snapshot_expired. При конфликте создать новый снимок; граф и карточки разных снимков не смешивать.
+        dish_count не зависит от страницы. Формат и инварианты заданы в Graph.
+      parameters:
+      - name: snapshot_id
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
   /recipes/{recipe_id}:
     get:
       operationId: recipes_get
@@ -1494,6 +1594,12 @@ paths:
         ингредиенты явно отмечены, потенциальные аллергены не теряются. shopping_items — только однозначно
         определённые упаковки; неизвестные показываются через ingredients. После мутации перечитать тот
         же ID. GET не резервирует и не списывает продукты.
+        Временные exclude_allergens дополняют excluded_allergens текущего профиля (объединение без
+        дубликатов) и не сохраняются в профиль. recipe.suitability и причины рассчитываются по этим
+        объединённым ограничениям так же, как в подборе. При неизменных профиле и каталоге одинаковый
+        контекст исключений должен давать одинаковый статус и причины. Скрытый по аллергенам рецепт
+        доступен по ID с suitability=hidden и соответствующими причинами; ограничение не превращается
+        в 404. Сведения об аллергенах и их полноте не теряются.
       parameters:
       - name: recipe_id
         in: path
@@ -1504,6 +1610,7 @@ paths:
           maxLength: 128
           description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
       - name: servings
+        description: При переходе из подбора или плана покупок клиент обязан передать servings из ответа; default используется только при самостоятельном открытии рецепта.
         in: query
         required: false
         schema:
@@ -1511,6 +1618,27 @@ paths:
           minimum: 1
           maximum: 12
           default: 2
+      - name: exclude_allergens
+        in: query
+        required: false
+        style: form
+        explode: true
+        description: >-
+          Временные исключения аллергенов. При переходе из подбора (включая скрытые рецепты и граф)
+          или плана покупок Android передаёт filters.exclude_allergens из запроса, создавшего этот
+          результат, а не из изменённого впоследствии состояния фильтров. При повторном запросе деталей
+          и изменении порций сохраняет этот список. Отсутствие параметра означает пустой список
+          временных исключений; ограничения профиля применяются всегда. Неизвестный ID — 422
+          validation_error. Несколько ID передаются повторением параметра:
+          ?exclude_allergens=peanut&exclude_allergens=milk (условные ID; используются ID справочника).
+        schema:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 128
+          uniqueItems: true
+          default: []
   /me/favorites/recipes:
     get:
       operationId: favorites_recipes
@@ -2097,7 +2225,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PurchaseResult'
+                $ref: '#/components/schemas/SinglePurchaseResult'
           headers:
             ETag:
               schema:
@@ -2148,14 +2276,19 @@ paths:
                 type: integer
                 minimum: 1
               description: Секунды до повтора; для 503 может отсутствовать.
-      description: 'Один серверный контекст запасов+профиля+фильтров. Только suitability=allowed и известные
-        количества/цены подтверждают бюджет. single-purchase: одна упаковка, максимум альтернативных блюд,
-        tie-break цена ASC, package_id ASC. budget: максимум альтернативных блюд в пределах бюджета, tie-break
-        общая цена ASC, стабильный список package_id; D6 требует подтверждения движком. Альтернативы не
-        обещают одновременное приготовление. Неизвестные оценки — unpriced_recipe_ids и недостаточность
-        данных, не бесплатные покупки. found имеет непустые items и известный total_cost<=budget; no_plan
-        имеет пустые items, total_cost=null; insufficient_data тоже не обещает план. При выборе filters.mode=now
-        возможен no_plan: фильтры применяются буквально. Изменений списка покупок/запасов нет.'
+      description: 'Один серверный контекст запасов+профиля+фильтров+servings. Возвращает options — варианты
+        покупки одного ингредиента; shopping_item.package_count может быть больше одного. Каждый вариант
+        содержит собственные unlocked_recipe_ids. Все расчёты используют servings из запроса; подходят только
+        рецепты с suitability=allowed и известными количествами и ценами. Для каждого ингредиента упаковок
+        достаточно для каждого открываемого рецепта по отдельности. Варианты с total_price выше budget исключаются.
+        Порядок: число unlocked_recipe_ids DESC, shopping_item.total_price ASC, ingredient_id ASC, package_id ASC;
+        первый вариант — лучший. Один вариант на ingredient_id. Это альтернативные покупки: их цены и списки
+        блюд не суммируются. Блюда внутри варианта тоже альтернативы, одновременное приготовление не обещается.
+        found означает непустой options; no_plan и insufficient_data имеют пустой options. При отсутствии
+        подтверждённых вариантов и наличии рецептов с неизвестными оценками — insufficient_data и их ID в
+        unpriced_recipe_ids; иначе no_plan. При found unpriced_recipe_ids может содержать исключённые из расчёта
+        рецепты. Фильтры применяются буквально, поэтому filters.mode=now может дать no_plan.
+        Изменений списка покупок/запасов нет.'
       requestBody:
         required: true
         content:
@@ -2227,10 +2360,9 @@ paths:
                 type: integer
                 minimum: 1
               description: Секунды до повтора; для 503 может отсутствовать.
-      description: 'Один серверный контекст запасов+профиля+фильтров. Только suitability=allowed и известные
-        количества/цены подтверждают бюджет. single-purchase: одна упаковка, максимум альтернативных блюд,
-        tie-break цена ASC, package_id ASC. budget: максимум альтернативных блюд в пределах бюджета, tie-break
-        общая цена ASC, стабильный список package_id; D6 требует подтверждения движком. Альтернативы не
+      description: 'Один серверный контекст запасов+профиля+фильтров+servings. Все рецепты и докупаемые упаковки рассчитываются на servings из запроса. Только suitability=allowed и известные
+        количества/цены подтверждают бюджет. budget: максимум альтернативных блюд в пределах бюджета, tie-break
+        общая цена ASC, стабильный список package_id. Альтернативы не
         обещают одновременное приготовление. Неизвестные оценки — unpriced_recipe_ids и недостаточность
         данных, не бесплатные покупки. found имеет непустые items и известный total_cost<=budget; no_plan
         имеет пустые items, total_cost=null; insufficient_data тоже не обещает план. При выборе filters.mode=now
@@ -2334,15 +2466,14 @@ paths:
                 type: integer
                 minimum: 1
               description: Секунды до повтора; для 503 может отсутствовать.
-      description: 'D3: async; multipart kind=receipt для фото/скриншота электронного чека, kind=products
+      description: 'Async; multipart kind=receipt для фото/скриншота электронного чека, kind=products
         для фото продуктов в холодильнике или на столе. JPEG/PNG <=10 MiB, <=25 мегапикселей после декодирования;
         проверять фактический формат. PDF и другие файлы электронных чеков пока не поддерживаются. Для
         products предлагать только видимые продукты; неизвестное количество возвращать null. Idempotency
         fingerprint включает kind, байты файла и MIME; другой kind с тем же ключом — 409. До подтверждённого
         импорта запасы не меняются. 202 может содержать queued/processing/succeeded; Location указывает
-        GET задачи, Retry-After=2. D4: фото удалить после обработки, не позднее 24ч; результат хранить
-        24ч. Не логировать изображения/сырые строки. Лимиты и timeout — предложения для согласования в
-        x-review-decisions.'
+        GET задачи, Retry-After=2. Фото удалить после обработки, не позднее 24ч; результат хранить
+        24ч. Не логировать изображения/сырые строки.'
       parameters:
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -2775,6 +2906,141 @@ components:
       - catalog_version
       - items
       additionalProperties: false
+    DietaryOptions:
+      type: object
+      properties:
+        catalog_version:
+          type: string
+          minLength: 1
+          maxLength: 128
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DietaryOption'
+      required:
+      - catalog_version
+      - items
+      additionalProperties: false
+      description: >-
+        Явное соответствие вариантов ограничения полям Preferences. id уникален в справочнике;
+        пары profile_binding.field/value также уникальны среди выбираемых элементов. Названия и ID
+        не разбираются клиентом для определения поля профиля. Каталог должен содержать варианты
+        для всех сохраняемых значений food_type и diet_table_id, включая неподдерживаемые.
+    DietaryOption:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный ID элемента справочника; не обязательно равен значению поля профиля.
+        name:
+          type: string
+        support:
+          type: string
+          enum:
+          - supported
+          - unsupported
+          - informational
+        profile_binding:
+          anyOf:
+          - $ref: '#/components/schemas/DietaryProfileBinding'
+          - type: 'null'
+      required:
+      - id
+      - name
+      - support
+      - profile_binding
+      additionalProperties: false
+      description: >-
+        Элемент выбран, если preferences[profile_binding.field] равно profile_binding.value.
+        При выборе клиент записывает это значение в полный черновик Preferences. food_type и
+        diet_table_id допускают по одному выбранному значению; булевы ограничения независимы.
+        Снятие булева ограничения записывает false; сброс food_type — any, diet_table_id — null.
+        Для informational profile_binding=null: элемент только поясняет и не выбирается.
+        unsupported имеет обычную связь, может сохраняться, но не обещает поддержку движком;
+        выбранные неподдерживаемые элементы возвращаются как ID этого справочника в
+        Profile.unsupported_restrictions.
+      allOf:
+      - if:
+          properties:
+            support:
+              const: informational
+          required:
+          - support
+        then:
+          properties:
+            profile_binding:
+              type: 'null'
+        else:
+          properties:
+            profile_binding:
+              $ref: '#/components/schemas/DietaryProfileBinding'
+      examples:
+      - id: gluten-free-option
+        name: Без глютена
+        support: supported
+        profile_binding:
+          field: gluten_free
+          value: true
+      - id: vegetarian-option
+        name: Вегетарианское питание
+        support: supported
+        profile_binding:
+          field: food_type
+          value: vegetarian
+      - id: diet-table-option
+        name: Диетический стол (пример)
+        support: unsupported
+        profile_binding:
+          field: diet_table_id
+          value: diet-table-example
+    DietaryProfileBinding:
+      description: Типизированные поле и значение Preferences; произвольные поля и несовместимые значения запрещены.
+      oneOf:
+      - type: object
+        properties:
+          field:
+            type: string
+            const: food_type
+          value:
+            type: string
+            enum:
+            - any
+            - vegetarian
+            - vegan
+        required:
+        - field
+        - value
+        additionalProperties: false
+      - type: object
+        properties:
+          field:
+            type: string
+            enum:
+            - gluten_free
+            - lactose_free
+            - diabetes
+          value:
+            type: boolean
+            const: true
+        required:
+        - field
+        - value
+        additionalProperties: false
+      - type: object
+        properties:
+          field:
+            type: string
+            const: diet_table_id
+          value:
+            type: string
+            minLength: 1
+            maxLength: 128
+        required:
+        - field
+        - value
+        additionalProperties: false
     Preferences:
       type: object
       properties:
@@ -3047,10 +3313,15 @@ components:
       properties:
         code:
           type: string
+          description: Машинный код причины. skip_optional означает рекомендацию исключить необязательные
+            ингредиенты; сам по себе не является причиной скрытия блюда.
         message:
           type: string
+          description: Текст для пользователя, сформированный backend; клиент не определяет code или ID по тексту.
         ingredient_ids:
           type: array
+          description: Стабильные идентификаторы ингредиентов API (ingredients.code), а не названия.
+            Для skip_optional перечислены необязательные ингредиенты, которые рекомендуется исключить.
           items:
             type: string
             minLength: 1
@@ -3058,6 +3329,8 @@ components:
             description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
         restriction_ids:
           type: array
+          description: Стабильные идентификаторы связанных ограничений из справочников allergens и
+            dietary-options, а не их отображаемые названия. Если связанных ограничений нет, список пуст.
           items:
             type: string
             minLength: 1
@@ -3069,6 +3342,27 @@ components:
       - ingredient_ids
       - restriction_ids
       additionalProperties: false
+      allOf:
+      - if:
+          properties:
+            code:
+              const: skip_optional
+          required:
+          - code
+        then:
+          properties:
+            ingredient_ids:
+              minItems: 1
+      description: Причина ограничения или предупреждение. Данные БД должны позволять получить стабильные
+        идентификаторы; backend формирует message отдельно от них. skip_optional не меняет пригодность блюда
+        сам по себе; другие причины скрытия или неопределённости продолжают действовать.
+      example:
+        code: skip_optional
+        message: Лучше без сметаны
+        ingredient_ids:
+        - sour_cream
+        restriction_ids:
+        - milk
     Suitability:
       type: object
       properties:
@@ -3080,12 +3374,16 @@ components:
           - unknown
         reasons:
           type: array
+          description: Причины ограничений и предупреждения; список может быть непустым при status=allowed.
+            Клиент показывает skip_optional как предупреждение и не скрывает блюдо только из-за его наличия.
           items:
             $ref: '#/components/schemas/Reason'
       required:
       - status
       - reasons
       additionalProperties: false
+      description: status определяет пригодность независимо от наличия предупреждений. Если единственные
+        причины имеют code=skip_optional и пригодность в остальном подтверждена, status=allowed.
     Availability:
       type: object
       properties:
@@ -3126,6 +3424,7 @@ components:
             format: uri
           - type: 'null'
         servings:
+          description: Число порций, на которое рассчитаны availability и buy_cost. В подборе равно servings страницы; в деталях — значению query-параметра servings.
           type: integer
           minimum: 1
           maximum: 12
@@ -3351,6 +3650,11 @@ components:
     RecommendationRequest:
       type: object
       properties:
+        servings:
+          type: integer
+          minimum: 1
+          maximum: 12
+          description: Число порций для расчёта каждого рецепта и докупаемых упаковок.
         request_id:
           type: string
           format: uuid
@@ -3366,84 +3670,184 @@ components:
           minimum: 1
           maximum: 100
       required:
+      - servings
       - request_id
       - filters
       - visibility
       - limit
       additionalProperties: false
-      description: Создать неизменяемый снимок подбора по текущим запасам, профилю и каталогу. request_id
+      description: Создать неизменяемый снимок подбора по текущим запасам, профилю, каталогу и servings. При изменении servings создать новый снимок. request_id
         генерирует клиент и сравнивает с актуальным запросом.
     GraphNode:
+      oneOf:
+      - $ref: '#/components/schemas/GraphHomeNode'
+      - $ref: '#/components/schemas/GraphPurchaseNode'
+      - $ref: '#/components/schemas/GraphRecipeNode'
+      discriminator:
+        propertyName: kind
+        mapping:
+          home: '#/components/schemas/GraphHomeNode'
+          purchase: '#/components/schemas/GraphPurchaseNode'
+          recipe: '#/components/schemas/GraphRecipeNode'
+    GraphHomeNode:
       type: object
       properties:
         id:
           type: string
           minLength: 1
           maxLength: 128
-          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
         kind:
           type: string
-          enum:
-          - ingredient
-          - purchase
-          - recipe
-        entity_id:
-          type: string
-          minLength: 1
-          maxLength: 128
-          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+          const: home
         label:
           type: string
-        recipe_id:
-          anyOf:
-          - type: string
-            minLength: 1
-            maxLength: 128
-            description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
-          - type: 'null'
-        shopping_item:
-          anyOf:
-          - $ref: '#/components/schemas/ShoppingItem'
-          - type: 'null'
+        level:
+          type: integer
+          const: 0
       required:
       - id
       - kind
-      - entity_id
       - label
-      - recipe_id
-      - shopping_item
+      - level
       additionalProperties: false
-    GraphEdge:
+      description: Единственный корневой узел запасов пользователя, уровень 0; покупки отсутствуют.
+    GraphPurchaseNode:
       type: object
       properties:
-        source:
+        id:
           type: string
           minLength: 1
           maxLength: 128
-          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
-        target:
-          type: string
-          minLength: 1
-          maxLength: 128
-          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
         kind:
           type: string
-          enum:
-          - available_for
-          - requires
-          - unlocks
+          const: purchase
+        label:
+          type: string
+        level:
+          type: integer
+          minimum: 1
+          maximum: 3
+        shopping_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShoppingItem'
+          minItems: 1
+          maxItems: 3
+        cost:
+          anyOf:
+          - $ref: '#/components/schemas/Money'
+          - type: 'null'
+        dish_count:
+          type: integer
+          minimum: 1
       required:
-      - source
-      - target
+      - id
       - kind
+      - label
+      - level
+      - shopping_items
+      - cost
+      - dish_count
       additionalProperties: false
+      description: Узел объединяет рецепты с одним точным набором недостающих ingredient_id. level равен числу
+        ингредиентов, а не упаковок. shopping_items содержит весь набор; ingredient_id уникальны. cost — сумма
+        total_price; при неизвестной цене null. dish_count — число непосредственно связанных рецептов во всём снимке.
+        Это альтернативы, не общий план приготовления. Упаковок достаточно для каждого связанного рецепта по отдельности
+        на servings снимка.
+    GraphRecipeNode:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 128
+        kind:
+          type: string
+          const: recipe
+        label:
+          type: string
+        level:
+          type: integer
+          minimum: 0
+          maximum: 3
+        recipe_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+        recipe:
+          $ref: '#/components/schemas/RecipeCard'
+      required:
+      - id
+      - kind
+      - label
+      - level
+      - recipe_id
+      - recipe
+      additionalProperties: false
+      description: recipe.id равен recipe_id; servings карточки равен servings снимка, level равен missing_count.
+        Полная карточка доступна и для рецепта вне текущей страницы списка. suitability и предупреждения сохраняются;
+        ребро не отменяет ограничения питания.
+    GraphEdge:
+      oneOf:
+      - type: object
+        properties:
+          source:
+            type: string
+            minLength: 1
+            maxLength: 128
+          target:
+            type: string
+            minLength: 1
+            maxLength: 128
+          kind:
+            type: string
+            const: extends
+          add:
+            type: array
+            items:
+              $ref: '#/components/schemas/ShoppingItem'
+            minItems: 1
+          add_cost:
+            anyOf:
+            - $ref: '#/components/schemas/Money'
+            - type: 'null'
+        required:
+        - source
+        - target
+        - kind
+        - add
+        - add_cost
+        additionalProperties: false
+        description: Переход home → purchase или purchase → purchase. Целевой набор строго расширяет исходный,
+          level увеличивается. add содержит новые ингредиенты и при необходимости положительное дополнительное
+          число упаковок существующих. Сумма исходных строк и add точно даёт целевой набор. add_cost — сумма цен
+          add, null при неизвестной цене. Подпись перехода строится по add.
+      - type: object
+        properties:
+          source:
+            type: string
+            minLength: 1
+            maxLength: 128
+          target:
+            type: string
+            minLength: 1
+            maxLength: 128
+          kind:
+            type: string
+            const: unlocks
+        required:
+        - source
+        - target
+        - kind
+        additionalProperties: false
+        description: Переход home → recipe при missing_count=0 или purchase → recipe для точного набора недостающих
+          ингредиентов. Покупка достаточна для рецепта на servings снимка.
     Graph:
       type: object
       properties:
         scope:
           type: string
-          enum:
-          - current_page
+          const: snapshot
         nodes:
           type: array
           items:
@@ -3452,16 +3856,80 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/GraphEdge'
+        unrepresented_recipe_ids:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 128
+          uniqueItems: true
       required:
       - scope
       - nodes
       - edges
+      - unrepresented_recipe_ids
       additionalProperties: false
-      description: Только рецепты текущей страницы и связанные ингредиенты/покупки. Рёбра — связи состава/доступности;
-        альтернативы не обещают совместного приготовления.
+      description: 'Граф всего снимка независимо от страниц списка. Ровно один home, ID узлов уникальны и непрозрачны.
+        Все рёбра ссылаются на существующие узлы; каждый узел достижим из home, циклы запрещены. Для одного набора
+        ingredient_id один purchase; несколько родителей допустимы. Рецепты с известными количествами и missing_count
+        от 0 до 3 представлены узлами recipe. Рецепты с 4+ недостающими или неизвестным количеством находятся в
+        unrepresented_recipe_ids и остаются в списке согласно фильтрам. Каждый рецепт снимка представлен ровно
+        один раз: узлом или в unrepresented_recipe_ids. Неизвестные цены не заменяются нулём. Пустой снимок содержит
+        только home; edges и unrepresented_recipe_ids пусты.'
+    RecommendationGraph:
+      type: object
+      properties:
+        request_id:
+          type: string
+          format: uuid
+        snapshot_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+        expires_at:
+          type: string
+          format: date-time
+        state_version:
+          type: integer
+          minimum: 0
+        catalog_version:
+          type: string
+          minLength: 1
+          maxLength: 128
+        servings:
+          type: integer
+          minimum: 1
+          maximum: 12
+        filters:
+          $ref: '#/components/schemas/Filters'
+        visibility:
+          type: string
+          enum:
+          - visible
+          - hidden
+        graph:
+          $ref: '#/components/schemas/Graph'
+      required:
+      - request_id
+      - snapshot_id
+      - expires_at
+      - state_version
+      - catalog_version
+      - servings
+      - filters
+      - visibility
+      - graph
+      additionalProperties: false
+      description: Контекст и версии совпадают с запросом и страницами снимка. Android передаёт servings и filters.exclude_allergens
+        из этого ответа при открытии рецепта. Следующая страница списка не меняет граф и dish_count.
     RecommendationPage:
       type: object
       properties:
+        servings:
+          type: integer
+          minimum: 1
+          maximum: 12
+          description: Число порций для расчёта каждого рецепта и докупаемых упаковок.
         request_id:
           type: string
           format: uuid
@@ -3500,11 +3968,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/RecipeCard'
-        graph:
-          $ref: '#/components/schemas/Graph'
         page:
           $ref: '#/components/schemas/PageInfo'
       required:
+      - servings
       - request_id
       - snapshot_id
       - expires_at
@@ -3515,8 +3982,8 @@ components:
       - hidden_total
       - unknown_total
       - items
-      - graph
       - page
+      description: Число порций повторяет запрос и сохраняется на всех страницах снимка. У всех items значение RecipeCard.servings равно servings страницы. Доступность и стоимость рассчитаны на это число порций. Граф снимка загружается через GET /recommendations/{snapshot_id}/graph; пагинация затрагивает только items. При открытии деталей клиент передаёт его в query-параметре servings.
       additionalProperties: false
     ShoppingItem:
       type: object
@@ -3561,6 +4028,11 @@ components:
     PurchaseRequest:
       type: object
       properties:
+        servings:
+          type: integer
+          minimum: 1
+          maximum: 12
+          description: Число порций для расчёта каждого рецепта и докупаемых упаковок.
         request_id:
           type: string
           format: uuid
@@ -3569,13 +4041,132 @@ components:
         budget:
           $ref: '#/components/schemas/Money'
       required:
+      - servings
       - request_id
       - filters
       - budget
+      description: Подбор покупки рассчитывает каждый альтернативный рецепт на servings порций; бюджет и количества упаковок учитывают этот масштаб.
       additionalProperties: false
+    SinglePurchaseOption:
+      type: object
+      properties:
+        shopping_item:
+          allOf:
+          - $ref: '#/components/schemas/ShoppingItem'
+          - properties:
+              total_price:
+                $ref: '#/components/schemas/Money'
+        unlocked_recipe_ids:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 128
+          minItems: 1
+          uniqueItems: true
+      required:
+      - shopping_item
+      - unlocked_recipe_ids
+      additionalProperties: false
+      description: Один ингредиент с необходимым числом целых упаковок и собственным списком открываемых
+        альтернативных рецептов. total_price известна и не превышает budget запроса.
+    SinglePurchaseResult:
+      type: object
+      properties:
+        servings:
+          type: integer
+          minimum: 1
+          maximum: 12
+        request_id:
+          type: string
+          format: uuid
+        state_version:
+          type: integer
+          minimum: 0
+        catalog_version:
+          type: string
+          minLength: 1
+          maxLength: 128
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/SinglePurchaseOption'
+        unpriced_recipe_ids:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 128
+          uniqueItems: true
+        semantics:
+          type: string
+          const: alternatives
+        status:
+          type: string
+          enum:
+          - found
+          - no_plan
+          - insufficient_data
+      required:
+      - servings
+      - request_id
+      - state_version
+      - catalog_version
+      - options
+      - unpriced_recipe_ids
+      - semantics
+      - status
+      additionalProperties: false
+      allOf:
+      - if:
+          properties:
+            status:
+              const: found
+          required:
+          - status
+        then:
+          properties:
+            options:
+              minItems: 1
+        else:
+          properties:
+            options:
+              maxItems: 0
+      description: Варианты упорядочены по числу открываемых блюд DESC, цене ASC, ingredient_id ASC,
+        package_id ASC. Первый вариант — лучший; варианты не образуют общий план покупок. servings повторяет
+        запрос при любом status; клиент передаёт его при открытии деталей любого unlocked_recipe_id.
+      example:
+        servings: 2
+        request_id: 00000000-0000-4000-8000-000000000001
+        state_version: 7
+        catalog_version: catalog-1
+        options:
+        - shopping_item:
+            key: cheese:package-200g
+            ingredient_id: cheese
+            package_id: package-200g
+            name: Сыр
+            package_quantity:
+              value: 200
+              unit: g
+            package_count: 2
+            total_price:
+              minor_units: 46000
+              currency: RUB
+          unlocked_recipe_ids:
+          - recipe-1
+          - recipe-2
+        unpriced_recipe_ids: []
+        semantics: alternatives
+        status: found
     PurchaseResult:
       type: object
       properties:
+        servings:
+          type: integer
+          minimum: 1
+          maximum: 12
+          description: Число порций для расчёта каждого рецепта и докупаемых упаковок.
         request_id:
           type: string
           format: uuid
@@ -3623,6 +4214,7 @@ components:
           - no_plan
           - insufficient_data
       required:
+      - servings
       - request_id
       - state_version
       - catalog_version
@@ -3632,6 +4224,7 @@ components:
       - semantics
       - total_cost
       - status
+      description: servings повторяет запрос для всех статусов результата. shopping_items, total_cost и списки рецептов рассчитаны на это число порций. При открытии любого рецепта из результата клиент передаёт servings в запрос деталей.
       additionalProperties: false
     FavoriteRecipePage:
       type: object
@@ -3746,28 +4339,20 @@ components:
       - code_verifier
       - device_id
       additionalProperties: false
-      description: 'D1 BLOCKER: предложенные поля для code+PKCE; сверить с выбранной версией SDK VK ID
+      description: 'Поля для code+PKCE; сверить с выбранной версией SDK VK ID
         до интеграции.'
     YandexExchange:
       type: object
       properties:
-        authorization_code:
+        oauth_token:
           type: string
           minLength: 1
-        redirect_uri:
-          type: string
-          format: uri
-        code_verifier:
-          type: string
-          minLength: 43
-          maxLength: 128
+          writeOnly: true
+          description: OAuth-токен Яндекса, полученный Android через LoginSDK Яндекс ID.
       required:
-      - authorization_code
-      - redirect_uri
-      - code_verifier
+      - oauth_token
       additionalProperties: false
-      description: 'D1 BLOCKER: предполагается code+PKCE; подтвердить поддержку и форму результата выбранного
-        SDK Яндекс ID. При другом flow изменить эту схему.'
+      description: Обмен OAuth-токена Яндекса на собственную сессию приложения после серверной проверки.
     Refresh:
       type: object
       properties:
@@ -3985,19 +4570,4 @@ components:
       - state_version
       - pantry
       additionalProperties: false
-x-review-status: DRAFT_NOT_APPROVED
-x-review-decisions:
-  D1: Подтвердить версии SDK, flow, поля обмена, client ID и redirect URI VK ID / Яндекс ID.
-  D2: 'Предложение: opaque access 15 минут, refresh 30 дней с ротацией; согласовать сроки и потерю ответа
-    refresh.'
-  D3: 'Предложение: async JPEG/PNG до 10 MiB и 25 Мп; connect timeout 10 с, обычный запрос 30 с, загрузка
-    60 с, ожидание результата 120 с; начальный polling 2 с, далее poll_after_seconds. Истечение ожидания
-    не отменяет задачу. PDF и другие файлы пока не поддерживаются.'
-  D4: 'Предложение: удалить изображения после обработки и не позднее 24 ч; результат хранить 24 ч. Фото/исходные
-    строки не логировать. Подтвердить фактическую очистку.'
-  D5: Согласовать общую версию пользователя, ETag/If-Match и снимки подбора на 10 минут.
-  D6: Согласовать алгоритм максимизации числа альтернативных блюд под бюджет и границу с движком.
-  D7: 'Предложение: успешные идемпотентные ответы хранить 30 дней; импорт дополнительно защищать постоянной
-    уникальностью recognition_id. Согласовать транзакции и очистку.'
-  D8: Указать реальные TEST/PROD base URL и ответственного за серверную поставку.
 x-source-checked-at: '2026-11-10'
