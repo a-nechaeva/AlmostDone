@@ -12,8 +12,15 @@ class AlmostReadyApplication : Application() {
     val container: AppContainer by lazy { AppContainer(this) }
 }
 
-class AppContainer(context: Context) {
-    val catalog: CatalogRepository = DemoCatalogRepository()
+interface AppDependencies {
+    val catalog: CatalogRepository
+    val household: HouseholdRepository
+    val preferences: PreferencesRepository
+    val session: SessionRepository
+}
+
+class AppContainer(context: Context) : AppDependencies {
+    override val catalog: CatalogRepository = DemoCatalogRepository()
     private val database =
         Room.databaseBuilder(
                 context.applicationContext,
@@ -21,9 +28,9 @@ class AppContainer(context: Context) {
                 "household.db",
             )
             .build()
-    val household: HouseholdRepository =
+    override val household: HouseholdRepository =
         RoomHouseholdRepository(database, catalog, DemoCatalog.initialPantry)
     private val localPreferences = LocalPreferences(context.applicationContext.householdPreferences)
-    val preferences: PreferencesRepository = localPreferences
-    val session: SessionRepository = localPreferences
+    override val preferences: PreferencesRepository = localPreferences
+    override val session: SessionRepository = localPreferences
 }

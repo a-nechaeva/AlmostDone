@@ -17,19 +17,41 @@ class FakeHousehold : HouseholdRepository {
 
     override suspend fun toggleFavorite(id: String, ingredient: Boolean) {
         if (failWrite) throw IOException("storage unavailable")
-        values.update { it.copy(favoriteRecipes = it.favoriteRecipes + id) }
+        values.update {
+            fun Set<String>.toggle() = if (id in this) this - id else this + id
+            if (ingredient) it.copy(favoriteIngredients = it.favoriteIngredients.toggle())
+            else it.copy(favoriteRecipes = it.favoriteRecipes.toggle())
+        }
     }
 
     override suspend fun addPantry(id: String, quantity: Quantity?) {
-        values.update { it.copy(pantry = it.pantry + PantryItem(id, quantity)) }
+        if (failWrite) throw IOException("storage unavailable")
+        values.update { state ->
+            val old = state.pantry.find { it.ingredientId == id }
+            require(old?.quantity == null || quantity == null || old.quantity.unit == quantity.unit)
+            val total =
+                if (old == null) quantity
+                else if (old.quantity == null || quantity == null) null
+                else Quantity(old.quantity.value + quantity.value, quantity.unit)
+            state.copy(
+                pantry = state.pantry.filterNot { it.ingredientId == id } + PantryItem(id, total)
+            )
+        }
     }
 
     override suspend fun setPantry(id: String, quantity: Quantity?) {
-        error("Not used in this fake")
+        if (failWrite) throw IOException("storage unavailable")
+        values.update {
+            it.copy(
+                pantry =
+                    it.pantry.filterNot { row -> row.ingredientId == id } + PantryItem(id, quantity)
+            )
+        }
     }
 
     override suspend fun removePantry(id: String) {
-        error("Not used in this fake")
+        if (failWrite) throw IOException("storage unavailable")
+        values.update { it.copy(pantry = it.pantry.filterNot { row -> row.ingredientId == id }) }
     }
 
     override suspend fun planRecipe(id: String, servings: Int) {

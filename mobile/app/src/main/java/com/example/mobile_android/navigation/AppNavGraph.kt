@@ -25,7 +25,7 @@ import androidx.navigation.*
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import com.example.mobile_android.R
-import com.example.mobile_android.app.AppContainer
+import com.example.mobile_android.app.AppDependencies
 import com.example.mobile_android.feature.auth.*
 import com.example.mobile_android.feature.common.*
 import com.example.mobile_android.feature.dishes.*
@@ -52,7 +52,7 @@ private inline fun <reified T : ViewModel> injectedViewModel(
 }
 
 @Composable
-fun AppRoot(container: AppContainer) {
+fun AppRoot(container: AppDependencies) {
     val session: SessionViewModel = injectedViewModel { SessionViewModel(container.session) }
     val state by session.state.collectAsStateWithLifecycle()
     val form by session.form.collectAsStateWithLifecycle()
@@ -73,7 +73,7 @@ fun AppRoot(container: AppContainer) {
 
 @Composable
 private fun ApplicationNavigation(
-    c: AppContainer,
+    c: AppDependencies,
     logout: () -> Unit,
     sessionAction: ActionState,
     dismissSession: () -> Unit,
@@ -210,7 +210,7 @@ private fun ApplicationNavigation(
 }
 
 @Composable
-private fun DishesRoute(c: AppContainer, nav: NavHostController, hidden: Boolean) {
+private fun DishesRoute(c: AppDependencies, nav: NavHostController, hidden: Boolean) {
     val vm: DishesViewModel = injectedViewModel {
         DishesViewModel(c.catalog, c.household, c.preferences, createSavedStateHandle())
     }
