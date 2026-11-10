@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict b7cn6pjuXzGBj5IPUrZQjlU7ZaIJsOPrq9zumRKaxcf5T0DaGioZpvA57cJhY4Y
+\restrict ZwIS1jHed8mT5XdeJHlp2CX1hoAIxtuWl0f3Z0FxtuYMCK0yHqZ6544pyf9Jwgu
 
 -- Dumped from database version 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1)
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1)
@@ -19,6 +19,111 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+ALTER TABLE IF EXISTS ONLY public.users DROP CONSTRAINT IF EXISTS users_pevzner_diet_id_pevzner_kind_fkey;
+ALTER TABLE IF EXISTS ONLY public.user_pantry DROP CONSTRAINT IF EXISTS user_pantry_user_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.user_pantry DROP CONSTRAINT IF EXISTS user_pantry_ingredient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.user_diets DROP CONSTRAINT IF EXISTS user_diets_user_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.user_diets DROP CONSTRAINT IF EXISTS user_diets_diet_id_diet_kind_fkey;
+ALTER TABLE IF EXISTS ONLY public.user_allergens DROP CONSTRAINT IF EXISTS user_allergens_user_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.user_allergens DROP CONSTRAINT IF EXISTS user_allergens_allergen_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.recipes DROP CONSTRAINT IF EXISTS recipes_author_fk;
+ALTER TABLE IF EXISTS ONLY public.recipe_steps DROP CONSTRAINT IF EXISTS recipe_steps_recipe_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.recipe_ingredients DROP CONSTRAINT IF EXISTS recipe_ingredients_recipe_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.recipe_ingredients DROP CONSTRAINT IF EXISTS recipe_ingredients_ingredient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.recipe_cooking_methods DROP CONSTRAINT IF EXISTS recipe_cooking_methods_recipe_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.recipe_cooking_methods DROP CONSTRAINT IF EXISTS recipe_cooking_methods_method_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.ingredient_categories DROP CONSTRAINT IF EXISTS ingredient_categories_ingredient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.ingredient_categories DROP CONSTRAINT IF EXISTS ingredient_categories_category_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.ingredient_allergens DROP CONSTRAINT IF EXISTS ingredient_allergens_ingredient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.ingredient_allergens DROP CONSTRAINT IF EXISTS ingredient_allergens_allergen_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.ingredient_aliases DROP CONSTRAINT IF EXISTS ingredient_aliases_ingredient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.favorite_recipes DROP CONSTRAINT IF EXISTS favorite_recipes_user_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.favorite_recipes DROP CONSTRAINT IF EXISTS favorite_recipes_recipe_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.favorite_ingredients DROP CONSTRAINT IF EXISTS favorite_ingredients_user_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.favorite_ingredients DROP CONSTRAINT IF EXISTS favorite_ingredients_ingredient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.diet_excluded_methods DROP CONSTRAINT IF EXISTS diet_excluded_methods_method_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.diet_excluded_methods DROP CONSTRAINT IF EXISTS diet_excluded_methods_diet_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.diet_excluded_categories DROP CONSTRAINT IF EXISTS diet_excluded_categories_diet_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.diet_excluded_categories DROP CONSTRAINT IF EXISTS diet_excluded_categories_category_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.diet_excluded_allergens DROP CONSTRAINT IF EXISTS diet_excluded_allergens_diet_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.diet_excluded_allergens DROP CONSTRAINT IF EXISTS diet_excluded_allergens_allergen_id_fkey;
+DROP TRIGGER IF EXISTS favorite_recipes_access ON public.favorite_recipes;
+DROP INDEX IF EXISTS public.recipes_time_idx;
+DROP INDEX IF EXISTS public.recipes_author_idx;
+DROP INDEX IF EXISTS public.recipe_ingredients_ingr_idx;
+DROP INDEX IF EXISTS public.ingredients_name_uq;
+DROP INDEX IF EXISTS public.ingredient_aliases_uq;
+DROP INDEX IF EXISTS public.diets_name_uq;
+DROP INDEX IF EXISTS public.cooking_methods_name_uq;
+DROP INDEX IF EXISTS public.categories_name_uq;
+DROP INDEX IF EXISTS public.allergens_name_uq;
+ALTER TABLE IF EXISTS ONLY public.users DROP CONSTRAINT IF EXISTS users_pkey;
+ALTER TABLE IF EXISTS ONLY public.users DROP CONSTRAINT IF EXISTS users_login_key;
+ALTER TABLE IF EXISTS ONLY public.user_pantry DROP CONSTRAINT IF EXISTS user_pantry_pkey;
+ALTER TABLE IF EXISTS ONLY public.user_diets DROP CONSTRAINT IF EXISTS user_diets_pkey;
+ALTER TABLE IF EXISTS ONLY public.user_allergens DROP CONSTRAINT IF EXISTS user_allergens_pkey;
+ALTER TABLE IF EXISTS ONLY public.recipes DROP CONSTRAINT IF EXISTS recipes_pkey;
+ALTER TABLE IF EXISTS ONLY public.recipe_steps DROP CONSTRAINT IF EXISTS recipe_steps_pkey;
+ALTER TABLE IF EXISTS ONLY public.recipe_ingredients DROP CONSTRAINT IF EXISTS recipe_ingredients_pkey;
+ALTER TABLE IF EXISTS ONLY public.recipe_cooking_methods DROP CONSTRAINT IF EXISTS recipe_cooking_methods_pkey;
+ALTER TABLE IF EXISTS ONLY public.ingredients DROP CONSTRAINT IF EXISTS ingredients_pkey;
+ALTER TABLE IF EXISTS ONLY public.ingredients DROP CONSTRAINT IF EXISTS ingredients_code_key;
+ALTER TABLE IF EXISTS ONLY public.ingredient_categories DROP CONSTRAINT IF EXISTS ingredient_categories_pkey;
+ALTER TABLE IF EXISTS ONLY public.ingredient_allergens DROP CONSTRAINT IF EXISTS ingredient_allergens_pkey;
+ALTER TABLE IF EXISTS ONLY public.ingredient_aliases DROP CONSTRAINT IF EXISTS ingredient_aliases_pkey;
+ALTER TABLE IF EXISTS ONLY public.favorite_recipes DROP CONSTRAINT IF EXISTS favorite_recipes_pkey;
+ALTER TABLE IF EXISTS ONLY public.favorite_ingredients DROP CONSTRAINT IF EXISTS favorite_ingredients_pkey;
+ALTER TABLE IF EXISTS ONLY public.diets DROP CONSTRAINT IF EXISTS diets_pkey;
+ALTER TABLE IF EXISTS ONLY public.diets DROP CONSTRAINT IF EXISTS diets_id_kind_key;
+ALTER TABLE IF EXISTS ONLY public.diet_excluded_methods DROP CONSTRAINT IF EXISTS diet_excluded_methods_pkey;
+ALTER TABLE IF EXISTS ONLY public.diet_excluded_categories DROP CONSTRAINT IF EXISTS diet_excluded_categories_pkey;
+ALTER TABLE IF EXISTS ONLY public.diet_excluded_allergens DROP CONSTRAINT IF EXISTS diet_excluded_allergens_pkey;
+ALTER TABLE IF EXISTS ONLY public.cooking_methods DROP CONSTRAINT IF EXISTS cooking_methods_pkey;
+ALTER TABLE IF EXISTS ONLY public.categories DROP CONSTRAINT IF EXISTS categories_pkey;
+ALTER TABLE IF EXISTS ONLY public.allergens DROP CONSTRAINT IF EXISTS allergens_pkey;
+ALTER TABLE IF EXISTS ONLY public.allergens DROP CONSTRAINT IF EXISTS allergens_code_key;
+ALTER TABLE IF EXISTS public.users ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.recipes ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.ingredients ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.diets ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.cooking_methods ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.categories ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.allergens ALTER COLUMN id DROP DEFAULT;
+DROP SEQUENCE IF EXISTS public.users_id_seq;
+DROP VIEW IF EXISTS public.user_recipe_visibility;
+DROP TABLE IF EXISTS public.user_pantry;
+DROP TABLE IF EXISTS public.user_allergens;
+DROP VIEW IF EXISTS public.user_all_diets;
+DROP TABLE IF EXISTS public.users;
+DROP TABLE IF EXISTS public.user_diets;
+DROP SEQUENCE IF EXISTS public.recipes_id_seq;
+DROP TABLE IF EXISTS public.recipe_steps;
+DROP VIEW IF EXISTS public.recipe_nutrition;
+DROP TABLE IF EXISTS public.recipes;
+DROP TABLE IF EXISTS public.recipe_cooking_methods;
+DROP VIEW IF EXISTS public.recipe_categories;
+DROP VIEW IF EXISTS public.recipe_allergens;
+DROP TABLE IF EXISTS public.recipe_ingredients;
+DROP SEQUENCE IF EXISTS public.ingredients_id_seq;
+DROP TABLE IF EXISTS public.ingredients;
+DROP TABLE IF EXISTS public.ingredient_categories;
+DROP TABLE IF EXISTS public.ingredient_allergens;
+DROP TABLE IF EXISTS public.ingredient_aliases;
+DROP TABLE IF EXISTS public.favorite_recipes;
+DROP TABLE IF EXISTS public.favorite_ingredients;
+DROP SEQUENCE IF EXISTS public.diets_id_seq;
+DROP TABLE IF EXISTS public.diets;
+DROP TABLE IF EXISTS public.diet_excluded_methods;
+DROP TABLE IF EXISTS public.diet_excluded_categories;
+DROP TABLE IF EXISTS public.diet_excluded_allergens;
+DROP SEQUENCE IF EXISTS public.cooking_methods_id_seq;
+DROP TABLE IF EXISTS public.cooking_methods;
+DROP SEQUENCE IF EXISTS public.categories_id_seq;
+DROP TABLE IF EXISTS public.categories;
+DROP SEQUENCE IF EXISTS public.allergens_id_seq;
+DROP TABLE IF EXISTS public.allergens;
+DROP FUNCTION IF EXISTS public.check_favorite_recipe_access();
+DROP EXTENSION IF EXISTS citext;
 --
 -- Name: citext; Type: EXTENSION; Schema: -; Owner: -
 --
@@ -27,14 +132,14 @@ CREATE EXTENSION IF NOT EXISTS citext WITH SCHEMA public;
 
 
 --
--- Name: EXTENSION citext; Type: COMMENT; Schema: -; Owner: 
+-- Name: EXTENSION citext; Type: COMMENT; Schema: -; Owner: -
 --
 
 COMMENT ON EXTENSION citext IS 'data type for case-insensitive character strings';
 
 
 --
--- Name: check_favorite_recipe_access(); Type: FUNCTION; Schema: public; Owner: koma
+-- Name: check_favorite_recipe_access(); Type: FUNCTION; Schema: public; Owner: -
 --
 
 CREATE FUNCTION public.check_favorite_recipe_access() RETURNS trigger
@@ -50,14 +155,12 @@ BEGIN
 END $$;
 
 
-ALTER FUNCTION public.check_favorite_recipe_access() OWNER TO koma;
-
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
 
 --
--- Name: allergens; Type: TABLE; Schema: public; Owner: koma
+-- Name: allergens; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.allergens (
@@ -69,10 +172,8 @@ CREATE TABLE public.allergens (
 );
 
 
-ALTER TABLE public.allergens OWNER TO koma;
-
 --
--- Name: allergens_id_seq; Type: SEQUENCE; Schema: public; Owner: koma
+-- Name: allergens_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.allergens_id_seq
@@ -84,17 +185,15 @@ CREATE SEQUENCE public.allergens_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.allergens_id_seq OWNER TO koma;
-
 --
--- Name: allergens_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: koma
+-- Name: allergens_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.allergens_id_seq OWNED BY public.allergens.id;
 
 
 --
--- Name: categories; Type: TABLE; Schema: public; Owner: koma
+-- Name: categories; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.categories (
@@ -104,10 +203,8 @@ CREATE TABLE public.categories (
 );
 
 
-ALTER TABLE public.categories OWNER TO koma;
-
 --
--- Name: categories_id_seq; Type: SEQUENCE; Schema: public; Owner: koma
+-- Name: categories_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.categories_id_seq
@@ -119,17 +216,15 @@ CREATE SEQUENCE public.categories_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.categories_id_seq OWNER TO koma;
-
 --
--- Name: categories_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: koma
+-- Name: categories_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.categories_id_seq OWNED BY public.categories.id;
 
 
 --
--- Name: cooking_methods; Type: TABLE; Schema: public; Owner: koma
+-- Name: cooking_methods; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.cooking_methods (
@@ -139,10 +234,8 @@ CREATE TABLE public.cooking_methods (
 );
 
 
-ALTER TABLE public.cooking_methods OWNER TO koma;
-
 --
--- Name: cooking_methods_id_seq; Type: SEQUENCE; Schema: public; Owner: koma
+-- Name: cooking_methods_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.cooking_methods_id_seq
@@ -154,17 +247,15 @@ CREATE SEQUENCE public.cooking_methods_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.cooking_methods_id_seq OWNER TO koma;
-
 --
--- Name: cooking_methods_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: koma
+-- Name: cooking_methods_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.cooking_methods_id_seq OWNED BY public.cooking_methods.id;
 
 
 --
--- Name: diet_excluded_allergens; Type: TABLE; Schema: public; Owner: koma
+-- Name: diet_excluded_allergens; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.diet_excluded_allergens (
@@ -173,10 +264,8 @@ CREATE TABLE public.diet_excluded_allergens (
 );
 
 
-ALTER TABLE public.diet_excluded_allergens OWNER TO koma;
-
 --
--- Name: diet_excluded_categories; Type: TABLE; Schema: public; Owner: koma
+-- Name: diet_excluded_categories; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.diet_excluded_categories (
@@ -185,10 +274,8 @@ CREATE TABLE public.diet_excluded_categories (
 );
 
 
-ALTER TABLE public.diet_excluded_categories OWNER TO koma;
-
 --
--- Name: diet_excluded_methods; Type: TABLE; Schema: public; Owner: koma
+-- Name: diet_excluded_methods; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.diet_excluded_methods (
@@ -197,10 +284,8 @@ CREATE TABLE public.diet_excluded_methods (
 );
 
 
-ALTER TABLE public.diet_excluded_methods OWNER TO koma;
-
 --
--- Name: diets; Type: TABLE; Schema: public; Owner: koma
+-- Name: diets; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.diets (
@@ -213,10 +298,8 @@ CREATE TABLE public.diets (
 );
 
 
-ALTER TABLE public.diets OWNER TO koma;
-
 --
--- Name: diets_id_seq; Type: SEQUENCE; Schema: public; Owner: koma
+-- Name: diets_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.diets_id_seq
@@ -228,17 +311,15 @@ CREATE SEQUENCE public.diets_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.diets_id_seq OWNER TO koma;
-
 --
--- Name: diets_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: koma
+-- Name: diets_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.diets_id_seq OWNED BY public.diets.id;
 
 
 --
--- Name: favorite_ingredients; Type: TABLE; Schema: public; Owner: koma
+-- Name: favorite_ingredients; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.favorite_ingredients (
@@ -248,10 +329,8 @@ CREATE TABLE public.favorite_ingredients (
 );
 
 
-ALTER TABLE public.favorite_ingredients OWNER TO koma;
-
 --
--- Name: favorite_recipes; Type: TABLE; Schema: public; Owner: koma
+-- Name: favorite_recipes; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.favorite_recipes (
@@ -261,10 +340,8 @@ CREATE TABLE public.favorite_recipes (
 );
 
 
-ALTER TABLE public.favorite_recipes OWNER TO koma;
-
 --
--- Name: ingredient_aliases; Type: TABLE; Schema: public; Owner: koma
+-- Name: ingredient_aliases; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.ingredient_aliases (
@@ -274,10 +351,8 @@ CREATE TABLE public.ingredient_aliases (
 );
 
 
-ALTER TABLE public.ingredient_aliases OWNER TO koma;
-
 --
--- Name: ingredient_allergens; Type: TABLE; Schema: public; Owner: koma
+-- Name: ingredient_allergens; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.ingredient_allergens (
@@ -286,10 +361,8 @@ CREATE TABLE public.ingredient_allergens (
 );
 
 
-ALTER TABLE public.ingredient_allergens OWNER TO koma;
-
 --
--- Name: ingredient_categories; Type: TABLE; Schema: public; Owner: koma
+-- Name: ingredient_categories; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.ingredient_categories (
@@ -298,10 +371,8 @@ CREATE TABLE public.ingredient_categories (
 );
 
 
-ALTER TABLE public.ingredient_categories OWNER TO koma;
-
 --
--- Name: ingredients; Type: TABLE; Schema: public; Owner: koma
+-- Name: ingredients; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.ingredients (
@@ -332,10 +403,8 @@ CREATE TABLE public.ingredients (
 );
 
 
-ALTER TABLE public.ingredients OWNER TO koma;
-
 --
--- Name: ingredients_id_seq; Type: SEQUENCE; Schema: public; Owner: koma
+-- Name: ingredients_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.ingredients_id_seq
@@ -347,17 +416,15 @@ CREATE SEQUENCE public.ingredients_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.ingredients_id_seq OWNER TO koma;
-
 --
--- Name: ingredients_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: koma
+-- Name: ingredients_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.ingredients_id_seq OWNED BY public.ingredients.id;
 
 
 --
--- Name: recipe_ingredients; Type: TABLE; Schema: public; Owner: koma
+-- Name: recipe_ingredients; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.recipe_ingredients (
@@ -369,10 +436,8 @@ CREATE TABLE public.recipe_ingredients (
 );
 
 
-ALTER TABLE public.recipe_ingredients OWNER TO koma;
-
 --
--- Name: recipe_allergens; Type: VIEW; Schema: public; Owner: koma
+-- Name: recipe_allergens; Type: VIEW; Schema: public; Owner: -
 --
 
 CREATE VIEW public.recipe_allergens AS
@@ -383,10 +448,8 @@ CREATE VIEW public.recipe_allergens AS
   WHERE (NOT ri.is_optional);
 
 
-ALTER VIEW public.recipe_allergens OWNER TO koma;
-
 --
--- Name: recipe_categories; Type: VIEW; Schema: public; Owner: koma
+-- Name: recipe_categories; Type: VIEW; Schema: public; Owner: -
 --
 
 CREATE VIEW public.recipe_categories AS
@@ -397,10 +460,8 @@ CREATE VIEW public.recipe_categories AS
   WHERE (NOT ri.is_optional);
 
 
-ALTER VIEW public.recipe_categories OWNER TO koma;
-
 --
--- Name: recipe_cooking_methods; Type: TABLE; Schema: public; Owner: koma
+-- Name: recipe_cooking_methods; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.recipe_cooking_methods (
@@ -409,10 +470,8 @@ CREATE TABLE public.recipe_cooking_methods (
 );
 
 
-ALTER TABLE public.recipe_cooking_methods OWNER TO koma;
-
 --
--- Name: recipes; Type: TABLE; Schema: public; Owner: koma
+-- Name: recipes; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.recipes (
@@ -433,10 +492,8 @@ CREATE TABLE public.recipes (
 );
 
 
-ALTER TABLE public.recipes OWNER TO koma;
-
 --
--- Name: recipe_nutrition; Type: VIEW; Schema: public; Owner: koma
+-- Name: recipe_nutrition; Type: VIEW; Schema: public; Owner: -
 --
 
 CREATE VIEW public.recipe_nutrition AS
@@ -452,10 +509,8 @@ CREATE VIEW public.recipe_nutrition AS
   GROUP BY r.id, r.servings;
 
 
-ALTER VIEW public.recipe_nutrition OWNER TO koma;
-
 --
--- Name: recipe_steps; Type: TABLE; Schema: public; Owner: koma
+-- Name: recipe_steps; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.recipe_steps (
@@ -469,10 +524,8 @@ CREATE TABLE public.recipe_steps (
 );
 
 
-ALTER TABLE public.recipe_steps OWNER TO koma;
-
 --
--- Name: recipes_id_seq; Type: SEQUENCE; Schema: public; Owner: koma
+-- Name: recipes_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.recipes_id_seq
@@ -484,17 +537,15 @@ CREATE SEQUENCE public.recipes_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.recipes_id_seq OWNER TO koma;
-
 --
--- Name: recipes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: koma
+-- Name: recipes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.recipes_id_seq OWNED BY public.recipes.id;
 
 
 --
--- Name: user_diets; Type: TABLE; Schema: public; Owner: koma
+-- Name: user_diets; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.user_diets (
@@ -505,10 +556,8 @@ CREATE TABLE public.user_diets (
 );
 
 
-ALTER TABLE public.user_diets OWNER TO koma;
-
 --
--- Name: users; Type: TABLE; Schema: public; Owner: koma
+-- Name: users; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.users (
@@ -523,10 +572,8 @@ CREATE TABLE public.users (
 );
 
 
-ALTER TABLE public.users OWNER TO koma;
-
 --
--- Name: user_all_diets; Type: VIEW; Schema: public; Owner: koma
+-- Name: user_all_diets; Type: VIEW; Schema: public; Owner: -
 --
 
 CREATE VIEW public.user_all_diets AS
@@ -540,10 +587,8 @@ UNION
   WHERE (users.pevzner_diet_id IS NOT NULL);
 
 
-ALTER VIEW public.user_all_diets OWNER TO koma;
-
 --
--- Name: user_allergens; Type: TABLE; Schema: public; Owner: koma
+-- Name: user_allergens; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.user_allergens (
@@ -552,10 +597,8 @@ CREATE TABLE public.user_allergens (
 );
 
 
-ALTER TABLE public.user_allergens OWNER TO koma;
-
 --
--- Name: user_pantry; Type: TABLE; Schema: public; Owner: koma
+-- Name: user_pantry; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.user_pantry (
@@ -566,10 +609,8 @@ CREATE TABLE public.user_pantry (
 );
 
 
-ALTER TABLE public.user_pantry OWNER TO koma;
-
 --
--- Name: user_recipe_visibility; Type: VIEW; Schema: public; Owner: koma
+-- Name: user_recipe_visibility; Type: VIEW; Schema: public; Owner: -
 --
 
 CREATE VIEW public.user_recipe_visibility AS
@@ -622,10 +663,8 @@ CREATE VIEW public.user_recipe_visibility AS
    FROM flags f;
 
 
-ALTER VIEW public.user_recipe_visibility OWNER TO koma;
-
 --
--- Name: users_id_seq; Type: SEQUENCE; Schema: public; Owner: koma
+-- Name: users_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.users_id_seq
@@ -637,66 +676,64 @@ CREATE SEQUENCE public.users_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.users_id_seq OWNER TO koma;
-
 --
--- Name: users_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: koma
+-- Name: users_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
 
 
 --
--- Name: allergens id; Type: DEFAULT; Schema: public; Owner: koma
+-- Name: allergens id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.allergens ALTER COLUMN id SET DEFAULT nextval('public.allergens_id_seq'::regclass);
 
 
 --
--- Name: categories id; Type: DEFAULT; Schema: public; Owner: koma
+-- Name: categories id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.categories ALTER COLUMN id SET DEFAULT nextval('public.categories_id_seq'::regclass);
 
 
 --
--- Name: cooking_methods id; Type: DEFAULT; Schema: public; Owner: koma
+-- Name: cooking_methods id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.cooking_methods ALTER COLUMN id SET DEFAULT nextval('public.cooking_methods_id_seq'::regclass);
 
 
 --
--- Name: diets id; Type: DEFAULT; Schema: public; Owner: koma
+-- Name: diets id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.diets ALTER COLUMN id SET DEFAULT nextval('public.diets_id_seq'::regclass);
 
 
 --
--- Name: ingredients id; Type: DEFAULT; Schema: public; Owner: koma
+-- Name: ingredients id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ingredients ALTER COLUMN id SET DEFAULT nextval('public.ingredients_id_seq'::regclass);
 
 
 --
--- Name: recipes id; Type: DEFAULT; Schema: public; Owner: koma
+-- Name: recipes id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.recipes ALTER COLUMN id SET DEFAULT nextval('public.recipes_id_seq'::regclass);
 
 
 --
--- Name: users id; Type: DEFAULT; Schema: public; Owner: koma
+-- Name: users id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
 
 
 --
--- Data for Name: allergens; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: allergens; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.allergens (id, code, name) FROM stdin;
@@ -718,7 +755,7 @@ COPY public.allergens (id, code, name) FROM stdin;
 
 
 --
--- Data for Name: categories; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: categories; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.categories (id, name) FROM stdin;
@@ -738,7 +775,7 @@ COPY public.categories (id, name) FROM stdin;
 
 
 --
--- Data for Name: cooking_methods; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: cooking_methods; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.cooking_methods (id, name) FROM stdin;
@@ -750,7 +787,7 @@ COPY public.cooking_methods (id, name) FROM stdin;
 
 
 --
--- Data for Name: diet_excluded_allergens; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: diet_excluded_allergens; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.diet_excluded_allergens (diet_id, allergen_id) FROM stdin;
@@ -760,7 +797,7 @@ COPY public.diet_excluded_allergens (diet_id, allergen_id) FROM stdin;
 
 
 --
--- Data for Name: diet_excluded_categories; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: diet_excluded_categories; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.diet_excluded_categories (diet_id, category_id) FROM stdin;
@@ -774,7 +811,7 @@ COPY public.diet_excluded_categories (diet_id, category_id) FROM stdin;
 
 
 --
--- Data for Name: diet_excluded_methods; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: diet_excluded_methods; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.diet_excluded_methods (diet_id, method_id) FROM stdin;
@@ -784,7 +821,7 @@ COPY public.diet_excluded_methods (diet_id, method_id) FROM stdin;
 
 
 --
--- Data for Name: diets; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: diets; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.diets (id, kind, name, description) FROM stdin;
@@ -810,7 +847,7 @@ COPY public.diets (id, kind, name, description) FROM stdin;
 
 
 --
--- Data for Name: favorite_ingredients; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: favorite_ingredients; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.favorite_ingredients (user_id, ingredient_id, added_at) FROM stdin;
@@ -818,7 +855,7 @@ COPY public.favorite_ingredients (user_id, ingredient_id, added_at) FROM stdin;
 
 
 --
--- Data for Name: favorite_recipes; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: favorite_recipes; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.favorite_recipes (user_id, recipe_id, added_at) FROM stdin;
@@ -826,7 +863,7 @@ COPY public.favorite_recipes (user_id, recipe_id, added_at) FROM stdin;
 
 
 --
--- Data for Name: ingredient_aliases; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: ingredient_aliases; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.ingredient_aliases (ingredient_id, alias) FROM stdin;
@@ -1925,7 +1962,7 @@ COPY public.ingredient_aliases (ingredient_id, alias) FROM stdin;
 
 
 --
--- Data for Name: ingredient_allergens; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: ingredient_allergens; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.ingredient_allergens (ingredient_id, allergen_id) FROM stdin;
@@ -2085,7 +2122,7 @@ COPY public.ingredient_allergens (ingredient_id, allergen_id) FROM stdin;
 
 
 --
--- Data for Name: ingredient_categories; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: ingredient_categories; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.ingredient_categories (ingredient_id, category_id) FROM stdin;
@@ -2270,7 +2307,7 @@ COPY public.ingredient_categories (ingredient_id, category_id) FROM stdin;
 
 
 --
--- Data for Name: ingredients; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: ingredients; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.ingredients (id, code, name, is_staple, display_unit, grams_per_piece, kcal, protein, fat, carbs, package_g, package_price) FROM stdin;
@@ -3135,7 +3172,7 @@ COPY public.ingredients (id, code, name, is_staple, display_unit, grams_per_piec
 
 
 --
--- Data for Name: recipe_cooking_methods; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: recipe_cooking_methods; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.recipe_cooking_methods (recipe_id, method_id) FROM stdin;
@@ -3724,7 +3761,7 @@ COPY public.recipe_cooking_methods (recipe_id, method_id) FROM stdin;
 
 
 --
--- Data for Name: recipe_ingredients; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: recipe_ingredients; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FROM stdin;
@@ -7783,7 +7820,7 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 
 
 --
--- Data for Name: recipe_steps; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: recipe_steps; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.recipe_steps (recipe_id, step_no, instruction, duration_min) FROM stdin;
@@ -10388,7 +10425,7 @@ COPY public.recipe_steps (recipe_id, step_no, instruction, duration_min) FROM st
 
 
 --
--- Data for Name: recipes; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: recipes; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.recipes (id, title, description, servings, cook_time_min, needs_microwave, needs_stove, needs_oven, image_url, author_id, no_cook) FROM stdin;
@@ -10413,7 +10450,6 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 24	Сырники	Творожные оладьи, где творога должно быть много, а муки — ровно столько, чтобы они не развалились.	4	15	f	t	f	https://theunitools.com/recipes/syrniki.jpg	\N	f
 25	Пад тай	Рисовая лапша, обжаренная с тамариндом, рыбным соусом и пальмовым сахаром. Всё готовится за четыре минуты.	2	10	f	t	f	https://theunitools.com/recipes/pad-thai.jpg	\N	f
 7	Мисо-суп	Суп из даси и мисо, который готовится десять минут. Кипятить мисо нельзя — от этого пропадает и аромат, и польза.	4	15	f	f	f	https://theunitools.com/recipes/miso-soup.jpg	\N	t
-26	Тирамису	Савоярди в кофе под кремом из маскарпоне. Без выпечки, но с двумя местами, где всё может пойти не так.	6	0	f	t	f	https://theunitools.com/recipes/tiramisu.jpg	\N	f
 28	Крокеты с хамоном	Густая бешамель с хамоном, охлаждённая до плотности, обваленная в сухарях и обжаренная во фритюре.	4	25	f	t	f	https://theunitools.com/recipes/croquetas-de-jamon.jpg	\N	f
 30	Ломо сальтадо	Говядина, обжаренная в воке с луком и помидорами, поданная с картофелем фри и рисом одновременно.	4	20	f	t	f	https://theunitools.com/recipes/lomo-saltado.jpg	\N	f
 31	Мапо тофу	Тофу в остром соусе из доубаньцзяна с сычуаньским перцем, который не жжёт, а немеет.	4	15	f	t	f	https://theunitools.com/recipes/mapo-tofu.jpg	\N	f
@@ -10437,6 +10473,7 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 50	Пан-ди-кейжу	Сырные шарики из тапиоковой муки — снаружи корочка, внутри тягучая пустота. Без пшеницы и без дрожжей.	6	25	f	f	t	https://theunitools.com/recipes/pao-de-queijo.jpg	\N	f
 51	Пад кра пао	Свиной фарш, обжаренный с чили, чесноком и священным базиликом. Пять минут от начала до тарелки.	2	8	f	t	f	https://theunitools.com/recipes/pad-krapow-moo.jpg	\N	f
 27	Гаспачо	Холодный томатный суп, который взбивают с хлебом и маслом до состояния эмульсии — от этого он и получается плотным, а не водянистым.	4	0	f	f	f	https://theunitools.com/recipes/gazpacho.jpg	\N	t
+26	Тирамису	Савоярди в кофе под кремом из маскарпоне. Без выпечки, но с двумя местами, где всё может пойти не так.	6	32	f	t	f	https://theunitools.com/recipes/tiramisu.jpg	\N	f
 52	Гюдон	Тонко нарезанная говядина, припущенная с луком в даси с соевым соусом и мирином, поверх риса.	2	15	f	t	f	https://theunitools.com/recipes/gyudon.jpg	\N	f
 53	Солянка мясная сборная	Суп на крепком бульоне с несколькими видами мяса, солёными огурцами, оливками и лимоном.	6	120	f	t	f	https://theunitools.com/recipes/solyanka.jpg	\N	f
 54	Тажин с курицей и лимоном	Курица, томлённая с солёными лимонами и оливками. Кислота идёт от кожуры лимона, а не от мякоти.	4	70	f	t	f	https://theunitools.com/recipes/tagine-de-poulet.jpg	\N	f
@@ -10462,7 +10499,6 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 75	Кулебяка с корицей	Булочки с корицей и кардамоном, свёрнутые узлом. Кардамон в тесте важнее корицы в начинке.	12	15	f	f	t	https://theunitools.com/recipes/kanelbullar.jpg	\N	f
 76	Кушари	Рис, чечевица и макароны в одной тарелке под томатным соусом с уксусом и жареным луком.	6	60	f	t	f	https://theunitools.com/recipes/koshari.jpg	\N	f
 77	Фуль медамес	Бобы фава, томлённые до кремовой мягкости, с оливковым маслом, лимоном и зирой.	4	240	f	t	f	https://theunitools.com/recipes/ful-medames.jpg	\N	f
-79	Киббе нейе	Сырое киббе: свежайшая баранина, растёртая с булгуром и специями, под оливковым маслом.	4	0	f	t	f	https://theunitools.com/recipes/kibbeh-nayyeh.jpg	\N	f
 80	Гормэ сабзи	Тушёная баранина с горой зелени, фасолью и сушёным лаймом. Зелень жарят до почти чёрного цвета.	6	150	f	t	f	https://theunitools.com/recipes/ghormeh-sabzi.jpg	\N	f
 81	Тахдиг	Рис с золотой хрустящей коркой на дне кастрюли. Корку делают из риса, картофеля или лаваша.	6	60	f	t	f	https://theunitools.com/recipes/tahdig.jpg	\N	f
 82	Узбекский плов	Рис, доведённый паром над зирваком из баранины, моркови и лука. Рис не мешают с момента закладки.	6	100	f	t	f	https://theunitools.com/recipes/plov-uzbekskiy.jpg	\N	f
@@ -10486,6 +10522,7 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 102	Ропа вьеха	Говядина, разобранная на волокна и тушённая в софрито с перцем и оливками. Мясо варят целым куском заранее.	6	150	f	t	f	https://theunitools.com/recipes/ropa-vieja.jpg	\N	f
 103	Морос и кристианос	Рис, сваренный в отваре из-под чёрной фасоли, отчего становится тёмным и вбирает весь её вкус.	6	90	f	t	f	https://theunitools.com/recipes/moros-y-cristianos.jpg	\N	f
 78	Табуле	Салат из петрушки с небольшим количеством булгура, а не наоборот. Зелени здесь в десять раз больше крупы.	4	0	f	f	f	https://theunitools.com/recipes/tabbouleh.jpg	\N	t
+79	Киббе нейе	Сырое киббе: свежайшая баранина, растёртая с булгуром и специями, под оливковым маслом.	4	40	f	t	f	https://theunitools.com/recipes/kibbeh-nayyeh.jpg	\N	f
 104	Курица джерк	Курица в маринаде на скотч-боннете и душистом перце, копчёная на дровах пименто.	6	120	f	t	t	https://theunitools.com/recipes/jerk-chicken.jpg	\N	f
 105	Аки с солёной рыбой	Национальное блюдо Ямайки: плод аки, по виду и текстуре напоминающий яичницу, с вымоченной солёной треской.	4	25	f	t	f	https://theunitools.com/recipes/ackee-and-saltfish.jpg	\N	f
 106	Джоллоф рис	Рис, сваренный в густом соусе из помидоров, перца и лука. Соус уваривают до тёмного цвета до закладки риса.	6	60	f	t	f	https://theunitools.com/recipes/jollof-rice.jpg	\N	f
@@ -10506,11 +10543,11 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 122	Чевапи	Колбаски из рубленого мяса без оболочки, на углях, с луком и лепёшкой сомун.	4	15	f	t	f	https://theunitools.com/recipes/cevapi.jpg	\N	f
 123	Айвар	Икра из печёного красного перца и баклажана, уваренная в масле до густоты пасты.	10	90	f	t	t	https://theunitools.com/recipes/ajvar.jpg	\N	f
 124	Фрикаделлер	Датские мясные биточки, плоские, а не круглые, жаренные на сливочном масле до тёмной корочки.	4	25	f	t	f	https://theunitools.com/recipes/frikadeller.jpg	\N	f
-125	Смёрребрёд	Открытый бутерброд на ржаном хлебе с маслом. Порядок слоёв и толщина масла имеют значение.	4	0	f	t	f	https://theunitools.com/recipes/smorrebrod.jpg	\N	f
 126	Сармале	Голубцы в квашеных капустных листьях с фаршем и рисом, томлённые три часа под слоем капусты.	8	180	f	t	t	https://theunitools.com/recipes/sarmale.jpg	\N	f
 127	Мамалыга	Кукурузная каша плотной консистенции, которую режут ниткой, а не ножом.	6	40	f	t	f	https://theunitools.com/recipes/mamaliga.jpg	\N	f
 129	Баница	Спираль из фило с брынзой и яйцами, залитая йогуртом с содой перед выпечкой.	8	45	f	f	t	https://theunitools.com/recipes/banitsa.jpg	\N	f
 130	Лохикейтто	Финский суп с лососем, картофелем и сливками, с горой укропа и кусочком масла в тарелке.	4	40	f	t	f	https://theunitools.com/recipes/lohikeitto.jpg	\N	f
+125	Смёрребрёд	Открытый бутерброд на ржаном хлебе с маслом. Порядок слоёв и толщина масла имеют значение.	4	25	f	t	f	https://theunitools.com/recipes/smorrebrod.jpg	\N	f
 131	Карельские пирожки	Ржаная корзиночка с рисовой кашей, смазанная маслом после выпечки и поданная с яичным маслом.	8	25	f	t	t	https://theunitools.com/recipes/karjalanpiirakka.jpg	\N	f
 132	Ирландское рагу	Баранина с картофелем и луком, томлённая без обжарки. Мясо не подрумянивают — в этом весь смысл.	6	150	f	t	f	https://theunitools.com/recipes/irish-stew.jpg	\N	f
 133	Содовый хлеб	Хлеб на соде и пахте без дрожжей и без расстойки. От замеса до духовки — три минуты.	8	45	f	f	t	https://theunitools.com/recipes/soda-bread.jpg	\N	f
@@ -10802,7 +10839,7 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 
 
 --
--- Data for Name: user_allergens; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: user_allergens; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.user_allergens (user_id, allergen_id) FROM stdin;
@@ -10810,7 +10847,7 @@ COPY public.user_allergens (user_id, allergen_id) FROM stdin;
 
 
 --
--- Data for Name: user_diets; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: user_diets; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.user_diets (user_id, diet_id, diet_kind) FROM stdin;
@@ -10818,7 +10855,7 @@ COPY public.user_diets (user_id, diet_id, diet_kind) FROM stdin;
 
 
 --
--- Data for Name: user_pantry; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: user_pantry; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.user_pantry (user_id, ingredient_id, qty_g) FROM stdin;
@@ -10826,7 +10863,7 @@ COPY public.user_pantry (user_id, ingredient_id, qty_g) FROM stdin;
 
 
 --
--- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: koma
+-- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.users (id, login, password_hash, pevzner_diet_id, pevzner_kind, created_at) FROM stdin;
@@ -10834,56 +10871,56 @@ COPY public.users (id, login, password_hash, pevzner_diet_id, pevzner_kind, crea
 
 
 --
--- Name: allergens_id_seq; Type: SEQUENCE SET; Schema: public; Owner: koma
+-- Name: allergens_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.allergens_id_seq', 14, true);
 
 
 --
--- Name: categories_id_seq; Type: SEQUENCE SET; Schema: public; Owner: koma
+-- Name: categories_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.categories_id_seq', 12, true);
 
 
 --
--- Name: cooking_methods_id_seq; Type: SEQUENCE SET; Schema: public; Owner: koma
+-- Name: cooking_methods_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.cooking_methods_id_seq', 4, true);
 
 
 --
--- Name: diets_id_seq; Type: SEQUENCE SET; Schema: public; Owner: koma
+-- Name: diets_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.diets_id_seq', 18, true);
 
 
 --
--- Name: ingredients_id_seq; Type: SEQUENCE SET; Schema: public; Owner: koma
+-- Name: ingredients_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.ingredients_id_seq', 858, true);
 
 
 --
--- Name: recipes_id_seq; Type: SEQUENCE SET; Schema: public; Owner: koma
+-- Name: recipes_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.recipes_id_seq', 502, true);
 
 
 --
--- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: koma
+-- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.users_id_seq', 2, true);
 
 
 --
--- Name: allergens allergens_code_key; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: allergens allergens_code_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.allergens
@@ -10891,7 +10928,7 @@ ALTER TABLE ONLY public.allergens
 
 
 --
--- Name: allergens allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: allergens allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.allergens
@@ -10899,7 +10936,7 @@ ALTER TABLE ONLY public.allergens
 
 
 --
--- Name: categories categories_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: categories categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.categories
@@ -10907,7 +10944,7 @@ ALTER TABLE ONLY public.categories
 
 
 --
--- Name: cooking_methods cooking_methods_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: cooking_methods cooking_methods_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.cooking_methods
@@ -10915,7 +10952,7 @@ ALTER TABLE ONLY public.cooking_methods
 
 
 --
--- Name: diet_excluded_allergens diet_excluded_allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: diet_excluded_allergens diet_excluded_allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.diet_excluded_allergens
@@ -10923,7 +10960,7 @@ ALTER TABLE ONLY public.diet_excluded_allergens
 
 
 --
--- Name: diet_excluded_categories diet_excluded_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: diet_excluded_categories diet_excluded_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.diet_excluded_categories
@@ -10931,7 +10968,7 @@ ALTER TABLE ONLY public.diet_excluded_categories
 
 
 --
--- Name: diet_excluded_methods diet_excluded_methods_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: diet_excluded_methods diet_excluded_methods_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.diet_excluded_methods
@@ -10939,7 +10976,7 @@ ALTER TABLE ONLY public.diet_excluded_methods
 
 
 --
--- Name: diets diets_id_kind_key; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: diets diets_id_kind_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.diets
@@ -10947,7 +10984,7 @@ ALTER TABLE ONLY public.diets
 
 
 --
--- Name: diets diets_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: diets diets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.diets
@@ -10955,7 +10992,7 @@ ALTER TABLE ONLY public.diets
 
 
 --
--- Name: favorite_ingredients favorite_ingredients_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: favorite_ingredients favorite_ingredients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.favorite_ingredients
@@ -10963,7 +11000,7 @@ ALTER TABLE ONLY public.favorite_ingredients
 
 
 --
--- Name: favorite_recipes favorite_recipes_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: favorite_recipes favorite_recipes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.favorite_recipes
@@ -10971,7 +11008,7 @@ ALTER TABLE ONLY public.favorite_recipes
 
 
 --
--- Name: ingredient_aliases ingredient_aliases_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: ingredient_aliases ingredient_aliases_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ingredient_aliases
@@ -10979,7 +11016,7 @@ ALTER TABLE ONLY public.ingredient_aliases
 
 
 --
--- Name: ingredient_allergens ingredient_allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: ingredient_allergens ingredient_allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ingredient_allergens
@@ -10987,7 +11024,7 @@ ALTER TABLE ONLY public.ingredient_allergens
 
 
 --
--- Name: ingredient_categories ingredient_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: ingredient_categories ingredient_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ingredient_categories
@@ -10995,7 +11032,7 @@ ALTER TABLE ONLY public.ingredient_categories
 
 
 --
--- Name: ingredients ingredients_code_key; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: ingredients ingredients_code_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ingredients
@@ -11003,7 +11040,7 @@ ALTER TABLE ONLY public.ingredients
 
 
 --
--- Name: ingredients ingredients_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: ingredients ingredients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ingredients
@@ -11011,7 +11048,7 @@ ALTER TABLE ONLY public.ingredients
 
 
 --
--- Name: recipe_cooking_methods recipe_cooking_methods_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: recipe_cooking_methods recipe_cooking_methods_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.recipe_cooking_methods
@@ -11019,7 +11056,7 @@ ALTER TABLE ONLY public.recipe_cooking_methods
 
 
 --
--- Name: recipe_ingredients recipe_ingredients_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: recipe_ingredients recipe_ingredients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.recipe_ingredients
@@ -11027,7 +11064,7 @@ ALTER TABLE ONLY public.recipe_ingredients
 
 
 --
--- Name: recipe_steps recipe_steps_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: recipe_steps recipe_steps_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.recipe_steps
@@ -11035,7 +11072,7 @@ ALTER TABLE ONLY public.recipe_steps
 
 
 --
--- Name: recipes recipes_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: recipes recipes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.recipes
@@ -11043,7 +11080,7 @@ ALTER TABLE ONLY public.recipes
 
 
 --
--- Name: user_allergens user_allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: user_allergens user_allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.user_allergens
@@ -11051,7 +11088,7 @@ ALTER TABLE ONLY public.user_allergens
 
 
 --
--- Name: user_diets user_diets_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: user_diets user_diets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.user_diets
@@ -11059,7 +11096,7 @@ ALTER TABLE ONLY public.user_diets
 
 
 --
--- Name: user_pantry user_pantry_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: user_pantry user_pantry_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.user_pantry
@@ -11067,7 +11104,7 @@ ALTER TABLE ONLY public.user_pantry
 
 
 --
--- Name: users users_login_key; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: users users_login_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.users
@@ -11075,7 +11112,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.users
@@ -11083,77 +11120,77 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: allergens_name_uq; Type: INDEX; Schema: public; Owner: koma
+-- Name: allergens_name_uq; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX allergens_name_uq ON public.allergens USING btree (lower(name));
 
 
 --
--- Name: categories_name_uq; Type: INDEX; Schema: public; Owner: koma
+-- Name: categories_name_uq; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX categories_name_uq ON public.categories USING btree (lower(name));
 
 
 --
--- Name: cooking_methods_name_uq; Type: INDEX; Schema: public; Owner: koma
+-- Name: cooking_methods_name_uq; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX cooking_methods_name_uq ON public.cooking_methods USING btree (lower(name));
 
 
 --
--- Name: diets_name_uq; Type: INDEX; Schema: public; Owner: koma
+-- Name: diets_name_uq; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX diets_name_uq ON public.diets USING btree (lower(name));
 
 
 --
--- Name: ingredient_aliases_uq; Type: INDEX; Schema: public; Owner: koma
+-- Name: ingredient_aliases_uq; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX ingredient_aliases_uq ON public.ingredient_aliases USING btree (ingredient_id, lower(alias));
 
 
 --
--- Name: ingredients_name_uq; Type: INDEX; Schema: public; Owner: koma
+-- Name: ingredients_name_uq; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX ingredients_name_uq ON public.ingredients USING btree (lower(name));
 
 
 --
--- Name: recipe_ingredients_ingr_idx; Type: INDEX; Schema: public; Owner: koma
+-- Name: recipe_ingredients_ingr_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX recipe_ingredients_ingr_idx ON public.recipe_ingredients USING btree (ingredient_id);
 
 
 --
--- Name: recipes_author_idx; Type: INDEX; Schema: public; Owner: koma
+-- Name: recipes_author_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX recipes_author_idx ON public.recipes USING btree (author_id);
 
 
 --
--- Name: recipes_time_idx; Type: INDEX; Schema: public; Owner: koma
+-- Name: recipes_time_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX recipes_time_idx ON public.recipes USING btree (cook_time_min);
 
 
 --
--- Name: favorite_recipes favorite_recipes_access; Type: TRIGGER; Schema: public; Owner: koma
+-- Name: favorite_recipes favorite_recipes_access; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER favorite_recipes_access BEFORE INSERT OR UPDATE ON public.favorite_recipes FOR EACH ROW EXECUTE FUNCTION public.check_favorite_recipe_access();
 
 
 --
--- Name: diet_excluded_allergens diet_excluded_allergens_allergen_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: diet_excluded_allergens diet_excluded_allergens_allergen_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.diet_excluded_allergens
@@ -11161,7 +11198,7 @@ ALTER TABLE ONLY public.diet_excluded_allergens
 
 
 --
--- Name: diet_excluded_allergens diet_excluded_allergens_diet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: diet_excluded_allergens diet_excluded_allergens_diet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.diet_excluded_allergens
@@ -11169,7 +11206,7 @@ ALTER TABLE ONLY public.diet_excluded_allergens
 
 
 --
--- Name: diet_excluded_categories diet_excluded_categories_category_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: diet_excluded_categories diet_excluded_categories_category_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.diet_excluded_categories
@@ -11177,7 +11214,7 @@ ALTER TABLE ONLY public.diet_excluded_categories
 
 
 --
--- Name: diet_excluded_categories diet_excluded_categories_diet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: diet_excluded_categories diet_excluded_categories_diet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.diet_excluded_categories
@@ -11185,7 +11222,7 @@ ALTER TABLE ONLY public.diet_excluded_categories
 
 
 --
--- Name: diet_excluded_methods diet_excluded_methods_diet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: diet_excluded_methods diet_excluded_methods_diet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.diet_excluded_methods
@@ -11193,7 +11230,7 @@ ALTER TABLE ONLY public.diet_excluded_methods
 
 
 --
--- Name: diet_excluded_methods diet_excluded_methods_method_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: diet_excluded_methods diet_excluded_methods_method_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.diet_excluded_methods
@@ -11201,7 +11238,7 @@ ALTER TABLE ONLY public.diet_excluded_methods
 
 
 --
--- Name: favorite_ingredients favorite_ingredients_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: favorite_ingredients favorite_ingredients_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.favorite_ingredients
@@ -11209,7 +11246,7 @@ ALTER TABLE ONLY public.favorite_ingredients
 
 
 --
--- Name: favorite_ingredients favorite_ingredients_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: favorite_ingredients favorite_ingredients_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.favorite_ingredients
@@ -11217,7 +11254,7 @@ ALTER TABLE ONLY public.favorite_ingredients
 
 
 --
--- Name: favorite_recipes favorite_recipes_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: favorite_recipes favorite_recipes_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.favorite_recipes
@@ -11225,7 +11262,7 @@ ALTER TABLE ONLY public.favorite_recipes
 
 
 --
--- Name: favorite_recipes favorite_recipes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: favorite_recipes favorite_recipes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.favorite_recipes
@@ -11233,7 +11270,7 @@ ALTER TABLE ONLY public.favorite_recipes
 
 
 --
--- Name: ingredient_aliases ingredient_aliases_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: ingredient_aliases ingredient_aliases_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ingredient_aliases
@@ -11241,7 +11278,7 @@ ALTER TABLE ONLY public.ingredient_aliases
 
 
 --
--- Name: ingredient_allergens ingredient_allergens_allergen_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: ingredient_allergens ingredient_allergens_allergen_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ingredient_allergens
@@ -11249,7 +11286,7 @@ ALTER TABLE ONLY public.ingredient_allergens
 
 
 --
--- Name: ingredient_allergens ingredient_allergens_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: ingredient_allergens ingredient_allergens_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ingredient_allergens
@@ -11257,7 +11294,7 @@ ALTER TABLE ONLY public.ingredient_allergens
 
 
 --
--- Name: ingredient_categories ingredient_categories_category_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: ingredient_categories ingredient_categories_category_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ingredient_categories
@@ -11265,7 +11302,7 @@ ALTER TABLE ONLY public.ingredient_categories
 
 
 --
--- Name: ingredient_categories ingredient_categories_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: ingredient_categories ingredient_categories_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ingredient_categories
@@ -11273,7 +11310,7 @@ ALTER TABLE ONLY public.ingredient_categories
 
 
 --
--- Name: recipe_cooking_methods recipe_cooking_methods_method_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: recipe_cooking_methods recipe_cooking_methods_method_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.recipe_cooking_methods
@@ -11281,7 +11318,7 @@ ALTER TABLE ONLY public.recipe_cooking_methods
 
 
 --
--- Name: recipe_cooking_methods recipe_cooking_methods_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: recipe_cooking_methods recipe_cooking_methods_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.recipe_cooking_methods
@@ -11289,7 +11326,7 @@ ALTER TABLE ONLY public.recipe_cooking_methods
 
 
 --
--- Name: recipe_ingredients recipe_ingredients_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: recipe_ingredients recipe_ingredients_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.recipe_ingredients
@@ -11297,7 +11334,7 @@ ALTER TABLE ONLY public.recipe_ingredients
 
 
 --
--- Name: recipe_ingredients recipe_ingredients_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: recipe_ingredients recipe_ingredients_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.recipe_ingredients
@@ -11305,7 +11342,7 @@ ALTER TABLE ONLY public.recipe_ingredients
 
 
 --
--- Name: recipe_steps recipe_steps_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: recipe_steps recipe_steps_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.recipe_steps
@@ -11313,7 +11350,7 @@ ALTER TABLE ONLY public.recipe_steps
 
 
 --
--- Name: recipes recipes_author_fk; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: recipes recipes_author_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.recipes
@@ -11321,7 +11358,7 @@ ALTER TABLE ONLY public.recipes
 
 
 --
--- Name: user_allergens user_allergens_allergen_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: user_allergens user_allergens_allergen_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.user_allergens
@@ -11329,7 +11366,7 @@ ALTER TABLE ONLY public.user_allergens
 
 
 --
--- Name: user_allergens user_allergens_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: user_allergens user_allergens_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.user_allergens
@@ -11337,7 +11374,7 @@ ALTER TABLE ONLY public.user_allergens
 
 
 --
--- Name: user_diets user_diets_diet_id_diet_kind_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: user_diets user_diets_diet_id_diet_kind_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.user_diets
@@ -11345,7 +11382,7 @@ ALTER TABLE ONLY public.user_diets
 
 
 --
--- Name: user_diets user_diets_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: user_diets user_diets_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.user_diets
@@ -11353,7 +11390,7 @@ ALTER TABLE ONLY public.user_diets
 
 
 --
--- Name: user_pantry user_pantry_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: user_pantry user_pantry_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.user_pantry
@@ -11361,7 +11398,7 @@ ALTER TABLE ONLY public.user_pantry
 
 
 --
--- Name: user_pantry user_pantry_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: user_pantry user_pantry_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.user_pantry
@@ -11369,7 +11406,7 @@ ALTER TABLE ONLY public.user_pantry
 
 
 --
--- Name: users users_pevzner_diet_id_pevzner_kind_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+-- Name: users users_pevzner_diet_id_pevzner_kind_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.users
@@ -11380,5 +11417,5 @@ ALTER TABLE ONLY public.users
 -- PostgreSQL database dump complete
 --
 
-\unrestrict b7cn6pjuXzGBj5IPUrZQjlU7ZaIJsOPrq9zumRKaxcf5T0DaGioZpvA57cJhY4Y
+\unrestrict ZwIS1jHed8mT5XdeJHlp2CX1hoAIxtuWl0f3Z0FxtuYMCK0yHqZ6544pyf9Jwgu
 
