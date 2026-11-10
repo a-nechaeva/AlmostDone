@@ -21,9 +21,9 @@ import com.example.mobile_android.feature.FakePreferences
 import com.example.mobile_android.navigation.AppRoot
 import com.example.mobile_android.ui.theme.AlmostReadyTheme
 import com.github.takahirom.roborazzi.RoborazziOptions
+import com.github.takahirom.roborazzi.captureRoboImage
 import com.yandex.authsdk.YandexAuthOptions
 import com.yandex.authsdk.YandexAuthSdk
-import com.github.takahirom.roborazzi.captureRoboImage
 import java.io.File
 import kotlinx.coroutines.flow.*
 import org.junit.Assert.*
@@ -147,19 +147,36 @@ class AppSmokeTest {
         dependencies.household.failRead = false
         text("Повторить").assertHasClickAction().performClick()
         awaitText("Мои продукты")
+        val original =
+            dependencies.household.values.value.pantry.single { it.ingredientId == "eggs" }
         dependencies.household.failWrite = true
-        compose.onNodeWithContentDescription("Удалить Яйца").performScrollTo().performClick()
+        compose
+            .onNodeWithContentDescription("Изменить количество: Яйца")
+            .performScrollTo()
+            .performClick()
+        text("Удалить яйца").performScrollTo().assertHasClickAction().performClick()
         awaitText("Не удалось сохранить изменения. Повторите действие.")
-        assertTrue(dependencies.household.values.value.pantry.any { it.ingredientId == "eggs" })
+        assertEquals(
+            original,
+            dependencies.household.values.value.pantry.single { it.ingredientId == "eggs" },
+        )
+        text("Удалить яйца").assertIsEnabled()
         dependencies.household.failWrite = false
-        compose.onNodeWithContentDescription("Удалить Яйца").performScrollTo().performClick()
+        text("Удалить яйца").performScrollTo().performClick()
         compose.waitUntil(10_000) {
             dependencies.household.values.value.pantry.none { it.ingredientId == "eggs" }
         }
-        text("Отменить удаление").performScrollTo().performClick()
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithText("Количество, шт.").fetchSemanticsNodes().isEmpty()
+        }
+        text("Отменить удаление").performScrollTo().assertIsDisplayed().performClick()
         compose.waitUntil(10_000) {
             dependencies.household.values.value.pantry.any { it.ingredientId == "eggs" }
         }
+        assertEquals(
+            original,
+            dependencies.household.values.value.pantry.single { it.ingredientId == "eggs" },
+        )
     }
 
     private fun openGraph(fontScale: Float = 1f) {
