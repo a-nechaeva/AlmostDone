@@ -38,6 +38,10 @@ class ScreenActions(private val scope: CoroutineScope) {
         mutableState.update { it.copy(message = null) }
     }
 
+    fun showError(message: String) {
+        mutableState.value = ActionState(message = message, failed = true)
+    }
+
     fun run(success: String? = null, action: suspend () -> Unit) {
         if (mutableState.value.pending) return
         mutableState.value = ActionState(pending = true)
