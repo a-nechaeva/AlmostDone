@@ -111,6 +111,22 @@ class SearchIndex:
         hits = sorted(best.values(), key=lambda h: (-h.score, len(h.name), h.name))
         return hits[:limit]
 
+    def similarity(self, text: str, code: str) -> float:
+        """Насколько текст похож на конкретный продукт (0–1): лучшая оценка по всей строке
+        и по каждому её слову от 3 букв, по названию и синонимам продукта.
+
+        Нужна распознаванию: проверить, что выбранный моделью продукт хоть как-то похож
+        на строку чека («колбаса» на «Сосиски» не похожа, «Хлеб ржаной» на «Хлеб» — похож).
+        """
+        q = normalize(text)[:MAX_QUERY_LEN]
+        if not q:
+            return 0.0
+        queries = [q, *(w for w in _WORD_RE.findall(q) if len(w) >= 3)]
+        return max(
+            (score(query, norm) for c, _, norm in self._terms if c == code for query in queries),
+            default=0.0,
+        )
+
 
 def search_ingredients(catalog: Catalog, query: str, limit: int = 10) -> list[SearchHit]:
     """Разовый поиск без заранее построенного индекса (для тестов и демо)."""

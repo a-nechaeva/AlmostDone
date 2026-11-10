@@ -151,16 +151,26 @@ fun suggestSinglePurchase(
     preferences: FoodPreferences,
     budgetKopecks: Long,
 ): PurchaseSuggestion? {
+    return suggestSinglePurchase(
+        catalog,
+        catalog.recipes.map { matchRecipe(it, household.pantry, catalog, preferences) },
+        budgetKopecks,
+    )
+}
+
+fun suggestSinglePurchase(
+    catalog: Catalog,
+    matches: List<RecipeMatch>,
+    budgetKopecks: Long,
+): PurchaseSuggestion? {
     require(budgetKopecks >= 0)
-    val matches =
-        catalog.recipes
-            .map { matchRecipe(it, household.pantry, catalog, preferences) }
-            .filter {
-                it.dietary.status == Suitability.ALLOWED &&
-                    it.uncertainQuantityIds.isEmpty() &&
-                    it.missing.size == 1
-            }
-    return matches
+    val candidates =
+        matches.filter {
+            it.dietary.status == Suitability.ALLOWED &&
+                it.uncertainQuantityIds.isEmpty() &&
+                it.missing.size == 1
+        }
+    return candidates
         .groupBy { it.missing.single().ingredientId }
         .mapNotNull { (id, options) ->
             val ingredient = catalog.ingredient(id) ?: return@mapNotNull null

@@ -1,0 +1,4605 @@
+openapi: 3.1.0
+info:
+  title: AlmostDone OPEN API
+  version: 0.3.0-draft
+servers:
+- url: /api/v1
+security:
+- BearerAuth: []
+paths:
+  /health:
+    get:
+      operationId: health_get
+      summary: Проверка процесса
+      tags:
+      - health
+      x-issues:
+      - 27
+      responses:
+        '200':
+          description: Процесс работает
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                    - ok
+                  api_version:
+                    type: string
+                    enum:
+                    - v1
+                required:
+                - status
+                - api_version
+                additionalProperties: false
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+      security: []
+  /auth/vk:
+    post:
+      operationId: auth_vk
+      summary: Обмен доказательства входа vk
+      tags:
+      - auth
+      x-issues:
+      - 8
+      - 17
+      - 21
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+      description: 'Flow и поля SDK требуют согласования. Сервер проверяет код у провайдера и его
+        client/redirect/PKCE binding; client_id и секрет провайдера — конфигурация backend. Identity=(provider,
+        subject). Email не объединяет аккаунты. Серверные сессии изолированы по внутреннему user_id. Коды
+        и токены не логировать.'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VkExchange'
+  /auth/yandex:
+    post:
+      operationId: auth_yandex
+      summary: Обмен OAuth-токена Яндекса на сессию приложения
+      tags:
+      - auth
+      x-issues:
+      - 8
+      - 17
+      - 21
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '401':
+          description: 'invalid_credentials: OAuth-токен недействителен, истёк, отозван или выдан другому приложению.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+      description: 'Android передаёт OAuth-токен, полученный через LoginSDK Яндекс ID. Backend проверяет
+        его запросом GET https://login.yandex.ru/info?format=json с заголовком Authorization: OAuth <oauth_token>.
+        client_id из ответа должен совпадать с настроенным на backend client_id приложения; иначе 401
+        invalid_credentials. Недействительный, истёкший или отозванный токен также даёт 401 invalid_credentials;
+        недоступность Яндекса — 503 service_unavailable. Identity=(yandex, id из ответа Яндекса).
+        Email не объединяет аккаунты. Backend выдаёт собственную Session с изоляцией по внутреннему user_id.
+        OAuth-токен провайдера не является сессией приложения и не логируется.'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/YandexExchange'
+  /auth/refresh:
+    post:
+      operationId: auth_refresh
+      summary: Ротация серверной сессии
+      tags:
+      - auth
+      x-issues:
+      - 17
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+      description: 'Старый refresh одноразовый, повторное использование отзывает семейство. Автоматически
+        повторять после timeout нельзя; повторный вход. Не требует access token.'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Refresh'
+  /auth/logout:
+    post:
+      operationId: auth_logout
+      summary: Отозвать текущую сессию и её refresh family
+      tags:
+      - auth
+      x-issues:
+      - 17
+      - 25
+      responses:
+        '204':
+          description: Успешно
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+      description: Остальные устройства не затрагиваются. После 204 очистить локальные account-scoped
+        данные. При 401 тоже очистить локальную сессию; сервер не подтверждает отзыв неизвестного токена.
+  /me/state:
+    get:
+      operationId: state_get
+      summary: Версия состояния текущего пользователя
+      tags:
+      - state
+      x-issues:
+      - 17
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/State'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+  /me:
+    get:
+      operationId: profile_get
+      summary: Профиль и настройки питания
+      tags:
+      - profile
+      x-issues:
+      - 21
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+    patch:
+      operationId: profile_save
+      summary: Сохранить полный черновик настроек
+      tags:
+      - profile
+      x-issues:
+      - 21
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '409':
+          description: unit_conflict, idempotency_conflict, operation_in_progress, context_changed, snapshot_expired
+            или already_imported. Для operation_in_progress вернуть Retry-After.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '412':
+          description: 'state_conflict: перечитать состояние, согласовать изменение и повторить с актуальным
+            If-Match.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '428':
+          description: 'precondition_required: отсутствует If-Match.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+      description: Неподдерживаемое ограничение сохраняется нейтрально и возвращается в unsupported_restrictions;
+        подбор не объявляет соответствие ему. После успешного сохранения инвалидировать подбор/рецепт.
+      parameters:
+      - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdate'
+  /allergens:
+    get:
+      operationId: catalog_allergens
+      summary: Справочник allergens
+      tags:
+      - catalog
+      x-issues:
+      - 17
+      - 21
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dictionary'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+  /dietary-options:
+    get:
+      operationId: catalog_dietary_options
+      summary: Справочник dietary-options
+      description: Возвращает явные связи вариантов ограничений с полями Preferences; правила выбора и сброса заданы в DietaryOption.
+      tags:
+      - catalog
+      x-issues:
+      - 17
+      - 21
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DietaryOptions'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+  /ingredients:
+    get:
+      operationId: catalog_search
+      summary: Поиск по имени и синонимам
+      tags:
+      - catalog
+      x-issues:
+      - 18
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngredientPage'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '409':
+          description: unit_conflict, idempotency_conflict, operation_in_progress, context_changed, snapshot_expired
+            или already_imported. Для operation_in_progress вернуть Retry-After.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+      description: Стабильный порядок relevance DESC, id ASC. Cursor связан с q, limit и catalog_version/state_version;
+        изменение контекста — 409, начать сначала. Android отменяет устаревшие запросы.
+      parameters:
+      - name: q
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 200
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+  /me/pantry:
+    get:
+      operationId: pantry_get
+      summary: Все продукты дома
+      tags:
+      - pantry
+      x-issues:
+      - 18
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pantry'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+  /me/pantry/add:
+    post:
+      operationId: pantry_add
+      summary: Добавить количество
+      tags:
+      - pantry
+      x-issues:
+      - 18
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pantry'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '409':
+          description: unit_conflict, idempotency_conflict, operation_in_progress, context_changed, snapshot_expired
+            или already_imported. Для operation_in_progress вернуть Retry-After.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '412':
+          description: 'state_conflict: перечитать состояние, согласовать изменение и повторить с актуальным
+            If-Match.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '428':
+          description: 'precondition_required: отсутствует If-Match.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+      description: 500g+200g=700g. Нет строки — создать; null+известное/null остаётся null. Для известного
+        количества добавить null означает неизвестный итог. Разные единицы без подтверждённого коэффициента
+        каталога — 409 unit_conflict, без изменений. Нулевое добавление отклонить 422.
+      parameters:
+      - $ref: '#/components/parameters/IfMatch'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PantryAdd'
+  /me/pantry/{ingredient_id}:
+    put:
+      operationId: pantry_set
+      summary: Установить количество; ноль удаляет продукт
+      tags:
+      - pantry
+      x-issues:
+      - 18
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pantry'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '409':
+          description: unit_conflict, idempotency_conflict, operation_in_progress, context_changed, snapshot_expired
+            или already_imported. Для operation_in_progress вернуть Retry-After.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '412':
+          description: 'state_conflict: перечитать состояние, согласовать изменение и повторить с актуальным
+            If-Match.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '428':
+          description: 'precondition_required: отсутствует If-Match.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+      description: >-
+        Положительное количество создаёт/заменяет строку. quantity.value=0 удаляет продукт;
+        отсутствующая строка — успешный no-op. null означает присутствие без указанного количества:
+        для подбора считаем, что продукта хватает на рецепт с любым servings; это не удаление.
+        Смена единицы допустима только на разрешённую каталогом. После изменения обновить подбор
+        и рецепт.
+      parameters:
+      - name: ingredient_id
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+      - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PantrySet'
+    delete:
+      operationId: pantry_delete
+      summary: Удалить продукт
+      tags:
+      - pantry
+      x-issues:
+      - 18
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pantry'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '409':
+          description: unit_conflict, idempotency_conflict, operation_in_progress, context_changed, snapshot_expired
+            или already_imported. Для operation_in_progress вернуть Retry-After.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '412':
+          description: 'state_conflict: перечитать состояние, согласовать изменение и повторить с актуальным
+            If-Match.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '428':
+          description: 'precondition_required: отсутствует If-Match.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+      description: Отсутствующая строка — успешный no-op. Изменение запасов инвалидирует подбор, рецепт
+        и рекомендации.
+      parameters:
+      - name: ingredient_id
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+      - $ref: '#/components/parameters/IfMatch'
+  /me/pantry/purchased:
+    post:
+      operationId: pantry_add_purchased
+      summary: Атомарно добавить купленное домой
+      tags:
+      - pantry
+      x-issues:
+      - 18
+      - 23
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pantry'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '409':
+          description: unit_conflict, idempotency_conflict, operation_in_progress, context_changed, snapshot_expired
+            или already_imported. Для operation_in_progress вернуть Retry-After.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '412':
+          description: 'state_conflict: перечитать состояние, согласовать изменение и повторить с актуальным
+            If-Match.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '428':
+          description: 'precondition_required: отсутствует If-Match.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+      description: Явное действие после отметки купленного в локальном списке; сама отметка серверные
+        запасы не меняет. Android передаёт фактически купленные количества целых упаковок (размер × число),
+        не дефицит рецепта. Один ingredient_id встречается один раз; повтор — 422 duplicate_ingredient.
+        Пакет 1–100 строк. Проверить все canonical ID, положительные количества, разрешённые единицы,
+        совместимость с запасами и предел итогового количества до записи. Сложение с неизвестным остатком
+        даёт null. Несовместимые единицы — 409 unit_conflict, неизвестный ID или переполнение — 422. Все
+        строки, одна новая state_version и успешный идемпотентный ответ фиксируются одной транзакцией;
+        при любой ошибке запасы и версия не меняются. Повтор с прежним Idempotency-Key возвращает исходный
+        status/body/ETag до проверки If-Match, без повторного сложения. Одинаковый ключ с другим телом
+        — 409. Успешный replay хранится 30 дней; после срока не повторять автоматически. Android сохраняет
+        ключ и снимок выбранных строк до подтверждения; только после успеха или успешного replay снимает
+        их отметки/обновляет локальный список и перечитывает подбор/рецепт. Сервер не хранит локальный
+        список покупок.
+      parameters:
+      - $ref: '#/components/parameters/IfMatch'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PurchasedBatch'
+  /recommendations:
+    post:
+      operationId: recommendations_create
+      summary: Создать снимок подбора и первую страницу карточек
+      tags:
+      - recommendations
+      x-issues:
+      - 6
+      - 19
+      responses:
+        '201':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecommendationPage'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+      description: 'Сохранения запасов нет. Сервер атомарно читает запасы+профиль+каталог. unknown suitability
+        отображается с предупреждением и не считается allowed; hidden вынесены в отдельную выборку. mode=now:
+        availability=ready; buy_1_3: availability=missing и missing_count 1..3; all допускает >3.
+        Сохранённый дома продукт с quantity=null считается достаточным на любое число порций;
+        unknown_quantity_ids — информационная подсказка и не исключает блюдо из now или buy_1_3.
+        unknown availability по другим причинам показывается только в all. Сначала применяются q/время/калории/оборудование
+        и mode, затем считаются visible/hidden/unknown. Неизвестная метрика при активном числовом фильтре
+        не подтверждает его выполнение и исключается. unknown_total — подмножество visible_total. Порядок
+        ready, missing, unknown; missing_count ASC; известная цена ASC, неизвестная в конце; id ASC. visibility
+        определяет items, counts общие. Поля request_id и state_version позволяют Android отбросить устаревший
+        ответ. Граф всего снимка загружается отдельно через GET /recommendations/{snapshot_id}/graph
+        и не зависит от страницы items. TTL снимка 10 минут.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecommendationRequest'
+  /recommendations/{snapshot_id}:
+    get:
+      operationId: recommendations_page
+      summary: Следующая страница того же снимка
+      tags:
+      - recommendations
+      x-issues:
+      - 6
+      - 19
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecommendationPage'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '404':
+          description: Ресурс не найден или принадлежит другому пользователю; не раскрывать существование
+            чужого ресурса.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: unit_conflict, idempotency_conflict, operation_in_progress, context_changed, snapshot_expired
+            или already_imported. Для operation_in_progress вернуть Retry-After.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+      description: 'Cursor получен из page.next_cursor; без него первая страница. Размер и фильтры закреплены
+        в снимке. Snapshot принадлежит user_id. При изменении state/catalog — 409 context_changed; после
+        TTL — 409 snapshot_expired. Пустой список: items пуст, has_more=false, next_cursor=null. Граф загружается отдельно по snapshot_id.'
+      parameters:
+      - name: snapshot_id
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+      - $ref: '#/components/parameters/Cursor'
+  /recommendations/{snapshot_id}/graph:
+    get:
+      operationId: recommendations_graph
+      summary: Граф наборов покупок по всему снимку
+      tags:
+      - recommendations
+      x-issues:
+      - 6
+      - 19
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecommendationGraph'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '404':
+          description: Ресурс не найден или принадлежит другому пользователю; не раскрывать существование чужого
+            ресурса.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: unit_conflict, idempotency_conflict, operation_in_progress, context_changed, snapshot_expired
+            или already_imported. Для operation_in_progress вернуть Retry-After.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+      description: Возвращает весь граф без cursor и limit; filters, visibility и servings закреплены в снимке.
+        Чужой или неизвестный snapshot_id — 404; изменение state/catalog — 409 context_changed; истёкший TTL
+        — 409 snapshot_expired. При конфликте создать новый снимок; граф и карточки разных снимков не смешивать.
+        dish_count не зависит от страницы. Формат и инварианты заданы в Graph.
+      parameters:
+      - name: snapshot_id
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+  /recipes/{recipe_id}:
+    get:
+      operationId: recipes_get
+      summary: Единый рецепт по ID с текущими запасами
+      tags:
+      - recipes
+      x-issues:
+      - 20
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecipeDetail'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '404':
+          description: Ресурс не найден или принадлежит другому пользователю; не раскрывать существование
+            чужого ресурса.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+      description: >-
+        Ингредиенты масштабируются на servings; минуты — общее время, nutrition — на порцию.
+        missing cost — целые докупаемые упаковки. Сохранённый дома продукт с quantity=null считается
+        достаточным на любое servings: для него available=null, availability=enough, shortage=0
+        в единице required либо null, если единицу определить нельзя. Он не попадает в shopping_items
+        и не увеличивает missing_count или buy_cost; его ID остаётся в unknown_quantity_ids как подсказка.
+        Неизвестное требуемое количество в самом рецепте не приравнивается к достаточному запасу. Необязательные
+        ингредиенты явно отмечены, потенциальные аллергены не теряются. shopping_items — только однозначно
+        определённые упаковки; неизвестные показываются через ingredients. После мутации перечитать тот
+        же ID. GET не резервирует и не списывает продукты.
+        Временные exclude_allergens дополняют excluded_allergens текущего профиля (объединение без
+        дубликатов) и не сохраняются в профиль. recipe.suitability и причины рассчитываются по этим
+        объединённым ограничениям так же, как в подборе. При неизменных профиле и каталоге одинаковый
+        контекст исключений должен давать одинаковый статус и причины. Скрытый по аллергенам рецепт
+        доступен по ID с suitability=hidden и соответствующими причинами; ограничение не превращается
+        в 404. Сведения об аллергенах и их полноте не теряются.
+      parameters:
+      - name: recipe_id
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+      - name: servings
+        description: При переходе из подбора или плана покупок клиент обязан передать servings из ответа; default используется только при самостоятельном открытии рецепта.
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 12
+          default: 2
+      - name: exclude_allergens
+        in: query
+        required: false
+        style: form
+        explode: true
+        description: >-
+          Временные исключения аллергенов. При переходе из подбора (включая скрытые рецепты и граф)
+          или плана покупок Android передаёт filters.exclude_allergens из запроса, создавшего этот
+          результат, а не из изменённого впоследствии состояния фильтров. При повторном запросе деталей
+          и изменении порций сохраняет этот список. Отсутствие параметра означает пустой список
+          временных исключений; ограничения профиля применяются всегда. Неизвестный ID — 422
+          validation_error. Несколько ID передаются повторением параметра:
+          ?exclude_allergens=peanut&exclude_allergens=milk (условные ID; используются ID справочника).
+        schema:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 128
+          uniqueItems: true
+          default: []
+  /me/favorites/recipes:
+    get:
+      operationId: favorites_recipes
+      summary: Список избранного recipes
+      tags:
+      - favorites
+      x-issues:
+      - 22
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FavoriteRecipePage'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '409':
+          description: unit_conflict, idempotency_conflict, operation_in_progress, context_changed, snapshot_expired
+            или already_imported. Для operation_in_progress вернуть Retry-After.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+      description: Порядок id ASC. Cursor привязан к user, state/catalog version и limit. Изменение контекста
+        — 409; начать заново.
+      parameters:
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+  /me/favorites/recipes/{recipe_id}:
+    put:
+      operationId: favorites_recipes_put
+      summary: Добавить в избранное
+      tags:
+      - favorites
+      x-issues:
+      - 22
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResult'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '404':
+          description: Ресурс не найден или принадлежит другому пользователю; не раскрывать существование
+            чужого ресурса.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: unit_conflict, idempotency_conflict, operation_in_progress, context_changed, snapshot_expired
+            или already_imported. Для operation_in_progress вернуть Retry-After.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '412':
+          description: 'state_conflict: перечитать состояние, согласовать изменение и повторить с актуальным
+            If-Match.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '428':
+          description: 'precondition_required: отсутствует If-Match.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+      description: Установить состояние, не toggle. Повторное целевое состояние — успешный no-op при актуальном
+        If-Match. При устаревшем If-Match — 412, перечитать; не инвертировать состояние. UI обновляет
+        общий репозиторий.
+      parameters:
+      - name: recipe_id
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+      - $ref: '#/components/parameters/IfMatch'
+    delete:
+      operationId: favorites_recipes_delete
+      summary: Удалить из избранного
+      tags:
+      - favorites
+      x-issues:
+      - 22
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResult'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '404':
+          description: Ресурс не найден или принадлежит другому пользователю; не раскрывать существование
+            чужого ресурса.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: unit_conflict, idempotency_conflict, operation_in_progress, context_changed, snapshot_expired
+            или already_imported. Для operation_in_progress вернуть Retry-After.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '412':
+          description: 'state_conflict: перечитать состояние, согласовать изменение и повторить с актуальным
+            If-Match.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '428':
+          description: 'precondition_required: отсутствует If-Match.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+      description: Установить состояние, не toggle. Повторное целевое состояние — успешный no-op при актуальном
+        If-Match. При устаревшем If-Match — 412, перечитать; не инвертировать состояние. UI обновляет
+        общий репозиторий.
+      parameters:
+      - name: recipe_id
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+      - $ref: '#/components/parameters/IfMatch'
+  /me/favorites/ingredients:
+    get:
+      operationId: favorites_ingredients
+      summary: Список избранного ingredients
+      tags:
+      - favorites
+      x-issues:
+      - 22
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngredientPage'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '409':
+          description: unit_conflict, idempotency_conflict, operation_in_progress, context_changed, snapshot_expired
+            или already_imported. Для operation_in_progress вернуть Retry-After.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+      description: Порядок id ASC. Cursor привязан к user, state/catalog version и limit. Изменение контекста
+        — 409; начать заново.
+      parameters:
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+  /me/favorites/ingredients/{ingredient_id}:
+    put:
+      operationId: favorites_ingredients_put
+      summary: Добавить в избранное
+      tags:
+      - favorites
+      x-issues:
+      - 22
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResult'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '404':
+          description: Ресурс не найден или принадлежит другому пользователю; не раскрывать существование
+            чужого ресурса.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: unit_conflict, idempotency_conflict, operation_in_progress, context_changed, snapshot_expired
+            или already_imported. Для operation_in_progress вернуть Retry-After.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '412':
+          description: 'state_conflict: перечитать состояние, согласовать изменение и повторить с актуальным
+            If-Match.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '428':
+          description: 'precondition_required: отсутствует If-Match.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+      description: Установить состояние, не toggle. Повторное целевое состояние — успешный no-op при актуальном
+        If-Match. При устаревшем If-Match — 412, перечитать; не инвертировать состояние. UI обновляет
+        общий репозиторий.
+      parameters:
+      - name: ingredient_id
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+      - $ref: '#/components/parameters/IfMatch'
+    delete:
+      operationId: favorites_ingredients_delete
+      summary: Удалить из избранного
+      tags:
+      - favorites
+      x-issues:
+      - 22
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResult'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '404':
+          description: Ресурс не найден или принадлежит другому пользователю; не раскрывать существование
+            чужого ресурса.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: unit_conflict, idempotency_conflict, operation_in_progress, context_changed, snapshot_expired
+            или already_imported. Для operation_in_progress вернуть Retry-After.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '412':
+          description: 'state_conflict: перечитать состояние, согласовать изменение и повторить с актуальным
+            If-Match.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '428':
+          description: 'precondition_required: отсутствует If-Match.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+      description: Установить состояние, не toggle. Повторное целевое состояние — успешный no-op при актуальном
+        If-Match. При устаревшем If-Match — 412, перечитать; не инвертировать состояние. UI обновляет
+        общий репозиторий.
+      parameters:
+      - name: ingredient_id
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+      - $ref: '#/components/parameters/IfMatch'
+  /recommendations/single-purchase:
+    post:
+      operationId: purchases_single_purchase
+      summary: Лучшая одиночная покупка
+      tags:
+      - purchases
+      x-issues:
+      - 23
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SinglePurchaseResult'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+      description: 'Один серверный контекст запасов+профиля+фильтров+servings. Возвращает options — варианты
+        покупки одного ингредиента; shopping_item.package_count может быть больше одного. Каждый вариант
+        содержит собственные unlocked_recipe_ids. Все расчёты используют servings из запроса; подходят только
+        рецепты с suitability=allowed и определимыми количествами и ценами докупки. Продукты дома с
+        quantity=null считаются достаточными, не требуют покупки и не исключают рецепт из расчёта.
+        Для каждого докупаемого ингредиента упаковок
+        достаточно для каждого открываемого рецепта по отдельности. Варианты с total_price выше budget исключаются.
+        Порядок: число unlocked_recipe_ids DESC, shopping_item.total_price ASC, ingredient_id ASC, package_id ASC;
+        первый вариант — лучший. Один вариант на ingredient_id. Это альтернативные покупки: их цены и списки
+        блюд не суммируются. Блюда внутри варианта тоже альтернативы, одновременное приготовление не обещается.
+        found означает непустой options; no_plan и insufficient_data имеют пустой options. При отсутствии
+        подтверждённых вариантов и наличии рецептов с неизвестными оценками — insufficient_data и их ID в
+        unpriced_recipe_ids; иначе no_plan. При found unpriced_recipe_ids может содержать исключённые из расчёта
+        рецепты. Фильтры применяются буквально, поэтому filters.mode=now может дать no_plan.
+        Изменений списка покупок/запасов нет.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PurchaseRequest'
+  /recommendations/budget:
+    post:
+      operationId: purchases_budget
+      summary: План покупок под бюджет
+      tags:
+      - purchases
+      x-issues:
+      - 23
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseResult'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+      description: 'Один серверный контекст запасов+профиля+фильтров+servings. Все рецепты и докупаемые упаковки рассчитываются на servings из запроса. Только suitability=allowed и известные
+        количества/цены докупки подтверждают бюджет. Продукты дома с quantity=null считаются достаточными,
+        не требуют покупки и не исключают рецепт из расчёта. budget: максимум альтернативных блюд в пределах бюджета, tie-break
+        общая цена ASC, стабильный список package_id. Альтернативы не
+        обещают одновременное приготовление. Неизвестные оценки — unpriced_recipe_ids и недостаточность
+        данных, не бесплатные покупки. found имеет непустые items и известный total_cost<=budget; no_plan
+        имеет пустые items, total_cost=null; insufficient_data тоже не обещает план. При выборе filters.mode=now
+        возможен no_plan: фильтры применяются буквально. Изменений списка покупок/запасов нет.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PurchaseRequest'
+  /recognitions:
+    post:
+      operationId: recognitions_create
+      summary: Загрузить фото/скриншот чека или фото продуктов
+      tags:
+      - recognitions
+      x-issues:
+      - 11
+      - 17
+      - 24
+      responses:
+        '202':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recognition'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+            Location:
+              schema:
+                type: string
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '409':
+          description: unit_conflict, idempotency_conflict, operation_in_progress, context_changed, snapshot_expired
+            или already_imported. Для operation_in_progress вернуть Retry-After.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: 'file_too_large: фото превышает 10 MiB.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '415':
+          description: 'unsupported_media_type: разрешены только декодируемые JPEG/PNG.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+      description: 'Async; multipart kind=receipt для фото/скриншота электронного чека, kind=products
+        для фото продуктов в холодильнике или на столе. JPEG/PNG <=10 MiB, <=25 мегапикселей после декодирования;
+        проверять фактический формат. PDF и другие файлы электронных чеков пока не поддерживаются. Для
+        products предлагать только видимые продукты; неизвестное количество возвращать null. Idempotency
+        fingerprint включает kind, байты файла и MIME; другой kind с тем же ключом — 409. До подтверждённого
+        импорта запасы не меняются. 202 может содержать queued/processing/succeeded; Location указывает
+        GET задачи, Retry-After=2. Фото удалить после обработки, не позднее 24ч; результат хранить
+        24ч. Не логировать изображения/сырые строки.'
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RecognitionUpload'
+            encoding:
+              file:
+                contentType: image/jpeg, image/png
+  /recognitions/{recognition_id}:
+    get:
+      operationId: recognitions_status
+      summary: Статус и результат распознавания чека или продуктов
+      tags:
+      - recognitions
+      x-issues:
+      - 11
+      - 24
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recognition'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '404':
+          description: Ресурс не найден или принадлежит другому пользователю; не раскрывать существование
+            чужого ресурса.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+      description: 'Только владелец. kind сохраняется из запроса загрузки. После истечения срока — 404.
+        queued/processing: items=[], failure=null. succeeded: items могут быть пустыми; failed: items=[],
+        failure содержит Error. Пользователь исправляет canonical-позиции через поиск и подтверждает выбранные
+        строки. Для фото продуктов неизвестное количество остаётся null. Poll по poll_after_seconds, после
+        терминального состояния остановить. Ошибка распознавания внутри 200 failed — результат задачи;
+        HTTP 503 означает недоступность самого сервиса.'
+      parameters:
+      - name: recognition_id
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+  /recognition-imports:
+    post:
+      operationId: recognitions_import
+      summary: Подтвердить и атомарно добавить распознанные продукты
+      tags:
+      - recognitions
+      x-issues:
+      - 11
+      - 17
+      - 24
+      responses:
+        '200':
+          description: Успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResult'
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: 'Версия общего состояния пользователя: "state-7".'
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store для персональных ответов и токенов.
+        '401':
+          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        '404':
+          description: Ресурс не найден или принадлежит другому пользователю; не раскрывать существование
+            чужого ресурса.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: unit_conflict, idempotency_conflict, operation_in_progress, context_changed, snapshot_expired
+            или already_imported. Для operation_in_progress вернуть Retry-After.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '412':
+          description: 'state_conflict: перечитать состояние, согласовать изменение и повторить с актуальным
+            If-Match.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
+            количество.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '428':
+          description: 'precondition_required: отсутствует If-Match.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 'rate_limited: повторять после Retry-After.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+        '503':
+          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: Секунды до повтора; для 503 может отсутствовать.
+      description: Сначала вернуть сохранённый успешный replay с тем же ключом, даже с устаревшим If-Match
+        или истёкшим результатом распознавания. Для новой операции проверить успешную задачу владельца
+        и совпадение kind. Каждый line_id принадлежит задаче и встречается один раз; ingredient_id можно
+        исправить на известный canonical ID. Для receipt количество >0 и единица подтверждены; для products
+        допустимо явно подтвердить неизвестное количество как null. Ноль отклоняется. Несколько строк
+        одного ингредиента суммировать только после проверки единиц; неизвестный итог остаётся null. Любая
+        ошибка откатывает весь импорт. На один recognition_id — один успешный импорт; другой ключ после
+        успеха даёт 409 already_imported, оставшиеся строки не импортируются позже. Ledger и запасы фиксировать
+        одной транзакцией. После timeout повторять тот же запрос с тем же ключом. Обычные 4xx не расходуют
+        ключ; успешные ответы сохраняются 30 дней, после срока автоматический replay запрещён. Постоянная
+        уникальность recognition_id защищает импорт после удаления фото/результата. После успеха обновить
+        продукты, подбор и рецепт.
+      parameters:
+      - $ref: '#/components/parameters/IfMatch'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecognitionImport'
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Opaque серверный access token. Пользователь определяется только по проверенной сессии,
+        не по user_id из запроса.
+  parameters:
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      schema:
+        type: string
+      description: ETag общей версии пользователя, например "state-7". Не wildcard. 412 — версия устарела,
+        428 — заголовок отсутствует.
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: UUID операции. Сохранять при timeout/повторе. Scope=user+method+path; повтор возвращает
+        исходные status/body/ETag до проверки If-Match. Другой payload с тем же ключом — 409.
+    Cursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+      description: Непрозрачный cursor; привязан к запросу, пользователю, снимку/версии и размеру страницы.
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+  schemas:
+    Quantity:
+      type: object
+      properties:
+        value:
+          type: number
+          minimum: 0
+          maximum: 1000000
+        unit:
+          type: string
+          enum:
+          - g
+          - ml
+          - pcs
+      required:
+      - value
+      - unit
+      additionalProperties: false
+    Money:
+      type: object
+      properties:
+        minor_units:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+          enum:
+          - RUB
+      required:
+      - minor_units
+      - currency
+      additionalProperties: false
+      description: Целые копейки. Неизвестные деньги представлены null вместо объекта.
+    Source:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        url:
+          anyOf:
+          - type: string
+            format: uri
+          - type: 'null'
+        observed_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+      required:
+      - name
+      - url
+      - observed_at
+      additionalProperties: false
+    Offer:
+      type: object
+      properties:
+        package_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        quantity:
+          $ref: '#/components/schemas/PositiveQuantity'
+        price:
+          anyOf:
+          - $ref: '#/components/schemas/Money'
+          - type: 'null'
+        source:
+          anyOf:
+          - $ref: '#/components/schemas/Source'
+          - type: 'null'
+      required:
+      - package_id
+      - quantity
+      - price
+      - source
+      additionalProperties: false
+    AllergenAssessment:
+      type: object
+      properties:
+        contains:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 128
+            description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+          uniqueItems: true
+        completeness:
+          type: string
+          enum:
+          - complete
+          - incomplete
+          - unknown
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/Source'
+      required:
+      - contains
+      - completeness
+      - sources
+      additionalProperties: false
+      description: Пустой contains при incomplete/unknown не доказывает отсутствие аллергенов. Лактоза
+        отличается от молочного белка.
+    Ingredient:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        name:
+          type: string
+        allowed_units:
+          type: array
+          items:
+            type: string
+            enum:
+            - g
+            - ml
+            - pcs
+          minItems: 1
+          uniqueItems: true
+        is_favorite:
+          type: boolean
+        allergens:
+          $ref: '#/components/schemas/AllergenAssessment'
+        offers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Offer'
+      required:
+      - id
+      - name
+      - allowed_units
+      - is_favorite
+      - allergens
+      - offers
+      additionalProperties: false
+    DictionaryEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        name:
+          type: string
+        support:
+          type: string
+          enum:
+          - supported
+          - unsupported
+          - informational
+      required:
+      - id
+      - name
+      - support
+      additionalProperties: false
+    Dictionary:
+      type: object
+      properties:
+        catalog_version:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DictionaryEntry'
+      required:
+      - catalog_version
+      - items
+      additionalProperties: false
+    DietaryOptions:
+      type: object
+      properties:
+        catalog_version:
+          type: string
+          minLength: 1
+          maxLength: 128
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DietaryOption'
+      required:
+      - catalog_version
+      - items
+      additionalProperties: false
+      description: >-
+        Явное соответствие вариантов ограничения полям Preferences. id уникален в справочнике;
+        пары profile_binding.field/value также уникальны среди выбираемых элементов. Названия и ID
+        не разбираются клиентом для определения поля профиля. Каталог должен содержать варианты
+        для всех сохраняемых значений food_type и diet_table_id, включая неподдерживаемые.
+    DietaryOption:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный ID элемента справочника; не обязательно равен значению поля профиля.
+        name:
+          type: string
+        support:
+          type: string
+          enum:
+          - supported
+          - unsupported
+          - informational
+        profile_binding:
+          anyOf:
+          - $ref: '#/components/schemas/DietaryProfileBinding'
+          - type: 'null'
+      required:
+      - id
+      - name
+      - support
+      - profile_binding
+      additionalProperties: false
+      description: >-
+        Элемент выбран, если preferences[profile_binding.field] равно profile_binding.value.
+        При выборе клиент записывает это значение в полный черновик Preferences. food_type и
+        diet_table_id допускают по одному выбранному значению; булевы ограничения независимы.
+        Снятие булева ограничения записывает false; сброс food_type — any, diet_table_id — null.
+        Для informational profile_binding=null: элемент только поясняет и не выбирается.
+        unsupported имеет обычную связь, может сохраняться, но не обещает поддержку движком;
+        выбранные неподдерживаемые элементы возвращаются как ID этого справочника в
+        Profile.unsupported_restrictions.
+      allOf:
+      - if:
+          properties:
+            support:
+              const: informational
+          required:
+          - support
+        then:
+          properties:
+            profile_binding:
+              type: 'null'
+        else:
+          properties:
+            profile_binding:
+              $ref: '#/components/schemas/DietaryProfileBinding'
+      examples:
+      - id: gluten-free-option
+        name: Без глютена
+        support: supported
+        profile_binding:
+          field: gluten_free
+          value: true
+      - id: vegetarian-option
+        name: Вегетарианское питание
+        support: supported
+        profile_binding:
+          field: food_type
+          value: vegetarian
+      - id: diet-table-option
+        name: Диетический стол (пример)
+        support: unsupported
+        profile_binding:
+          field: diet_table_id
+          value: diet-table-example
+    DietaryProfileBinding:
+      description: Типизированные поле и значение Preferences; произвольные поля и несовместимые значения запрещены.
+      oneOf:
+      - type: object
+        properties:
+          field:
+            type: string
+            const: food_type
+          value:
+            type: string
+            enum:
+            - any
+            - vegetarian
+            - vegan
+        required:
+        - field
+        - value
+        additionalProperties: false
+      - type: object
+        properties:
+          field:
+            type: string
+            enum:
+            - gluten_free
+            - lactose_free
+            - diabetes
+          value:
+            type: boolean
+            const: true
+        required:
+        - field
+        - value
+        additionalProperties: false
+      - type: object
+        properties:
+          field:
+            type: string
+            const: diet_table_id
+          value:
+            type: string
+            minLength: 1
+            maxLength: 128
+        required:
+        - field
+        - value
+        additionalProperties: false
+    Preferences:
+      type: object
+      properties:
+        food_type:
+          type: string
+          enum:
+          - any
+          - vegetarian
+          - vegan
+        excluded_allergens:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 128
+            description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+          uniqueItems: true
+        gluten_free:
+          type: boolean
+        lactose_free:
+          type: boolean
+        diabetes:
+          type: boolean
+        diet_table_id:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 128
+            description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+          - type: 'null'
+      required:
+      - food_type
+      - excluded_allergens
+      - gluten_free
+      - lactose_free
+      - diabetes
+      - diet_table_id
+      additionalProperties: false
+    Profile:
+      type: object
+      properties:
+        user_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        display_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+        preferences:
+          $ref: '#/components/schemas/Preferences'
+        unsupported_restrictions:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 128
+            description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        state_version:
+          type: integer
+          minimum: 0
+          description: Общая монотонная версия серверных данных текущего пользователя.
+      required:
+      - user_id
+      - display_name
+      - preferences
+      - unsupported_restrictions
+      - state_version
+      additionalProperties: false
+    ProfileUpdate:
+      type: object
+      properties:
+        preferences:
+          $ref: '#/components/schemas/Preferences'
+      required:
+      - preferences
+      additionalProperties: false
+      description: Полное сохранение черновика настроек. Back/Отмена не отправляет запрос.
+    State:
+      type: object
+      properties:
+        state_version:
+          type: integer
+          minimum: 0
+          description: Общая монотонная версия серверных данных текущего пользователя.
+        catalog_version:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        user_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+      required:
+      - state_version
+      - catalog_version
+      - user_id
+      additionalProperties: false
+    PantryItem:
+      type: object
+      properties:
+        ingredient_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        name:
+          type: string
+        quantity:
+          anyOf:
+          - $ref: '#/components/schemas/PositiveQuantity'
+          - type: 'null'
+      required:
+      - ingredient_id
+      - name
+      - quantity
+      additionalProperties: false
+      description: Сохранённое количество положительное либо не указано (null). null означает, что продукт
+        есть и считается достаточным для каждого альтернативного рецепта на любое число порций; это не
+        обещание одновременного приготовления. Само значение остаётся null, фиктивный вес не подставляется.
+        Нулевой остаток удаляет строку.
+    Pantry:
+      type: object
+      properties:
+        state_version:
+          type: integer
+          minimum: 0
+          description: Общая монотонная версия серверных данных текущего пользователя.
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PantryItem'
+      required:
+      - state_version
+      - items
+      additionalProperties: false
+    PantrySet:
+      type: object
+      properties:
+        quantity:
+          anyOf:
+          - $ref: '#/components/schemas/Quantity'
+          - type: 'null'
+      required:
+      - quantity
+      additionalProperties: false
+      description: 'Абсолютное значение: 0 удаляет строку, null сохраняет продукт без количества и считает его достаточным для подбора.'
+    PantryAdd:
+      type: object
+      properties:
+        ingredient_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        quantity:
+          anyOf:
+          - $ref: '#/components/schemas/PositiveQuantity'
+          - type: 'null'
+      required:
+      - ingredient_id
+      - quantity
+      additionalProperties: false
+      description: Добавить положительное либо неизвестное количество. Ноль не является добавлением; для
+        удаления использовать PantrySet или DELETE.
+    PurchasedItem:
+      type: object
+      properties:
+        ingredient_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        quantity:
+          $ref: '#/components/schemas/PositiveQuantity'
+      required:
+      - ingredient_id
+      - quantity
+      additionalProperties: false
+      description: 'Подтверждённое фактически купленное количество: объём целой упаковки × число купленных
+        упаковок. Количество и единицы должны быть известны.'
+    PurchasedBatch:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PurchasedItem'
+          minItems: 1
+          maxItems: 100
+          uniqueItems: true
+      required:
+      - items
+      additionalProperties: false
+      description: Только отмеченные купленными строки локального списка. Перед отправкой объединить одинаковые
+        ingredient_id с совместимыми единицами; повтор ingredient_id в запросе — 422. Любая ошибка отменяет
+        весь пакет.
+    MutationResult:
+      type: object
+      properties:
+        state_version:
+          type: integer
+          minimum: 0
+          description: Общая монотонная версия серверных данных текущего пользователя.
+      required:
+      - state_version
+      additionalProperties: false
+    PageInfo:
+      type: object
+      properties:
+        next_cursor:
+          anyOf:
+          - type: string
+          - type: 'null'
+        has_more:
+          type: boolean
+      required:
+      - next_cursor
+      - has_more
+      additionalProperties: false
+    IngredientPage:
+      type: object
+      properties:
+        catalog_version:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        state_version:
+          type: integer
+          minimum: 0
+          description: Общая монотонная версия серверных данных текущего пользователя.
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ingredient'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+      required:
+      - catalog_version
+      - state_version
+      - items
+      - page
+      additionalProperties: false
+    Nutrition:
+      type: object
+      properties:
+        kcal:
+          type: number
+          minimum: 0
+        protein_g:
+          type: number
+          minimum: 0
+        fat_g:
+          type: number
+          minimum: 0
+        carbs_g:
+          type: number
+          minimum: 0
+      required:
+      - kcal
+      - protein_g
+      - fat_g
+      - carbs_g
+      additionalProperties: false
+      description: На одну порцию. Неизвестная оценка всего объекта — null.
+    Reason:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Машинный код причины. skip_optional означает рекомендацию исключить необязательные
+            ингредиенты; сам по себе не является причиной скрытия блюда.
+        message:
+          type: string
+          description: Текст для пользователя, сформированный backend; клиент не определяет code или ID по тексту.
+        ingredient_ids:
+          type: array
+          description: Стабильные идентификаторы ингредиентов API (ingredients.code), а не названия.
+            Для skip_optional перечислены необязательные ингредиенты, которые рекомендуется исключить.
+          items:
+            type: string
+            minLength: 1
+            maxLength: 128
+            description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        restriction_ids:
+          type: array
+          description: Стабильные идентификаторы связанных ограничений из справочников allergens и
+            dietary-options, а не их отображаемые названия. Если связанных ограничений нет, список пуст.
+          items:
+            type: string
+            minLength: 1
+            maxLength: 128
+            description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+      required:
+      - code
+      - message
+      - ingredient_ids
+      - restriction_ids
+      additionalProperties: false
+      allOf:
+      - if:
+          properties:
+            code:
+              const: skip_optional
+          required:
+          - code
+        then:
+          properties:
+            ingredient_ids:
+              minItems: 1
+      description: Причина ограничения или предупреждение. Данные БД должны позволять получить стабильные
+        идентификаторы; backend формирует message отдельно от них. skip_optional не меняет пригодность блюда
+        сам по себе; другие причины скрытия или неопределённости продолжают действовать.
+      example:
+        code: skip_optional
+        message: Лучше без сметаны
+        ingredient_ids:
+        - sour_cream
+        restriction_ids:
+        - milk
+    Suitability:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - allowed
+          - hidden
+          - unknown
+        reasons:
+          type: array
+          description: Причины ограничений и предупреждения; список может быть непустым при status=allowed.
+            Клиент показывает skip_optional как предупреждение и не скрывает блюдо только из-за его наличия.
+          items:
+            $ref: '#/components/schemas/Reason'
+      required:
+      - status
+      - reasons
+      additionalProperties: false
+      description: status определяет пригодность независимо от наличия предупреждений. Если единственные
+        причины имеют code=skip_optional и пригодность в остальном подтверждена, status=allowed.
+    Availability:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - ready
+          - missing
+          - unknown
+        missing_count:
+          type: integer
+          minimum: 0
+        unknown_quantity_ids:
+          type: array
+          description: >-
+            Ингредиенты, сохранённые дома с quantity=null. Информационная подсказка:
+            эти продукты считаются достаточными и сами по себе не увеличивают missing_count,
+            не дают status=unknown и не мешают подбору, графу или плану покупок.
+          items:
+            type: string
+            minLength: 1
+            maxLength: 128
+            description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+      required:
+      - status
+      - missing_count
+      - unknown_quantity_ids
+      additionalProperties: false
+      description: ready — все обязательные продукты считаются достаточными; missing — есть подтверждённая
+        недостача; unknown — доступность нельзя определить по другим причинам, например неизвестна
+        потребность рецепта. Наличие дома продукта без веса (quantity=null) не является такой причиной.
+    RecipeCard:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        title:
+          type: string
+        photo_url:
+          anyOf:
+          - type: string
+            format: uri
+          - type: 'null'
+        servings:
+          description: Число порций, на которое рассчитаны availability и buy_cost. В подборе равно servings страницы; в деталях — значению query-параметра servings.
+          type: integer
+          minimum: 1
+          maximum: 12
+        minutes:
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
+        nutrition_per_serving:
+          anyOf:
+          - $ref: '#/components/schemas/Nutrition'
+          - type: 'null'
+        nutrition_source:
+          anyOf:
+          - $ref: '#/components/schemas/Source'
+          - type: 'null'
+        buy_cost:
+          anyOf:
+          - $ref: '#/components/schemas/Money'
+          - type: 'null'
+        availability:
+          $ref: '#/components/schemas/Availability'
+        suitability:
+          $ref: '#/components/schemas/Suitability'
+        allergens:
+          $ref: '#/components/schemas/AllergenAssessment'
+        is_favorite:
+          type: boolean
+        methods:
+          type: array
+          items:
+            $ref: '#/components/schemas/CookingMethod'
+          uniqueItems: true
+          description: 'Определяется по recipes.no_cook BOOLEAN NOT NULL DEFAULT false и needs_*.
+            Если no_cook=true, вернуть [no_cook]; иначе вернуть stove/oven/microwave для истинных
+            needs_stove/needs_oven/needs_microwave. Если все флаги false, вернуть [] — нет сведений.
+            no_cook не совмещается с другими способами. Рецепт с methods=[] проходит фильтр по технике
+            только при наличии у пользователя stove, oven и microwave. [no_cook] проходит независимо от техники.'
+      required:
+      - id
+      - title
+      - photo_url
+      - servings
+      - minutes
+      - nutrition_per_serving
+      - nutrition_source
+      - buy_cost
+      - availability
+      - suitability
+      - allergens
+      - is_favorite
+      - methods
+      additionalProperties: false
+      allOf:
+      - if:
+          properties:
+            methods:
+              contains:
+                const: no_cook
+          required:
+          - methods
+        then:
+          properties:
+            methods:
+              maxItems: 1
+    CookingMethod:
+      type: string
+      enum:
+      - stove
+      - oven
+      - microwave
+      - no_cook
+    RecipeItem:
+      type: object
+      description: Продукт дома без указанного количества имеет available=null и availability=enough
+        (либо optional для необязательного ингредиента), shortage=0 в единице required; если единица
+        неизвестна, shortage=null. Отсутствие продукта и неизвестное количество продукта дома — разные состояния.
+      properties:
+        ingredient_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        name:
+          type: string
+        required:
+          anyOf:
+          - $ref: '#/components/schemas/Quantity'
+          - type: 'null'
+        available:
+          anyOf:
+          - $ref: '#/components/schemas/Quantity'
+          - type: 'null'
+        shortage:
+          anyOf:
+          - $ref: '#/components/schemas/Quantity'
+          - type: 'null'
+        availability:
+          type: string
+          enum:
+          - enough
+          - missing
+          - unknown
+          - optional
+        optional:
+          type: boolean
+        original_amount:
+          anyOf:
+          - type: string
+          - type: 'null'
+        offer:
+          anyOf:
+          - $ref: '#/components/schemas/Offer'
+          - type: 'null'
+      required:
+      - ingredient_id
+      - name
+      - required
+      - available
+      - shortage
+      - availability
+      - optional
+      - original_amount
+      - offer
+      additionalProperties: false
+    RecipeStep:
+      type: object
+      properties:
+        number:
+          type: integer
+          minimum: 1
+        text:
+          type: string
+          minLength: 1
+        minutes:
+          anyOf:
+          - type: integer
+            minimum: 0
+          - type: 'null'
+      required:
+      - number
+      - text
+      - minutes
+      additionalProperties: false
+    RecipeDetail:
+      type: object
+      properties:
+        state_version:
+          type: integer
+          minimum: 0
+          description: Общая монотонная версия серверных данных текущего пользователя.
+        catalog_version:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        recipe:
+          $ref: '#/components/schemas/RecipeCard'
+        ingredients:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipeItem'
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipeStep'
+        shopping_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShoppingItem'
+      required:
+      - state_version
+      - catalog_version
+      - recipe
+      - ingredients
+      - steps
+      - shopping_items
+      additionalProperties: false
+    Filters:
+      type: object
+      properties:
+        q:
+          type: string
+          maxLength: 200
+        mode:
+          type: string
+          enum:
+          - all
+          - now
+          - buy_1_3
+        max_minutes:
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
+        max_kcal_per_serving:
+          anyOf:
+          - type: number
+            minimum: 0
+          - type: 'null'
+        equipment:
+          type: array
+          items:
+            type: string
+            enum:
+            - stove
+            - oven
+            - microwave
+            - no_cook
+          uniqueItems: true
+        exclude_allergens:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 128
+            description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+          uniqueItems: true
+      required:
+      - q
+      - mode
+      - max_minutes
+      - max_kcal_per_serving
+      - equipment
+      - exclude_allergens
+      additionalProperties: false
+      description: Все поля обязательны для однозначного контекста. equipment — доступное оборудование;
+        все способы из непустого methods рецепта должны быть доступны пользователю, кроме no_cook,
+        который разрешён независимо от equipment. Рецепт с methods=[] (нет сведений о технике)
+        допускается только если equipment содержит stove, oven и microwave одновременно.
+        Наличие no_cook в equipment не заменяет ни один из этих трёх способов. Фильтр аллергенов дополняет профиль.
+    RecommendationRequest:
+      type: object
+      properties:
+        servings:
+          type: integer
+          minimum: 1
+          maximum: 12
+          description: Число порций для расчёта каждого рецепта и докупаемых упаковок.
+        request_id:
+          type: string
+          format: uuid
+        filters:
+          $ref: '#/components/schemas/Filters'
+        visibility:
+          type: string
+          enum:
+          - visible
+          - hidden
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+      required:
+      - servings
+      - request_id
+      - filters
+      - visibility
+      - limit
+      additionalProperties: false
+      description: Создать неизменяемый снимок подбора по текущим запасам, профилю, каталогу и servings. При изменении servings создать новый снимок. request_id
+        генерирует клиент и сравнивает с актуальным запросом.
+    GraphNode:
+      oneOf:
+      - $ref: '#/components/schemas/GraphHomeNode'
+      - $ref: '#/components/schemas/GraphPurchaseNode'
+      - $ref: '#/components/schemas/GraphRecipeNode'
+      discriminator:
+        propertyName: kind
+        mapping:
+          home: '#/components/schemas/GraphHomeNode'
+          purchase: '#/components/schemas/GraphPurchaseNode'
+          recipe: '#/components/schemas/GraphRecipeNode'
+    GraphHomeNode:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 128
+        kind:
+          type: string
+          const: home
+        label:
+          type: string
+        level:
+          type: integer
+          const: 0
+      required:
+      - id
+      - kind
+      - label
+      - level
+      additionalProperties: false
+      description: Единственный корневой узел запасов пользователя, уровень 0; покупки отсутствуют.
+    GraphPurchaseNode:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 128
+        kind:
+          type: string
+          const: purchase
+        label:
+          type: string
+        level:
+          type: integer
+          minimum: 1
+          maximum: 3
+        shopping_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShoppingItem'
+          minItems: 1
+          maxItems: 3
+        cost:
+          anyOf:
+          - $ref: '#/components/schemas/Money'
+          - type: 'null'
+        dish_count:
+          type: integer
+          minimum: 1
+      required:
+      - id
+      - kind
+      - label
+      - level
+      - shopping_items
+      - cost
+      - dish_count
+      additionalProperties: false
+      description: Узел объединяет рецепты с одним точным набором недостающих ingredient_id. level равен числу
+        ингредиентов, а не упаковок. shopping_items содержит весь набор; ingredient_id уникальны. cost — сумма
+        total_price; при неизвестной цене null. dish_count — число непосредственно связанных рецептов во всём снимке.
+        Это альтернативы, не общий план приготовления. Упаковок достаточно для каждого связанного рецепта по отдельности
+        на servings снимка.
+    GraphRecipeNode:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 128
+        kind:
+          type: string
+          const: recipe
+        label:
+          type: string
+        level:
+          type: integer
+          minimum: 0
+          maximum: 3
+        recipe_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+        recipe:
+          $ref: '#/components/schemas/RecipeCard'
+      required:
+      - id
+      - kind
+      - label
+      - level
+      - recipe_id
+      - recipe
+      additionalProperties: false
+      description: recipe.id равен recipe_id; servings карточки равен servings снимка, level равен missing_count.
+        Полная карточка доступна и для рецепта вне текущей страницы списка. suitability и предупреждения сохраняются;
+        ребро не отменяет ограничения питания.
+    GraphEdge:
+      oneOf:
+      - type: object
+        properties:
+          source:
+            type: string
+            minLength: 1
+            maxLength: 128
+          target:
+            type: string
+            minLength: 1
+            maxLength: 128
+          kind:
+            type: string
+            const: extends
+          add:
+            type: array
+            items:
+              $ref: '#/components/schemas/ShoppingItem'
+            minItems: 1
+          add_cost:
+            anyOf:
+            - $ref: '#/components/schemas/Money'
+            - type: 'null'
+        required:
+        - source
+        - target
+        - kind
+        - add
+        - add_cost
+        additionalProperties: false
+        description: Переход home → purchase или purchase → purchase. Целевой набор строго расширяет исходный,
+          level увеличивается. add содержит новые ингредиенты и при необходимости положительное дополнительное
+          число упаковок существующих. Сумма исходных строк и add точно даёт целевой набор. add_cost — сумма цен
+          add, null при неизвестной цене. Подпись перехода строится по add.
+      - type: object
+        properties:
+          source:
+            type: string
+            minLength: 1
+            maxLength: 128
+          target:
+            type: string
+            minLength: 1
+            maxLength: 128
+          kind:
+            type: string
+            const: unlocks
+        required:
+        - source
+        - target
+        - kind
+        additionalProperties: false
+        description: Переход home → recipe при missing_count=0 или purchase → recipe для точного набора недостающих
+          ингредиентов. Покупка достаточна для рецепта на servings снимка.
+    Graph:
+      type: object
+      properties:
+        scope:
+          type: string
+          const: snapshot
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphNode'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphEdge'
+        unrepresented_recipe_ids:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 128
+          uniqueItems: true
+      required:
+      - scope
+      - nodes
+      - edges
+      - unrepresented_recipe_ids
+      additionalProperties: false
+      description: 'Граф всего снимка независимо от страниц списка. Ровно один home, ID узлов уникальны и непрозрачны.
+        Все рёбра ссылаются на существующие узлы; каждый узел достижим из home, циклы запрещены. Для одного набора
+        ingredient_id один purchase; несколько родителей допустимы. Рецепты с определённой доступностью и missing_count
+        от 0 до 3 представлены узлами recipe. quantity=null у продукта дома считается достаточным;
+        непустой unknown_quantity_ids сам по себе не исключает рецепт из графа. Рецепты с 4+ недостающими
+        или availability=unknown по другим причинам находятся в
+        unrepresented_recipe_ids и остаются в списке согласно фильтрам. Каждый рецепт снимка представлен ровно
+        один раз: узлом или в unrepresented_recipe_ids. Неизвестные цены не заменяются нулём. Пустой снимок содержит
+        только home; edges и unrepresented_recipe_ids пусты.'
+    RecommendationGraph:
+      type: object
+      properties:
+        request_id:
+          type: string
+          format: uuid
+        snapshot_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+        expires_at:
+          type: string
+          format: date-time
+        state_version:
+          type: integer
+          minimum: 0
+        catalog_version:
+          type: string
+          minLength: 1
+          maxLength: 128
+        servings:
+          type: integer
+          minimum: 1
+          maximum: 12
+        filters:
+          $ref: '#/components/schemas/Filters'
+        visibility:
+          type: string
+          enum:
+          - visible
+          - hidden
+        graph:
+          $ref: '#/components/schemas/Graph'
+      required:
+      - request_id
+      - snapshot_id
+      - expires_at
+      - state_version
+      - catalog_version
+      - servings
+      - filters
+      - visibility
+      - graph
+      additionalProperties: false
+      description: Контекст и версии совпадают с запросом и страницами снимка. Android передаёт servings и filters.exclude_allergens
+        из этого ответа при открытии рецепта. Следующая страница списка не меняет граф и dish_count.
+    RecommendationPage:
+      type: object
+      properties:
+        servings:
+          type: integer
+          minimum: 1
+          maximum: 12
+          description: Число порций для расчёта каждого рецепта и докупаемых упаковок.
+        request_id:
+          type: string
+          format: uuid
+        snapshot_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        expires_at:
+          type: string
+          format: date-time
+        state_version:
+          type: integer
+          minimum: 0
+          description: Общая монотонная версия серверных данных текущего пользователя.
+        catalog_version:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        visibility:
+          type: string
+          enum:
+          - visible
+          - hidden
+        visible_total:
+          type: integer
+          minimum: 0
+        hidden_total:
+          type: integer
+          minimum: 0
+        unknown_total:
+          type: integer
+          minimum: 0
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipeCard'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+      required:
+      - servings
+      - request_id
+      - snapshot_id
+      - expires_at
+      - state_version
+      - catalog_version
+      - visibility
+      - visible_total
+      - hidden_total
+      - unknown_total
+      - items
+      - page
+      description: Число порций повторяет запрос и сохраняется на всех страницах снимка. У всех items значение RecipeCard.servings равно servings страницы. Доступность и стоимость рассчитаны на это число порций. Граф снимка загружается через GET /recommendations/{snapshot_id}/graph; пагинация затрагивает только items. При открытии деталей клиент передаёт его в query-параметре servings.
+      additionalProperties: false
+    ShoppingItem:
+      type: object
+      properties:
+        key:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        ingredient_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        package_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        name:
+          type: string
+        package_quantity:
+          $ref: '#/components/schemas/PositiveQuantity'
+        package_count:
+          type: integer
+          minimum: 1
+        total_price:
+          anyOf:
+          - $ref: '#/components/schemas/Money'
+          - type: 'null'
+      required:
+      - key
+      - ingredient_id
+      - package_id
+      - name
+      - package_quantity
+      - package_count
+      - total_price
+      additionalProperties: false
+      description: key стабилен для ingredient/package. Одинаковую строку локальный список повторно не
+        суммирует; показывает уже в покупках. Число упаковок для конкретного предложения задано явно.
+    PurchaseRequest:
+      type: object
+      properties:
+        servings:
+          type: integer
+          minimum: 1
+          maximum: 12
+          description: Число порций для расчёта каждого рецепта и докупаемых упаковок.
+        request_id:
+          type: string
+          format: uuid
+        filters:
+          $ref: '#/components/schemas/Filters'
+        budget:
+          $ref: '#/components/schemas/Money'
+      required:
+      - servings
+      - request_id
+      - filters
+      - budget
+      description: Подбор покупки рассчитывает каждый альтернативный рецепт на servings порций; бюджет и количества упаковок учитывают этот масштаб.
+      additionalProperties: false
+    SinglePurchaseOption:
+      type: object
+      properties:
+        shopping_item:
+          allOf:
+          - $ref: '#/components/schemas/ShoppingItem'
+          - properties:
+              total_price:
+                $ref: '#/components/schemas/Money'
+        unlocked_recipe_ids:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 128
+          minItems: 1
+          uniqueItems: true
+      required:
+      - shopping_item
+      - unlocked_recipe_ids
+      additionalProperties: false
+      description: Один ингредиент с необходимым числом целых упаковок и собственным списком открываемых
+        альтернативных рецептов. total_price известна и не превышает budget запроса.
+    SinglePurchaseResult:
+      type: object
+      properties:
+        servings:
+          type: integer
+          minimum: 1
+          maximum: 12
+        request_id:
+          type: string
+          format: uuid
+        state_version:
+          type: integer
+          minimum: 0
+        catalog_version:
+          type: string
+          minLength: 1
+          maxLength: 128
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/SinglePurchaseOption'
+        unpriced_recipe_ids:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 128
+          uniqueItems: true
+        semantics:
+          type: string
+          const: alternatives
+        status:
+          type: string
+          enum:
+          - found
+          - no_plan
+          - insufficient_data
+      required:
+      - servings
+      - request_id
+      - state_version
+      - catalog_version
+      - options
+      - unpriced_recipe_ids
+      - semantics
+      - status
+      additionalProperties: false
+      allOf:
+      - if:
+          properties:
+            status:
+              const: found
+          required:
+          - status
+        then:
+          properties:
+            options:
+              minItems: 1
+        else:
+          properties:
+            options:
+              maxItems: 0
+      description: Варианты упорядочены по числу открываемых блюд DESC, цене ASC, ingredient_id ASC,
+        package_id ASC. Первый вариант — лучший; варианты не образуют общий план покупок. servings повторяет
+        запрос при любом status; клиент передаёт его при открытии деталей любого unlocked_recipe_id.
+      example:
+        servings: 2
+        request_id: 00000000-0000-4000-8000-000000000001
+        state_version: 7
+        catalog_version: catalog-1
+        options:
+        - shopping_item:
+            key: cheese:package-200g
+            ingredient_id: cheese
+            package_id: package-200g
+            name: Сыр
+            package_quantity:
+              value: 200
+              unit: g
+            package_count: 2
+            total_price:
+              minor_units: 46000
+              currency: RUB
+          unlocked_recipe_ids:
+          - recipe-1
+          - recipe-2
+        unpriced_recipe_ids: []
+        semantics: alternatives
+        status: found
+    PurchaseResult:
+      type: object
+      properties:
+        servings:
+          type: integer
+          minimum: 1
+          maximum: 12
+          description: Число порций для расчёта каждого рецепта и докупаемых упаковок.
+        request_id:
+          type: string
+          format: uuid
+        state_version:
+          type: integer
+          minimum: 0
+          description: Общая монотонная версия серверных данных текущего пользователя.
+        catalog_version:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        shopping_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShoppingItem'
+        unlocked_recipe_ids:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 128
+            description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+          uniqueItems: true
+        unpriced_recipe_ids:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 128
+            description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+          uniqueItems: true
+        semantics:
+          type: string
+          enum:
+          - alternatives
+        total_cost:
+          anyOf:
+          - $ref: '#/components/schemas/Money'
+          - type: 'null'
+        status:
+          type: string
+          enum:
+          - found
+          - no_plan
+          - insufficient_data
+      required:
+      - servings
+      - request_id
+      - state_version
+      - catalog_version
+      - shopping_items
+      - unlocked_recipe_ids
+      - unpriced_recipe_ids
+      - semantics
+      - total_cost
+      - status
+      description: servings повторяет запрос для всех статусов результата. shopping_items, total_cost и списки рецептов рассчитаны на это число порций. При открытии любого рецепта из результата клиент передаёт servings в запрос деталей.
+      additionalProperties: false
+    FavoriteRecipePage:
+      type: object
+      properties:
+        state_version:
+          type: integer
+          minimum: 0
+          description: Общая монотонная версия серверных данных текущего пользователя.
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipeCard'
+        page:
+          $ref: '#/components/schemas/PageInfo'
+      required:
+      - state_version
+      - items
+      - page
+      additionalProperties: false
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            retryable:
+              type: boolean
+            request_id:
+              type: string
+              format: uuid
+            details:
+              type: array
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                  code:
+                    type: string
+                  message:
+                    type: string
+                required:
+                - field
+                - code
+                - message
+                additionalProperties: false
+          required:
+          - code
+          - message
+          - retryable
+          - request_id
+          - details
+          additionalProperties: false
+      required:
+      - error
+      additionalProperties: false
+    Session:
+      type: object
+      properties:
+        user_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        access_token:
+          type: string
+        token_type:
+          type: string
+          enum:
+          - Bearer
+        expires_in:
+          type: integer
+          minimum: 1
+        refresh_token:
+          type: string
+        refresh_expires_in:
+          type: integer
+          minimum: 1
+      required:
+      - user_id
+      - access_token
+      - token_type
+      - expires_in
+      - refresh_token
+      - refresh_expires_in
+      additionalProperties: false
+      description: 'Предложение: opaque серверные токены, access 15 минут, refresh 30 дней с ротацией.
+        Не OAuth-токены провайдера.'
+    VkExchange:
+      type: object
+      properties:
+        authorization_code:
+          type: string
+          minLength: 1
+        redirect_uri:
+          type: string
+          format: uri
+        code_verifier:
+          type: string
+          minLength: 43
+          maxLength: 128
+        device_id:
+          type: string
+          minLength: 1
+      required:
+      - authorization_code
+      - redirect_uri
+      - code_verifier
+      - device_id
+      additionalProperties: false
+      description: 'Поля для code+PKCE; сверить с выбранной версией SDK VK ID
+        до интеграции.'
+    YandexExchange:
+      type: object
+      properties:
+        oauth_token:
+          type: string
+          minLength: 1
+          writeOnly: true
+          description: OAuth-токен Яндекса, полученный Android через LoginSDK Яндекс ID.
+      required:
+      - oauth_token
+      additionalProperties: false
+      description: Обмен OAuth-токена Яндекса на собственную сессию приложения после серверной проверки.
+    Refresh:
+      type: object
+      properties:
+        refresh_token:
+          type: string
+          minLength: 1
+      required:
+      - refresh_token
+      additionalProperties: false
+    RecognitionKind:
+      type: string
+      enum:
+      - receipt
+      - products
+    RecognitionUpload:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/RecognitionKind'
+        file:
+          type: string
+          format: binary
+          description: 'JPEG/PNG до 10 MiB: фото/скриншот чека либо фото продуктов. Фактический формат
+            проверяется сервером.'
+      required:
+      - kind
+      - file
+      additionalProperties: false
+    RecognitionCandidate:
+      type: object
+      properties:
+        ingredient_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        name:
+          type: string
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+      required:
+      - ingredient_id
+      - name
+      - confidence
+      additionalProperties: false
+    RecognitionLine:
+      type: object
+      properties:
+        line_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        raw_name:
+          type: string
+          description: Для receipt — строка чека; для products — распознанное название видимого продукта.
+        candidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecognitionCandidate'
+        suggested_quantity:
+          anyOf:
+          - $ref: '#/components/schemas/Quantity'
+          - type: 'null'
+        status:
+          type: string
+          enum:
+          - matched
+          - ambiguous
+          - unmatched
+      required:
+      - line_id
+      - raw_name
+      - candidates
+      - suggested_quantity
+      - status
+      additionalProperties: false
+      description: Любой результат требует подтверждения; неизвестная позиция по умолчанию не выбрана.
+        Количество без надёжного основания — null, не 0 и не 1. Фото и raw_name не писать в логи.
+    Recognition:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        kind:
+          $ref: '#/components/schemas/RecognitionKind'
+        status:
+          type: string
+          enum:
+          - queued
+          - processing
+          - succeeded
+          - failed
+        expires_at:
+          type: string
+          format: date-time
+        poll_after_seconds:
+          type: integer
+          minimum: 1
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecognitionLine'
+        failure:
+          anyOf:
+          - $ref: '#/components/schemas/Error'
+          - type: 'null'
+      required:
+      - id
+      - kind
+      - status
+      - expires_at
+      - poll_after_seconds
+      - items
+      - failure
+      additionalProperties: false
+      description: Общий результат OCR чека или распознавания продуктов. succeeded с пустым items — пустое
+        распознавание. failed имеет failure, остальные состояния failure=null. Запасы не меняются.
+    PositiveQuantity:
+      allOf:
+      - $ref: '#/components/schemas/Quantity'
+      - properties:
+          value:
+            exclusiveMinimum: 0
+    ImportItem:
+      type: object
+      properties:
+        line_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        ingredient_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        quantity:
+          anyOf:
+          - $ref: '#/components/schemas/PositiveQuantity'
+          - type: 'null'
+      required:
+      - line_id
+      - ingredient_id
+      - quantity
+      additionalProperties: false
+      description: Только выбранные и подтверждённые canonical-позиции. Для receipt количество обязательно
+        и >0. Для products пользователь может явно подтвердить неизвестное количество как null.
+    RecognitionImport:
+      type: object
+      properties:
+        recognition_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        kind:
+          $ref: '#/components/schemas/RecognitionKind'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImportItem'
+          minItems: 1
+          uniqueItems: true
+      required:
+      - recognition_id
+      - kind
+      - items
+      additionalProperties: false
+      description: kind должен совпадать с сохранённой задачей. line_id относится к её результату и не
+        повторяется.
+      allOf:
+      - if:
+          properties:
+            kind:
+              const: receipt
+          required:
+          - kind
+        then:
+          properties:
+            items:
+              items:
+                properties:
+                  quantity:
+                    $ref: '#/components/schemas/PositiveQuantity'
+    ImportResult:
+      type: object
+      properties:
+        operation_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        recognition_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
+        state_version:
+          type: integer
+          minimum: 0
+          description: Общая монотонная версия серверных данных текущего пользователя.
+        pantry:
+          type: array
+          items:
+            $ref: '#/components/schemas/PantryItem'
+      required:
+      - operation_id
+      - recognition_id
+      - state_version
+      - pantry
+      additionalProperties: false
+x-source-checked-at: '2026-11-10'

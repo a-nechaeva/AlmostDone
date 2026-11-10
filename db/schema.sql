@@ -48,14 +48,13 @@ CREATE TABLE diet_excluded_methods (
 );
 
 -- Запрещённые аллергены: диета без глютена запрещает аллерген глютен
--- Продукт отмечается глютеном один раз, без отдельной категории
 CREATE TABLE diet_excluded_allergens (
     diet_id     INT REFERENCES diets(id)     ON DELETE CASCADE,
     allergen_id INT REFERENCES allergens(id) ON DELETE CASCADE,
     PRIMARY KEY (diet_id, allergen_id)
 );
  
---  2. Ингредиенты
+-- 2. Ингредиенты
 CREATE TABLE ingredients (
     id              SERIAL PRIMARY KEY,
     code            TEXT UNIQUE NOT NULL CHECK (code ~ '^[a-z][a-z0-9_]*$'), 
@@ -96,16 +95,17 @@ CREATE TABLE ingredient_categories (
     PRIMARY KEY (ingredient_id, category_id)
 );
  
---  3. Рецепты
+-- 3. Рецепты
 CREATE TABLE recipes (
     id              SERIAL PRIMARY KEY,
     title           TEXT NOT NULL CHECK (title <> '' AND title = btrim(title)),
     description     TEXT,
     servings        INT  NOT NULL CHECK (servings > 0),
-    cook_time_min   INT  NOT NULL CHECK (cook_time_min > 0),
+    cook_time_min   INT  NOT NULL CHECK (cook_time_min >= 0),
     needs_microwave BOOLEAN NOT NULL DEFAULT false,
     needs_stove     BOOLEAN NOT NULL DEFAULT false,
     needs_oven      BOOLEAN NOT NULL DEFAULT false,
+    no_cook         BOOLEAN NOT NULL DEFAULT false,
     image_url       TEXT,
     author_id       INT              -- NULL = базовый рецепт (видят все), иначе личный рецепт автора
 );
@@ -121,11 +121,11 @@ CREATE TABLE recipe_cooking_methods (
 CREATE TABLE recipe_ingredients (
     recipe_id     INT REFERENCES recipes(id)     ON DELETE CASCADE,
     ingredient_id INT REFERENCES ingredients(id) ON DELETE RESTRICT,
-    qty_g         NUMERIC(8,2) NOT NULL CHECK (qty_g > 0),
+    qty_g         NUMERIC(8,2) CHECK (qty_g > 0),
     is_optional   BOOLEAN NOT NULL DEFAULT false,   -- по вкусу: не докупаем, не скрываем из-за него блюдо, не считаем в КБЖУ
     PRIMARY KEY (recipe_id, ingredient_id)
 );
-CREATE INDEX recipe_ingredients_ingr_idx ON recipe_ingredients (ingredient_id);  -- в каких рецептах есть продукт, проверка RESTRICT
+CREATE INDEX recipe_ingredients_ingr_idx ON recipe_ingredients (ingredient_id);
  
 CREATE TABLE recipe_steps (
     recipe_id    INT REFERENCES recipes(id) ON DELETE CASCADE,
@@ -135,12 +135,11 @@ CREATE TABLE recipe_steps (
     PRIMARY KEY (recipe_id, step_no)
 );
  
---  4. Пользователь
+-- 4. Пользователь
 CREATE TABLE users (
     id              SERIAL PRIMARY KEY,
     login           CITEXT UNIQUE NOT NULL CHECK (login ~ '^[A-Za-z0-9_.-]{3,32}$'), 
     password_hash   TEXT NOT NULL,      
-    -- Стол Певзнера максимум один
     pevzner_diet_id INT,
     pevzner_kind    TEXT NOT NULL DEFAULT 'pevzner' CHECK (pevzner_kind = 'pevzner'),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -148,7 +147,6 @@ CREATE TABLE users (
         ON DELETE SET NULL (pevzner_diet_id)
 );
  
--- Личные рецепты удаляются вместе с аккаунтом автора
 ALTER TABLE recipes ADD CONSTRAINT recipes_author_fk
     FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE;
  
@@ -158,7 +156,6 @@ CREATE TABLE user_allergens (
     PRIMARY KEY (user_id, allergen_id)
 );
  
--- Обычные диеты: можно несколько, но не стол Певзнера
 CREATE TABLE user_diets (
     user_id   INT REFERENCES users(id) ON DELETE CASCADE,
     diet_id   INT NOT NULL,
@@ -167,7 +164,6 @@ CREATE TABLE user_diets (
     FOREIGN KEY (diet_id, diet_kind) REFERENCES diets(id, kind) ON DELETE CASCADE
 );
  
--- Что есть и сколько. qty_g = NULL: есть, количество не указано, тогда считаем, что хватает
 CREATE TABLE user_pantry (
     user_id       INT REFERENCES users(id)       ON DELETE CASCADE,
     ingredient_id INT REFERENCES ingredients(id) ON DELETE CASCADE,
@@ -182,7 +178,6 @@ CREATE TABLE favorite_recipes (
     PRIMARY KEY (user_id, recipe_id)
 );
 
--- Чужой личный рецепт нельзя добавить в избранное
 CREATE FUNCTION check_favorite_recipe_access() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
     IF EXISTS (SELECT 1 FROM recipes
@@ -202,8 +197,7 @@ CREATE TABLE favorite_ingredients (
     PRIMARY KEY (user_id, ingredient_id)
 );
  
---  5. Представления: метрики блюда
--- КБЖУ на порцию
+-- 5. Представления: метрики блюда
 CREATE VIEW recipe_nutrition AS
 SELECT r.id AS recipe_id,
        ROUND(SUM(i.kcal    * ri.qty_g / 100) / r.servings, 1) AS kcal,
@@ -216,40 +210,32 @@ JOIN ingredients i         ON i.id = ri.ingredient_id
 WHERE NOT ri.is_optional
 GROUP BY r.id, r.servings;
 
--- Аллергены блюда (только обязательные ингредиенты: по вкусу можно не класть)
 CREATE VIEW recipe_allergens AS
 SELECT DISTINCT ri.recipe_id, ia.allergen_id
 FROM recipe_ingredients ri
 JOIN ingredient_allergens ia USING (ingredient_id)
 WHERE NOT ri.is_optional;
 
--- Категории блюда (только обязательные ингредиенты)
 CREATE VIEW recipe_categories AS
 SELECT DISTINCT ri.recipe_id, ic.category_id
 FROM recipe_ingredients ri
 JOIN ingredient_categories ic USING (ingredient_id)
 WHERE NOT ri.is_optional;
  
--- Все ограничения пользователя одним списком: обычные диеты + стол Певзнера
 CREATE VIEW user_all_diets AS
 SELECT user_id, diet_id FROM user_diets
 UNION
 SELECT id, pevzner_diet_id FROM users WHERE pevzner_diet_id IS NOT NULL;
  
--- Почему блюдо не подходит пользователю.
---   is_hidden = false -> обычный каталог и рекомендации
---   is_hidden = true  -> раздел Скрытые блюда с предупреждениями
 CREATE VIEW user_recipe_visibility AS
 WITH flags AS (
     SELECT u.id AS user_id, r.id AS recipe_id,
-           -- аллергены пользователя в блюде
            COALESCE((SELECT array_agg(DISTINCT a.name ORDER BY a.name)
                      FROM recipe_allergens ra
                      JOIN user_allergens ua ON ua.allergen_id = ra.allergen_id
                      JOIN allergens a       ON a.id = ra.allergen_id
                      WHERE ra.recipe_id = r.id AND ua.user_id = u.id),
                     '{}') AS user_allergens_in_dish,
-           -- нарушенные диеты/столы: по категории продукта, по аллергену или по способу готовки
            COALESCE((SELECT array_agg(DISTINCT d.name ORDER BY d.name)
                      FROM user_all_diets ud
                      JOIN diets d ON d.id = ud.diet_id
@@ -264,8 +250,6 @@ WITH flags AS (
                                     JOIN diet_excluded_methods x ON x.method_id = rm.method_id
                                     WHERE rm.recipe_id = r.id AND x.diet_id = d.id))),
                     '{}') AS violated_diets,
-           -- необязательные ингредиенты, которые этому пользователю лучше не класть
-           -- (не скрывают блюдо, а дают предупреждение без сметаны)
            COALESCE((SELECT array_agg(DISTINCT i.name ORDER BY i.name)
                      FROM recipe_ingredients ri
                      JOIN ingredients i ON i.id = ri.ingredient_id
@@ -283,7 +267,7 @@ WITH flags AS (
                                     WHERE ia.ingredient_id = i.id AND ud.user_id = u.id))),
                     '{}') AS skip_optional
     FROM users u CROSS JOIN recipes r
-    WHERE r.author_id IS NULL OR r.author_id = u.id      -- базовые + свои
+    WHERE r.author_id IS NULL OR r.author_id = u.id
 )
 SELECT f.*,
        (cardinality(user_allergens_in_dish) > 0

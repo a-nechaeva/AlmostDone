@@ -217,23 +217,34 @@ private fun DishesRoute(c: AppDependencies, nav: NavHostController, hidden: Bool
     val state by vm.state.collectAsStateWithLifecycle()
     val action by vm.actions.state.collectAsStateWithLifecycle()
     FeatureScaffold(if (hidden) null else AppTab.DISHES, nav, "Скрытые блюда") {
-        LoadContent(state, vm::retry) {
-            DishesScreen(
-                it,
-                action,
-                hidden,
-                vm::queryChanged,
-                vm::availabilityChanged,
-                vm::maxMinutesChanged,
-                vm::maxKcalChanged,
-                vm::methodChanged,
-                vm::resetFilters,
-                vm::favorite,
-                { id -> nav.navigate("recipe/${Uri.encode(id)}") },
-                { nav.navigate("hidden") },
-                { nav.navigateTab(AppTab.PANTRY) },
-                vm.actions::dismiss,
-            )
+        val selectedView by vm.view.collectAsStateWithLifecycle()
+        val view = DishesView.valueOf(selectedView)
+        Column {
+            if (!hidden && state !is ScreenState.Ready)
+                Box(Modifier.padding(20.dp)) { DishesViewSelector(view, vm::viewChanged) }
+            Box(Modifier.weight(1f)) {
+                LoadContent(state, vm::retry) {
+                    DishesScreen(
+                        it,
+                        action,
+                        hidden,
+                        vm::queryChanged,
+                        vm::availabilityChanged,
+                        vm::maxMinutesChanged,
+                        vm::maxKcalChanged,
+                        vm::methodChanged,
+                        vm::resetFilters,
+                        vm::favorite,
+                        { id -> nav.navigate("recipe/${Uri.encode(id)}") },
+                        { nav.navigate("hidden") },
+                        { nav.navigateTab(AppTab.PANTRY) },
+                        vm.actions::dismiss,
+                        view,
+                        vm::viewChanged,
+                        vm::addPurchase,
+                    )
+                }
+            }
         }
     }
 }
