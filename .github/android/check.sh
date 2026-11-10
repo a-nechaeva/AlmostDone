@@ -3,9 +3,17 @@ set -euo pipefail
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 cache="$root/.local/android-ci"
 mkdir -p "$cache/gradle" "$cache/project-gradle" "$cache/sdk" "$cache/build"
-if (( $# == 0 )); then
-  set -- :app:testDebugUnitTest :app:verifyRoborazziDebug :app:lintDebug :app:assembleDebug -Proborazzi.test.compare=true
-fi
+suite="${1:-all}"
+if (( $# > 0 )); then shift; fi
+case "$suite" in
+  all) set -- :app:testDebugUnitTest :app:verifyRoborazziDebug :app:lintDebug :app:assembleDebug -Proborazzi.test.compare=true "$@" ;;
+  unit|ui) set -- :app:testDebugUnitTest "-PandroidTestSuite=$suite" "$@" ;;
+  screenshots) set -- :app:verifyRoborazziDebug -PandroidTestSuite=screenshots -Proborazzi.test.compare=true "$@" ;;
+  lint) set -- :app:lintDebug "$@" ;;
+  build) set -- :app:assembleDebug "$@" ;;
+  :*) set -- "$suite" "$@" ;;
+  *) echo "Usage: $0 [all|unit|ui|screenshots|lint|build] [Gradle options]" >&2; exit 2 ;;
+esac
 reference_access=rw
 if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
   reference_access=ro

@@ -92,6 +92,9 @@ class ViewModelTest {
         first.queryChanged("Паста")
         first.maxMinutesChanged(30)
         first.availabilityChanged(Availability.BUY)
+        first.maxKcalChanged(600)
+        first.methodChanged(CookingMethod.STOVE.name)
+        first.viewChanged(DishesView.GRAPH)
         runCurrent()
         val restored = SavedStateHandle(saved.keys().associateWith { saved.get<Any?>(it) })
         val second = dishes(saved = restored)
@@ -99,7 +102,127 @@ class ViewModelTest {
         runCurrent()
         assertEquals("Паста", data(second).filters.query)
         assertEquals(Availability.BUY, data(second).filters.availability)
+        assertEquals(30, data(second).filters.maxMinutes)
+        assertEquals(600, data(second).filters.maxKcal)
+        assertEquals(CookingMethod.STOVE.name, data(second).filters.method)
+        assertEquals(DishesView.GRAPH.name, second.view.value)
         assertEquals(listOf("cheese"), data(second).visible.map { it.recipe.id })
+        assertEquals(setOf("cheese"), data(second).suggestion!!.recipeIds)
+    }
+
+    @Test
+    fun graphUsesFilteredMatchesAndSwitchingViewsDoesNotResetThem() = runTest {
+        val vm = dishes()
+        collect(vm)
+        runCurrent()
+        assertEquals(setOf("cheese", "cheeseEgg"), data(vm).suggestion!!.recipeIds)
+        vm.queryChanged("Омлет")
+        vm.availabilityChanged(Availability.BUY)
+        vm.maxMinutesChanged(15)
+        vm.maxKcalChanged(450)
+        vm.methodChanged(CookingMethod.STOVE.name)
+        runCurrent()
+        val filtered = data(vm)
+        assertEquals(listOf("cheeseEgg"), filtered.visible.map { it.recipe.id })
+        assertEquals(setOf("cheeseEgg"), filtered.suggestion!!.recipeIds)
+        vm.viewChanged(DishesView.GRAPH)
+        runCurrent()
+        assertEquals(filtered, data(vm))
+        vm.viewChanged(DishesView.LIST)
+        runCurrent()
+        assertEquals(filtered, data(vm))
+        vm.availabilityChanged(Availability.NOW)
+        runCurrent()
+        assertEquals(listOf("omelette"), data(vm).visible.map { it.recipe.id })
+        assertNull(data(vm).suggestion)
+        vm.resetFilters()
+        runCurrent()
+        assertEquals(4, data(vm).visible.size)
+    }
+
+    @Test
+    fun graphReactsToPantryAndNeverPromisesUnknownOrDisallowedRecipes() = runTest {
+        val h = FakeHousehold()
+        val p = FakePreferences()
+        val vm = dishes(h, p)
+        collect(vm)
+        runCurrent()
+        h.setPantry("hard-cheese", null)
+        runCurrent()
+        assertNull(data(vm).suggestion)
+        h.removePantry("hard-cheese")
+        p.update { it.copy(diabetes = true) }
+        runCurrent()
+        assertNull(data(vm).suggestion)
+        p.update { FoodPreferences(excludedAllergens = setOf(Allergen.MILK)) }
+        runCurrent()
+        assertNull(data(vm).suggestion)
+        p.update { FoodPreferences() }
+        h.addPantry("hard-cheese", Quantity(200.0, QuantityUnit.GRAM))
+        runCurrent()
+        assertNull(data(vm).suggestion)
+        assertTrue(data(vm).visible.all { it.ready })
+    }
+
+    @Test
+    fun graphPurchaseUsesCommonShoppingQuoteAndCanRetryAFailedWrite() = runTest {
+        val h = FakeHousehold()
+        val vm = dishes(h)
+        collect(vm)
+        runCurrent()
+        h.failWrite = true
+        vm.addPurchase()
+        runCurrent()
+        assertTrue(vm.actions.state.value.failed)
+        assertTrue(h.values.value.manualPurchases.isEmpty())
+        h.failWrite = false
+        vm.addPurchase()
+        runCurrent()
+        vm.addPurchase()
+        runCurrent()
+        val basket = shoppingQuote(DemoCatalog.catalog, h.values.value)
+        assertEquals(1, h.values.value.manualPurchases.size)
+        assertEquals("hard-cheese", basket.lines.single().ingredientId)
+        assertEquals(Quantity(200.0, QuantityUnit.GRAM), basket.lines.single().buyQuantity)
+        assertEquals(23000L, basket.totalKopecks)
+        assertEquals(DemoCatalog.initialPantry, h.values.value.pantry)
+        assertFalse(vm.actions.state.value.failed)
+    }
+
+    @Test
+    fun graphSelectionAndFiltersSurviveReadErrorLoadingAndRetry() = runTest {
+        var fail = true
+        val source = MutableSharedFlow<Catalog>(replay = 1)
+        val repository =
+            object : CatalogRepository {
+                override val catalog = flow {
+                    if (fail) throw java.io.IOException("offline")
+                    emitAll(source)
+                }
+            }
+        val vm =
+            DishesViewModel(
+                    repository,
+                    FakeHousehold(),
+                    FakePreferences(),
+                    SavedStateHandle(),
+                    main.dispatcher,
+                )
+                .also { created += it }
+        collect(vm)
+        runCurrent()
+        assertTrue(vm.state.value is ScreenState.Error)
+        vm.viewChanged(DishesView.GRAPH)
+        vm.queryChanged("Омлет")
+        fail = false
+        vm.retry()
+        runCurrent()
+        assertEquals(ScreenState.Loading, vm.state.value)
+        source.emit(DemoCatalog.catalog)
+        runCurrent()
+        assertEquals(DishesView.GRAPH.name, vm.view.value)
+        assertEquals("Омлет", data(vm).filters.query)
+        assertEquals(setOf("cheeseEgg"), data(vm).suggestion!!.recipeIds)
     }
 
     @Test

@@ -7,6 +7,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -29,6 +30,7 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
@@ -63,6 +65,11 @@ class AppSmokeTest {
 
     private fun text(value: String) = compose.onNodeWithText(value)
 
+    private fun dishText(value: String): SemanticsNodeInteraction {
+        compose.onNodeWithTag("dishes-results").performScrollToNode(hasText(value))
+        return text(value)
+    }
+
     private fun awaitText(value: String) {
         compose.waitUntil(10_000) {
             compose.onAllNodesWithText(value).fetchSemanticsNodes().isNotEmpty()
@@ -75,6 +82,7 @@ class AppSmokeTest {
             hasText(value) and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)
         )
 
+    @Category(UiSmoke::class)
     @Test
     fun demoLoginPantryDishesRecipeAndBack() {
         dependencies.session.value.value = false
@@ -99,6 +107,7 @@ class AppSmokeTest {
         assertTrue(dependencies.session.value.value)
     }
 
+    @Category(UiSmoke::class)
     @Test
     fun loadingBecomesContentWhenFakeEmits() {
         dependencies.catalogSource = MutableSharedFlow(replay = 1)
@@ -111,6 +120,7 @@ class AppSmokeTest {
             .assertDoesNotExist()
     }
 
+    @Category(UiSmoke::class)
     @Test
     fun emptyPantryCanOpenEmptySearchAndResetIt() {
         dependencies.household.values.value = Household()
@@ -128,6 +138,7 @@ class AppSmokeTest {
         awaitText("Пока нет продуктов")
     }
 
+    @Category(UiSmoke::class)
     @Test
     fun readErrorRetryAndFailedWriteUseRealViewModels() {
         dependencies.household.failRead = true
@@ -151,20 +162,194 @@ class AppSmokeTest {
         }
     }
 
-    @Test fun dishesScreenshot() = screenshot("dishes.png", 1f)
+    private fun openGraph(fontScale: Float = 1f) {
+        launch(fontScale)
+        awaitText("Мои продукты")
+        tab("Блюда").performClick()
+        awaitText("Что приготовим?")
+        text("Граф").performClick()
+        awaitText("Больше блюд с одной покупкой")
+    }
 
-    @Test fun dishesLargeFontScreenshot() = screenshot("dishes-large-font.png", 1.5f)
+    @Category(UiSmoke::class)
+    @Test
+    fun graphAndListShareFiltersRecipeIdAndSystemBack() {
+        openGraph()
+        text("Найти блюдо").performTextInput("Омлет")
+        dishText("Докупить 1–3").performClick()
+        compose.onNodeWithContentDescription("Открыть фильтры").performClick()
+        compose
+            .onNodeWithContentDescription("Максимальное время приготовления, минуты")
+            .performSemanticsAction(SemanticsActions.SetProgress) { it(15f) }
+        compose
+            .onNodeWithContentDescription("Максимальная калорийность на порцию")
+            .performSemanticsAction(SemanticsActions.SetProgress) { it(450f) }
+        text("Плита").performClick()
+        text("Показать блюда").performClick()
+        dishText("Омлет с сыром").performClick()
+        awaitText("Рецепт")
+        awaitText("Омлет с сыром")
+        compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        compose.onNodeWithTag("dishes-results").performScrollToIndex(0)
+        awaitText("Больше блюд с одной покупкой")
+        dishText("Граф").assertIsSelected()
+        compose.onNode(hasSetTextAction()).assertTextContains("Омлет")
+        dishText("Докупить 1–3").assertIsSelected()
+        dishText("Список").performClick()
+        compose.onNode(hasSetTextAction()).assertTextContains("Омлет")
+        dishText("Докупить 1–3").assertIsSelected()
+        dishText("Омлет с сыром").assertIsDisplayed()
+        text("Омлет с томатами").assertDoesNotExist()
+        dishText("Граф").performClick()
+        compose.onNodeWithContentDescription("Открыть фильтры").performClick()
+        text("Время: до 15 мин").assertIsDisplayed()
+        text("Калорийность: до 450 ккал на порцию").assertIsDisplayed()
+        text("Плита").assertIsSelected()
+        text("Духовка").performClick()
+        text("Показать блюда").performClick()
+        awaitText("Подходящих блюд нет")
+        dishText("Сбросить фильтры").performClick()
+        dishText("Омлет с сыром").assertIsDisplayed()
+    }
+
+    @Category(UiSmoke::class)
+    @Test
+    fun graphPurchaseAppearsInSharedShoppingAndWriteCanRetry() {
+        openGraph()
+        dependencies.household.failWrite = true
+        dishText("Добавить в покупки").performClick()
+        dishText("Не удалось сохранить изменения. Повторите действие.").assertIsDisplayed()
+        assertTrue(dependencies.household.values.value.manualPurchases.isEmpty())
+        dependencies.household.failWrite = false
+        dishText("Добавить в покупки").performClick()
+        compose.waitUntil(10_000) { dependencies.household.values.value.manualPurchases.size == 1 }
+        tab("Покупки").performClick()
+        awaitText("Из рецептов и выбранных предложений")
+        text("Твёрдый сыр").performScrollTo().assertIsDisplayed()
+        assertEquals(
+            23000L,
+            shoppingQuote(DemoCatalog.catalog, dependencies.household.values.value).totalKopecks,
+        )
+        tab("Блюда").performClick()
+        compose.onNodeWithTag("dishes-results").performScrollToIndex(0)
+        awaitText("Больше блюд с одной покупкой")
+        dishText("Граф").assertIsSelected()
+    }
+
+    @Category(UiSmoke::class)
+    @Test
+    fun graphLoadingAndReadErrorRetryKeepSelectedView() {
+        launch()
+        awaitText("Мои продукты")
+        dependencies.household.failRead = true
+        tab("Блюда").performClick()
+        awaitText("Данные недоступны")
+        text("Граф").performClick().assertIsSelected()
+        dependencies.household.failRead = false
+        dependencies.catalogSource = MutableSharedFlow(replay = 1)
+        text("Повторить").performClick()
+        compose.onNode(hasProgressBarRangeInfo(ProgressBarRangeInfo.Indeterminate)).assertExists()
+        text("Граф").assertIsSelected()
+        dependencies.catalogSource.tryEmit(DemoCatalog.catalog)
+        awaitText("Больше блюд с одной покупкой")
+        dishText("Лучшая одиночная покупка").assertIsDisplayed()
+        dishText("Найти блюдо").performTextInput("нет такого блюда")
+        awaitText("Подходящих блюд нет")
+        dishText("Сбросить фильтры").performClick()
+        dishText("Сейчас").performClick()
+        awaitText("Нет связей с одной покупкой")
+        dishText("Список").performClick()
+        dishText("Омлет с томатами").assertIsDisplayed()
+    }
+
+    @Category(Screenshot::class)
+    @Test
+    fun dishesGraphScreenshot() {
+        openGraph()
+        dishText("Омлет с сыром")
+        capture("dishes-graph.png")
+    }
+
+    @Category(Screenshot::class)
+    @Test
+    fun dishesGraphLargeFontScreenshot() {
+        openGraph(1.5f)
+        dishText("Омлет с сыром")
+        capture("dishes-graph-large-font.png")
+    }
+
+    @Category(Screenshot::class)
+    @Test
+    @Config(qualifiers = "ru-rRU-w360dp-h800dp-notnight-xhdpi")
+    fun dishesGraphNarrowScreenshot() {
+        openGraph()
+        dishText("Омлет с сыром")
+        capture("dishes-graph-narrow.png")
+    }
+
+    @Category(Screenshot::class)
+    @Test
+    fun dishesGraphEmptyScreenshot() {
+        openGraph()
+        text("Найти блюдо").performTextInput("нет такого блюда")
+        awaitText("Подходящих блюд нет")
+        capture("dishes-graph-empty.png")
+    }
+
+    @Category(Screenshot::class)
+    @Test
+    fun dishesGraphNoLinksScreenshot() {
+        openGraph()
+        dishText("Сейчас").performClick()
+        awaitText("Нет связей с одной покупкой")
+        capture("dishes-graph-no-links.png")
+    }
+
+    @Category(Screenshot::class)
+    @Test
+    fun dishesGraphErrorScreenshot() {
+        launch()
+        awaitText("Мои продукты")
+        dependencies.household.failRead = true
+        tab("Блюда").performClick()
+        awaitText("Данные недоступны")
+        text("Граф").performClick().assertIsSelected()
+        capture("dishes-graph-error.png")
+    }
+
+    @Category(Screenshot::class)
+    @Test
+    fun dishesGraphLoadingScreenshot() {
+        launch()
+        awaitText("Мои продукты")
+        dependencies.catalogSource = MutableSharedFlow(replay = 1)
+        tab("Блюда").performClick()
+        text("Граф").performClick().assertIsSelected()
+        compose.onNode(hasProgressBarRangeInfo(ProgressBarRangeInfo.Indeterminate)).assertExists()
+        capture("dishes-graph-loading.png")
+    }
+
+    @Category(Screenshot::class) @Test fun dishesScreenshot() = screenshot("dishes.png", 1f)
+
+    @Category(Screenshot::class)
+    @Test
+    fun dishesLargeFontScreenshot() = screenshot("dishes-large-font.png", 1.5f)
 
     private fun screenshot(name: String, fontScale: Float) {
+        launch(fontScale)
+        awaitText("Мои продукты")
+        tab("Блюда").performClick()
+        awaitText("Что приготовим?")
+        capture(name)
+    }
+
+    private fun capture(name: String) {
+        compose.mainClock.advanceTimeBy(1000)
         check(
             System.getProperty("os.name") == "Linux" && System.getProperty("os.arch") == "amd64"
         ) {
             "Run screenshots with bash .github/android/check.sh in the pinned Linux x86 container"
         }
-        launch(fontScale)
-        awaitText("Мои продукты")
-        tab("Блюда").performClick()
-        awaitText("Что приготовим?")
         compose.waitForIdle()
         // A missing reference must fail verification instead of silently recording one.
         if (System.getProperty("roborazzi.test.verify") == "true") {
