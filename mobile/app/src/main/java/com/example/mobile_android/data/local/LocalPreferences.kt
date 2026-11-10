@@ -20,6 +20,7 @@ class LocalPreferences(private val store: DataStore<Preferences>) :
     private val diabetes = booleanPreferencesKey("diabetes")
     private val table = stringPreferencesKey("diet_table")
     private val session = booleanPreferencesKey("demo_signed_in")
+    private val yandexToken = stringPreferencesKey("yandex_oauth_token")
 
     private fun decode(p: Preferences) =
         FoodPreferences(
@@ -54,7 +55,18 @@ class LocalPreferences(private val store: DataStore<Preferences>) :
         store.edit { it[session] = true }
     }
 
+    override suspend fun signInWithToken(token: String) {
+        require(token.isNotBlank()) { "Яндекс не вернул токен доступа. Попробуйте ещё раз." }
+        store.edit {
+            it[session] = true
+            it[yandexToken] = token
+        }
+    }
+
     override suspend fun signOut() {
-        store.edit { it[session] = false }
+        store.edit {
+            it[session] = false
+            it.remove(yandexToken)
+        }
     }
 }
