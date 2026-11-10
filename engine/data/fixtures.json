@@ -1,0 +1,171 @@
+{
+  "ingredients": [
+    {"code": "salt", "name": "Соль", "is_staple": true, "package_g": 1000, "package_price": 30, "kcal": 0, "protein": 0, "fat": 0, "carbs": 0},
+    {"code": "water", "name": "Вода", "is_staple": true, "package_g": 1000, "package_price": 0, "kcal": 0, "protein": 0, "fat": 0, "carbs": 0},
+    {"code": "sunflower_oil", "name": "Масло подсолнечное", "is_staple": true, "package_g": 920, "package_price": 150, "kcal": 899, "protein": 0, "fat": 99.9, "carbs": 0, "aliases": ["подсолнечное масло", "растительное масло"]},
+    {"code": "black_pepper", "name": "Перец чёрный молотый", "is_staple": true, "package_g": 50, "package_price": 60, "kcal": 251, "protein": 10.4, "fat": 3.3, "carbs": 38.7},
+    {"code": "sugar", "name": "Сахар", "is_staple": true, "package_g": 1000, "package_price": 90, "kcal": 398, "protein": 0, "fat": 0, "carbs": 99.7, "aliases": ["сахар-песок"]},
+    {"code": "egg", "name": "Яйцо куриное", "is_staple": false, "package_g": 550, "package_price": 120, "kcal": 157, "protein": 12.7, "fat": 11.5, "carbs": 0.7, "display_unit": "pcs", "grams_per_piece": 55, "allergens": ["eggs"], "aliases": ["яйца", "яйцо с1", "яйцо с0"]},
+    {"code": "milk", "name": "Молоко 2,5%", "is_staple": false, "package_g": 1000, "package_price": 95, "kcal": 52, "protein": 2.8, "fat": 2.5, "carbs": 4.7, "allergens": ["milk"], "aliases": ["молоко"]},
+    {"code": "butter", "name": "Масло сливочное 82,5%", "is_staple": false, "package_g": 180, "package_price": 220, "kcal": 748, "protein": 0.5, "fat": 82.5, "carbs": 0.8, "allergens": ["milk"], "aliases": ["сливочное масло"]},
+    {"code": "flour", "name": "Мука пшеничная", "is_staple": false, "package_g": 2000, "package_price": 110, "kcal": 334, "protein": 10.3, "fat": 1.1, "carbs": 70, "allergens": ["gluten"], "aliases": ["мука"]},
+    {"code": "cheese", "name": "Сыр твёрдый", "is_staple": false, "package_g": 200, "package_price": 230, "kcal": 356, "protein": 26, "fat": 26.5, "carbs": 3.5, "allergens": ["milk"], "aliases": ["сыр"]},
+    {"code": "sour_cream", "name": "Сметана 15%", "is_staple": false, "package_g": 300, "package_price": 110, "kcal": 158, "protein": 2.6, "fat": 15, "carbs": 3, "allergens": ["milk"], "aliases": ["сметана"]},
+    {"code": "cottage_cheese", "name": "Творог 5%", "is_staple": false, "package_g": 300, "package_price": 140, "kcal": 121, "protein": 17.2, "fat": 5, "carbs": 1.8, "allergens": ["milk"], "aliases": ["творог"]},
+    {"code": "potato", "name": "Картофель", "is_staple": false, "package_g": 1000, "package_price": 60, "kcal": 77, "protein": 2, "fat": 0.4, "carbs": 16.3, "aliases": ["картошка"]},
+    {"code": "onion", "name": "Лук репчатый", "is_staple": false, "package_g": 1000, "package_price": 50, "kcal": 41, "protein": 1.4, "fat": 0, "carbs": 10.4, "aliases": ["лук"]},
+    {"code": "carrot", "name": "Морковь", "is_staple": false, "package_g": 1000, "package_price": 55, "kcal": 35, "protein": 1.3, "fat": 0.1, "carbs": 6.9},
+    {"code": "garlic", "name": "Чеснок", "is_staple": false, "package_g": 100, "package_price": 40, "kcal": 143, "protein": 6.5, "fat": 0.5, "carbs": 29.9},
+    {"code": "tomato", "name": "Помидоры", "is_staple": false, "package_g": 1000, "package_price": 250, "kcal": 20, "protein": 0.6, "fat": 0.2, "carbs": 4.2, "aliases": ["томаты", "помидор"]},
+    {"code": "cucumber", "name": "Огурцы", "is_staple": false, "package_g": 1000, "package_price": 200, "kcal": 14, "protein": 0.8, "fat": 0.1, "carbs": 2.5, "aliases": ["огурец"]},
+    {"code": "cabbage", "name": "Капуста белокочанная", "is_staple": false, "package_g": 1500, "package_price": 60, "kcal": 27, "protein": 1.8, "fat": 0.1, "carbs": 4.7, "aliases": ["капуста"]},
+    {"code": "beet", "name": "Свёкла", "is_staple": false, "package_g": 1000, "package_price": 50, "kcal": 42, "protein": 1.5, "fat": 0.1, "carbs": 8.8, "aliases": ["свекла"]},
+    {"code": "dill", "name": "Укроп", "is_staple": false, "package_g": 50, "package_price": 60, "kcal": 40, "protein": 2.5, "fat": 0.5, "carbs": 6.3, "aliases": ["зелень"]},
+    {"code": "apple", "name": "Яблоки", "is_staple": false, "package_g": 1000, "package_price": 130, "kcal": 47, "protein": 0.4, "fat": 0.4, "carbs": 9.8, "aliases": ["яблоко"]},
+    {"code": "banana", "name": "Бананы", "is_staple": false, "package_g": 1000, "package_price": 140, "kcal": 96, "protein": 1.5, "fat": 0.2, "carbs": 21.8, "aliases": ["банан"]},
+    {"code": "chicken_breast", "name": "Куриное филе", "is_staple": false, "package_g": 800, "package_price": 380, "kcal": 113, "protein": 23.6, "fat": 1.9, "carbs": 0.4, "aliases": ["филе куриное", "грудка куриная"]},
+    {"code": "minced_meat", "name": "Фарш свино-говяжий", "is_staple": false, "package_g": 500, "package_price": 320, "kcal": 263, "protein": 17, "fat": 22, "carbs": 0, "aliases": ["фарш"]},
+    {"code": "sausage", "name": "Сосиски", "is_staple": false, "package_g": 450, "package_price": 250, "kcal": 266, "protein": 11, "fat": 24, "carbs": 1.6},
+    {"code": "canned_tuna", "name": "Тунец консервированный", "is_staple": false, "package_g": 185, "package_price": 200, "kcal": 96, "protein": 21, "fat": 1, "carbs": 0, "allergens": ["fish"], "aliases": ["тунец"]},
+    {"code": "pasta", "name": "Макароны", "is_staple": false, "package_g": 450, "package_price": 90, "kcal": 344, "protein": 11, "fat": 1.3, "carbs": 70.5, "allergens": ["gluten"], "aliases": ["спагетти", "паста", "рожки"]},
+    {"code": "rice", "name": "Рис круглозёрный", "is_staple": false, "package_g": 900, "package_price": 120, "kcal": 330, "protein": 7, "fat": 1, "carbs": 74, "aliases": ["рис"]},
+    {"code": "buckwheat", "name": "Гречка", "is_staple": false, "package_g": 900, "package_price": 110, "kcal": 313, "protein": 12.6, "fat": 3.3, "carbs": 62.1, "aliases": ["крупа гречневая"]},
+    {"code": "oat_flakes", "name": "Овсяные хлопья", "is_staple": false, "package_g": 500, "package_price": 80, "kcal": 352, "protein": 12.3, "fat": 6.2, "carbs": 61.8, "allergens": ["gluten"], "aliases": ["геркулес", "овсянка"]},
+    {"code": "bread", "name": "Хлеб пшеничный", "is_staple": false, "package_g": 400, "package_price": 60, "kcal": 242, "protein": 8.1, "fat": 1, "carbs": 48.8, "allergens": ["gluten"], "aliases": ["батон", "хлеб"]},
+    {"code": "mayonnaise", "name": "Майонез", "is_staple": false, "package_g": 400, "package_price": 130, "kcal": 629, "protein": 2.4, "fat": 67, "carbs": 3.9, "allergens": ["eggs", "mustard"]},
+    {"code": "tomato_paste", "name": "Томатная паста", "is_staple": false, "package_g": 270, "package_price": 110, "kcal": 102, "protein": 4.8, "fat": 0, "carbs": 19},
+    {"code": "honey", "name": "Мёд", "is_staple": false, "package_g": 250, "package_price": 250, "kcal": 329, "protein": 0.8, "fat": 0, "carbs": 81.5, "aliases": ["мед"]},
+    {"code": "soy_sauce", "name": "Соевый соус", "is_staple": false, "package_g": 150, "package_price": 120, "kcal": 53, "protein": 6, "fat": 0, "carbs": 5, "allergens": ["soy", "gluten"]}
+  ],
+  "recipes": [
+    {"id": "omelette", "title": "Омлет", "servings": 1, "cook_time_min": 10, "needs_microwave": false, "needs_stove": true, "needs_oven": false, "steps": ["Взбить яйца с молоком и щепоткой соли.", "Растопить масло на сковороде.", "Вылить смесь и жарить под крышкой 5–7 минут на слабом огне."], "items": [
+      {"code": "egg", "qty_g": 110},
+      {"code": "milk", "qty_g": 50},
+      {"code": "butter", "qty_g": 10},
+      {"code": "salt", "qty_g": 2}
+    ]},
+    {"id": "fried_eggs", "title": "Яичница", "servings": 1, "cook_time_min": 7, "needs_microwave": false, "needs_stove": true, "needs_oven": false, "items": [
+      {"code": "egg", "qty_g": 110},
+      {"code": "sunflower_oil", "qty_g": 10},
+      {"code": "salt", "qty_g": 1}
+    ]},
+    {"id": "pancakes", "title": "Блины", "servings": 4, "cook_time_min": 40, "needs_microwave": false, "needs_stove": true, "needs_oven": false, "items": [
+      {"code": "milk", "qty_g": 500},
+      {"code": "egg", "qty_g": 110},
+      {"code": "flour", "qty_g": 200},
+      {"code": "sugar", "qty_g": 30},
+      {"code": "sunflower_oil", "qty_g": 30},
+      {"code": "salt", "qty_g": 3}
+    ]},
+    {"id": "syrniki", "title": "Сырники", "servings": 2, "cook_time_min": 25, "needs_microwave": false, "needs_stove": true, "needs_oven": false, "items": [
+      {"code": "cottage_cheese", "qty_g": 300},
+      {"code": "egg", "qty_g": 55},
+      {"code": "flour", "qty_g": 50},
+      {"code": "sugar", "qty_g": 30},
+      {"code": "sunflower_oil", "qty_g": 20},
+      {"code": "sour_cream", "qty_g": 60, "is_optional": true}
+    ]},
+    {"id": "mashed_potatoes", "title": "Картофельное пюре", "servings": 3, "cook_time_min": 30, "needs_microwave": false, "needs_stove": true, "needs_oven": false, "items": [
+      {"code": "potato", "qty_g": 800},
+      {"code": "milk", "qty_g": 150},
+      {"code": "butter", "qty_g": 30},
+      {"code": "salt", "qty_g": 5}
+    ]},
+    {"id": "fried_potatoes", "title": "Жареная картошка с луком", "servings": 2, "cook_time_min": 30, "needs_microwave": false, "needs_stove": true, "needs_oven": false, "items": [
+      {"code": "potato", "qty_g": 600},
+      {"code": "onion", "qty_g": 100},
+      {"code": "sunflower_oil", "qty_g": 40},
+      {"code": "salt", "qty_g": 4},
+      {"code": "dill", "qty_g": 10, "is_optional": true}
+    ]},
+    {"id": "pasta_cheese", "title": "Макароны с сыром", "servings": 2, "cook_time_min": 15, "needs_microwave": false, "needs_stove": true, "needs_oven": false, "items": [
+      {"code": "pasta", "qty_g": 200},
+      {"code": "cheese", "qty_g": 80},
+      {"code": "butter", "qty_g": 20},
+      {"code": "salt", "qty_g": 4}
+    ]},
+    {"id": "pasta_navy", "title": "Макароны по-флотски", "servings": 3, "cook_time_min": 25, "needs_microwave": false, "needs_stove": true, "needs_oven": false, "items": [
+      {"code": "pasta", "qty_g": 250},
+      {"code": "minced_meat", "qty_g": 400},
+      {"code": "onion", "qty_g": 100},
+      {"code": "sunflower_oil", "qty_g": 20},
+      {"code": "salt", "qty_g": 4},
+      {"code": "black_pepper", "qty_g": 1}
+    ]},
+    {"id": "sausages_pasta", "title": "Сосиски с макаронами", "servings": 2, "cook_time_min": 15, "needs_microwave": false, "needs_stove": true, "needs_oven": false, "items": [
+      {"code": "sausage", "qty_g": 200},
+      {"code": "pasta", "qty_g": 200},
+      {"code": "butter", "qty_g": 10},
+      {"code": "salt", "qty_g": 3}
+    ]},
+    {"id": "chicken_rice", "title": "Курица с рисом и овощами", "servings": 3, "cook_time_min": 35, "needs_microwave": false, "needs_stove": true, "needs_oven": false, "items": [
+      {"code": "chicken_breast", "qty_g": 500},
+      {"code": "rice", "qty_g": 250},
+      {"code": "onion", "qty_g": 100},
+      {"code": "carrot", "qty_g": 100},
+      {"code": "sunflower_oil", "qty_g": 30},
+      {"code": "salt", "qty_g": 5}
+    ]},
+    {"id": "chicken_soy", "title": "Курица в медово-соевом соусе", "servings": 2, "cook_time_min": 25, "needs_microwave": false, "needs_stove": true, "needs_oven": false, "items": [
+      {"code": "chicken_breast", "qty_g": 400},
+      {"code": "soy_sauce", "qty_g": 50},
+      {"code": "honey", "qty_g": 20},
+      {"code": "garlic", "qty_g": 10},
+      {"code": "sunflower_oil", "qty_g": 20}
+    ]},
+    {"id": "buckwheat_veg", "title": "Гречка с луком и морковью", "servings": 3, "cook_time_min": 25, "needs_microwave": false, "needs_stove": true, "needs_oven": false, "items": [
+      {"code": "buckwheat", "qty_g": 300},
+      {"code": "onion", "qty_g": 100},
+      {"code": "carrot", "qty_g": 100},
+      {"code": "sunflower_oil", "qty_g": 30},
+      {"code": "salt", "qty_g": 4},
+      {"code": "butter", "qty_g": 20, "is_optional": true}
+    ]},
+    {"id": "borscht", "title": "Борщ вегетарианский", "servings": 6, "cook_time_min": 90, "needs_microwave": false, "needs_stove": true, "needs_oven": false, "items": [
+      {"code": "beet", "qty_g": 300},
+      {"code": "cabbage", "qty_g": 300},
+      {"code": "potato", "qty_g": 300},
+      {"code": "carrot", "qty_g": 100},
+      {"code": "onion", "qty_g": 100},
+      {"code": "tomato_paste", "qty_g": 50},
+      {"code": "water", "qty_g": 2000},
+      {"code": "salt", "qty_g": 10},
+      {"code": "sour_cream", "qty_g": 100, "is_optional": true},
+      {"code": "garlic", "qty_g": 10, "is_optional": true}
+    ]},
+    {"id": "veg_salad", "title": "Салат из огурцов и помидоров", "servings": 2, "cook_time_min": 10, "needs_microwave": false, "needs_stove": false, "needs_oven": false, "steps": ["Нарезать помидоры, огурцы и лук.", "Посолить и заправить сметаной.", "Посыпать укропом по вкусу."], "items": [
+      {"code": "tomato", "qty_g": 300},
+      {"code": "cucumber", "qty_g": 300},
+      {"code": "onion", "qty_g": 50},
+      {"code": "sour_cream", "qty_g": 80},
+      {"code": "salt", "qty_g": 2},
+      {"code": "dill", "qty_g": 10, "is_optional": true}
+    ]},
+    {"id": "oatmeal", "title": "Овсянка на молоке", "servings": 1, "cook_time_min": 10, "needs_microwave": true, "needs_stove": false, "needs_oven": false, "steps": ["Смешать хлопья, молоко, сахар и соль в миске.", "Готовить в микроволновке 2 минуты, перемешать.", "Готовить ещё 1–2 минуты, добавить масло и банан по вкусу."], "items": [
+      {"code": "oat_flakes", "qty_g": 60},
+      {"code": "milk", "qty_g": 200},
+      {"code": "sugar", "qty_g": 10},
+      {"code": "salt", "qty_g": 1},
+      {"code": "butter", "qty_g": 10, "is_optional": true},
+      {"code": "banana", "qty_g": 100, "is_optional": true}
+    ]},
+    {"id": "tuna_sandwich", "title": "Бутерброды с тунцом", "servings": 2, "cook_time_min": 5, "needs_microwave": false, "needs_stove": false, "needs_oven": false, "items": [
+      {"code": "bread", "qty_g": 120},
+      {"code": "canned_tuna", "qty_g": 185},
+      {"code": "mayonnaise", "qty_g": 30},
+      {"code": "cucumber", "qty_g": 100, "is_optional": true}
+    ]},
+    {"id": "cheese_toast", "title": "Гренки с сыром", "servings": 2, "cook_time_min": 10, "needs_microwave": false, "needs_stove": true, "needs_oven": false, "items": [
+      {"code": "bread", "qty_g": 160},
+      {"code": "cheese", "qty_g": 60},
+      {"code": "egg", "qty_g": 55},
+      {"code": "milk", "qty_g": 50},
+      {"code": "butter", "qty_g": 20}
+    ]},
+    {"id": "baked_apples", "title": "Печёные яблоки с мёдом", "servings": 2, "cook_time_min": 30, "needs_microwave": false, "needs_stove": false, "needs_oven": true, "steps": ["Разогреть духовку до 180 °C.", "Вырезать сердцевину яблок и наполнить мёдом.", "Запекать 25 минут."], "items": [
+      {"code": "apple", "qty_g": 400},
+      {"code": "honey", "qty_g": 40},
+      {"code": "cottage_cheese", "qty_g": 100, "is_optional": true}
+    ]}
+  ]
+}
