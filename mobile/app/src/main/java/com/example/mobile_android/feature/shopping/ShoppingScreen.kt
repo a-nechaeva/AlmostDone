@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -319,10 +320,16 @@ internal fun ShoppingContent(
 }
 
 @Composable
-internal fun ShoppingNotice(title: String, body: String) {
+internal fun ShoppingNotice(title: String, body: String, positive: Boolean = true) {
+    val background =
+        if (positive) MaterialTheme.colorScheme.tertiaryContainer
+        else MaterialTheme.colorScheme.primaryContainer
+    val foreground =
+        if (positive) MaterialTheme.colorScheme.onTertiaryContainer
+        else MaterialTheme.colorScheme.onPrimaryContainer
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.tertiaryContainer,
+        color = background,
     ) {
         Column(
             Modifier.fillMaxWidth().padding(18.dp),
@@ -331,12 +338,12 @@ internal fun ShoppingNotice(title: String, body: String) {
             Text(
                 title,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                color = foreground,
             )
             Text(
                 body,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                color = foreground,
             )
         }
     }
@@ -361,7 +368,7 @@ internal fun ShoppingEmpty(title: String, body: String, button: String, click: (
             )
         }
         Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Text(body, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(body, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         PrimaryButton(click, Modifier.fillMaxWidth()) { Text(button) }
     }
 }

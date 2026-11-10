@@ -4,9 +4,12 @@ import android.app.Application
 import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.ComponentDialog
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -22,6 +25,7 @@ import com.example.mobile_android.domain.*
 import com.example.mobile_android.feature.common.*
 import com.example.mobile_android.ui.Screenshot
 import com.example.mobile_android.ui.UiSmoke
+import com.example.mobile_android.ui.components.BrandTopBar
 import com.example.mobile_android.ui.components.LoadContent
 import com.example.mobile_android.ui.theme.AlmostReadyTheme
 import com.github.takahirom.roborazzi.RoborazziOptions
@@ -188,14 +192,19 @@ class ShoppingUiScreenTest {
             CompositionLocalProvider(LocalDensity provides Density(2f, scale)) {
                 AlmostReadyTheme {
                     Surface(color = MaterialTheme.colorScheme.background) {
-                        ShoppingBudgetContent(
-                            form,
-                            DemoCatalog.catalog,
-                            vm::textChanged,
-                            vm::submit,
-                            vm::retry,
-                            vm::clearResult,
-                        )
+                        Scaffold(
+                            topBar = { BrandTopBar("План покупок", onBack = vm::clearResult) },
+                        ) { padding ->
+                            ShoppingBudgetContent(
+                                form,
+                                DemoCatalog.catalog,
+                                vm::textChanged,
+                                vm::submit,
+                                vm::retry,
+                                vm::clearResult,
+                                modifier = Modifier.padding(padding),
+                            )
+                        }
                     }
                 }
             }
@@ -260,7 +269,7 @@ class ShoppingUiScreenTest {
         text("Подобрать план").performScrollTo().assertIsNotEnabled()
         text("Бюджет, ₽").performTextReplacement("500,25")
         text("Подобрать план").performScrollTo().performClick()
-        await("В пределах демо-бюджета")
+        await("В пределах бюджета")
         budgetBack()
         await("Сколько потратим?")
         text("Бюджет, ₽").assertTextContains("500,25")
@@ -285,11 +294,27 @@ class ShoppingUiScreenTest {
 
     @Category(UiSmoke::class)
     @Test
+    fun presetsSelectNoPlanAndReadyExamples() {
+        launch()
+        openBudget()
+        text("200 ₽").performClick()
+        scrollTo("Подобрать план", budget = true).performClick()
+        await("Бюджет 200 ₽")
+        await("Пока нет подходящего плана")
+        budgetBack()
+        await("Сколько потратим?")
+        text("500 ₽").performClick()
+        scrollTo("Подобрать план", budget = true).performClick()
+        await("В пределах бюджета")
+    }
+
+    @Category(UiSmoke::class)
+    @Test
     fun optionalRecipeCallbackReceivesTheExistingRecipeId() {
         launch(connectExamples = true)
         openBudget()
         text("Подобрать план").performScrollTo().performClick()
-        await("В пределах демо-бюджета")
+        await("В пределах бюджета")
         compose.onAllNodesWithText("Открыть рецепт")[0].performScrollTo().performClick()
         await("Открыт рецепт: cheese")
     }
@@ -300,7 +325,7 @@ class ShoppingUiScreenTest {
         launchBudget(FakeShoppingBudgetSource(FakeShoppingBudgetSource.UNKNOWN_PRICE))
         text("Подобрать план").performScrollTo().performClick()
         await("Стоимость неизвестна")
-        text("В пределах демо-бюджета").assertDoesNotExist()
+        text("В пределах бюджета").assertDoesNotExist()
         text("Покупки из примера не добавляются в список.").performScrollTo().assertIsDisplayed()
         text("Добавить план в покупки").assertDoesNotExist()
     }
@@ -315,7 +340,7 @@ class ShoppingUiScreenTest {
         scrollTo("Подобрать покупки под бюджет").assertIsDisplayed().performClick()
         await("Сколько потратим?")
         text("Подобрать план").performScrollTo().assertIsDisplayed().performClick()
-        await("В пределах демо-бюджета")
+        await("В пределах бюджета")
     }
 
     @Category(UiSmoke::class)
@@ -326,7 +351,7 @@ class ShoppingUiScreenTest {
         text("Подобрать покупки").performScrollTo().performClick()
         await("Сколько потратим?")
         text("Подобрать план").performScrollTo().performClick()
-        await("В пределах демо-бюджета")
+        await("В пределах бюджета")
         household.failWrite = true
         scrollTo("Добавить план в покупки", budget = true).performClick()
         await("Не удалось сохранить изменения. Повторите действие.")
@@ -377,14 +402,15 @@ class ShoppingUiScreenTest {
     fun resultScreenshot() {
         launchBudget(FakeShoppingBudgetSource())
         text("Подобрать план").performScrollTo().performClick()
-        await("В пределах демо-бюджета")
+        await("В пределах бюджета")
         shot("result")
     }
 
     @Category(Screenshot::class)
     @Test
     fun noPlanScreenshot() {
-        launchBudget(FakeShoppingBudgetSource(null))
+        launchBudget(FakeShoppingBudgetSource())
+        text("Бюджет, ₽").performTextReplacement("200")
         text("Подобрать план").performScrollTo().performClick()
         await("Пока нет подходящего плана")
         shot("no-plan")
@@ -411,7 +437,9 @@ class ShoppingUiScreenTest {
     @Test
     fun loadingScreenshot() {
         launchBudget(ShoppingBudgetSource { kotlinx.coroutines.awaitCancellation() })
+        compose.mainClock.autoAdvance = false
         text("Подобрать план").performScrollTo().performClick()
+        compose.mainClock.advanceTimeBy(1000)
         await("Загружаем демонстрационный план…")
         shot("loading")
     }

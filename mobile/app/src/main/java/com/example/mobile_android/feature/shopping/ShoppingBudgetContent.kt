@@ -3,11 +3,13 @@ package com.example.mobile_android.feature.shopping
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -60,6 +62,13 @@ internal fun ShoppingBudgetContent(
                         Modifier.fillMaxWidth(),
                         label = { Text("Бюджет, ₽") },
                         singleLine = true,
+                        shape = RoundedCornerShape(16.dp),
+                        colors =
+                            OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                unfocusedBorderColor = Color.Transparent,
+                            ),
                         isError = form.invalid,
                         supportingText = {
                             Text(
@@ -82,12 +91,15 @@ internal fun ShoppingBudgetContent(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         listOf("200", "500", "1000").forEach { amount ->
-                            FilterChip(
-                                selected = form.text == amount,
-                                onClick = { change(amount) },
-                                label = { Text("$amount ₽") },
-                                modifier = Modifier.weight(1f).heightIn(min = 48.dp),
-                            )
+                            Box(Modifier.weight(1f)) {
+                                ChoiceChip(
+                                    selected = form.text == amount,
+                                    onClick = { change(amount) },
+                                    label = {
+                                        Text(if (amount == "1000") "1 000 ₽" else "$amount ₽")
+                                    },
+                                )
+                            }
                         }
                     }
                 }
@@ -95,6 +107,7 @@ internal fun ShoppingBudgetContent(
                     ShoppingNotice(
                         "Примерные цены",
                         "Показываем стоимость докупаемых упаковок. Фактическая сумма зависит от магазина.",
+                        positive = false,
                     )
                 }
                 item {
@@ -123,7 +136,8 @@ internal fun ShoppingBudgetContent(
                         retry,
                     )
                 }
-            ShoppingBudgetResult.Empty ->
+            ShoppingBudgetResult.Empty -> {
+                item { PageHeading("Бюджет ${form.text} ₽") }
                 item {
                     ShoppingEmpty(
                         "Пока нет подходящего плана",
@@ -132,13 +146,13 @@ internal fun ShoppingBudgetContent(
                         edit,
                     )
                 }
+            }
             is ShoppingBudgetResult.Ready -> {
                 val within = result.estimate == ShoppingBudgetEstimate.WITHIN_EXAMPLE_BUDGET
                 item {
                     PageHeading(
                         when (result.estimate) {
-                            ShoppingBudgetEstimate.WITHIN_EXAMPLE_BUDGET ->
-                                "В пределах демо-бюджета"
+                            ShoppingBudgetEstimate.WITHIN_EXAMPLE_BUDGET -> "В пределах бюджета"
                             ShoppingBudgetEstimate.ABOVE_EXAMPLE_BUDGET -> "Пример дороже бюджета"
                             ShoppingBudgetEstimate.UNKNOWN -> "Стоимость неизвестна"
                         },
@@ -157,10 +171,18 @@ internal fun ShoppingBudgetContent(
                                 "По демо-оценке останется ≈${money(it)}.\n"
                             } ?: "") +
                                 "Цены за докупаемые упаковки. Это фиксированный пример, а не результат оптимизации.",
+                        positive = within,
                     )
                 }
                 items(result.example.packages, key = { it.ingredientId }) { pack ->
-                    Card(Modifier.fillMaxWidth()) {
+                    Card(
+                        Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        colors =
+                            CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface,
+                            ),
+                    ) {
                         Column(
                             Modifier.padding(16.dp),
                             verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -185,7 +207,14 @@ internal fun ShoppingBudgetContent(
                 items(result.example.alternativeRecipeIds) { id ->
                     val recipe = catalog.recipe(id)
                     if (recipe != null) {
-                        Card(Modifier.fillMaxWidth()) {
+                        Card(
+                            Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(24.dp),
+                            colors =
+                                CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surface,
+                                ),
+                        ) {
                             Row(
                                 Modifier.padding(12.dp),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -198,7 +227,7 @@ internal fun ShoppingBudgetContent(
                                         fontWeight = FontWeight.Bold,
                                     )
                                     Text(
-                                        "${recipe.minutes} мин",
+                                        "${recipe.minutes} мин · ${recipe.nutritionPerServing?.kcal?.let { "$it ккал / порц." } ?: "КБЖУ неизвестно"}",
                                         style = MaterialTheme.typography.bodySmall,
                                     )
                                     if (openRecipe != null)
