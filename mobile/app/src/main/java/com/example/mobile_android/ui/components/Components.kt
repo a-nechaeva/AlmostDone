@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -81,13 +82,16 @@ fun PageHeading(title: String, subtitle: String? = null) {
 
 @Composable
 fun <T> LoadContent(state: ScreenState<T>, retry: () -> Unit, content: @Composable (T) -> Unit) {
+    // Keep local form drafts when a screen's data stream restarts after a lifecycle pause.
+    val savedContent = rememberSaveableStateHolder()
     when (state) {
         ScreenState.Loading ->
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
         is ScreenState.Error -> EmptyPanel("Данные недоступны", state.message, "Повторить", retry)
-        is ScreenState.Ready -> content(state.data)
+        is ScreenState.Ready ->
+            savedContent.SaveableStateProvider("ready-content") { content(state.data) }
     }
 }
 

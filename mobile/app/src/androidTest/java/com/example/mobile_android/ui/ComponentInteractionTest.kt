@@ -6,7 +6,9 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.mobile_android.data.DemoCatalog
 import com.example.mobile_android.domain.*
+import com.example.mobile_android.feature.common.ScreenState
 import com.example.mobile_android.feature.profile.PreferenceToggle
+import com.example.mobile_android.ui.components.LoadContent
 import com.example.mobile_android.ui.components.QuantityDialog
 import com.example.mobile_android.ui.components.RecipeCard
 import com.example.mobile_android.ui.theme.AlmostReadyTheme
@@ -87,5 +89,21 @@ class ComponentInteractionTest {
             assertTrue(saved)
             assertNull(quantity)
         }
+    }
+
+    @Test
+    fun quantityDraftSurvivesLoadingAndReadyTransition() {
+        var screen by mutableStateOf<ScreenState<Int>>(ScreenState.Ready(1))
+        val ingredient = DemoCatalog.catalog.ingredient("tomatoes")!!
+        compose.setContent {
+            AlmostReadyTheme {
+                LoadContent(screen, {}) { QuantityDialog(ingredient, null, false, {}, {}) }
+            }
+        }
+        compose.onNode(hasSetTextAction()).performTextReplacement("321")
+        compose.runOnIdle { screen = ScreenState.Loading }
+        compose.onNode(hasSetTextAction()).assertDoesNotExist()
+        compose.runOnIdle { screen = ScreenState.Ready(2) }
+        compose.onNode(hasSetTextAction()).assertTextContains("321")
     }
 }

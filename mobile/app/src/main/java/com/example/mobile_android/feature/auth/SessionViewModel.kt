@@ -13,9 +13,10 @@ class SessionViewModel(private val repository: SessionRepository) : ViewModel() 
     val actions = ScreenActions(viewModelScope)
     private val mutableForm = MutableStateFlow(LoginForm())
     val form = mutableForm.asStateFlow()
+    // Session state owns the navigation graph, so a lifecycle pause must not restart it.
     val state =
         loadingStates(refresh) { repository.signedIn }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ScreenState.Loading)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, ScreenState.Loading)
 
     fun retry() {
         refresh.update { it + 1 }

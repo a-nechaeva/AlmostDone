@@ -294,4 +294,39 @@ class ViewModelTest {
         assertTrue(vm.actions.state.value.failed)
         assertNotNull(vm.actions.state.value.message)
     }
+
+    @Test
+    fun sessionObservationSurvivesBackgroundWithoutReloadingTheGraph() = runTest {
+        var subscriptions = 0
+        val repo =
+            object : SessionRepository {
+                override val signedIn = flow {
+                    subscriptions++
+                    if (subscriptions > 1) delay(100)
+                    emit(true)
+                    awaitCancellation()
+                }
+
+                override suspend fun signIn(login: String, password: String) = Unit
+
+                override suspend fun signOut() = Unit
+            }
+        val vm = SessionViewModel(repo).also { created += it }
+        val first =
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect() }
+        runCurrent()
+        assertEquals(true, (vm.state.value as ScreenState.Ready).data)
+        first.cancel()
+        advanceTimeBy(6000)
+        runCurrent()
+        val resumed = mutableListOf<ScreenState<Boolean>>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            vm.state.collect { resumed += it }
+        }
+        runCurrent()
+        advanceTimeBy(200)
+        runCurrent()
+        assertEquals(1, subscriptions)
+        assertTrue(resumed.all { it is ScreenState.Ready && it.data })
+    }
 }
