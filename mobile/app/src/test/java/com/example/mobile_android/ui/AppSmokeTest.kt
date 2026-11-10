@@ -241,8 +241,11 @@ class AppSmokeTest {
         dishText("Добавить в покупки").performClick()
         compose.waitUntil(10_000) { dependencies.household.values.value.manualPurchases.size == 1 }
         tab("Покупки").performClick()
-        awaitText("Из рецептов и выбранных предложений")
-        text("Твёрдый сыр").performScrollTo().assertIsDisplayed()
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithTag("shopping-ui-list").fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithTag("shopping-ui-list").performScrollToNode(hasText("Твёрдый сыр"))
+        text("Твёрдый сыр").assertIsDisplayed()
         assertEquals(
             23000L,
             shoppingQuote(DemoCatalog.catalog, dependencies.household.values.value).totalKopecks,
