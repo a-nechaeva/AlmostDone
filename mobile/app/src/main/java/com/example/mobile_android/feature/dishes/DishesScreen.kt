@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -37,6 +38,9 @@ fun DishesScreen(
     hidden: () -> Unit,
     pantry: () -> Unit,
     dismiss: () -> Unit,
+    view: DishesView,
+    changeView: (DishesView) -> Unit,
+    addPurchase: () -> Unit,
 ) {
     var filtersOpen by rememberSaveable { mutableStateOf(false) }
     if (filtersOpen)
@@ -118,15 +122,19 @@ fun DishesScreen(
                     matches.filter { it.dietary.status == Suitability.UNKNOWN },
             )
     LazyColumn(
+        modifier = Modifier.testTag("dishes-results"),
         contentPadding = PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
             PageHeading(
-                if (showHidden) "Скрытые блюда" else "Что приготовим?",
+                if (showHidden) "Скрытые блюда"
+                else if (view == DishesView.GRAPH) "Больше блюд с одной покупкой"
+                else "Что приготовим?",
                 "${state.household.pantry.size} продуктов дома",
             )
         }
+        if (!showHidden) item { DishesViewSelector(view, changeView) }
         item { DemoNotice() }
         if (!showHidden) item { TextButton(pantry) { Text("Изменить продукты дома") } }
         item {
@@ -161,7 +169,7 @@ fun DishesScreen(
                 }
             }
         }
-        item { ActionMessage(action, dismiss) }
+        if (showHidden || view == DishesView.LIST) item { ActionMessage(action, dismiss) }
         if (matches.isEmpty())
             item {
                 EmptyPanel(
@@ -172,25 +180,28 @@ fun DishesScreen(
                     reset,
                 )
             }
-        groups
-            .filter { it.second.isNotEmpty() }
-            .forEach { (title, values) ->
-                item(key = "heading-$title") {
-                    Text(
-                        "$title · ${values.size}",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                    )
+        if (!showHidden && view == DishesView.GRAPH) {
+            purchaseGraph(state, action, recipe, addPurchase, reset, dismiss)
+        } else
+            groups
+                .filter { it.second.isNotEmpty() }
+                .forEach { (title, values) ->
+                    item(key = "heading-$title") {
+                        Text(
+                            "$title · ${values.size}",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                    items(values, key = { it.recipe.id }) { match ->
+                        RecipeCard(
+                            match,
+                            match.recipe.id in state.household.favoriteRecipes,
+                            { recipe(match.recipe.id) },
+                            { favorite(match.recipe.id) },
+                        )
+                    }
                 }
-                items(values, key = { it.recipe.id }) { match ->
-                    RecipeCard(
-                        match,
-                        match.recipe.id in state.household.favoriteRecipes,
-                        { recipe(match.recipe.id) },
-                        { favorite(match.recipe.id) },
-                    )
-                }
-            }
         if (!showHidden && state.hidden.isNotEmpty())
             item {
                 OutlinedButton(hidden, Modifier.fillMaxWidth().heightIn(min = 48.dp)) {

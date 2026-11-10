@@ -16,6 +16,11 @@ enum class Availability(val label: String) {
     BUY("Докупить 1–3"),
 }
 
+enum class DishesView(val label: String) {
+    LIST("Список"),
+    GRAPH("Граф"),
+}
+
 data class DishFilters(
     val query: String = "",
     val maxMinutes: Int = 180,
@@ -28,6 +33,7 @@ data class DishesState(
     val matches: List<RecipeMatch>,
     val household: Household,
     val filters: DishFilters,
+    val suggestion: PurchaseSuggestion?,
 ) {
     val visible
         get() = matches.filter { it.dietary.status != Suitability.HIDDEN }
@@ -45,6 +51,7 @@ class DishesViewModel(
 ) : ViewModel() {
     private val refresh = MutableStateFlow(0)
     val actions = ScreenActions(viewModelScope)
+    val view = savedState.getStateFlow("dishesView", DishesView.LIST.name)
     private val filters =
         combine(
             savedState.getStateFlow("query", ""),
@@ -86,7 +93,12 @@ class DishesViewModel(
                                                 it.uncertainQuantityIds.isEmpty()
                                     }
                                 }
-                        DishesState(matches, h, f)
+                        DishesState(
+                            matches,
+                            h,
+                            f,
+                            suggestSinglePurchase(c, matches, Long.MAX_VALUE),
+                        )
                     }
                 }
             }
@@ -94,6 +106,17 @@ class DishesViewModel(
 
     fun retry() {
         refresh.update { it + 1 }
+    }
+
+    fun viewChanged(value: DishesView) {
+        savedState["dishesView"] = value.name
+    }
+
+    fun addPurchase() {
+        val suggestion = (state.value as? ScreenState.Ready)?.data?.suggestion ?: return
+        actions.run("Покупка добавлена в список") {
+            household.addManualPurchase(suggestion.ingredient.id, suggestion.quantity)
+        }
     }
 
     fun queryChanged(value: String) {
