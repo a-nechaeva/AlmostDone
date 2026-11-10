@@ -216,6 +216,7 @@ private fun DishesRoute(c: AppDependencies, nav: NavHostController, hidden: Bool
     }
     val state by vm.state.collectAsStateWithLifecycle()
     val action by vm.actions.state.collectAsStateWithLifecycle()
+    val queryText by vm.query.collectAsStateWithLifecycle()
     FeatureScaffold(if (hidden) null else AppTab.DISHES, nav, "Скрытые блюда") {
         val selectedView by vm.view.collectAsStateWithLifecycle()
         val view = DishesView.valueOf(selectedView)
@@ -242,6 +243,7 @@ private fun DishesRoute(c: AppDependencies, nav: NavHostController, hidden: Bool
                         view,
                         vm::viewChanged,
                         vm::addPurchase,
+                        queryText = queryText,
                     )
                 }
             }
