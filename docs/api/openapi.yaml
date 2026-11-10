@@ -2790,7 +2790,7 @@ components:
           maxLength: 128
           description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
         quantity:
-          $ref: '#/components/schemas/Quantity'
+          $ref: '#/components/schemas/PositiveQuantity'
         price:
           anyOf:
           - $ref: '#/components/schemas/Money'
@@ -4006,7 +4006,7 @@ components:
         name:
           type: string
         package_quantity:
-          $ref: '#/components/schemas/Quantity'
+          $ref: '#/components/schemas/PositiveQuantity'
         package_count:
           type: integer
           minimum: 1
