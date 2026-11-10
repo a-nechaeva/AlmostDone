@@ -3,6 +3,8 @@ package com.example.mobile_android.feature.shopping
 import android.app.Application
 import android.os.SystemClock
 import androidx.activity.ComponentActivity
+import androidx.activity.ComponentDialog
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalDensity
@@ -38,6 +40,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import org.robolectric.shadows.ShadowDialog
 
 @RunWith(RobolectricTestRunner::class)
 @Config(
@@ -101,7 +104,7 @@ class ShoppingUiScreenTest {
             val action by vm.actions.state.collectAsState()
             CompositionLocalProvider(LocalDensity provides Density(2f, scale)) {
                 AlmostReadyTheme {
-                    Surface {
+                    Surface(color = MaterialTheme.colorScheme.background) {
                         LoadContent(state, vm::retry) {
                             ShoppingScreen(
                                 it,
@@ -155,8 +158,23 @@ class ShoppingUiScreenTest {
         }
     }
 
+    private fun scrollTo(value: String, budget: Boolean = false): SemanticsNodeInteraction {
+        compose
+            .onNodeWithTag(if (budget) "shopping-ui-budget" else "shopping-ui-list")
+            .performScrollToNode(hasText(value))
+        return text(value)
+    }
+
+    private fun budgetBack() {
+        compose.runOnIdle {
+            (ShadowDialog.getLatestDialog() as ComponentDialog)
+                .onBackPressedDispatcher
+                .onBackPressed()
+        }
+    }
+
     private fun openBudget() {
-        text("Подобрать покупки под бюджет").performScrollTo().performClick()
+        scrollTo("Подобрать покупки под бюджет").performClick()
         await("Сколько потратим?")
     }
 
@@ -169,7 +187,7 @@ class ShoppingUiScreenTest {
             val form by vm.form.collectAsState()
             CompositionLocalProvider(LocalDensity provides Density(2f, scale)) {
                 AlmostReadyTheme {
-                    Surface {
+                    Surface(color = MaterialTheme.colorScheme.background) {
                         ShoppingBudgetContent(
                             form,
                             DemoCatalog.catalog,
@@ -243,10 +261,10 @@ class ShoppingUiScreenTest {
         text("Бюджет, ₽").performTextReplacement("500,25")
         text("Подобрать план").performScrollTo().performClick()
         await("В пределах демо-бюджета")
-        compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        budgetBack()
         await("Сколько потратим?")
         text("Бюджет, ₽").assertTextContains("500,25")
-        compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        budgetBack()
         await("Что докупить")
         assertTrue(household.values.value.checkedPurchases.isEmpty())
     }
@@ -294,7 +312,7 @@ class ShoppingUiScreenTest {
         launch(1.5f, true)
         checkbox().performClick()
         await("Покупка отмечена")
-        text("Подобрать покупки под бюджет").performScrollTo().assertIsDisplayed().performClick()
+        scrollTo("Подобрать покупки под бюджет").assertIsDisplayed().performClick()
         await("Сколько потратим?")
         text("Подобрать план").performScrollTo().assertIsDisplayed().performClick()
         await("В пределах демо-бюджета")
@@ -310,13 +328,13 @@ class ShoppingUiScreenTest {
         text("Подобрать план").performScrollTo().performClick()
         await("В пределах демо-бюджета")
         household.failWrite = true
-        text("Добавить план в покупки").performScrollTo().performClick()
+        scrollTo("Добавить план в покупки", budget = true).performClick()
         await("Не удалось сохранить изменения. Повторите действие.")
         assertTrue(household.values.value.manualPurchases.isEmpty())
         household.failWrite = false
-        text("Добавить план в покупки").performScrollTo().performClick()
+        scrollTo("Добавить план в покупки", budget = true).performClick()
         await("Пример добавлен")
-        text("Добавить план в покупки").performScrollTo().performClick()
+        scrollTo("Добавить план в покупки", budget = true).performClick()
         compose.runOnIdle {
             assertEquals(1, household.values.value.manualPurchases.size)
             assertTrue(household.values.value.pantry.isEmpty())

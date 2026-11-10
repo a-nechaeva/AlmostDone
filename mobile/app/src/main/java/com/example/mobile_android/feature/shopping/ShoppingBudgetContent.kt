@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -38,7 +39,7 @@ internal fun ShoppingBudgetContent(
         submit()
     }
     LazyColumn(
-        modifier.fillMaxSize().imePadding(),
+        modifier.fillMaxSize().imePadding().testTag("shopping-ui-budget"),
         contentPadding = PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {

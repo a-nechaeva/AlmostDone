@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -112,6 +113,7 @@ internal fun ShoppingContent(
 ) {
     val allChecked = state.quote.lines.isNotEmpty() && state.quote.lines.all { it.checked }
     LazyColumn(
+        modifier = Modifier.testTag("shopping-ui-list"),
         contentPadding = PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
