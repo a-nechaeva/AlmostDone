@@ -206,6 +206,11 @@ cython_debug/
 tempCodeRunnerFile.py
 
 # Local development files
+/.idea/
+/.codex/
+/additional/
+/exports/
+/scripts/
 /.local/
 /.agents/
 /AGENTS.md
@@ -225,4 +230,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
-.DS_Store
+
+# Downloaded recipe dataset; reproduce with scripts/prepare_povarenok.py
+/data/
+/data/raw/povarenok/*.parquet
+/data/raw/povarenok/*.part
+/data/raw/usda/*.zip
+/data/raw/usda/*.part
