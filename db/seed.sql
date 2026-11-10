@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict oDZOUgyfjwAzSPiv0bwJxk036C164SqzsaOKAVIboT9Tg76d1wSEyE2SSl4583z
+\restrict UwjRjazx47h5f6vkoPHRkXImdTb2rYICAdWUruikjResMRn6XuvbUW8qXJf9mkk
 
 -- Dumped from database version 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1)
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1)
@@ -2127,7 +2127,6 @@ COPY public.ingredient_allergens (ingredient_id, allergen_id) FROM stdin;
 
 COPY public.ingredient_categories (ingredient_id, category_id) FROM stdin;
 4	9
-5	3
 11	11
 14	9
 15	2
@@ -2263,7 +2262,6 @@ COPY public.ingredient_categories (ingredient_id, category_id) FROM stdin;
 566	2
 583	2
 584	4
-587	4
 591	4
 592	4
 596	4
@@ -2283,7 +2281,6 @@ COPY public.ingredient_categories (ingredient_id, category_id) FROM stdin;
 730	3
 733	2
 740	3
-748	3
 751	4
 752	4
 755	2
@@ -2303,9 +2300,6 @@ COPY public.ingredient_categories (ingredient_id, category_id) FROM stdin;
 847	2
 848	2
 850	11
-112	4
-118	4
-574	4
 808	4
 809	4
 7	5
@@ -2334,7 +2328,6 @@ COPY public.ingredient_categories (ingredient_id, category_id) FROM stdin;
 429	5
 465	5
 494	5
-501	5
 597	5
 598	5
 599	5
@@ -2376,7 +2369,6 @@ COPY public.ingredient_categories (ingredient_id, category_id) FROM stdin;
 158	1
 165	1
 184	1
-199	1
 213	1
 221	1
 241	1
@@ -2415,6 +2407,11 @@ COPY public.ingredient_categories (ingredient_id, category_id) FROM stdin;
 796	1
 803	1
 826	1
+112	1
+118	1
+574	1
+587	5
+501	1
 \.
 
 
@@ -11529,5 +11526,5 @@ ALTER TABLE ONLY public.users
 -- PostgreSQL database dump complete
 --
 
-\unrestrict oDZOUgyfjwAzSPiv0bwJxk036C164SqzsaOKAVIboT9Tg76d1wSEyE2SSl4583z
+\unrestrict UwjRjazx47h5f6vkoPHRkXImdTb2rYICAdWUruikjResMRn6XuvbUW8qXJf9mkk
 
