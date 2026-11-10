@@ -146,12 +146,16 @@ internal fun ShoppingBudgetContent(
                 }
                 item {
                     ShoppingNotice(
-                        if (within) "≈${money(result.example.totalKopecks)} · пример покупки"
+                        if (within)
+                            "≈${money(result.example.totalKopecks)} · вариантов блюд: ${result.example.alternativeRecipeIds.size}"
                         else "Пригодность бюджета не подтверждена",
                         if (result.estimate == ShoppingBudgetEstimate.UNKNOWN)
                             "Неизвестная цена не равна нулю. Стоимость и остаток бюджета неизвестны."
                         else
-                            "Цены за докупаемые упаковки. Это фиксированный пример, а не результат оптимизации.",
+                            (result.remainingKopecks?.let {
+                                "По демо-оценке останется ≈${money(it)}.\n"
+                            } ?: "") +
+                                "Цены за докупаемые упаковки. Это фиксированный пример, а не результат оптимизации.",
                     )
                 }
                 items(result.example.packages, key = { it.ingredientId }) { pack ->

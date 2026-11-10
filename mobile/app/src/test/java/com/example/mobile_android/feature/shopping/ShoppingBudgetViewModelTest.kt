@@ -61,6 +61,7 @@ class ShoppingBudgetViewModelTest {
         vm.submit()
         runCurrent()
         assertEquals(50025L, amount)
+        assertEquals(27025L, (vm.form.value.result as ShoppingBudgetResult.Ready).remainingKopecks)
         assertEquals(
             ShoppingBudgetEstimate.WITHIN_EXAMPLE_BUDGET,
             (vm.form.value.result as ShoppingBudgetResult.Ready).estimate,
@@ -107,6 +108,7 @@ class ShoppingBudgetViewModelTest {
             ShoppingBudgetEstimate.UNKNOWN,
             (vm.form.value.result as ShoppingBudgetResult.Ready).estimate,
         )
+        assertNull((vm.form.value.result as ShoppingBudgetResult.Ready).remainingKopecks)
     }
 
     @Test
@@ -121,6 +123,7 @@ class ShoppingBudgetViewModelTest {
             ShoppingBudgetEstimate.UNKNOWN,
             (vm.form.value.result as ShoppingBudgetResult.Ready).estimate,
         )
+        assertNull((vm.form.value.result as ShoppingBudgetResult.Ready).remainingKopecks)
     }
 
     @Test

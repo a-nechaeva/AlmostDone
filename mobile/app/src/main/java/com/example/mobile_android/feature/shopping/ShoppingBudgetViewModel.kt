@@ -84,6 +84,7 @@ sealed interface ShoppingBudgetResult {
     data class Ready(
         val example: ShoppingBudgetExample,
         val estimate: ShoppingBudgetEstimate,
+        val remainingKopecks: Long?,
     ) : ShoppingBudgetResult
 }
 
@@ -131,7 +132,16 @@ class ShoppingBudgetViewModel(
                 try {
                     val example = source.example(budget)
                     if (example == null || example.packages.isEmpty()) ShoppingBudgetResult.Empty
-                    else ShoppingBudgetResult.Ready(example, example.estimate(budget))
+                    else {
+                        val estimate = example.estimate(budget)
+                        ShoppingBudgetResult.Ready(
+                            example,
+                            estimate,
+                            if (estimate == ShoppingBudgetEstimate.WITHIN_EXAMPLE_BUDGET)
+                                budget - requireNotNull(example.totalKopecks)
+                            else null,
+                        )
+                    }
                 } catch (cancelled: CancellationException) {
                     throw cancelled
                 } catch (_: Exception) {
