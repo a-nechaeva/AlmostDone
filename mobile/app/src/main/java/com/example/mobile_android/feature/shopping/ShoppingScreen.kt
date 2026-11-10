@@ -43,18 +43,33 @@ fun ShoppingScreen(
     dishes: () -> Unit,
     dismiss: () -> Unit,
     openRecipe: ((String) -> Unit)? = null,
-    addBudgetExample: ((ShoppingBudgetExample) -> Unit)? = null,
+    openPantry: (() -> Unit)? = null,
+    budgetPlanWriter: ShoppingBudgetPlanWriter? = null,
+    budgetSource: ShoppingBudgetSource? = null,
 ) {
-    val factory = remember {
-        viewModelFactory { initializer { ShoppingBudgetViewModel(createSavedStateHandle()) } }
-    }
+    val factory =
+        remember(budgetSource, budgetPlanWriter) {
+            viewModelFactory {
+                initializer {
+                    ShoppingBudgetViewModel(
+                        createSavedStateHandle(),
+                        budgetSource ?: FakeShoppingBudgetSource(),
+                        budgetPlanWriter,
+                    )
+                }
+            }
+        }
     val budgetVm: ShoppingBudgetViewModel = viewModel(key = "shopping-budget", factory = factory)
     val form by budgetVm.form.collectAsStateWithLifecycle()
+    val write by budgetVm.write.collectAsStateWithLifecycle()
+    val undoPlan = budgetVm::undoPlan
     var budgetOpen by rememberSaveable { mutableStateOf(false) }
     if (budgetOpen) {
         val back = {
-            if (form.result != ShoppingBudgetResult.Idle) budgetVm.clearResult()
-            else budgetOpen = false
+            if (!write.pending) {
+                if (form.result != ShoppingBudgetResult.Idle) budgetVm.clearResult()
+                else budgetOpen = false
+            }
         }
         Dialog(
             onDismissRequest = back,
@@ -62,22 +77,29 @@ fun ShoppingScreen(
         ) {
             BackHandler(onBack = back)
             Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                Scaffold(topBar = { BrandTopBar("План покупок", onBack = back) }) { padding ->
+                Scaffold(
+                    topBar = {
+                        BrandTopBar("План покупок", onBack = back.takeUnless { write.pending })
+                    },
+                ) { padding ->
                     ShoppingBudgetContent(
                         form = form,
                         catalog = state.catalog,
                         modifier = Modifier.padding(padding).consumeWindowInsets(padding),
                         change = budgetVm::textChanged,
                         submit = {
-                            parseMoney(form.text)?.let(budget)
-                            budgetVm.submit()
+                            if (!budgetVm.write.value.pending) {
+                                parseMoney(form.text)?.let(budget)
+                                budgetVm.submit()
+                            }
                         },
                         retry = budgetVm::retry,
                         edit = budgetVm::clearResult,
                         openRecipe = openRecipe,
-                        addExample = addBudgetExample,
-                        action = action,
-                        dismissAction = dismiss,
+                        addPlan = if (budgetPlanWriter != null) budgetVm::addPlan else null,
+                        undoPlan = undoPlan,
+                        write = write,
+                        shoppingBusy = action.pending,
                     )
                 }
             }
@@ -94,7 +116,10 @@ fun ShoppingScreen(
         dishes,
         dismiss,
         { budgetOpen = true },
-        openRecipe,
+        openRecipe = openRecipe,
+        openPantry = openPantry,
+        budgetWrite = if (budgetOpen) BudgetPlanWriteState() else write,
+        undoBudgetPlan = undoPlan,
     )
 }
 
@@ -111,7 +136,11 @@ internal fun ShoppingContent(
     dismiss: () -> Unit,
     openBudget: () -> Unit,
     openRecipe: ((String) -> Unit)? = null,
+    openPantry: (() -> Unit)? = null,
+    budgetWrite: BudgetPlanWriteState = BudgetPlanWriteState(),
+    undoBudgetPlan: () -> Unit = {},
 ) {
+    val busy = action.pending || budgetWrite.pending
     val allChecked = state.quote.lines.isNotEmpty() && state.quote.lines.all { it.checked }
     LazyColumn(
         modifier = Modifier.testTag("shopping-ui-list"),
@@ -126,6 +155,8 @@ internal fun ShoppingContent(
         }
         item { DemoNotice() }
         item { ActionMessage(action, dismiss) }
+        if (budgetWrite.message != null || budgetWrite.pending || budgetWrite.canUndo)
+            item { BudgetPlanFeedback(budgetWrite, undoBudgetPlan, action.pending) }
         if (action.pending) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
         if (state.planWarnings.isNotEmpty())
             item {
@@ -141,6 +172,7 @@ internal fun ShoppingContent(
                     "Добавьте недостающие продукты из рецепта или посмотрите пример покупок на свой бюджет.",
                     "Подобрать покупки",
                     openBudget,
+                    enabled = !busy,
                 )
                 TextButton(dishes, Modifier.fillMaxWidth()) { Text("Выбрать блюда") }
             }
@@ -155,7 +187,7 @@ internal fun ShoppingContent(
                         .heightIn(min = 112.dp)
                         .toggleable(
                             line.checked,
-                            enabled = !action.pending && line.buyQuantity != null,
+                            enabled = !busy && line.buyQuantity != null,
                             role = Role.Checkbox,
                             onValueChange = { toggle(line.ingredientId) },
                         )
@@ -166,7 +198,7 @@ internal fun ShoppingContent(
                         line.checked,
                         onCheckedChange = null,
                         modifier = Modifier.padding(top = 2.dp),
-                        enabled = !action.pending && line.buyQuantity != null,
+                        enabled = !busy && line.buyQuantity != null,
                     )
                     Column(
                         Modifier.weight(1f).padding(start = 12.dp),
@@ -230,11 +262,11 @@ internal fun ShoppingContent(
                     OutlinedButton(
                         { state.quote.lines.firstOrNull()?.let { toggle(it.ingredientId) } },
                         Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                        enabled = !action.pending,
+                        enabled = !busy,
                     ) {
                         Text(
                             if (state.quote.lines.size == 1) "Вернуть в список"
-                            else "Снять первую отметку",
+                            else "Снять первую отметку"
                         )
                     }
                 }
@@ -242,13 +274,19 @@ internal fun ShoppingContent(
                 PrimaryButton(
                     checkout,
                     Modifier.fillMaxWidth(),
-                    enabled = !action.pending && state.quote.lines.any { it.checked },
+                    enabled = !busy && state.quote.lines.any { it.checked },
                 ) {
                     Text("Добавить купленное домой")
                 }
             }
+            if (allChecked && openPantry != null)
+                item {
+                    PrimaryButton(openPantry, Modifier.fillMaxWidth(), enabled = !busy) {
+                        Text("Мои продукты")
+                    }
+                }
             item {
-                PrimaryButton(openBudget, Modifier.fillMaxWidth()) {
+                PrimaryButton(openBudget, Modifier.fillMaxWidth(), enabled = !busy) {
                     Text("Подобрать покупки под бюджет")
                 }
             }
@@ -273,27 +311,23 @@ internal fun ShoppingContent(
                         )
                         if (suggestion == null)
                             Text(
-                                "Подходящей покупки нет. Проверьте бюджет, продукты и ограничения.",
+                                "Подходящей покупки нет. Проверьте бюджет, продукты и ограничения."
                             )
                         else {
                             Text(
-                                "${suggestion.ingredient.name} · ${quantityLabel(suggestion.quantity)} · ≈${money(suggestion.priceKopecks)}",
+                                "${suggestion.ingredient.name} · ${quantityLabel(suggestion.quantity)} · ≈${money(suggestion.priceKopecks)}"
                             )
                             Text(
                                 "Вариантов блюд: ${suggestion.recipeIds.size}. Это альтернативы, а не общий план приготовления.",
                                 style = MaterialTheme.typography.bodySmall,
                             )
                             suggestion.recipeIds.forEach { id ->
-                                val title = state.catalog.recipe(id)?.title ?: "Рецепт недоступен"
-                                if (openRecipe != null)
-                                    TextButton({ openRecipe(id) }) { Text(title) }
-                                else Text(title)
+                                val recipe = state.catalog.recipe(id)
+                                if (recipe != null && openRecipe != null)
+                                    TextButton({ openRecipe(recipe.id) }) { Text(recipe.title) }
+                                else Text(recipe?.title ?: "Рецепт недоступен")
                             }
-                            PrimaryButton(
-                                addSuggestion,
-                                Modifier.fillMaxWidth(),
-                                enabled = !action.pending,
-                            ) {
+                            PrimaryButton(addSuggestion, Modifier.fillMaxWidth(), enabled = !busy) {
                                 Text("Добавить предложенную покупку")
                             }
                         }
@@ -303,16 +337,16 @@ internal fun ShoppingContent(
         if (state.household.plan.isNotEmpty())
             item { Text("Выбранные рецепты", style = MaterialTheme.typography.titleMedium) }
         items(state.household.plan, key = { "plan-${it.recipeId}" }) { planned ->
-            TextButton({ removeRecipe(planned.recipeId) }, enabled = !action.pending) {
+            TextButton({ removeRecipe(planned.recipeId) }, enabled = !busy) {
                 Text(
-                    "Убрать рецепт: ${state.catalog.recipe(planned.recipeId)?.title ?: "Рецепт недоступен"} · ${planned.servings} порц.",
+                    "Убрать рецепт: ${state.catalog.recipe(planned.recipeId)?.title ?: "Рецепт недоступен"} · ${planned.servings} порц."
                 )
             }
         }
         items(state.household.manualPurchases, key = { "manual-${it.ingredientId}" }) { manual ->
-            TextButton({ removeManual(manual.ingredientId) }, enabled = !action.pending) {
+            TextButton({ removeManual(manual.ingredientId) }, enabled = !busy) {
                 Text(
-                    "Убрать предложение: ${state.catalog.ingredient(manual.ingredientId)?.name.orEmpty()}",
+                    "Убрать предложение: ${state.catalog.ingredient(manual.ingredientId)?.name.orEmpty()}"
                 )
             }
         }
@@ -350,7 +384,13 @@ internal fun ShoppingNotice(title: String, body: String, positive: Boolean = tru
 }
 
 @Composable
-internal fun ShoppingEmpty(title: String, body: String, button: String, click: () -> Unit) {
+internal fun ShoppingEmpty(
+    title: String,
+    body: String,
+    button: String,
+    click: () -> Unit,
+    enabled: Boolean = true,
+) {
     Column(
         Modifier.fillMaxWidth().padding(top = 64.dp, bottom = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -369,6 +409,6 @@ internal fun ShoppingEmpty(title: String, body: String, button: String, click: (
         }
         Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Text(body, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-        PrimaryButton(click, Modifier.fillMaxWidth()) { Text(button) }
+        PrimaryButton(click, Modifier.fillMaxWidth(), enabled = enabled) { Text(button) }
     }
 }
