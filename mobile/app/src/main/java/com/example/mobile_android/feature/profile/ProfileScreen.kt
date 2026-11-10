@@ -1,29 +1,35 @@
 package com.example.mobile_android.feature.profile
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Eco
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import com.example.mobile_android.domain.*
 import com.example.mobile_android.feature.common.ActionState
 import com.example.mobile_android.ui.components.*
@@ -37,14 +43,18 @@ fun PreferenceToggle(
 ) {
     Row(
         Modifier.fillMaxWidth()
-            .heightIn(min = 48.dp)
+            .heightIn(min = 52.dp)
             .toggleable(checked, enabled = enabled, role = Role.Checkbox, onValueChange = onChange)
             .semantics(mergeDescendants = true) {}
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, Modifier.weight(1f).padding(end = 8.dp))
         Checkbox(checked, onCheckedChange = null, enabled = enabled)
+        Text(
+            label,
+            Modifier.weight(1f).padding(start = 12.dp),
+            style = MaterialTheme.typography.bodyMedium,
+        )
     }
 }
 
@@ -194,7 +204,7 @@ fun ProfileContent(
                 if (!confirmLogout) ActionMessage(logoutAction, dismissLogout)
                 when (page) {
                     ProfilePage.HOME -> {
-                        PageHeading("Профиль")
+                        ProfileHeading("Профиль")
                         Row(
                             Modifier.padding(vertical = 20.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -221,13 +231,15 @@ fun ProfileContent(
                                 Text(
                                     "Логин: demo",
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style =
+                                        MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                                 )
                             }
                         }
                         ProfileRow(
                             "Питание и аллергены",
                             preferenceSummary(preferences),
-                            Icons.Default.Eco,
+                            Icons.Outlined.Eco,
                             !busy,
                         ) {
                             dismiss()
@@ -245,7 +257,7 @@ fun ProfileContent(
                         ProfileRow(
                             "Выйти из демо",
                             "Завершить текущую сессию",
-                            Icons.AutoMirrored.Filled.Logout,
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
                             !busy,
                         ) {
                             dismissLogout()
@@ -263,7 +275,7 @@ fun ProfileContent(
                         )
                     }
                     ProfilePage.PREFERENCES -> {
-                        PageHeading("Предпочтения питания")
+                        ProfileHeading("Предпочтения питания")
                         Text("Тип питания", style = MaterialTheme.typography.titleMedium)
                         Column(Modifier.selectableGroup()) {
                             FoodType.entries.forEach { type ->
@@ -279,11 +291,15 @@ fun ProfileContent(
                                         .semantics(mergeDescendants = true) {},
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Text(type.profileLabel, Modifier.weight(1f).padding(end = 8.dp))
                                     RadioButton(
                                         draft.foodType == type,
                                         onClick = null,
                                         enabled = !busy,
+                                    )
+                                    Text(
+                                        type.profileLabel,
+                                        Modifier.weight(1f).padding(start = 12.dp),
+                                        style = MaterialTheme.typography.bodyMedium,
                                     )
                                 }
                             }
@@ -318,9 +334,14 @@ fun ProfileContent(
                             page = ProfilePage.TABLE
                         }
                         ProfileNotice(
-                            "Соответствие не подтверждено",
-                            "Правила для диабета и диетических столов ещё не согласованы. Рецепты не проверяются на соответствие этим назначениям.",
+                            "Проверяйте сведения",
+                            "При неполных данных покажем предупреждение о составе.",
                         )
+                        if (draft.diabetes || draft.dietTable.isNotBlank())
+                            ProfileNotice(
+                                "Соответствие не подтверждено",
+                                "Правила для диабета и диетических столов ещё не согласованы. Рецепты не проверяются на соответствие этим назначениям.",
+                            )
                         if (onSave == null)
                             ProfileNotice(
                                 "Сохранение пока недоступно",
@@ -343,7 +364,7 @@ fun ProfileContent(
                         }
                     }
                     ProfilePage.ALLERGENS -> {
-                        PageHeading("Что исключить?", "Выберите нужные аллергены")
+                        ProfileHeading("Что исключить?", "Выберите нужные аллергены")
                         Column {
                             Allergen.entries.forEach { allergen ->
                                 PreferenceToggle(
@@ -381,14 +402,25 @@ fun ProfileContent(
                         )
                     }
                     ProfilePage.TABLE -> {
-                        PageHeading("Диетический стол")
-                        OutlinedTextField(
+                        ProfileHeading("Диетический стол")
+                        TextField(
                             draft.dietTable,
                             { draft = draft.copy(dietTable = it.take(100)) },
                             Modifier.fillMaxWidth(),
                             enabled = !busy,
                             label = { Text("Название из назначения") },
                             supportingText = { Text("До 100 символов") },
+                            placeholder = { Text("Не выбран") },
+                            shape = RoundedCornerShape(16.dp),
+                            colors =
+                                TextFieldDefaults.colors(
+                                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                    disabledContainerColor = MaterialTheme.colorScheme.surface,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent,
+                                    disabledIndicatorColor = Color.Transparent,
+                                ),
                         )
                         ProfileNotice(
                             "Соответствие не подтверждено",
@@ -417,28 +449,44 @@ fun ProfileContent(
         }
     }
     if (confirmLogout)
-        AlertDialog(
+        BasicAlertDialog(
             onDismissRequest = { if (!logoutAction.pending) confirmLogout = false },
-            title = { Text("Выйти из демо?") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            modifier = Modifier.padding(horizontal = 28.dp).widthIn(max = 560.dp).fillMaxWidth(),
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            Surface(
+                shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.background,
+            ) {
+                Column(
+                    Modifier.verticalScroll(rememberScrollState()).padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
                     Text(
-                        "Продукты, покупки и настройки останутся на этом устройстве. Для входа используйте demo / demo."
+                        "Выйти из демо?",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        "Продукты, покупки и настройки останутся на этом устройстве. Для входа используйте demo / demo.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     ActionMessage(logoutAction, dismissLogout)
+                    PrimaryButton(logout, Modifier.fillMaxWidth(), !logoutAction.pending) {
+                        Text(if (logoutAction.pending) "Выходим…" else "Выйти")
+                    }
+                    FilledTonalButton(
+                        { confirmLogout = false },
+                        Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                        enabled = !logoutAction.pending,
+                        shape = RoundedCornerShape(16.dp),
+                    ) {
+                        Text("Отмена")
+                    }
                 }
-            },
-            confirmButton = {
-                TextButton(logout, enabled = !logoutAction.pending) {
-                    Text(if (logoutAction.pending) "Выходим…" else "Выйти")
-                }
-            },
-            dismissButton = {
-                TextButton({ confirmLogout = false }, enabled = !logoutAction.pending) {
-                    Text("Отмена")
-                }
-            },
-        )
+            }
+        }
 }
 
 private val FoodType.profileLabel: String
@@ -449,7 +497,12 @@ private val FoodType.profileLabel: String
             FoodType.VEGAN -> "Веганство"
         }
 private val Allergen.profileLabel: String
-    get() = if (this == Allergen.MILK) "Молоко (молочный белок)" else label
+    get() =
+        when (this) {
+            Allergen.MILK -> "Молоко (молочный белок)"
+            Allergen.GLUTEN -> "Глютен"
+            else -> label
+        }
 
 private fun allergenSummary(p: FoodPreferences) =
     Allergen.entries
@@ -482,6 +535,7 @@ private fun ProfileRow(
         Modifier.fillMaxWidth(),
         enabled = enabled,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(18.dp),
     ) {
         Row(
             Modifier.padding(16.dp),
@@ -489,7 +543,7 @@ private fun ProfileRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(title, style = MaterialTheme.typography.bodyLarge)
+                Text(title, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp))
                 Text(
                     subtitle,
                     style = MaterialTheme.typography.bodySmall,
@@ -502,11 +556,46 @@ private fun ProfileRow(
 }
 
 @Composable
+private fun ProfileHeading(title: String, subtitle: String? = null) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            title,
+            style =
+                MaterialTheme.typography.headlineMedium.copy(fontSize = 30.sp, lineHeight = 36.sp),
+            fontWeight = FontWeight.Bold,
+        )
+        if (subtitle != null)
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+    }
+}
+
+@Composable
 private fun ProfileNotice(title: String, body: String) {
-    Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(title, fontWeight = FontWeight.Bold)
-            Text(body, style = MaterialTheme.typography.bodyMedium)
+    val dark = isSystemInDarkTheme()
+    val container = if (dark) MaterialTheme.colorScheme.surfaceVariant else Color(0xFFFAEED7)
+    val foreground = if (dark) MaterialTheme.colorScheme.onSurfaceVariant else Color(0xFF855A18)
+    Surface(color = container, contentColor = foreground, shape = RoundedCornerShape(20.dp)) {
+        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Icon(Icons.Outlined.Info, null, Modifier.size(20.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    body,
+                    style =
+                        MaterialTheme.typography.bodySmall.copy(
+                            fontSize = 13.sp,
+                            lineHeight = 19.sp,
+                        ),
+                )
+            }
         }
     }
 }
