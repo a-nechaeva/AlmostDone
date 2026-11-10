@@ -1,0 +1,11383 @@
+--
+-- PostgreSQL database dump
+--
+
+\restrict nAQloNDmyag86nHXDsrkT4j27AUqU33Ebkr0pr4seqPZISkgst1YkEVhiaYQij0
+
+-- Dumped from database version 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1)
+-- Dumped by pg_dump version 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1)
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- Name: citext; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS citext WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION citext; Type: COMMENT; Schema: -; Owner: 
+--
+
+COMMENT ON EXTENSION citext IS 'data type for case-insensitive character strings';
+
+
+--
+-- Name: check_favorite_recipe_access(); Type: FUNCTION; Schema: public; Owner: koma
+--
+
+CREATE FUNCTION public.check_favorite_recipe_access() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM recipes
+               WHERE id = NEW.recipe_id
+                 AND author_id IS NOT NULL AND author_id <> NEW.user_id) THEN
+        RAISE EXCEPTION 'рецепт % — чужой личный рецепт', NEW.recipe_id;
+    END IF;
+    RETURN NEW;
+END $$;
+
+
+ALTER FUNCTION public.check_favorite_recipe_access() OWNER TO koma;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: allergens; Type: TABLE; Schema: public; Owner: koma
+--
+
+CREATE TABLE public.allergens (
+    id integer NOT NULL,
+    code text NOT NULL,
+    name text NOT NULL,
+    CONSTRAINT allergens_code_check CHECK ((code ~ '^[a-z][a-z0-9_]*$'::text)),
+    CONSTRAINT allergens_name_check CHECK (((name <> ''::text) AND (name = btrim(name))))
+);
+
+
+ALTER TABLE public.allergens OWNER TO koma;
+
+--
+-- Name: allergens_id_seq; Type: SEQUENCE; Schema: public; Owner: koma
+--
+
+CREATE SEQUENCE public.allergens_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.allergens_id_seq OWNER TO koma;
+
+--
+-- Name: allergens_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: koma
+--
+
+ALTER SEQUENCE public.allergens_id_seq OWNED BY public.allergens.id;
+
+
+--
+-- Name: categories; Type: TABLE; Schema: public; Owner: koma
+--
+
+CREATE TABLE public.categories (
+    id integer NOT NULL,
+    name text NOT NULL,
+    CONSTRAINT categories_name_check CHECK (((name <> ''::text) AND (name = btrim(name))))
+);
+
+
+ALTER TABLE public.categories OWNER TO koma;
+
+--
+-- Name: categories_id_seq; Type: SEQUENCE; Schema: public; Owner: koma
+--
+
+CREATE SEQUENCE public.categories_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.categories_id_seq OWNER TO koma;
+
+--
+-- Name: categories_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: koma
+--
+
+ALTER SEQUENCE public.categories_id_seq OWNED BY public.categories.id;
+
+
+--
+-- Name: cooking_methods; Type: TABLE; Schema: public; Owner: koma
+--
+
+CREATE TABLE public.cooking_methods (
+    id integer NOT NULL,
+    name text NOT NULL,
+    CONSTRAINT cooking_methods_name_check CHECK (((name <> ''::text) AND (name = btrim(name))))
+);
+
+
+ALTER TABLE public.cooking_methods OWNER TO koma;
+
+--
+-- Name: cooking_methods_id_seq; Type: SEQUENCE; Schema: public; Owner: koma
+--
+
+CREATE SEQUENCE public.cooking_methods_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.cooking_methods_id_seq OWNER TO koma;
+
+--
+-- Name: cooking_methods_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: koma
+--
+
+ALTER SEQUENCE public.cooking_methods_id_seq OWNED BY public.cooking_methods.id;
+
+
+--
+-- Name: diet_excluded_allergens; Type: TABLE; Schema: public; Owner: koma
+--
+
+CREATE TABLE public.diet_excluded_allergens (
+    diet_id integer NOT NULL,
+    allergen_id integer NOT NULL
+);
+
+
+ALTER TABLE public.diet_excluded_allergens OWNER TO koma;
+
+--
+-- Name: diet_excluded_categories; Type: TABLE; Schema: public; Owner: koma
+--
+
+CREATE TABLE public.diet_excluded_categories (
+    diet_id integer NOT NULL,
+    category_id integer NOT NULL
+);
+
+
+ALTER TABLE public.diet_excluded_categories OWNER TO koma;
+
+--
+-- Name: diet_excluded_methods; Type: TABLE; Schema: public; Owner: koma
+--
+
+CREATE TABLE public.diet_excluded_methods (
+    diet_id integer NOT NULL,
+    method_id integer NOT NULL
+);
+
+
+ALTER TABLE public.diet_excluded_methods OWNER TO koma;
+
+--
+-- Name: diets; Type: TABLE; Schema: public; Owner: koma
+--
+
+CREATE TABLE public.diets (
+    id integer NOT NULL,
+    kind text NOT NULL,
+    name text NOT NULL,
+    description text,
+    CONSTRAINT diets_kind_check CHECK ((kind = ANY (ARRAY['diet'::text, 'pevzner'::text]))),
+    CONSTRAINT diets_name_check CHECK (((name <> ''::text) AND (name = btrim(name))))
+);
+
+
+ALTER TABLE public.diets OWNER TO koma;
+
+--
+-- Name: diets_id_seq; Type: SEQUENCE; Schema: public; Owner: koma
+--
+
+CREATE SEQUENCE public.diets_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.diets_id_seq OWNER TO koma;
+
+--
+-- Name: diets_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: koma
+--
+
+ALTER SEQUENCE public.diets_id_seq OWNED BY public.diets.id;
+
+
+--
+-- Name: favorite_ingredients; Type: TABLE; Schema: public; Owner: koma
+--
+
+CREATE TABLE public.favorite_ingredients (
+    user_id integer NOT NULL,
+    ingredient_id integer NOT NULL,
+    added_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.favorite_ingredients OWNER TO koma;
+
+--
+-- Name: favorite_recipes; Type: TABLE; Schema: public; Owner: koma
+--
+
+CREATE TABLE public.favorite_recipes (
+    user_id integer NOT NULL,
+    recipe_id integer NOT NULL,
+    added_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.favorite_recipes OWNER TO koma;
+
+--
+-- Name: ingredient_aliases; Type: TABLE; Schema: public; Owner: koma
+--
+
+CREATE TABLE public.ingredient_aliases (
+    ingredient_id integer NOT NULL,
+    alias text NOT NULL,
+    CONSTRAINT ingredient_aliases_alias_check CHECK (((alias <> ''::text) AND (alias = btrim(alias))))
+);
+
+
+ALTER TABLE public.ingredient_aliases OWNER TO koma;
+
+--
+-- Name: ingredient_allergens; Type: TABLE; Schema: public; Owner: koma
+--
+
+CREATE TABLE public.ingredient_allergens (
+    ingredient_id integer NOT NULL,
+    allergen_id integer NOT NULL
+);
+
+
+ALTER TABLE public.ingredient_allergens OWNER TO koma;
+
+--
+-- Name: ingredient_categories; Type: TABLE; Schema: public; Owner: koma
+--
+
+CREATE TABLE public.ingredient_categories (
+    ingredient_id integer NOT NULL,
+    category_id integer NOT NULL
+);
+
+
+ALTER TABLE public.ingredient_categories OWNER TO koma;
+
+--
+-- Name: ingredients; Type: TABLE; Schema: public; Owner: koma
+--
+
+CREATE TABLE public.ingredients (
+    id integer NOT NULL,
+    code text NOT NULL,
+    name text NOT NULL,
+    is_staple boolean DEFAULT false NOT NULL,
+    display_unit text DEFAULT 'g'::text NOT NULL,
+    grams_per_piece numeric(8,2),
+    kcal numeric(7,2) NOT NULL,
+    protein numeric(6,2) NOT NULL,
+    fat numeric(6,2) NOT NULL,
+    carbs numeric(6,2) NOT NULL,
+    package_g numeric(8,2) NOT NULL,
+    package_price numeric(10,2) NOT NULL,
+    CONSTRAINT ingredients_carbs_check CHECK (((carbs >= (0)::numeric) AND (carbs <= (100)::numeric))),
+    CONSTRAINT ingredients_check CHECK ((((protein + fat) + carbs) <= (100)::numeric)),
+    CONSTRAINT ingredients_check1 CHECK (((display_unit <> 'pcs'::text) OR (grams_per_piece IS NOT NULL))),
+    CONSTRAINT ingredients_code_check CHECK ((code ~ '^[a-z][a-z0-9_]*$'::text)),
+    CONSTRAINT ingredients_display_unit_check CHECK ((display_unit = ANY (ARRAY['g'::text, 'ml'::text, 'pcs'::text]))),
+    CONSTRAINT ingredients_fat_check CHECK (((fat >= (0)::numeric) AND (fat <= (100)::numeric))),
+    CONSTRAINT ingredients_grams_per_piece_check CHECK ((grams_per_piece > (0)::numeric)),
+    CONSTRAINT ingredients_kcal_check CHECK (((kcal >= (0)::numeric) AND (kcal <= (900)::numeric))),
+    CONSTRAINT ingredients_name_check CHECK (((name <> ''::text) AND (name = btrim(name)))),
+    CONSTRAINT ingredients_package_g_check CHECK ((package_g > (0)::numeric)),
+    CONSTRAINT ingredients_package_price_check CHECK ((package_price >= (0)::numeric)),
+    CONSTRAINT ingredients_protein_check CHECK (((protein >= (0)::numeric) AND (protein <= (100)::numeric)))
+);
+
+
+ALTER TABLE public.ingredients OWNER TO koma;
+
+--
+-- Name: ingredients_id_seq; Type: SEQUENCE; Schema: public; Owner: koma
+--
+
+CREATE SEQUENCE public.ingredients_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.ingredients_id_seq OWNER TO koma;
+
+--
+-- Name: ingredients_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: koma
+--
+
+ALTER SEQUENCE public.ingredients_id_seq OWNED BY public.ingredients.id;
+
+
+--
+-- Name: recipe_ingredients; Type: TABLE; Schema: public; Owner: koma
+--
+
+CREATE TABLE public.recipe_ingredients (
+    recipe_id integer NOT NULL,
+    ingredient_id integer NOT NULL,
+    qty_g numeric(8,2),
+    is_optional boolean DEFAULT false NOT NULL,
+    CONSTRAINT recipe_ingredients_qty_g_check CHECK (((qty_g > (0)::numeric) OR (qty_g IS NULL)))
+);
+
+
+ALTER TABLE public.recipe_ingredients OWNER TO koma;
+
+--
+-- Name: recipe_allergens; Type: VIEW; Schema: public; Owner: koma
+--
+
+CREATE VIEW public.recipe_allergens AS
+ SELECT DISTINCT ri.recipe_id,
+    ia.allergen_id
+   FROM (public.recipe_ingredients ri
+     JOIN public.ingredient_allergens ia USING (ingredient_id))
+  WHERE (NOT ri.is_optional);
+
+
+ALTER VIEW public.recipe_allergens OWNER TO koma;
+
+--
+-- Name: recipe_categories; Type: VIEW; Schema: public; Owner: koma
+--
+
+CREATE VIEW public.recipe_categories AS
+ SELECT DISTINCT ri.recipe_id,
+    ic.category_id
+   FROM (public.recipe_ingredients ri
+     JOIN public.ingredient_categories ic USING (ingredient_id))
+  WHERE (NOT ri.is_optional);
+
+
+ALTER VIEW public.recipe_categories OWNER TO koma;
+
+--
+-- Name: recipe_cooking_methods; Type: TABLE; Schema: public; Owner: koma
+--
+
+CREATE TABLE public.recipe_cooking_methods (
+    recipe_id integer NOT NULL,
+    method_id integer NOT NULL
+);
+
+
+ALTER TABLE public.recipe_cooking_methods OWNER TO koma;
+
+--
+-- Name: recipes; Type: TABLE; Schema: public; Owner: koma
+--
+
+CREATE TABLE public.recipes (
+    id integer NOT NULL,
+    title text NOT NULL,
+    description text,
+    servings integer NOT NULL,
+    cook_time_min integer NOT NULL,
+    needs_microwave boolean DEFAULT false NOT NULL,
+    needs_stove boolean DEFAULT false NOT NULL,
+    needs_oven boolean DEFAULT false NOT NULL,
+    image_url text,
+    author_id integer,
+    CONSTRAINT recipes_cook_time_min_check CHECK ((cook_time_min >= 0)),
+    CONSTRAINT recipes_servings_check CHECK ((servings > 0)),
+    CONSTRAINT recipes_title_check CHECK (((title <> ''::text) AND (title = btrim(title))))
+);
+
+
+ALTER TABLE public.recipes OWNER TO koma;
+
+--
+-- Name: recipe_nutrition; Type: VIEW; Schema: public; Owner: koma
+--
+
+CREATE VIEW public.recipe_nutrition AS
+ SELECT r.id AS recipe_id,
+    round((sum(((i.kcal * ri.qty_g) / (100)::numeric)) / (r.servings)::numeric), 1) AS kcal,
+    round((sum(((i.protein * ri.qty_g) / (100)::numeric)) / (r.servings)::numeric), 1) AS protein,
+    round((sum(((i.fat * ri.qty_g) / (100)::numeric)) / (r.servings)::numeric), 1) AS fat,
+    round((sum(((i.carbs * ri.qty_g) / (100)::numeric)) / (r.servings)::numeric), 1) AS carbs
+   FROM ((public.recipes r
+     JOIN public.recipe_ingredients ri ON ((ri.recipe_id = r.id)))
+     JOIN public.ingredients i ON ((i.id = ri.ingredient_id)))
+  WHERE (NOT ri.is_optional)
+  GROUP BY r.id, r.servings;
+
+
+ALTER VIEW public.recipe_nutrition OWNER TO koma;
+
+--
+-- Name: recipe_steps; Type: TABLE; Schema: public; Owner: koma
+--
+
+CREATE TABLE public.recipe_steps (
+    recipe_id integer NOT NULL,
+    step_no integer NOT NULL,
+    instruction text NOT NULL,
+    duration_min integer,
+    CONSTRAINT recipe_steps_duration_min_check CHECK ((duration_min > 0)),
+    CONSTRAINT recipe_steps_instruction_check CHECK ((btrim(instruction) <> ''::text)),
+    CONSTRAINT recipe_steps_step_no_check CHECK ((step_no > 0))
+);
+
+
+ALTER TABLE public.recipe_steps OWNER TO koma;
+
+--
+-- Name: recipes_id_seq; Type: SEQUENCE; Schema: public; Owner: koma
+--
+
+CREATE SEQUENCE public.recipes_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.recipes_id_seq OWNER TO koma;
+
+--
+-- Name: recipes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: koma
+--
+
+ALTER SEQUENCE public.recipes_id_seq OWNED BY public.recipes.id;
+
+
+--
+-- Name: user_diets; Type: TABLE; Schema: public; Owner: koma
+--
+
+CREATE TABLE public.user_diets (
+    user_id integer NOT NULL,
+    diet_id integer NOT NULL,
+    diet_kind text DEFAULT 'diet'::text NOT NULL,
+    CONSTRAINT user_diets_diet_kind_check CHECK ((diet_kind = 'diet'::text))
+);
+
+
+ALTER TABLE public.user_diets OWNER TO koma;
+
+--
+-- Name: users; Type: TABLE; Schema: public; Owner: koma
+--
+
+CREATE TABLE public.users (
+    id integer NOT NULL,
+    login public.citext NOT NULL,
+    password_hash text NOT NULL,
+    pevzner_diet_id integer,
+    pevzner_kind text DEFAULT 'pevzner'::text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT users_login_check CHECK ((login OPERATOR(public.~) '^[A-Za-z0-9_.-]{3,32}$'::public.citext)),
+    CONSTRAINT users_pevzner_kind_check CHECK ((pevzner_kind = 'pevzner'::text))
+);
+
+
+ALTER TABLE public.users OWNER TO koma;
+
+--
+-- Name: user_all_diets; Type: VIEW; Schema: public; Owner: koma
+--
+
+CREATE VIEW public.user_all_diets AS
+ SELECT user_diets.user_id,
+    user_diets.diet_id
+   FROM public.user_diets
+UNION
+ SELECT users.id AS user_id,
+    users.pevzner_diet_id AS diet_id
+   FROM public.users
+  WHERE (users.pevzner_diet_id IS NOT NULL);
+
+
+ALTER VIEW public.user_all_diets OWNER TO koma;
+
+--
+-- Name: user_allergens; Type: TABLE; Schema: public; Owner: koma
+--
+
+CREATE TABLE public.user_allergens (
+    user_id integer NOT NULL,
+    allergen_id integer NOT NULL
+);
+
+
+ALTER TABLE public.user_allergens OWNER TO koma;
+
+--
+-- Name: user_pantry; Type: TABLE; Schema: public; Owner: koma
+--
+
+CREATE TABLE public.user_pantry (
+    user_id integer NOT NULL,
+    ingredient_id integer NOT NULL,
+    qty_g numeric(8,2),
+    CONSTRAINT user_pantry_qty_g_check CHECK ((qty_g >= (0)::numeric))
+);
+
+
+ALTER TABLE public.user_pantry OWNER TO koma;
+
+--
+-- Name: user_recipe_visibility; Type: VIEW; Schema: public; Owner: koma
+--
+
+CREATE VIEW public.user_recipe_visibility AS
+ WITH flags AS (
+         SELECT u.id AS user_id,
+            r.id AS recipe_id,
+            COALESCE(( SELECT array_agg(DISTINCT a.name ORDER BY a.name) AS array_agg
+                   FROM ((public.recipe_allergens ra
+                     JOIN public.user_allergens ua ON ((ua.allergen_id = ra.allergen_id)))
+                     JOIN public.allergens a ON ((a.id = ra.allergen_id)))
+                  WHERE ((ra.recipe_id = r.id) AND (ua.user_id = u.id))), '{}'::text[]) AS user_allergens_in_dish,
+            COALESCE(( SELECT array_agg(DISTINCT d.name ORDER BY d.name) AS array_agg
+                   FROM (public.user_all_diets ud
+                     JOIN public.diets d ON ((d.id = ud.diet_id)))
+                  WHERE ((ud.user_id = u.id) AND ((EXISTS ( SELECT 1
+                           FROM (public.recipe_categories rc
+                             JOIN public.diet_excluded_categories x ON ((x.category_id = rc.category_id)))
+                          WHERE ((rc.recipe_id = r.id) AND (x.diet_id = d.id)))) OR (EXISTS ( SELECT 1
+                           FROM (public.recipe_allergens ra
+                             JOIN public.diet_excluded_allergens x ON ((x.allergen_id = ra.allergen_id)))
+                          WHERE ((ra.recipe_id = r.id) AND (x.diet_id = d.id)))) OR (EXISTS ( SELECT 1
+                           FROM (public.recipe_cooking_methods rm
+                             JOIN public.diet_excluded_methods x ON ((x.method_id = rm.method_id)))
+                          WHERE ((rm.recipe_id = r.id) AND (x.diet_id = d.id))))))), '{}'::text[]) AS violated_diets,
+            COALESCE(( SELECT array_agg(DISTINCT i.name ORDER BY i.name) AS array_agg
+                   FROM (public.recipe_ingredients ri
+                     JOIN public.ingredients i ON ((i.id = ri.ingredient_id)))
+                  WHERE ((ri.recipe_id = r.id) AND ri.is_optional AND ((EXISTS ( SELECT 1
+                           FROM (public.ingredient_allergens ia
+                             JOIN public.user_allergens ua ON ((ua.allergen_id = ia.allergen_id)))
+                          WHERE ((ia.ingredient_id = i.id) AND (ua.user_id = u.id)))) OR (EXISTS ( SELECT 1
+                           FROM ((public.ingredient_categories ic
+                             JOIN public.diet_excluded_categories x ON ((x.category_id = ic.category_id)))
+                             JOIN public.user_all_diets ud ON ((ud.diet_id = x.diet_id)))
+                          WHERE ((ic.ingredient_id = i.id) AND (ud.user_id = u.id)))) OR (EXISTS ( SELECT 1
+                           FROM ((public.ingredient_allergens ia
+                             JOIN public.diet_excluded_allergens x ON ((x.allergen_id = ia.allergen_id)))
+                             JOIN public.user_all_diets ud ON ((ud.diet_id = x.diet_id)))
+                          WHERE ((ia.ingredient_id = i.id) AND (ud.user_id = u.id))))))), '{}'::text[]) AS skip_optional
+           FROM (public.users u
+             CROSS JOIN public.recipes r)
+          WHERE ((r.author_id IS NULL) OR (r.author_id = u.id))
+        )
+ SELECT user_id,
+    recipe_id,
+    user_allergens_in_dish,
+    violated_diets,
+    skip_optional,
+    ((cardinality(user_allergens_in_dish) > 0) OR (cardinality(violated_diets) > 0)) AS is_hidden
+   FROM flags f;
+
+
+ALTER VIEW public.user_recipe_visibility OWNER TO koma;
+
+--
+-- Name: users_id_seq; Type: SEQUENCE; Schema: public; Owner: koma
+--
+
+CREATE SEQUENCE public.users_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.users_id_seq OWNER TO koma;
+
+--
+-- Name: users_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: koma
+--
+
+ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
+
+
+--
+-- Name: allergens id; Type: DEFAULT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.allergens ALTER COLUMN id SET DEFAULT nextval('public.allergens_id_seq'::regclass);
+
+
+--
+-- Name: categories id; Type: DEFAULT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.categories ALTER COLUMN id SET DEFAULT nextval('public.categories_id_seq'::regclass);
+
+
+--
+-- Name: cooking_methods id; Type: DEFAULT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.cooking_methods ALTER COLUMN id SET DEFAULT nextval('public.cooking_methods_id_seq'::regclass);
+
+
+--
+-- Name: diets id; Type: DEFAULT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.diets ALTER COLUMN id SET DEFAULT nextval('public.diets_id_seq'::regclass);
+
+
+--
+-- Name: ingredients id; Type: DEFAULT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.ingredients ALTER COLUMN id SET DEFAULT nextval('public.ingredients_id_seq'::regclass);
+
+
+--
+-- Name: recipes id; Type: DEFAULT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.recipes ALTER COLUMN id SET DEFAULT nextval('public.recipes_id_seq'::regclass);
+
+
+--
+-- Name: users id; Type: DEFAULT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
+
+
+--
+-- Data for Name: allergens; Type: TABLE DATA; Schema: public; Owner: koma
+--
+
+COPY public.allergens (id, code, name) FROM stdin;
+1	celery	Сельдерей
+2	crustaceans	Ракообразные
+3	eggs	Яйца
+4	fish	Рыба
+5	gluten	Глютен
+6	lupin	Люпин
+7	milk	Молоко
+8	molluscs	Моллюски
+9	mustard	Горчица
+10	nuts	Орехи
+11	peanuts	Арахис
+12	sesame	Кунжут
+13	soya	Соя
+14	sulfites	Диоксид серы и сульфиты
+\.
+
+
+--
+-- Data for Name: categories; Type: TABLE DATA; Schema: public; Owner: koma
+--
+
+COPY public.categories (id, name) FROM stdin;
+1	Овощи и зелень
+2	Фрукты и ягоды
+3	Мясо и птица
+4	Рыба и морепродукты
+5	Молочные продукты и сыры
+6	Бакалея и крупы
+7	Мука и хлебобулочные
+8	Соусы и специи
+9	Масла и жиры
+10	Орехи и сухофрукты
+11	Напитки
+12	Сладости и десерты
+\.
+
+
+--
+-- Data for Name: cooking_methods; Type: TABLE DATA; Schema: public; Owner: koma
+--
+
+COPY public.cooking_methods (id, name) FROM stdin;
+1	Варка / Тушение
+2	Жарка / Обжаривание
+3	Запекание в духовке
+4	Без термической обработки
+\.
+
+
+--
+-- Data for Name: diet_excluded_allergens; Type: TABLE DATA; Schema: public; Owner: koma
+--
+
+COPY public.diet_excluded_allergens (diet_id, allergen_id) FROM stdin;
+15	5
+16	7
+\.
+
+
+--
+-- Data for Name: diet_excluded_categories; Type: TABLE DATA; Schema: public; Owner: koma
+--
+
+COPY public.diet_excluded_categories (diet_id, category_id) FROM stdin;
+12	3
+12	4
+14	3
+13	3
+13	4
+13	5
+\.
+
+
+--
+-- Data for Name: diet_excluded_methods; Type: TABLE DATA; Schema: public; Owner: koma
+--
+
+COPY public.diet_excluded_methods (diet_id, method_id) FROM stdin;
+1	2
+5	2
+\.
+
+
+--
+-- Data for Name: diets; Type: TABLE DATA; Schema: public; Owner: koma
+--
+
+COPY public.diets (id, kind, name, description) FROM stdin;
+1	pevzner	Стол №1	При язвенной болезни и гастрите с повышенной кислотностью
+2	pevzner	Стол №2	При острых и хронических гастритах с пониженной секрецией
+3	pevzner	Стол №3	При хронических заболеваниях кишечника с запорами
+4	pevzner	Стол №4	При заболеваниях кишечника с диареей
+5	pevzner	Стол №5	При заболеваниях печени, желчного пузыря и поджелудочной железы
+6	pevzner	Стол №6	При подагре и мочекислом диатезе
+7	pevzner	Стол №7	При заболеваниях почек (нефрит)
+8	pevzner	Стол №8	При ожирении
+9	pevzner	Стол №9	При сахарном диабете
+10	pevzner	Стол №10	При заболеваниях сердечно-сосудистой системы
+11	pevzner	Стол №15	Общий стол без специфических ограничений
+12	diet	Вегетарианство	Исключает мясо, птицу и рыбу
+13	diet	Веганство	Исключает любые продукты животного происхождения
+14	diet	Пескетарианство	Исключает мясо и птицу, но разрешает рыбу и морепродукты
+15	diet	Безглютеновая	Исключает продукты с глютеном
+16	diet	Безлактозная	Исключает молочные продукты
+17	diet	Низкокалорийная	Ограничивает калорийность блюд
+18	diet	Гипоаллергенная	Исключает сильные аллергены
+\.
+
+
+--
+-- Data for Name: favorite_ingredients; Type: TABLE DATA; Schema: public; Owner: koma
+--
+
+COPY public.favorite_ingredients (user_id, ingredient_id, added_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: favorite_recipes; Type: TABLE DATA; Schema: public; Owner: koma
+--
+
+COPY public.favorite_recipes (user_id, recipe_id, added_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: ingredient_aliases; Type: TABLE DATA; Schema: public; Owner: koma
+--
+
+COPY public.ingredient_aliases (ingredient_id, alias) FROM stdin;
+625	Оливки каламата
+785	Тонкий лаваш
+140	Восковой картофель
+299	Грибы белые сушёные
+299	Сушёные белые грибы
+235	Говяжий огузок
+171	Майоран
+401	Ягнёнок
+446	Вырезка
+523	Копчёная свиная шейка
+250	Крахмал
+515	Кокосовое масло
+68	Бульон говяжий
+68	Говяжий бульон
+664	Почки
+291	Брусника
+228	Бамия
+228	Окра
+674	Ржаной солод
+779	Сушёный тимьян
+779	Тимьян сушёный
+539	Крупная белая фасоль
+685	Рисовая лапша широкая
+685	Широкая рисовая лапша
+134	Орегано
+428	Бобы фул (конские)
+824	Черника
+11	Вода
+11	Вода горячая
+11	Вода для карамели
+11	Вода для теста
+11	Вода ледяная
+11	Вода тёплая
+11	Вода холодная
+11	Кипяток
+11	Ледяная вода
+11	Ледяная вода в фарш
+11	Тёплая вода
+11	Холодная вода
+597	Молодой солёный сыр
+509	Китайский лук-чеснок
+756	Сушёный пажитник
+690	Руккола
+476	Дроблёная пшеница джариш
+798	Уксус для соуса
+206	Оливки чёрные
+528	Кость от хамона
+505	Киви
+169	Листья карри
+441	Варенье из чёрной смородины
+760	Сыр для пастель
+386	Фета
+152	Тёмный шоколад
+373	Сыр твёрдый
+373	Твёрдый сыр
+373	Тёртый твёрдый сыр
+344	Перец пири-пири
+293	Булочки
+645	Пекинская капуста
+520	Копчёная колбаса рокворст
+850	Яблочный сок
+233	Виноградные листья
+118	Сельдерей стеблевой
+118	Стебель сельдерея
+118	Стебли сельдерея
+454	Говяжьи кости
+753	Сушёные травы
+614	Мякоть пальмовых плодов
+678	Варёный короткозёрный рис
+678	Рис варёный короткозёрный
+158	Базилик
+158	Листья базилика
+400	Яблоки
+337	Кровяная колбаса морсилья
+337	Морсилья
+96	Бульон куриный
+96	Куриный бульон
+59	Мёд
+111	Кедровые орехи
+23	Перец сладкий
+23	Сладкий перец
+362	Свиная корейка
+486	Зелёные бананы матоке
+752	Сушёные анчоусы икан билис
+329	Манная крупа
+443	Варёная колбаса
+636	Паста ачиоте (рекадо рохо)
+14	Масло оливковое
+14	Оливковое масло
+14	Оливковое масло в соус
+138	Вино красное сухое
+138	Красное сухое вино
+80	Кориандр молотый
+80	Молотый кориандр
+257	Мука пшеничная
+257	Пшеничная мука
+109	Арахис жареный
+109	Жареный арахис
+104	Разрыхлитель
+599	Молоко для крема
+316	Клейкий рис
+469	Грибы сушёные
+469	Сушёные грибы
+181	Стручковая фасоль
+181	Фасоль стручковая
+284	Аджван
+304	Дульсе де лече
+252	Куриное бедро без кости
+331	Горчичное масло
+331	Масло горчичное
+475	Дзавар (пшеничная крупа)
+45	Креветки
+45	Крупные креветки
+45	Мелкие креветки
+434	Булочки для хот-дога
+146	Пармезан
+412	Арбуз
+671	Редька зелёная
+103	Перец чёрный
+103	Чёрный перец
+550	Куриные грудки на кости
+450	Говядина тонкими пластами
+838	Чёрные оливки
+339	Мягкий белый сыр
+713	Семена эгуси молотые
+301	Доубаньцзян
+301	Паста доубаньцзян
+392	Хмели-сунели
+630	Пажитник молотый
+3	Чеснок
+289	Белый перец
+89	Мускатный орех
+139	Вино шаосинское
+139	Шаосинское вино
+55	Паприка
+834	Чили гуахильо
+182	Аннато
+334	Мидии
+676	Рикотта
+827	Жёлтая чечевица
+827	Чечевица жёлтая
+251	Креветочная паста белачан
+683	Рисовая лапша 5 мм
+453	Говяжий хвост
+16	Морковь
+621	Обжаренный порошок карри
+440	Вакамэ сушёная
+436	Бараний бульон
+436	Бульон бараний
+27	Куркума
+56	Свиной фарш
+56	Фарш свиной
+210	Ржаная мука
+196	Копчёный бекон
+804	Фасоль фабес
+722	Смесь бахарат
+709	Священный базилик
+584	Маринованная сельдь
+735	Соус из голубого сыра
+159	Белый уксус
+662	Попкорн
+639	Паста из красного перца
+243	Капуста кале
+243	Кудрявая капуста
+50	Рыбный соус
+219	Тахини
+308	Зелёная папайя
+696	Сардины
+321	Кочхуджан
+789	Тунец
+429	Болгарский йогурт
+555	Курица на кости
+605	Мука для основы
+431	Брусничный соус
+609	Мука обжаренная
+150	Коричневый сахар
+150	Сахар коричневый
+668	Рас-эль-ханут
+272	Солёная треска
+292	Брусничное варенье
+725	Смесь семи специй
+208	Копчёная паприка
+208	Паприка копчёная
+408	Амба
+309	Зелёный острый перец
+157	Бадьян
+70	Мята сушёная
+70	Сушёная мята
+121	Шпинат
+757	Сушёный чили анчо
+707	Свиная шкура с жиром
+113	Кукуруза
+576	Лук для подачи
+341	Паста ахи амарильо
+819	Хлопья жареного чили
+656	Перечная паста бибер сальчасы
+491	Имбирные пряники
+637	Паста багоонг
+258	Нутовая мука
+323	Красный сладкий перец
+791	Тэнкасу — крошка от темпуры
+415	Африканские баклажаны
+711	Семена граната сушёные
+783	Томатный сок
+517	Колбаса копчёная
+54	Огурец
+54	Огурцы
+817	Херес
+179	Творог
+42	Сливки
+810	Филе трески
+513	Козлятина
+626	Орехи кемири
+229	Бок-чой
+229	Зелень бок-чой
+229	Пак-чой
+220	Тесто фило
+628	Осьминог
+720	Сливочный сыр катупири
+506	Кипрская пита
+675	Ржаной хлеб ругбрёд
+782	Томатный кетчуп
+391	Хлопья пул бибер
+253	Лепёшка
+741	Стебли водяной лилии
+787	Тостады
+574	Листья сельдерея
+230	Булгур мелкий
+230	Мелкий булгур
+226	Анис
+813	Форель
+125	Винный уксус
+573	Листья салата
+209	Душистый перец
+209	Перец душистый
+669	Растительное масло для соуса
+556	Курут
+734	Соус ахи
+852	Яйца в начинку
+176	Ростки маша
+780	Толчёные листья маниока
+416	Ахи амарильо
+606	Мука для роши
+72	Свиная грудинка
+765	Тайские баклажаны
+535	Красный чили
+529	Кочхукару
+825	Чернила каракатицы
+406	Аки консервированный
+522	Копчёная рыба
+33	Кокосовое молоко
+129	Красная фасоль
+680	Рис короткозёрный
+34	Ваниль
+477	Дроблёный нут чана дал
+397	Чёрствый белый хлеб
+409	Анисовый ликёр
+82	Паприка сладкая
+82	Паприка сладкая молотая
+82	Сладкая паприка
+665	Прахок
+149	Помидоры в собственном соку
+149	Помидоры консервированные в собственном соку
+149	Томаты в собственном соку
+788	Треска
+432	Брюква
+343	Перец пили-пили
+360	Свежий солёный сыр
+544	Кукурузная мука масарепа
+474	Джамид
+151	Тмин
+64	Нут
+589	Масло пальмовое
+589	Пальмовое масло
+655	Перец тимур
+95	Брынза
+472	Гундрук
+123	Арахис
+305	Желатин
+223	Цедра апельсина
+739	Спагетти
+602	Морковный салат
+769	Тамариндовый соус
+319	Коньяк
+699	Сахар для корочки
+8	Помидор
+8	Помидоры
+8	Помидоры для ачара
+8	Помидоры крупные
+8	Спелые помидоры
+570	Листы для лазаньи
+41	Красный лук
+41	Лук красный
+108	Тыква
+566	Лимонный мирт
+487	Зелёный чай
+39	Укроп
+188	Бульон мясной
+188	Мясной бульон
+52	Тимьян
+52	Чабрец
+65	Орегано сушёный
+65	Сушёный орегано
+265	Рис жасминовый
+803	Фасоль в томате
+19	Рис
+285	Ананас
+488	Зимняя дыня
+221	Томатный соус
+519	Колбаски мергез
+267	Розовая вода
+451	Говяжий жир
+190	Вустерский соус
+136	Свиная шея
+554	Варёная курица
+554	Курица варёная
+652	Перец мулато
+117	Копчёные рёбра
+117	Копчёные рёбрышки
+117	Рёбрышки копчёные
+404	Абрикосовый чатни
+245	Картофель варёный
+245	Отварной картофель
+175	Лепёшка пита
+175	Пита
+175	Питы
+693	Салат ромэн
+21	Курица
+21	Курица для карри
+21	Курица, кусочками
+21	Курица, разделанная
+21	Курица, разделанная на куски
+715	Серый горох
+540	Кукуруза посоле
+420	Бахарат для кабсы
+548	Куриное карри с соусом
+508	Китайская колбаса лап чонг
+413	Арепы
+534	Красный мясистый перец
+489	Золотой сироп
+29	Баранина
+29	Свежайшая баранина
+5	Яйца
+5	Яйца в соус
+5	Яйца для кайи
+5	Яйца для панировки
+5	Яйцо
+5	Яйцо для панировки
+5	Яйцо для смазки
+5	Яйцо куриное
+5	Яйцо целиком
+822	Цельнозерновая мука
+127	Говяжья вырезка
+657	Печень
+427	Бобы садовые
+143	Даси
+143	Даси для соуса
+590	Махлаб
+240	Зира семена
+240	Семена зиры
+524	Копчёная соль
+346	Перец чили свежий
+346	Свежий чили
+35	Говядина
+700	Сахар для обваливания
+44	Капуста
+455	Говяжьи кости с мозгом
+350	Помидоры сан-марцано
+502	Касури мети
+200	Кукурузная мука маса
+200	Кукурузная мука масека
+610	Мука тефф
+353	Репа
+717	Сливки 30 %
+717	Сливки 30%
+296	Вино красное
+296	Красное вино
+600	Молоко обезжиренное
+600	Обезжиренное молоко
+100	Курдючный жир
+745	Сухие бобы фава
+128	Кефир
+314	Кешью
+380	Рисовый уксус
+380	Уксус рисовый
+733	Солёный лимон
+177	Свёкла
+776	Тесто для эмпанадас
+387	Финики жужуб
+829	Коричневая чечевица
+829	Чечевица коричневая
+616	Негушский пршут
+2	Соль
+2	Соль для воды
+216	Светлый соевый соус
+216	Соус соевый светлый
+849	Яблочное пюре
+770	Тапиоковый крахмал
+847	Яблоки плотных кислых сортов
+618	Нут сухой
+618	Сухой нут
+75	Горчица
+247	Каштаны
+326	Кукурузные тортильи
+714	Сердце
+749	Сухой имбирь молотый
+102	Маниок
+102	Юкка
+102	Юкка (маниок)
+141	Гарам масала
+473	Деревенский хлеб
+192	Говяжья голяшка
+456	Говяжья грудинка
+186	Белая рыба
+705	Свиная кровь
+417	Банан
+107	Свинина
+160	Бульонный кубик
+421	Бекон
+13	Кинза
+10	Картофель
+10	Картофель для рёшти
+381	Уксус хересный
+381	Хересный уксус
+58	Зира
+363	Свиные кишки
+30	Острый перец
+30	Перец чили
+30	Стручок острого перца
+771	Творог 5–9 %
+133	Мирин
+617	Нитритная соль
+28	Дрожжи сухие
+28	Сухие дрожжи
+382	Уксус яблочный
+382	Яблочный уксус
+620	Обжаренная кокосовая стружка
+845	Ынджера
+843	Шоколад для глазури
+63	Зелёный чили
+394	Цельная пшеница
+124	Бахарат
+507	Кислые яблоки
+701	Сахар для соуса
+120	Тамариндовая паста
+246	Кашмирский чили молотый
+689	Ростки сои
+511	Клюква
+217	Спаржевая фасоль
+399	Эстрагон
+322	Красный перец молотый
+737	Соус хойсин
+12	Молоко
+12	Молоко тёплое
+12	Тёплое молоко
+12	Холодное молоко
+781	Томатное пюре
+484	Зелёная приправа
+352	Ракушки
+516	Кокосовые сливки
+194	Дайкон
+194	Тёртый дайкон
+464	Горячая вода
+808	Филе лосося
+115	Подорожник
+155	Шампиньоны
+638	Паста из зелёной папайи
+691	Савоярди
+527	Корнишоны
+774	Телячий эскалоп
+726	Смесь специй чар масала
+633	Панко
+482	Жареный тофу
+66	Перец скотч-боннет
+66	Скотч-боннет
+318	Концентрированное молоко
+793	Тёмное пиво стаут
+563	Лепёшки таббун
+249	Красный рис
+766	Тайский чили
+777	Тесто катаифи
+561	Лепёшка пиде
+275	Бараний фарш
+275	Фарш бараний
+275	Фарш из баранины
+145	Куркума свежая
+145	Свежая куркума
+767	Тамалито из кукурузы
+225	Белки
+225	Яичный белок
+437	Бульон овощной
+437	Горячий овощной бульон
+583	Маракуйя
+663	Постная говядина
+738	Соус шито
+565	Лесные ягоды
+458	Горох колотый
+708	Свиной жир
+627	Острый перечный соус
+203	Леденцовый сахар
+300	Гуанчале
+199	Картофельный крахмал
+199	Крахмал картофельный
+256	Мука высокобелковая
+256	Мука сильная
+207	Мексиканский орегано
+207	Орегано мексиканский
+430	Борщ из отрубей
+460	Горчица дижонская
+460	Дижонская горчица
+237	Говяжья пашина
+820	Холодный бульон
+184	Базилик фиолетовый
+184	Райхон
+184	Рейхан (фиолетовый базилик)
+212	Рёбрышки свиные
+212	Свиные рёбрышки
+345	Перец хабанеро
+168	Лист пандана
+168	Листья пандана
+97	Жир свиной топлёный
+97	Смалец
+97	Топлёный свиной жир
+586	Марсала
+839	Чёрный кардамон
+163	Имбирь молотый
+163	Молотый имбирь
+281	Чесночный порошок
+444	Вашрен фрибуржуа
+410	Апельсиновая корка
+24	Лайм
+466	Гранатовая патока
+631	Пальмовое масло денде
+553	Куриный паштет
+547	Куриная грудка
+84	Карри молотое
+84	Карри-порошок
+84	Порошок карри
+744	Сулугуни
+274	Тунец консервированный
+389	Фундук
+784	Тонкая лепёшка
+106	Пальмовый сахар
+106	Сахар пальмовый
+697	Сахар в начинку
+525	Корейская груша
+557	Кускус
+500	Картофель жёлтых сортов
+792	Тёмное бельгийское пиво
+43	Соевый соус
+43	Соевый соус для рыбы на пару
+43	Соус соевый
+732	Солёный белый сыр
+612	Мускатный цвет
+25	Томатная паста
+332	Масло оливковое extra virgin
+332	Оливковое масло экстра вирджин
+101	Лемонграсс
+340	Огурец солёный
+340	Солёные огурцы
+1	Лук
+1	Лук крупный
+1	Лук репчатый
+1	Мелкий лук
+727	Соевые бобы
+153	Хариса
+153	Харисса
+716	Сладкое вино
+840	Чёрный уксус для соуса
+856	Ямс нагаимо
+222	Фисташки
+591	Мелкая костистая рыба
+370	Соус жуг
+724	Смесь пяти специй
+419	Баранья нога
+310	Кайенский перец
+262	Молотый чили
+262	Перец чили молотый
+57	Баклажан
+57	Баклажаны
+328	Мальдивская рыба
+672	Ржаная закваска
+718	Сливовое повидло
+688	Ром
+395	Чабер
+395	Чубрица
+778	Тиляпия
+313	Кечап манис
+823	Цыплёнок
+731	Солёные крекеры
+799	Солодовый уксус
+799	Уксус солодовый
+790	Тушёная зелень
+234	Вишня
+234	Вишня без косточек
+18	Петрушка
+679	Рис карнароли
+317	Комбу
+746	Сухие листья сорго
+844	Щавель
+90	Мята
+90	Мята свежая
+729	Соль в тесто
+254	Листовая капуста
+264	Рассыпчатый картофель
+320	Корень петрушки
+607	Мука для теста
+580	Мак
+643	Пастернак
+405	Адыгейский сыр
+172	Моцарелла
+172	Моцарелла фиор ди латте
+335	Мозговые кости
+687	Рисовая мука обжаренная
+592	Мелкая речная рыба
+499	Кардамон стручки
+374	Сычуаньский перец
+302	Дроблёная пшеница
+761	Сыр куахада
+402	Ягоды
+183	Багет
+759	Сыр для жарки
+347	Перец чёрный молотый
+347	Чёрный перец молотый
+660	Плотный тофу
+504	Кашкавал
+396	Чечевица
+531	Краситель оранжевый
+423	Белая рыба для сырого потребления
+461	Горчица для соуса
+526	Корень женьшеня
+170	Листья кафрского лайма
+170	Листья каффир-лайма
+202	Куриное бедро
+202	Куриные бёдра
+730	Солёная свинина
+644	Пахта
+88	Кукурузная мука
+88	Мука кукурузная
+595	Можжевельник
+4	Масло растительное
+4	Растительное масло
+390	Халуми
+470	Грудинка
+76	Йогурт
+211	Ржаной хлеб
+853	Яйца для крема
+815	Халапеньо
+110	Белый хлеб
+587	Маскарпоне
+126	Галангал
+848	Яблоки плотных сортов
+426	Бобы вигна (чёрный глазок)
+501	Картофель сырой
+698	Сахар для глазури
+842	Сушёные шиитаке
+842	Шиитаке сушёные
+667	Пресная лепёшка чурек
+114	Перец чёрный горошком
+114	Чёрный перец горошком
+422	Белая колбаса
+653	Перец поблано
+74	Цедра лимона
+131	Лук-порей
+191	Гвоздика молотая
+615	Мясная подлива
+654	Зелёный сладкий перец
+654	Перец сладкий зелёный
+135	Свиная лопатка
+164	Какао-порошок
+290	Бербере
+568	Лист эру
+46	Говяжий фарш
+46	Фарш говяжий
+213	Салат листовой
+6	Мука
+666	Предварённая кукурузная мука
+424	Белый рассольный сыр
+77	Густой йогурт
+77	Йогурт густой
+673	Ржаной заквас
+122	Авокадо
+541	Кукуруза початками
+327	Лимонный сок
+703	Свежий тунец
+369	Соус Лисано
+588	Масло для слоения
+36	Корица палочка
+36	Палочка корицы
+682	Рисовая бумага
+376	Тмин молотый
+536	Креветочная паста терази
+681	Рис среднезёрный
+814	Фрик (зелёная пшеница)
+594	Мелкий жёлтый картофель
+533	Красная паста карри
+357	Сахар тростниковый
+357	Тростниковый сахар
+53	Крахмал кукурузный
+53	Кукурузный крахмал
+468	Гречневая мука
+490	Зёрна граната
+356	Розмарин
+646	Перекисшее кимчи
+375	Телятина
+435	Булочки мантоу
+459	Английская горчица
+459	Горчица английская
+593	Мелкие макароны
+315	Кирш
+361	Светлое пиво
+439	Бульон телячий
+439	Телячий бульон
+276	Финики
+67	Баранина на кости
+67	Баранина с косточкой
+9	Сахар
+9	Сахар в крем
+9	Сахар в тесто
+9	Сахар для карамели
+9	Сахар мелкий
+809	Филе лосося с кожей
+189	Апельсиновая вода
+189	Вода флёрдоранж
+116	Круглый рис
+116	Рис круглозёрный
+462	Горчица средней остроты
+818	Хлеб с плотным мякишем
+377	Тофу
+162	Зелёные оливки
+22	Лавровый лист
+758	Сушёный чили гуахильо
+479	Дурбанский порошок карри
+841	Чёрный уксус чжэньцзян
+629	Пажитник
+60	Басмати
+60	Рис басмати
+763	Сычуаньский перец тимур
+611	Мука типа 00
+156	Ачиоте
+447	Вяленая рыба
+694	Салями
+821	Хрен
+288	Барбарис
+514	Кокос тёртый
+287	Банановый цвет
+532	Красная капуста
+851	Яичная лапша
+582	Маниоковое тесто
+748	Сухое печенье
+407	Алыча сушёная
+604	Мука для блинов
+537	Крепкий эспрессо
+485	Зелёные бананы
+142	Гвоздика
+463	Горчичный порошок
+471	Гуаскас сушёные
+854	Яйца к подаче
+801	Телячий фарш
+801	Фарш телячий
+366	Смесь хавайдж
+351	Пшеничная лапша
+295	Вермишель
+836	Чочо (люпин)
+648	Перец анчо
+279	Чернослив
+119	Крупная соль
+119	Соль крупная
+837	Чёрноглазая фасоль
+383	Устричный соус
+260	Пекорино
+260	Пекорино романо
+92	Перец чили хлопьями
+92	Хлопья чили
+658	Плантайн
+677	Рис арборио
+242	Белокочанная капуста
+242	Капуста белокочанная
+242	Капуста свежая
+242	Капустные листья
+414	Атьеке
+198	Корица молотая
+598	Молоко в бешамель
+147	Душистый перец молотый
+147	Перец душистый молотый
+467	Грейпфрут
+425	Бобы
+270	Сливки 20 %
+270	Сливки 20%
+73	Пищевая сода
+73	Сода
+73	Сода пищевая
+816	Хамон серрано
+294	Бульон
+48	Шалот
+403	Абрикосовый конфитюр
+227	Апельсин
+227	Апельсины
+478	Дроблёный рис
+32	Сметана
+418	Баранья лопатка
+728	Сок лайма
+846	Яблоки кислых сортов
+650	Душистый перец горошком
+650	Перец душистый горошком
+494	Йогурт с чесноком
+215	Семена пажитника
+483	Закваска ырша
+218	Сумах
+569	Листовая горчица
+772	Творог твёрдый
+632	Панир
+398	Чёрствый хлеб
+154	Чёрная фасоль
+719	Сливочное масло для теста
+197	Кориандр семена
+197	Семена кориандра
+831	Чечевица тур дал
+585	Маринованный имбирь бени сёга
+797	Уксус 9 %
+797	Уксус 9%
+297	Говяжьи рёбра
+20	Зелёный лук
+20	Лук зелёный
+277	Хлеб
+704	Свиная грудинка со шкурой
+86	Кардамон молотый
+31	Зира молотая
+81	Панировочные сухари
+755	Сушёный лайм лууми
+622	Овечья брынза
+49	Белое сухое вино
+49	Вино белое сухое
+49	Сухое белое вино
+495	Каймак
+857	Японский майонез
+325	Кролик
+325	Кролик, кусочками
+26	Гхи
+26	Гхи в тесто
+26	Масло топлёное
+26	Топлёное масло
+26	Топлёное масло для жарки
+542	Кукуруза чокло
+603	Морковь жёлтая
+795	Тёртый кокос
+684	Рисовая лапша толстая
+684	Толстая рисовая лапша
+661	Помидоры черри
+807	Ферментированные чёрные бобы
+811	Финиковый сироп дибс
+634	Панчетта
+538	Крупная белая рыба
+238	Горчица семена
+238	Семена горчицы
+324	Крахмал маниоки
+324	Крахмал маниоковый
+324	Маниоковый крахмал
+619	Ньяме (ямс)
+239	Грюйер
+239	Тёртый грюйер
+193	Гранатовый соус
+712	Семена фенхеля
+205	Маринованная горчичная зелень
+750	Сушёная бамия молотая
+442	Варёная ветчина
+91	Оливки
+449	Гари (маниоковая крупа)
+99	Каперсы
+241	Кабачки
+241	Кабачок
+307	Жёлтый горох
+94	Банановые листья
+94	Банановый лист
+578	Лёд колотый
+105	Длиннозёрный рис
+105	Рис длиннозёрный
+802	Фасоль
+695	Самбал
+349	Половинки орехов
+768	Тамаринд
+364	Семена аннато
+259	Острая паприка
+259	Паприка острая
+367	Густая сметана
+367	Сметана густая
+354	Рисовая вермишель
+543	Кукурузная крупа среднего помола
+371	Сухой творог
+17	Имбирь
+388	Финиковая паста
+828	Зелёная чечевица
+828	Чечевица зелёная
+342	Перец пасилья
+148	Зелёный подорожник
+148	Плантайн зелёный
+148	Подорожник зелёный
+286	Асафетида
+51	Сахарная пудра
+280	Чернушка
+280	Чернушка (калонджи)
+137	Сушёный лайм
+137	Сушёный лайм луми
+355	Рисовая лапша тонкая
+355	Тонкая рисовая лапша
+269	Свиное сало
+762	Сырные зёрна чеддер
+567	Лист лаксы
+751	Сушёная рыба
+649	Белый перец горошком
+649	Перец белый горошком
+311	Карп
+338	Мука для начинки
+686	Рисовая мука
+185	Батат
+640	Паста массаман
+61	Уксус
+492	Имеретинский шафран
+69	Кунжут
+835	Чипсы из подорожника
+800	Куриный фарш
+800	Фарш куриный
+552	Куриные крылья
+512	Клюквенное варенье
+521	Копчёная колбаса рукворст
+47	Шафран
+747	Сухое молоко
+577	Любисток
+805	Ферментированные бобы иру
+806	Ферментированные чайные листья
+71	Варёный рис
+71	Рис варёный
+581	Мальтозный сироп
+723	Смесь мытмыта
+37	Желтки
+37	Желток
+37	Яичные желтки
+37	Яичный желток
+754	Сушёный красный перец
+571	Листья квашеной капусты
+271	Слоёное тесто
+764	Сычужный фермент
+336	Молотые сушёные креветки
+551	Куриные каркасы
+255	Масло подсолнечное
+255	Подсолнечное масло
+333	Красное пальмовое масло
+333	Масло пальмовое красное
+830	Чечевица мунг
+130	Кунжутное масло
+601	Молотые сушёные раки
+493	Индейка
+303	Дрожжи свежие
+303	Свежие дрожжи
+786	Топлёное масло нитер киббе
+379	Тёмное пиво
+503	Кацуобуси
+214	Сгущённое молоко
+572	Листья молохии
+743	Стручок ванили
+608	Мука кама
+613	Мягкий тофу
+452	Говяжий отруб
+775	Телячья голяшка
+15	Лимон
+278	Хрен тёртый
+742	Стеклянная лапша
+832	Чечевица урад
+173	Овсяные хлопья
+559	Лапша ширатаки
+359	Свежий белый сыр
+385	Фенхель молотый
+411	Апельсиновый сок
+79	Копчёная грудинка
+204	Лепёшки
+98	Зелёный горошек
+833	Чили анчо
+706	Свиная рулька
+306	Жемчужный сахар
+642	Паста самбал
+558	Лапша для рамена
+659	Плоская зелёная фасоль
+224	Колбаски чорисо
+224	Чорисо
+497	Камабоко
+248	Кетчуп
+178	Соус соевый тёмный
+178	Тёмный соевый соус
+564	Лесные грибы
+560	Лепёшка наан
+579	Майоран сушёный
+796	Укроп сушёный
+575	Ломоть хлеба
+736	Соус окономи
+282	Красная чечевица
+282	Чечевица красная
+702	Свежий сыр
+167	Куриное филе
+623	Огуречный рассол
+480	Жареные бобы
+232	Ветчина
+166	Копчёная колбаса
+40	Корица
+244	Капуста квашеная кочаном
+244	Квашеная капуста кочаном
+244	Квашеный кочан капусты
+549	Куриные голени
+87	Миндаль
+231	Ванильный сахар
+624	Оленина
+83	Перец чили сушёный
+83	Сушёный красный чили
+83	Сушёный острый перец
+83	Сушёный перчик чили
+83	Сушёный чили
+83	Сушёный чили целиком
+368	Сосиски
+465	Горячее молоко
+635	Паста ачиоте
+358	Свежая кукуруза
+38	Изюм
+445	Водяной лист
+365	Смесь бизар
+165	Квашеная капуста
+393	Цветная капуста
+268	Саке
+268	Сакэ
+261	Перец гуахильо
+721	Слоёная лепёшка фатир
+545	Кукурузные хлопья
+496	Какао для глазури
+510	Кленовый сироп
+546	Кукурузный хлеб
+266	Рисовая лапша
+312	Картофель фри
+433	Букатини
+438	Бульон рыбный
+438	Рыбный бульон
+530	Краб
+372	Сушёные креветки
+298	Говяжья лопатка
+132	Майонез
+263	Песочное тесто
+93	Арахисовая паста
+78	Кардамон
+710	Маринованная свёкла
+710	Свёкла маринованная
+740	Старое сало
+112	Корень сельдерея
+161	Говядина на кости
+201	Курага
+348	Плантайн спелый
+348	Спелый подорожник
+384	Фенхель
+195	Копчёное сало
+457	Голубиный горох
+62	Грецкие орехи
+62	Грецкий орех
+62	Половинки грецких орехов
+670	Редис
+647	Перец алеппо
+7	Масло сливочное
+7	Сливочное масло
+641	Паста мисо
+273	Томатильо
+481	Жареный горох
+794	Тёмный тростниковый сахар
+330	Масло в тесто
+448	Газированная вода
+283	Грибы шиитаке
+283	Шиитаке
+692	Салат из капусты
+236	Говяжий рубец
+236	Рубец
+85	Сливки 33 %
+85	Сливки 33%
+187	Белая фасоль
+651	Перец кобанеро
+518	Колбаса шоурису
+378	Тыквенные семечки
+812	Фиолетовая кукуруза
+174	Перловая крупа
+596	Моллюски
+826	Чеснок головками
+855	Яйцо в тесто
+498	Каракатица
+144	Кокосовая стружка
+562	Лепёшки сомун
+180	Красный винный уксус
+180	Уксус винный красный
+773	Творожный сыр джиза
+\.
+
+
+--
+-- Data for Name: ingredient_allergens; Type: TABLE DATA; Schema: public; Owner: koma
+--
+
+COPY public.ingredient_allergens (ingredient_id, allergen_id) FROM stdin;
+5	3
+7	7
+12	7
+26	7
+32	7
+37	3
+42	7
+45	2
+50	4
+62	10
+69	12
+75	9
+76	7
+77	7
+85	7
+87	10
+93	11
+95	7
+109	11
+112	1
+112	4
+118	1
+118	4
+123	11
+128	7
+146	7
+172	7
+173	5
+174	5
+179	7
+186	4
+210	5
+211	5
+214	7
+219	12
+222	10
+225	3
+230	5
+238	9
+239	7
+251	2
+257	5
+260	7
+270	7
+272	4
+274	4
+302	5
+304	7
+311	4
+314	10
+318	7
+328	4
+329	5
+334	8
+336	2
+339	7
+351	5
+352	8
+359	7
+360	7
+367	7
+371	7
+372	2
+373	7
+383	8
+386	7
+389	10
+390	7
+394	5
+405	7
+423	4
+424	7
+429	7
+438	4
+444	7
+447	4
+459	9
+460	9
+461	9
+462	9
+463	9
+465	7
+474	7
+475	5
+476	5
+494	7
+495	7
+497	4
+498	8
+503	4
+504	7
+522	4
+530	2
+536	2
+538	4
+556	7
+557	5
+574	1
+574	4
+584	4
+587	7
+591	4
+592	4
+596	8
+597	7
+598	7
+599	7
+600	7
+601	2
+622	7
+628	8
+632	7
+644	7
+672	5
+673	5
+674	5
+675	5
+676	7
+696	4
+702	7
+703	4
+717	7
+719	7
+720	7
+732	7
+744	7
+747	7
+751	4
+752	4
+759	7
+760	7
+761	7
+762	7
+771	7
+772	7
+773	7
+778	4
+786	7
+788	4
+789	4
+808	4
+809	4
+810	4
+813	4
+814	5
+825	8
+836	6
+851	3
+852	3
+853	3
+854	3
+855	3
+\.
+
+
+--
+-- Data for Name: ingredient_categories; Type: TABLE DATA; Schema: public; Owner: koma
+--
+
+COPY public.ingredient_categories (ingredient_id, category_id) FROM stdin;
+4	9
+5	3
+11	11
+14	9
+15	2
+21	3
+24	2
+26	9
+29	3
+35	3
+38	2
+45	4
+46	3
+49	11
+50	4
+56	3
+67	3
+72	3
+74	2
+94	2
+96	3
+97	3
+100	9
+107	3
+135	3
+136	3
+137	2
+138	11
+139	11
+161	3
+166	3
+167	3
+170	2
+186	4
+189	11
+195	3
+196	3
+201	2
+202	3
+212	3
+223	2
+224	3
+227	2
+232	3
+233	2
+234	2
+236	3
+252	3
+255	9
+267	11
+268	11
+269	3
+272	4
+274	4
+275	3
+276	2
+279	2
+285	2
+287	2
+291	2
+296	11
+300	3
+311	4
+325	3
+327	2
+328	4
+332	9
+334	4
+336	4
+361	11
+362	3
+363	3
+368	3
+372	4
+375	3
+379	11
+387	2
+388	2
+400	2
+401	3
+402	2
+403	2
+404	2
+407	2
+409	11
+410	2
+411	2
+412	2
+417	2
+418	3
+419	3
+421	3
+422	3
+423	4
+436	3
+438	4
+442	3
+443	3
+447	4
+448	11
+450	3
+451	9
+464	11
+467	2
+485	2
+486	2
+487	11
+493	3
+498	4
+503	4
+505	2
+507	2
+508	3
+511	2
+517	3
+518	3
+519	3
+520	3
+521	3
+522	4
+523	3
+530	4
+537	11
+538	4
+547	3
+548	3
+549	3
+550	3
+551	3
+552	3
+553	3
+554	3
+555	3
+565	2
+566	2
+583	2
+584	4
+587	4
+591	4
+592	4
+596	4
+616	3
+628	4
+657	3
+663	3
+696	4
+703	4
+704	3
+705	3
+706	3
+707	3
+708	3
+716	11
+728	2
+730	3
+733	2
+740	3
+748	3
+751	4
+752	4
+755	2
+778	4
+788	4
+789	4
+792	11
+793	11
+800	3
+801	3
+806	11
+810	4
+811	2
+813	4
+825	4
+846	2
+847	2
+848	2
+850	11
+\.
+
+
+--
+-- Data for Name: ingredients; Type: TABLE DATA; Schema: public; Owner: koma
+--
+
+COPY public.ingredients (id, code, name, is_staple, display_unit, grams_per_piece, kcal, protein, fat, carbs, package_g, package_price) FROM stdin;
+1	ing_8214cfa2ad659987	Лук репчатый	f	g	110.00	40.00	1.50	0.20	8.00	1000.00	120.00
+2	ing_5b67906812f9ce35	Соль	t	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+3	ing_1c4ab4239538af48	Чеснок	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+4	ing_94735c5d0f98f9bb	Масло растительное	f	g	\N	884.00	0.00	100.00	0.00	500.00	220.00
+5	ing_5080f64e5d37ea5c	Яйцо куриное	f	g	50.00	220.00	20.00	15.00	0.00	1000.00	500.00
+6	ing_9f5aff656efd8171	Мука	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+7	ing_f9488f0bc6429a47	Масло сливочное	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+8	ing_43db869e63682a56	Помидор	f	g	123.00	40.00	1.50	0.20	8.00	1000.00	120.00
+9	ing_a64931804dc4ddba	Сахар	t	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
+10	ing_6362b9a2160b3580	Картофель	f	g	213.00	40.00	1.50	0.20	8.00	1000.00	120.00
+11	ing_0611a1b7ac680b4a	Вода	t	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
+12	ing_69f91741a4c2027f	Молоко	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+13	ing_6259499207054466	Кинза	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+14	ing_14a4780585e50d6a	Масло оливковое	f	g	\N	884.00	0.00	100.00	0.00	500.00	220.00
+15	ing_e2162431045c69e8	Лимон	f	g	58.00	55.00	0.80	0.30	13.00	1000.00	180.00
+16	ing_1ef43ec41d874f9d	Морковь	f	g	61.00	40.00	1.50	0.20	8.00	1000.00	120.00
+17	ing_cf9ecdd52caba3bc	Имбирь	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+18	ing_8b4391da8b998dbb	Петрушка	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+19	ing_47335d405c9ace59	Рис	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+20	ing_c0a165daf2eb615a	Лук зелёный	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+21	ing_4d24bc61980ba1e8	Курица	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+22	ing_a86a5e83439b536e	Лавровый лист	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+23	ing_1105c1e59552ebf8	Перец сладкий	f	g	119.00	40.00	1.50	0.20	8.00	1000.00	120.00
+24	ing_7bb9e91a144d2836	Лайм	f	g	67.00	55.00	0.80	0.30	13.00	1000.00	180.00
+25	ing_80ec6ff28b539412	Томатная паста	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+26	ing_c5a774f804da9082	Масло топлёное	f	g	\N	884.00	0.00	100.00	0.00	500.00	220.00
+27	ing_1f7a9c12bbeeb8b3	Куркума	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+28	ing_65346613fa1947bf	Дрожжи сухие	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+29	ing_5068d17bba1f46dd	Баранина	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+30	ing_6406fef0f3af5aa0	Перец чили	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+31	ing_c1df70961ce75b27	Зира молотая	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+32	ing_b91626a52dbb2f02	Сметана	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+33	ing_3caca706865b1943	Кокосовое молоко	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+34	ing_3d43eae29d5870a1	Ваниль	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+35	ing_541d4ee1e1c87f07	Говядина	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+36	ing_a1734f1ac79885e8	Корица палочка	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+37	ing_d9f4c183296e064b	Яичный желток	f	g	17.00	200.00	5.00	5.00	30.00	500.00	120.00
+38	ing_ef633f7569b37d4b	Изюм	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+39	ing_459ccb13694bafe1	Укроп	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+40	ing_eb9af19bcc9eb5a6	Корица	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+41	ing_44731879aed2c37b	Лук красный	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+42	ing_3114ece82c6e01a9	Сливки	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+43	ing_806d0f13effa3beb	Соус соевый	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+44	ing_54af9e8fba188b3a	Капуста	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+45	ing_17d4eeeec05e425e	Креветки	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+46	ing_9e1a5d5419b0c948	Фарш говяжий	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+47	ing_d6a8c4d352de0d21	Шафран	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+48	ing_b7f4693039de2bba	Шалот	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+49	ing_c3d66be69bae22f7	Вино белое сухое	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
+50	ing_234a7b19ef28f34c	Рыбный соус	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+51	ing_d0e1c8ded44533e7	Сахарная пудра	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
+52	ing_45f99ebb6d7600b2	Тимьян	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+53	ing_a31ea0c18b385202	Крахмал кукурузный	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+54	ing_309ff11850f5bda5	Огурец	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+55	ing_1cfdd76631100fab	Паприка	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+56	ing_1fbe2b1fe9a43696	Фарш свиной	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+57	ing_86aa9926678e94b6	Баклажан	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+58	ing_63a1c6d93122eee2	Зира	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+59	ing_103956509ce041df	Мёд	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
+60	ing_a8f4b45fb0987bd5	Рис басмати	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+61	ing_d5080a8150c44fc0	Уксус	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+62	ing_f8f3d2c774368db3	Грецкий орех	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
+63	ing_66dcfd865cc753b9	Зелёный чили	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+64	ing_3feced8147f8df46	Нут	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+65	ing_460256bce540e500	Орегано сушёный	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+66	ing_6e2fd4669514e25f	Перец скотч-боннет	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+67	ing_a621a374b35b8b55	Баранина на кости	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+68	ing_02a6366a177076ad	Бульон говяжий	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+69	ing_d549d6eee8612558	Кунжут	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
+70	ing_2a0b1181995f902d	Мята сушёная	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+71	ing_d8b58db9a07f5d3a	Рис варёный	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+72	ing_3a4cb0de7726c658	Свиная грудинка	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+73	ing_b5b73d6eede10d23	Сода пищевая	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+74	ing_9ad2df8f9153d3dc	Цедра лимона	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+75	ing_5e3d8980c5685bfd	Горчица	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+76	ing_95a89b6820bca228	Йогурт	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+77	ing_a01d24c8cf22fdb4	Йогурт густой	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+78	ing_f5ccba8460fac8cf	Кардамон	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+79	ing_e4c941f7372091a0	Копчёная грудинка	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+80	ing_14e4a94dda01973f	Кориандр молотый	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+81	ing_c2451537e0a091ea	Панировочные сухари	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+82	ing_3e149c6afc6c13a2	Паприка сладкая	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+83	ing_ed2957de9364a499	Перец чили сушёный	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+84	ing_7c423dbb2cdd89e4	Порошок карри	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+85	ing_fbfbeef2dd1eef71	Сливки 33%	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+86	ing_c19c9b7a867aa614	Кардамон молотый	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+87	ing_ecbb1c68c19cf5b0	Миндаль	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
+88	ing_946c15022315b9c8	Мука кукурузная	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+89	ing_1c7fc1eda2101cdc	Мускатный орех	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
+90	ing_8c8eb419f8e14ed2	Мята	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+91	ing_cae44b44d14b6e8d	Оливки	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+92	ing_b169b99e95b61886	Перец чили хлопьями	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+93	ing_f52e09ee7d721bae	Арахисовая паста	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
+94	ing_cbcde7fdc81d9996	Банановый лист	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+95	ing_41360252fe44aaf0	Брынза	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+96	ing_10164541aec1f5f4	Бульон куриный	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+97	ing_79577bd16af801bf	Жир свиной топлёный	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+98	ing_e5c38b408f872cad	Зелёный горошек	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+99	ing_cb30d709f9085585	Каперсы	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+100	ing_57012d692bf4ebae	Курдючный жир	f	g	\N	884.00	0.00	100.00	0.00	500.00	220.00
+101	ing_81865768107f72b9	Лемонграсс	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+102	ing_5f74838d6b52d438	Маниок	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+103	ing_1a27b5d34b3e25a7	Перец чёрный	t	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+104	ing_1503494edf0a15be	Разрыхлитель	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+105	ing_cc445fd69f68843a	Рис длиннозёрный	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+106	ing_7d8f6c5c340a3f1e	Сахар пальмовый	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
+107	ing_61ee45f853d1b440	Свинина	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+108	ing_44cbb5fb53012aa7	Тыква	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+109	ing_1501282cfef1c9ab	Арахис жареный	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
+110	ing_966fa72f442283a4	Белый хлеб	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+111	ing_10f40654579eda70	Кедровые орехи	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
+112	ing_f76b62d7371964a9	Корень сельдерея	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+113	ing_2ac2d3eb375aa2ce	Кукуруза	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+114	ing_99e570176da5f011	Перец чёрный горошком	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+115	ing_6ca73d503ca3dcca	Подорожник	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+116	ing_a7634c5219ef7424	Рис круглозёрный	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+117	ing_4bcdecb2e6ca4d8c	Рёбрышки копчёные	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+118	ing_0e0ce360bffc5c76	Сельдерей стеблевой	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+119	ing_b0c904e07064f8b5	Соль крупная	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+120	ing_68124f2a664d1de6	Тамариндовая паста	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+121	ing_2a2e972da7c5a34b	Шпинат	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+122	ing_a04c4b9b4e595433	Авокадо	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+123	ing_41e683c6f21c8720	Арахис	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
+124	ing_67150e22f888859a	Бахарат	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+125	ing_384d9b040efc72c4	Винный уксус	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+126	ing_9757e97197b85db7	Галангал	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+127	ing_50ea3a471feaff34	Говяжья вырезка	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+128	ing_58a686c981ca848e	Кефир	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+129	ing_3cf8bf54ac9a4a80	Красная фасоль	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+130	ing_dd786d8ed9d32aff	Кунжутное масло	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
+131	ing_9ae35647a02a4e69	Лук-порей	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+132	ing_f49d3ee4e597f8d9	Майонез	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+133	ing_650b663caaf9bccc	Мирин	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+134	ing_04a86c8257638a88	Орегано	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+135	ing_9c698250db94f6f0	Свиная лопатка	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+136	ing_4af9c0a00b4aed63	Свиная шея	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+137	ing_d13ec2bae7806ca5	Сушёный лайм луми	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+138	ing_14e2f4a3b901e6c8	Вино красное сухое	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
+139	ing_1ca7630ef99fedc1	Вино шаосинское	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
+140	ing_00ab96be0b628922	Восковой картофель	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+141	ing_5fb4779dcbf1de94	Гарам масала	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+142	ing_ae0fa4e105e7005f	Гвоздика	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+143	ing_51ed7c37c730a2b3	Даси	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+144	ing_ff4ab2c378956d4c	Кокосовая стружка	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+145	ing_7216ee25c3fa17df	Куркума свежая	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+146	ing_1938963dbc6825a1	Пармезан	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+147	ing_b3eb6508f04ab2c5	Перец душистый молотый	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+148	ing_d08e59585dfc92e1	Плантайн зелёный	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+149	ing_3e3ef60232ffd750	Помидоры консервированные в собственном соку	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+150	ing_2707c87f197ecffa	Сахар коричневый	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
+151	ing_3ee581016ec93a5e	Тмин	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+152	ing_0a7d9d11e8664161	Тёмный шоколад	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
+153	ing_82d4bccb257db17c	Харисса	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+154	ing_be16d6e1b8135af1	Чёрная фасоль	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+155	ing_6cbfeb27e435a104	Шампиньоны	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+156	ing_a9514a752b499e7e	Ачиоте	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+157	ing_29d8800d347ac81d	Бадьян	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+158	ing_0f5a8a31ca38b427	Базилик	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+159	ing_230dd02fa49a5a03	Белый уксус	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+160	ing_620c157641150703	Бульонный кубик	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+161	ing_f7e2e3ef19bb78d7	Говядина на кости	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+162	ing_a85c3182ba57ac45	Зелёные оливки	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+163	ing_7a2ca3cbe75c9226	Имбирь молотый	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+164	ing_9d437ad02b674581	Какао-порошок	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
+165	ing_f0addc1a458e7ce0	Квашеная капуста	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+166	ing_eb79763086e38818	Копчёная колбаса	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+167	ing_ea5efcf06f7a0e90	Куриное филе	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+168	ing_792e561905213c0d	Лист пандана	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+169	ing_0921e650341534d8	Листья карри	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+170	ing_938a79630299f031	Листья кафрского лайма	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+171	ing_01594a54f269a8fb	Майоран	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+172	ing_8f8341b4ec2c26d3	Моцарелла	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+173	ing_e34efbe35f19b8a9	Овсяные хлопья	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+174	ing_fe48929000e63062	Перловая крупа	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+175	ing_4c851ed4c2ae3163	Пита	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+176	ing_3978c5a43600c5dd	Ростки маша	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+177	ing_59c7ea3a3e526a80	Свёкла	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+178	ing_e856c55070fd163b	Соус соевый тёмный	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+179	ing_30b94c6b1df6b7ec	Творог	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+180	ing_ff76bee750f4e0f9	Уксус винный красный	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+181	ing_15b2eaa431b71b9d	Фасоль стручковая	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+182	ing_1d1262b32771233f	Аннато	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+183	ing_90f660487ae6557b	Багет	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+184	ing_777ff6f7cfd8ebe0	Базилик фиолетовый	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+185	ing_d4e97b213189b9be	Батат	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+186	ing_6124124d0db607e1	Белая рыба	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+187	ing_fc9f18a697287723	Белая фасоль	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+188	ing_45f61f3ca34cb2bf	Бульон мясной	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+189	ing_a6fd0e5fe13f0371	Вода флёрдоранж	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
+190	ing_4ae837dc2ffb11ad	Вустерский соус	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+191	ing_9bc1579da393b682	Гвоздика молотая	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+192	ing_5ff15c8c47753f68	Говяжья голяшка	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+193	ing_ca21b9d84c6c8d21	Гранатовый соус	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+194	ing_6aeabae2fc1334dd	Дайкон	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+195	ing_f8696c38fe61190c	Копчёное сало	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+196	ing_202677bdc77083f7	Копчёный бекон	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+197	ing_bf4dc76781b90149	Кориандр семена	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+198	ing_b34adbd4f789f8dd	Корица молотая	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+199	ing_74a328cb967ff62a	Крахмал картофельный	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+200	ing_5528813f5db75a89	Кукурузная мука маса	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+201	ing_f7fc80979fe84626	Курага	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+202	ing_93abbdd25c15b9c8	Куриное бедро	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+203	ing_745d725a7775c7c3	Леденцовый сахар	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
+204	ing_e4e8ba6430e3f192	Лепёшки	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+205	ing_ca60b9ac43bee389	Маринованная горчичная зелень	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+206	ing_084371a10e55dcf5	Оливки чёрные	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+207	ing_7503420a8a8c2c58	Орегано мексиканский	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+208	ing_28d367568a9ccbd0	Паприка копчёная	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+209	ing_38748571e07af933	Перец душистый	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+210	ing_20156eec00aebb94	Ржаная мука	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+211	ing_95ea2c1a2dc42cd7	Ржаной хлеб	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+212	ing_78261908262a4d09	Рёбрышки свиные	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+213	ing_9eda68989522c839	Салат листовой	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+214	ing_df3962e6d00b9d59	Сгущённое молоко	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+215	ing_bb1bb96270cfc087	Семена пажитника	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+216	ing_5b8f0dec3d533054	Соус соевый светлый	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+217	ing_692a667c2a48532d	Спаржевая фасоль	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+218	ing_bc2a1aee8b5c174d	Сумах	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+219	ing_23b698d1180bb31d	Тахини	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
+220	ing_331854928dfbda9c	Тесто фило	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+221	ing_4851b1ee2cb0d571	Томатный соус	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+222	ing_848f0aeed1309f0d	Фисташки	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
+223	ing_42321b4fb33f8555	Цедра апельсина	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+224	ing_e7c27281a5bce85f	Чорисо	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+225	ing_7279c85df25c3461	Яичный белок	f	g	33.00	200.00	5.00	5.00	30.00	500.00	120.00
+226	ing_3699907ebc7acfb8	Анис	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+227	ing_b8b8474cb00f6e86	Апельсин	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+228	ing_02d8fd09102560a4	Бамия	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+229	ing_31f6d790c55a7d6f	Бок-чой	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+230	ing_35cdf50e01180cc7	Булгур мелкий	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+231	ing_ecbc9d89ac543b78	Ванильный сахар	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
+232	ing_eb5d8c0000cd5260	Ветчина	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+233	ing_0da5d0abb4338103	Виноградные листья	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+234	ing_8b05d5007ce45b43	Вишня	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+235	ing_0103bdf896f339ca	Говяжий огузок	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+236	ing_fbc5a4886b40773b	Говяжий рубец	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+237	ing_769a1056969bdf53	Говяжья пашина	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+238	ing_c7be7888b30b637f	Горчица семена	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+239	ing_c8b206eaefb611e3	Грюйер	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+240	ing_5280f44639edfda8	Зира семена	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+241	ing_cb7a6bcd4b9c8095	Кабачок	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+242	ing_b1e510d5f2768b38	Капуста белокочанная	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+243	ing_23433abab720b674	Капуста кале	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+244	ing_ebac918fd3cdcad7	Капуста квашеная кочаном	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+245	ing_4c4c35f4a125777a	Картофель варёный	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+246	ing_6879076b47167a52	Кашмирский чили молотый	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+247	ing_5ef2fdc00157f31e	Каштаны	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+248	ing_e839f9e5f64c687e	Кетчуп	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+249	ing_6fe30111a7e1e7b7	Красный рис	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+250	ing_022214fb804790b0	Крахмал	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+251	ing_1df23a2bc45c1a15	Креветочная паста белачан	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+252	ing_171bef051f9ba597	Куриное бедро без кости	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+253	ing_353df0d35175ba4a	Лепёшка	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+254	ing_8d4a31368ec0d768	Листовая капуста	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+255	ing_db84ea5b310b4ac9	Масло подсолнечное	t	g	\N	884.00	0.00	100.00	0.00	500.00	220.00
+256	ing_74e38d82c40f131d	Мука высокобелковая	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+257	ing_14fd32dd74115fe5	Мука пшеничная	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+258	ing_2dfd42f380d55f51	Нутовая мука	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+259	ing_ce68fe29bbca8e79	Паприка острая	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+260	ing_b16683d00c63b1e8	Пекорино романо	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+261	ing_f1cbbb3e68e50877	Перец гуахильо	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+262	ing_867ab0cbb96ea32c	Перец чили молотый	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+263	ing_f4e9ed2d02a9c7b0	Песочное тесто	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+264	ing_8d5e6ed57b0ad34f	Рассыпчатый картофель	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+265	ing_460b5185fda3aac2	Рис жасминовый	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+266	ing_f2df9b5018a53706	Рисовая лапша	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+267	ing_4991a645bdf495dd	Розовая вода	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
+268	ing_f14adf22ad3a114f	Саке	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
+269	ing_d1b00abc610cf7aa	Свиное сало	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+270	ing_b4f49c2f3aa354c0	Сливки 20%	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+271	ing_da1c921d4c950665	Слоёное тесто	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+272	ing_27878fd2d8b3bdd2	Солёная треска	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+273	ing_fa1bee800db1725d	Томатильо	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+274	ing_7c7b25a2dac982a2	Тунец консервированный	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+275	ing_71e5d2dfd865c4e6	Фарш бараний	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+276	ing_a6086b1dd5efa7be	Финики	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+277	ing_c0cbec0ef9a935b0	Хлеб	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+278	ing_e29fa02f6b280fa3	Хрен тёртый	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+279	ing_b05b1912afc7ab3a	Чернослив	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+280	ing_d116ff3a75a2bb0c	Чернушка	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+281	ing_7a93833cabcefc88	Чесночный порошок	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+282	ing_ea22d0cea3e60b29	Чечевица красная	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+283	ing_fb84eaf2033ac938	Шиитаке	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+284	ing_15f4b3325810ecab	Аджван	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+285	ing_47b0070b88dec8b0	Ананас	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+286	ing_d0b296df56e9658c	Асафетида	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+287	ing_aa29bf2cd998ac11	Банановый цвет	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+288	ing_a9db9a7469173361	Барбарис	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+289	ing_1c6d79c1acb998da	Белый перец	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+290	ing_9db4cfb5f1355e9b	Бербере	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+291	ing_02c8a9b0ae2054dd	Брусника	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+292	ing_278dbd4bc4e895f2	Брусничное варенье	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
+293	ing_0c76090704763acb	Булочки	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+294	ing_b7d7a56889d14551	Бульон	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+295	ing_af7bd038fab33ff1	Вермишель	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+296	ing_5585374d6652e15c	Вино красное	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
+297	ing_c056ed6b7820c2ab	Говяжьи рёбра	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+298	ing_f473c7de2f94c66e	Говяжья лопатка	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+299	ing_00c5d79fbdbc3ee8	Грибы белые сушёные	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+300	ing_74870df6c071362d	Гуанчале	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+301	ing_1ba376987300aa29	Доубаньцзян	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+302	ing_9000ce51dc7f7bc7	Дроблёная пшеница	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+303	ing_dde1080ce07f36a0	Дрожжи свежие	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+304	ing_1637a4705f3d7f57	Дульсе де лече	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+305	ing_4212cfb9a67e14ce	Желатин	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+306	ing_e659fd3d1acb694d	Жемчужный сахар	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
+307	ing_cb9cbd71c8c6e6e9	Жёлтый горох	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+308	ing_24615efdff956259	Зелёная папайя	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+309	ing_2979e6299d2e3326	Зелёный острый перец	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+310	ing_864b0856e917021b	Кайенский перец	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+311	ing_d37c277ae6a11b80	Карп	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+312	ing_f308130e61e6daf4	Картофель фри	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+313	ing_88bba507f5bc6a24	Кечап манис	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+314	ing_593c9ec912f44e53	Кешью	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
+315	ing_a4998d03c69153fc	Кирш	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+316	ing_156cd42ed6f1feb1	Клейкий рис	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+317	ing_8be7591c46a81a88	Комбу	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+318	ing_6e329e080950f78a	Концентрированное молоко	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+319	ing_4369ae1f923bbbe8	Коньяк	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+320	ing_8de06cb9d8ecf8d0	Корень петрушки	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+321	ing_24afceb147f8d94b	Кочхуджан	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+322	ing_69514df64af9dd15	Красный перец молотый	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+323	ing_2e38757703d24619	Красный сладкий перец	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+324	ing_c86d8d09516f4249	Крахмал маниоковый	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+325	ing_c58c89e93fefd5e8	Кролик	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+326	ing_5f42f9ad789fd9db	Кукурузные тортильи	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+327	ing_a070cf5c1b956cc7	Лимонный сок	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+328	ing_8706d49261d6f72f	Мальдивская рыба	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+329	ing_11dc460621f83d59	Манная крупа	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+330	ing_fb73721c2185836c	Масло в тесто	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+331	ing_172608c215076180	Масло горчичное	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+332	ing_816ad581c21510bf	Масло оливковое extra virgin	f	g	\N	884.00	0.00	100.00	0.00	500.00	220.00
+333	ing_dbaf2b9f0eb63f8a	Масло пальмовое красное	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+334	ing_1d82933af60e33cd	Мидии	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+335	ing_8fb4504c49f5e83a	Мозговые кости	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+336	ing_da95cc542c5b00fc	Молотые сушёные креветки	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+337	ing_0fba70862437a93d	Морсилья	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+338	ing_d3e697b3e8befee9	Мука для начинки	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+339	ing_1b5368190e679af5	Мягкий белый сыр	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+340	ing_8186c10794c8cb6d	Огурец солёный	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+341	ing_2c74004d785f7e43	Паста ахи амарильо	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+342	ing_d055e1e40d3d23b7	Перец пасилья	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+343	ing_3ea5690a8b27fafa	Перец пили-пили	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+344	ing_0ae7bd46beb75292	Перец пири-пири	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+345	ing_78dbeaf1dc54271e	Перец хабанеро	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+346	ing_534b74c53dbdc472	Перец чили свежий	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+347	ing_91ab086130506d34	Перец чёрный молотый	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+348	ing_f801371a8a34c223	Плантайн спелый	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+349	ing_cd466d1fd564b097	Половинки орехов	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
+350	ing_5523ae3eac8cf04e	Помидоры сан-марцано	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+351	ing_af72b628f3fa2f1d	Пшеничная лапша	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+352	ing_6abe6b72ac6cf2fe	Ракушки	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+353	ing_5572f3ae7657a8f0	Репа	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+354	ing_ceb01226b8c4b0eb	Рисовая вермишель	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+355	ing_d17771c677d777e4	Рисовая лапша тонкая	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+356	ing_a37c195d33475d3b	Розмарин	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+357	ing_a3028ac562fb1733	Сахар тростниковый	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
+358	ing_ee46f660f308afed	Свежая кукуруза	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+359	ing_e438611a9c0188c9	Свежий белый сыр	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+360	ing_3ecf5d1b43c0b82e	Свежий солёный сыр	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+361	ing_a50951dec7f5c51a	Светлое пиво	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
+362	ing_114b3f973a8fddae	Свиная корейка	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+363	ing_64031095d091a6fd	Свиные кишки	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+364	ing_cdaebe7e57318742	Семена аннато	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+365	ing_f035cdb3394f88ad	Смесь бизар	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+366	ing_aecd8664480313f1	Смесь хавайдж	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+367	ing_ce720af62e266b3f	Сметана густая	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+368	ing_edbf6a8dc6954bc4	Сосиски	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+369	ing_a0d06fd1f1d8ea6c	Соус Лисано	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+370	ing_856e5cf2184a8b7b	Соус жуг	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+371	ing_cf4195f8edc74529	Сухой творог	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+372	ing_f3cebdd1d2fd2c8b	Сушёные креветки	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+373	ing_0aa6315714461a88	Сыр твёрдый	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+374	ing_900000b38428bb7e	Сычуаньский перец	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+375	ing_a3b73a9e49ac030d	Телятина	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+376	ing_a1c7619cf4b3ea35	Тмин молотый	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+377	ing_a823569bd09124c4	Тофу	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+378	ing_fd543577b076a115	Тыквенные семечки	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+379	ing_de71cdc48a8c6825	Тёмное пиво	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
+380	ing_5966a27180b890ef	Уксус рисовый	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+381	ing_636aceda5c60993f	Уксус хересный	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+382	ing_658f381214e73c12	Уксус яблочный	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+383	ing_b0ffc9ef7e7a3cf0	Устричный соус	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+384	ing_f80d2e19c932eb34	Фенхель	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+385	ing_e45f3b494b0c3646	Фенхель молотый	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+386	ing_0a59629643afbf92	Фета	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+387	ing_5a9d52b952a5e2ef	Финики жужуб	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+388	ing_d01af7481f53f462	Финиковая паста	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+389	ing_7cf94eaacaee97f5	Фундук	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
+390	ing_94b0966a8a096297	Халуми	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+391	ing_34d991174f181cbc	Хлопья пул бибер	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+392	ing_1bd09601b0d318bb	Хмели-сунели	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+393	ing_f0b3e4fe892a2e3f	Цветная капуста	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+394	ing_66e65b21412cc940	Цельная пшеница	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+395	ing_8852cbcaffba0a68	Чабер	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+396	ing_92e1e3dfc5fd0dda	Чечевица	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+397	ing_3dba4063483a66f8	Чёрствый белый хлеб	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+398	ing_bdf1db9b5f817f87	Чёрствый хлеб	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+399	ing_6936534eded2c48a	Эстрагон	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+400	ing_0f62d2ca445a9344	Яблоки	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+401	ing_01b0c71a0f56af76	Ягнёнок	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+402	ing_90c2bcc657e536e9	Ягоды	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+403	ing_b818c63151cb6f49	Абрикосовый конфитюр	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+404	ing_4c3aa38651db209c	Абрикосовый чатни	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+405	ing_8f54a5b080724517	Адыгейский сыр	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+406	ing_3bce8048fbc65a1d	Аки консервированный	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+407	ing_ad6eaf502996bae2	Алыча сушёная	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+408	ing_295f388a20b0e2a9	Амба	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+409	ing_3e144f074bd33a1c	Анисовый ликёр	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
+410	ing_7ba5eb46d9572e93	Апельсиновая корка	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+411	ing_e462818568898d13	Апельсиновый сок	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+412	ing_1976031f91d46d77	Арбуз	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+413	ing_4fe727ef0a509fc2	Арепы	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+414	ing_b342e2bd8e924910	Атьеке	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+415	ing_2fa117b24665ce16	Африканские баклажаны	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+416	ing_39ace7a29c8b2202	Ахи амарильо	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+417	ing_6182fbc92d4f5cb7	Банан	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+418	ing_ba5b5f583f61b4e3	Баранья лопатка	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+419	ing_861273e156474530	Баранья нога	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+420	ing_4e0942121b5f7bce	Бахарат для кабсы	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+421	ing_623323ac87897db4	Бекон	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+422	ing_99eb91dd88c0768d	Белая колбаса	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+423	ing_93344d905e3a6507	Белая рыба для сырого потребления	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+424	ing_9f8f52ea79271af6	Белый рассольный сыр	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+425	ing_b4edac7875082f14	Бобы	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+426	ing_982dd700a896aa52	Бобы вигна (чёрный глазок)	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+427	ing_51dfb292b6474c0b	Бобы садовые	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+428	ing_04cee050794a68e7	Бобы фул (конские)	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+429	ing_25843a4c22415dee	Болгарский йогурт	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+430	ing_7563895ec9dff0ac	Борщ из отрубей	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+431	ing_26c36888d4bd7f28	Брусничный соус	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+432	ing_3e95382591bd4161	Брюква	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+433	ing_f37de3ffb21edcab	Букатини	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+434	ing_18ced12062b87f0b	Булочки для хот-дога	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+435	ing_a4466bc12d1f28b0	Булочки мантоу	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+436	ing_1f416e6e624bfa5c	Бульон бараний	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+437	ing_731e56014e0135dc	Бульон овощной	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+438	ing_f38c5d1ba59fc1f7	Бульон рыбный	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+439	ing_a60459b0b9e32d05	Бульон телячий	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+440	ing_1f2e4d7d3d2354aa	Вакамэ сушёная	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+441	ing_09b515105945f7e3	Варенье из чёрной смородины	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
+442	ing_ca7d3c09f1a076a5	Варёная ветчина	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+443	ing_12420971c9c9c2ba	Варёная колбаса	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+444	ing_7b8803a1a4d95bd3	Вашрен фрибуржуа	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+445	ing_ef72797532783dbb	Водяной лист	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+446	ing_01b7bb9911de349e	Вырезка	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+447	ing_a970c972f498dddd	Вяленая рыба	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+448	ing_fb75c8834dd7cc82	Газированная вода	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
+449	ing_cb2716fd26256c50	Гари (маниоковая крупа)	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+450	ing_1b02a912d21ab715	Говядина тонкими пластами	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+451	ing_49c31cc2ed6c740e	Говяжий жир	f	g	\N	884.00	0.00	100.00	0.00	500.00	220.00
+452	ing_e1e596821f7a4e2b	Говяжий отруб	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+453	ing_1ecd26e28f8bc3f7	Говяжий хвост	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+454	ing_0e409bab76b1a765	Говяжьи кости	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+455	ing_54df5756a29fe4c9	Говяжьи кости с мозгом	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+456	ing_6030f78f00f6b884	Говяжья грудинка	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+457	ing_f876d09154e6d307	Голубиный горох	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+458	ing_742b5138b892ca8e	Горох колотый	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+459	ing_a44c8d3dc2b4e2d0	Горчица английская	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+460	ing_7595b0e77f3e46c9	Горчица дижонская	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+461	ing_935c05715fbe80a3	Горчица для соуса	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+462	ing_a7bb91b82cea1b41	Горчица средней остроты	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+463	ing_ae1e5ff2b568a531	Горчичный порошок	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+464	ing_6bfe32a37639492c	Горячая вода	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
+465	ing_ede79425d0d6c10e	Горячее молоко	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+466	ing_7bbe0e1ba4b69382	Гранатовая патока	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+467	ing_b42a0b9fd6a00c0c	Грейпфрут	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+468	ing_a358007ea0771b46	Гречневая мука	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+469	ing_15a4c39d6ee5fe5e	Грибы сушёные	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+470	ing_955bf5851e1731fc	Грудинка	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+471	ing_ae207c633ee30772	Гуаскас сушёные	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+472	ing_415aaf8cea917a5f	Гундрук	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+473	ing_5fbb19a17a6024b0	Деревенский хлеб	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+474	ing_3ed85f4d02e8a5aa	Джамид	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+475	ing_173ff344a6bced92	Дзавар (пшеничная крупа)	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+476	ing_07fc41b1cf16a86a	Дроблёная пшеница джариш	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+477	ing_3da792d25f1804ff	Дроблёный нут чана дал	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+478	ing_b8bbaa2f154243d9	Дроблёный рис	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+479	ing_a88bb83bda45516a	Дурбанский порошок карри	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+480	ing_eb36d11510e184d5	Жареные бобы	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+481	ing_fa5768202e591a27	Жареный горох	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+482	ing_6e29a1973a3704e8	Жареный тофу	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+483	ing_bbf6b19205aed2d3	Закваска ырша	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+484	ing_6a6d3c0d46404331	Зелёная приправа	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+485	ing_adcc30a4d0380876	Зелёные бананы	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+486	ing_11649ed3f1303cff	Зелёные бананы матоке	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+487	ing_455a214eccc52c9e	Зелёный чай	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
+488	ing_482a26c2f56b46b1	Зимняя дыня	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+489	ing_502c3029ecb1aca3	Золотой сироп	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
+490	ing_a362c481e55ae868	Зёрна граната	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+491	ing_2d0f56367ef6d1bb	Имбирные пряники	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+492	ing_d5361bca7f693e78	Имеретинский шафран	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+493	ing_dda98f442e1426d7	Индейка	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+494	ing_bb16582d90268cf2	Йогурт с чесноком	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+495	ing_c49b84a1423eea48	Каймак	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+496	ing_f2605f24a452bb03	Какао для глазури	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
+497	ing_e7e0333431aaf6ba	Камабоко	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+498	ing_ff455b1a851405a0	Каракатица	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+499	ing_8fd98a68b66c206a	Кардамон стручки	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+500	ing_7f70ed1a28214d33	Картофель жёлтых сортов	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+501	ing_983d5363213a3626	Картофель сырой	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+502	ing_55254c5743c95bfa	Касури мети	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+503	ing_de95d2c9276c050c	Кацуобуси	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+504	ing_92921f33ecd6d266	Кашкавал	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+505	ing_09099282aac695d5	Киви	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+506	ing_342b2cadd629badc	Кипрская пита	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+507	ing_67599c5024edd328	Кислые яблоки	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+508	ing_4fa562edb9e52712	Китайская колбаса лап чонг	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+509	ing_06b77e70f10eed21	Китайский лук-чеснок	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+510	ing_f2613212dd2f039c	Кленовый сироп	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
+511	ing_68cd236e4ce689b7	Клюква	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+512	ing_d69c258885f09f9a	Клюквенное варенье	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
+513	ing_3136309c6a2b3ff8	Козлятина	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+514	ing_a9e4be6b46a4fe44	Кокос тёртый	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+515	ing_029f06b7b686cdea	Кокосовое масло	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+516	ing_6ae716709b482fe2	Кокосовые сливки	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+517	ing_309fb3b47f1f290d	Колбаса копчёная	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+518	ing_fcd7ddd729340c04	Колбаса шоурису	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+519	ing_487ac4dd447dcd9e	Колбаски мергез	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+520	ing_0d385b371e26a239	Копчёная колбаса рокворст	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+521	ing_d69e7b7754c00946	Копчёная колбаса рукворст	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+522	ing_3c98bb627a6cf726	Копчёная рыба	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+523	ing_01ce1c9d45939fda	Копчёная свиная шейка	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+524	ing_52fb837b2b9ccab6	Копчёная соль	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+525	ing_7dd3b84d2af5c0c0	Корейская груша	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+526	ing_9372b2a8f481b7d4	Корень женьшеня	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+527	ing_6d1a3445d51a1bb9	Корнишоны	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+528	ing_08aa1ff62c216836	Кость от хамона	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+529	ing_3aad4c77fa72fe47	Кочхукару	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+530	ing_f3ba1c6b38d0f72e	Краб	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+531	ing_931f9a1c7bf60983	Краситель оранжевый	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+532	ing_aa5859e05f1af12b	Красная капуста	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+533	ing_a2d88c89f819da75	Красная паста карри	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+534	ing_50271d059ebca0f0	Красный мясистый перец	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+535	ing_3a9926874775cbc0	Красный чили	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+536	ing_a1d763ddff83a641	Креветочная паста терази	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+537	ing_ada64fb2f341285f	Крепкий эспрессо	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
+538	ing_c787ddbc69ee975a	Крупная белая рыба	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+539	ing_042df51e254112df	Крупная белая фасоль	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+540	ing_4da61e26e98f345e	Кукуруза посоле	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+541	ing_a0625968e29c22bb	Кукуруза початками	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+542	ing_c5aae93891de83c0	Кукуруза чокло	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+543	ing_cf19b93b84c3bbd5	Кукурузная крупа среднего помола	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+544	ing_3ed69bb5466b1087	Кукурузная мука масарепа	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+545	ing_f238e3a90c05be31	Кукурузные хлопья	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+546	ing_f286f6484691efaa	Кукурузный хлеб	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+547	ing_7c3b74c0d1ddabad	Куриная грудка	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+548	ing_4e25f7d01b328dd0	Куриное карри с соусом	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+549	ing_ec077d1c3be43443	Куриные голени	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+550	ing_1af364595ac6312e	Куриные грудки на кости	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+551	ing_dae7bbf5f964fd71	Куриные каркасы	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+552	ing_d696d4fae9a5fa30	Куриные крылья	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+553	ing_7c06d7f97145f7eb	Куриный паштет	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+554	ing_4b7305d92e1c1538	Курица варёная	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+555	ing_258cb3501e54a7c1	Курица на кости	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+556	ing_39394d63d69b8cd4	Курут	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+557	ing_7e7394f911f56a8a	Кускус	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+558	ing_e736d2cfde73295d	Лапша для рамена	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+559	ing_e3f14b6784c0f128	Лапша ширатаки	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+560	ing_e8716ac094412cec	Лепёшка наан	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+561	ing_71688ec87941115b	Лепёшка пиде	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+562	ing_ff66960938de8f6d	Лепёшки сомун	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+563	ing_6f95d6b852db3bb6	Лепёшки таббун	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+564	ing_e859d724e8e5f309	Лесные грибы	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+565	ing_73fefa2532a853fa	Лесные ягоды	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+566	ing_45495b9209ade1ae	Лимонный мирт	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+567	ing_d1d571bcaa1cae5a	Лист лаксы	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+568	ing_9dc7ca141280f538	Лист эру	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+569	ing_bcb92b31f3089cdf	Листовая горчица	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+570	ing_44174578bd47c24b	Листы для лазаньи	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+571	ing_da1ba7413348ea4a	Листья квашеной капусты	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+572	ing_dfdf6d962133a984	Листья молохии	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+573	ing_386c3d9f6fbee18a	Листья салата	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+574	ing_35b7c49a2ba2a6db	Листья сельдерея	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+575	ing_e9c8bfefc9255c2f	Ломоть хлеба	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+576	ing_2c6ca5dee3ed115d	Лук для подачи	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+577	ing_d6cddef88f900ca1	Любисток	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+578	ing_cc27d209f43886a2	Лёд колотый	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+579	ing_e8b2a00d0e25d291	Майоран сушёный	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+580	ing_8e00bc30986ea8b0	Мак	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+581	ing_d90404d65b3ed726	Мальтозный сироп	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
+582	ing_aad16022c6395e24	Маниоковое тесто	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+583	ing_73a59921fa062ecb	Маракуйя	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+584	ing_22605083f0246082	Маринованная сельдь	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+585	ing_bfd24dea05b07472	Маринованный имбирь бени сёга	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+586	ing_79844ac37df050fc	Марсала	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+587	ing_96b31f47190e8ad8	Маскарпоне	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+588	ing_a14b22f41a66f6d9	Масло для слоения	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+589	ing_4019b2a8e96bed36	Масло пальмовое	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+590	ing_522a31f24aa0b3c5	Махлаб	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+591	ing_84bfceb727ee95e0	Мелкая костистая рыба	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+592	ing_8fbe8cb2e1e8de33	Мелкая речная рыба	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+593	ing_a44e51501488254a	Мелкие макароны	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+594	ing_a2a284bf36b93355	Мелкий жёлтый картофель	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+595	ing_946d363f155e0318	Можжевельник	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+596	ing_fee34177b0906d3a	Моллюски	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+597	ing_064622856e856edb	Молодой солёный сыр	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+598	ing_b3538df2d557c8a3	Молоко в бешамель	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+599	ing_1541e605a59936f9	Молоко для крема	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+600	ing_565de69a603ebf4d	Молоко обезжиренное	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+601	ing_dd8ef1394214b4b9	Молотые сушёные раки	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+602	ing_42d22461707eee5e	Морковный салат	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+603	ing_c60c263baab6cb14	Морковь жёлтая	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+604	ing_ad9c92e577a7b395	Мука для блинов	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+605	ing_25a9ee6f16f660fd	Мука для основы	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+606	ing_3a450de455f5a954	Мука для роши	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+607	ing_8ded051cba77f898	Мука для теста	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+608	ing_e07b9b59d2497d90	Мука кама	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+609	ing_26ef01b95836d58c	Мука обжаренная	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+610	ing_55695d7512a75464	Мука тефф	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+611	ing_a90523acfe8a4f74	Мука типа 00	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+612	ing_80a1c30cebdb96b9	Мускатный цвет	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+613	ing_e1e2308ca61bb684	Мягкий тофу	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+614	ing_0e9f7cb4d92a77fc	Мякоть пальмовых плодов	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+615	ing_9c2573823bc2e14a	Мясная подлива	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+616	ing_5b3fe9546930ea89	Негушский пршут	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+617	ing_650d09c15b90886f	Нитритная соль	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+618	ing_5ddccf0ba57f2385	Нут сухой	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+619	ing_c895e1cb8840e0b1	Ньяме (ямс)	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+620	ing_65f9efc9c1e31eac	Обжаренная кокосовая стружка	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+621	ing_1f091f7f64495ea7	Обжаренный порошок карри	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+622	ing_c38958520e1fd09a	Овечья брынза	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+623	ing_ea91be119f1dd871	Огуречный рассол	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+624	ing_ecdb71f8c94bef08	Оленина	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+625	ing_006aa96a60807319	Оливки каламата	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+626	ing_31c5f236dafed43f	Орехи кемири	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
+627	ing_7449dd8424ca7625	Острый перечный соус	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+628	ing_333071b1d24de184	Осьминог	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+629	ing_a8f458fdabe86256	Пажитник	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+630	ing_1c2cee314d80fed2	Пажитник молотый	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+631	ing_7bdaf26c45d9e31e	Пальмовое масло денде	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+632	ing_bcfca224cd1d076b	Панир	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+633	ing_6dee3c371763550a	Панко	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+634	ing_c688a928d51fcd53	Панчетта	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+635	ing_edfa174d012dac1a	Паста ачиоте	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+636	ing_12447adc3d359407	Паста ачиоте (рекадо рохо)	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+637	ing_2d3c656799fdc865	Паста багоонг	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+638	ing_6cdfe4f5ccff0a03	Паста из зелёной папайи	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+639	ing_233cf8e38fd26251	Паста из красного перца	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+640	ing_d4f5ef5361cfaf52	Паста массаман	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+641	ing_f97d3547abfbf9e3	Паста мисо	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+642	ing_e6dce269f245accb	Паста самбал	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+643	ing_8f04599ddc3270c2	Пастернак	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+644	ing_9453127deb29344b	Пахта	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+645	ing_0d34d3ddb18b9aff	Пекинская капуста	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+646	ing_a37d0e3f127a0694	Перекисшее кимчи	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+647	ing_f9218946ff610ad9	Перец алеппо	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+648	ing_b0314b45e7dcf012	Перец анчо	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+649	ing_d24865d3f2b211bb	Перец белый горошком	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+650	ing_bab8185f9340b269	Перец душистый горошком	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+651	ing_fcc05621ab1756c6	Перец кобанеро	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+652	ing_4b87ccc961ad9fa6	Перец мулато	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+653	ing_9a5a00b8ec8e7701	Перец поблано	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+654	ing_9c652cbdaab3e03a	Перец сладкий зелёный	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+655	ing_40b3982e4d3a7c58	Перец тимур	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+656	ing_2cf6f27fc115d99f	Перечная паста бибер сальчасы	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+657	ing_5156beccf95390f6	Печень	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+658	ing_b1cb056f933d534f	Плантайн	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+659	ing_e7af76c52b5e8df0	Плоская зелёная фасоль	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+660	ing_9207a5941ac2bb21	Плотный тофу	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+661	ing_c65c58034b51e42a	Помидоры черри	f	g	17.00	40.00	1.50	0.20	8.00	1000.00	120.00
+662	ing_2335a2641c355d4d	Попкорн	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+663	ing_73f6ca56947af996	Постная говядина	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+664	ing_02a6b50faeca1a77	Почки	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+665	ing_3e391c1893a11a6f	Прахок	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+666	ing_9f7866940f4d12c0	Предварённая кукурузная мука	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+667	ing_99282d294b4989b1	Пресная лепёшка чурек	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+668	ing_273a5f860cff91e3	Рас-эль-ханут	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+669	ing_387ea3f3f83b8fdf	Растительное масло для соуса	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+670	ing_f8f78a4148c99629	Редис	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+671	ing_1985a02315b9494e	Редька зелёная	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+672	ing_87e5f4befbe47a1b	Ржаная закваска	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+673	ing_a0258632411582e8	Ржаной заквас	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+674	ing_02e8df7666998ba9	Ржаной солод	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+675	ing_3441172b4d72b565	Ржаной хлеб ругбрёд	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+676	ing_1da51658bca4e6d1	Рикотта	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+677	ing_b1d79e27e40b0584	Рис арборио	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+678	ing_0ef8cf9e439ed918	Рис варёный короткозёрный	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+679	ing_8b6ba84466630b5c	Рис карнароли	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+680	ing_3d1f02da535e6426	Рис короткозёрный	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+681	ing_a20ae6b2121a178d	Рис среднезёрный	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+682	ing_a1a134d22eb96ce3	Рисовая бумага	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+683	ing_1e7684ea4bc89df4	Рисовая лапша 5 мм	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+684	ing_c624fd2d005c6bb7	Рисовая лапша толстая	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+685	ing_04827fe9712cd711	Рисовая лапша широкая	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+686	ing_d4928893d891c96c	Рисовая мука	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+687	ing_8fba0a230422614c	Рисовая мука обжаренная	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+688	ing_8810d29635f5d12e	Ром	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+689	ing_68c0d27b7fcd6ab5	Ростки сои	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+690	ing_07cb7472019e0e3e	Руккола	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+691	ing_6ce3a3b8090ed497	Савоярди	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+692	ing_fb8720907815d2b6	Салат из капусты	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+693	ing_4c90fccefc530046	Салат ромэн	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+694	ing_a9bfd5490bfef8ab	Салями	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+695	ing_ccbad22d9d717dab	Самбал	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+696	ing_2493063dacb42d6e	Сардины	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+697	ing_7db959e12f7cd3a7	Сахар в начинку	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
+698	ing_9889f67d451ec4f5	Сахар для глазури	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
+699	ing_43ad36bec83c6b71	Сахар для корочки	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
+700	ing_5479a097ded99471	Сахар для обваливания	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
+701	ing_677a24ed684bb7f5	Сахар для соуса	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
+702	ing_ea42249c35d7e196	Свежий сыр	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+703	ing_a0bce04fce034162	Свежий тунец	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+704	ing_c0f0a832c0797b77	Свиная грудинка со шкурой	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+705	ing_6167d0df49e65060	Свиная кровь	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+706	ing_e63bbc758cb848d4	Свиная рулька	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+707	ing_2a9da4eda68439a9	Свиная шкура с жиром	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+708	ing_74347a9bf2c0ab4d	Свиной жир	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+709	ing_21f8d4048d7951d1	Священный базилик	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+710	ing_f64f07e91aaf51e1	Свёкла маринованная	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+711	ing_30676f157d7f1378	Семена граната сушёные	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+712	ing_ca6028abf36607f0	Семена фенхеля	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+713	ing_1b82559743edad92	Семена эгуси молотые	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+714	ing_5f4bcc57d0fb4393	Сердце	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+715	ing_4d29386b9f33f390	Серый горох	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+716	ing_831a4225e03807d8	Сладкое вино	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
+717	ing_557dc700883ef5f1	Сливки 30%	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+718	ing_87f5c9e97449e508	Сливовое повидло	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+719	ing_be3bc147ac275713	Сливочное масло для теста	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+720	ing_3366e852e3e49cde	Сливочный сыр катупири	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+721	ing_f22fceb6dd681abb	Слоёная лепёшка фатир	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+722	ing_219206fce0fec761	Смесь бахарат	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+723	ing_d9cb1e11b7502d09	Смесь мытмыта	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+724	ing_858a3a014a9e5863	Смесь пяти специй	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+725	ing_28bcf43581fec7d9	Смесь семи специй	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+726	ing_6da91c7f4efc15a6	Смесь специй чар масала	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+727	ing_8264b0edfe7f2115	Соевые бобы	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+728	ing_ba62be6b38b69039	Сок лайма	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+729	ing_8cbbb55b5c7ee73c	Соль в тесто	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+730	ing_93f94d0ffe5fae6c	Солёная свинина	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+731	ing_8959fc65a0a4dca7	Солёные крекеры	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+732	ing_80802967bc55743f	Солёный белый сыр	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+733	ing_59795acab9232369	Солёный лимон	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+734	ing_3946f0b0925263b2	Соус ахи	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+735	ing_22750c03cd1e32f1	Соус из голубого сыра	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+736	ing_ea170c0e9dab86ef	Соус окономи	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+737	ing_69dc1800ade951af	Соус хойсин	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+738	ing_73fabe44ad08c4f9	Соус шито	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+739	ing_42a5fc5651847134	Спагетти	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+740	ing_f6883a543a621493	Старое сало	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+741	ing_3552b12248e9fd6f	Стебли водяной лилии	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+742	ing_e2c795eb7b305be2	Стеклянная лапша	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+743	ing_e02e4fdf0117b387	Стручок ванили	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+744	ing_7c45a05d7304a546	Сулугуни	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+745	ing_58361070846b6f25	Сухие бобы фава	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+746	ing_8c056cebc4b3b28f	Сухие листья сорго	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+747	ing_d6b81fdd8cd43fc5	Сухое молоко	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+748	ing_abdf96df117362e9	Сухое печенье	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+749	ing_5f697e464dc42431	Сухой имбирь молотый	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+750	ing_ca694f450fca01b6	Сушёная бамия молотая	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+751	ing_d21472ca1c2f503c	Сушёная рыба	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+752	ing_117baad5bb7f657e	Сушёные анчоусы икан билис	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+753	ing_0e59cd57d4ed3e85	Сушёные травы	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+754	ing_da1256ec97e4a04f	Сушёный красный перец	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+755	ing_c29673e024a28f25	Сушёный лайм лууми	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+756	ing_07a4b1569dfef0cc	Сушёный пажитник	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+757	ing_2a4b997dcc32980e	Сушёный чили анчо	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+758	ing_a87813461cbb10fa	Сушёный чили гуахильо	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+759	ing_9190ebeae43aba73	Сыр для жарки	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+760	ing_09e490f20328afe8	Сыр для пастель	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+761	ing_907dee82d34c84db	Сыр куахада	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+762	ing_d1c1993a49865623	Сырные зёрна чеддер	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+763	ing_a8fa07fe9d97603c	Сычуаньский перец тимур	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+764	ing_da5a0294cf633cf1	Сычужный фермент	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+765	ing_3a591a83757d24f0	Тайские баклажаны	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+766	ing_7067668a20b1b920	Тайский чили	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+767	ing_72356328a691047f	Тамалито из кукурузы	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+768	ing_cd7f12309559f48c	Тамаринд	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+769	ing_4322822bc92815df	Тамариндовый соус	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+770	ing_5cddca7aea3107ae	Тапиоковый крахмал	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+771	ing_646a495745b3fbf3	Творог 5–9 %	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+772	ing_bce1230be14d6ea8	Творог твёрдый	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+773	ing_ffbeb3d2d6588370	Творожный сыр джиза	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
+774	ing_6d26fad00c8cb333	Телячий эскалоп	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+775	ing_e1ead83b815b2790	Телячья голяшка	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+776	ing_5a7489c12aa4f080	Тесто для эмпанадас	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+777	ing_70c4afe419650faa	Тесто катаифи	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+778	ing_88863e17e4353b9c	Тиляпия	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+779	ing_03e27e213de5e880	Тимьян сушёный	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+780	ing_39829149f1609fa9	Толчёные листья маниока	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+781	ing_6a2ff88bba6be77b	Томатное пюре	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+782	ing_3477b62e74f3e078	Томатный кетчуп	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+783	ing_3068c3c1b89942f9	Томатный сок	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+784	ing_7cf9f87a547fa4ba	Тонкая лепёшка	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+785	ing_0090b21710c0eba0	Тонкий лаваш	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+786	ing_de024bbc09030cbb	Топлёное масло нитер киббе	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+787	ing_3571046b08604c2e	Тостады	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+788	ing_3e5b0677719c99f0	Треска	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+789	ing_2503548b0a13a2b9	Тунец	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+790	ing_8a20d4f0fd8457f0	Тушёная зелень	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+791	ing_2ef2854dde1d3bf7	Тэнкасу — крошка от темпуры	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+792	ing_801caaaf7bf2ee30	Тёмное бельгийское пиво	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
+793	ing_6e76ad51d3e2a244	Тёмное пиво стаут	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
+794	ing_fb2cc623646e8331	Тёмный тростниковый сахар	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
+795	ing_c60f734ca6f6fe41	Тёртый кокос	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+796	ing_e91229953ab1cff0	Укроп сушёный	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+797	ing_c01137e05284d07e	Уксус 9%	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+798	ing_0806c1978bbf37ea	Уксус для соуса	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+799	ing_89aed53d19cc1102	Уксус солодовый	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+800	ing_d643695c27663b3c	Фарш куриный	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+801	ing_ae53aefd7b908de4	Фарш телячий	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
+802	ing_cc4801660632b15a	Фасоль	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+803	ing_469a970ce2905a03	Фасоль в томате	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+804	ing_20431b58f958d937	Фасоль фабес	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+805	ing_d78ebc629c6cf9fa	Ферментированные бобы иру	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+806	ing_d8068bb9fd225904	Ферментированные чайные листья	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
+807	ing_c672c00ff072004d	Ферментированные чёрные бобы	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+808	ing_6c649ffcbeca5d78	Филе лосося	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+809	ing_a6a680919c59e0cb	Филе лосося с кожей	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+810	ing_31193f8756698326	Филе трески	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+811	ing_c67bc041961fa6f7	Финиковый сироп дибс	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+812	ing_fdaef25a1110c4b4	Фиолетовая кукуруза	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+813	ing_37a59b531263036b	Форель	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+814	ing_a233ecc1b7e0c9df	Фрик (зелёная пшеница)	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+815	ing_965245994d4d6208	Халапеньо	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+816	ing_b6e7d60d9381dedb	Хамон серрано	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+817	ing_30a11c0b7b37f5eb	Херес	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+818	ing_a7d6c01eb3f853d0	Хлеб с плотным мякишем	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+819	ing_2cc656fb814bee1f	Хлопья жареного чили	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+820	ing_774b010a43c80ff1	Холодный бульон	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+821	ing_a9d73a4c878e53ed	Хрен	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+822	ing_50a57673e2e72d91	Цельнозерновая мука	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+823	ing_88efbe03077a9045	Цыплёнок	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+824	ing_04fc791a2cb4288f	Черника	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+825	ing_3bcb551d1dc20b74	Чернила каракатицы	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
+826	ing_fef1502b60834d77	Чеснок головками	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
+827	ing_1db8dbfdf912ba3c	Чечевица жёлтая	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+828	ing_d0327636513a818f	Чечевица зелёная	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+829	ing_5aefd18bf8a56222	Чечевица коричневая	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+830	ing_dc85795af49a7067	Чечевица мунг	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+831	ing_bf9a3bf5bd0a7738	Чечевица тур дал	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+832	ing_e2e72a8a14acaf17	Чечевица урад	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+833	ing_e5e7012550810901	Чили анчо	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+834	ing_1d100490feaa291f	Чили гуахильо	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+835	ing_d5e8b6c27e865bbf	Чипсы из подорожника	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+836	ing_afea33f8210fc889	Чочо (люпин)	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+837	ing_b0f9d6d7c0ffe06f	Чёрноглазая фасоль	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+838	ing_1b504827ddbf9e81	Чёрные оливки	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+839	ing_79bc010a2be4353a	Чёрный кардамон	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+840	ing_835a14b17015bc8b	Чёрный уксус для соуса	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+841	ing_a8cc57929454281a	Чёрный уксус чжэньцзян	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
+842	ing_98951c5d8de78ca7	Шиитаке сушёные	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+843	ing_668d670e80f7a441	Шоколад для глазури	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
+844	ing_8c2811222429cb0c	Щавель	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+845	ing_6659e75de6036034	Ынджера	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+846	ing_baa12ddf52abb45b	Яблоки кислых сортов	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+847	ing_5d9eddc858d1ddb0	Яблоки плотных кислых сортов	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+848	ing_976872ebec3742bf	Яблоки плотных сортов	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
+849	ing_5c11d7e4bd90a671	Яблочное пюре	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+850	ing_0d5cf395040623a7	Яблочный сок	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
+851	ing_aab752b6265a2093	Яичная лапша	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+852	ing_396db69abee4fe76	Яйца в начинку	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+853	ing_95fb155d4212d361	Яйца для крема	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+854	ing_ae53841e3c9dc120	Яйца к подаче	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+855	ing_ff2d84d748dba759	Яйцо в тесто	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
+856	ing_83f87dc03dc4970c	Ямс нагаимо	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+857	ing_c4a1003022f208ff	Японский майонез	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+\.
+
+
+--
+-- Data for Name: recipe_cooking_methods; Type: TABLE DATA; Schema: public; Owner: koma
+--
+
+COPY public.recipe_cooking_methods (recipe_id, method_id) FROM stdin;
+1	1
+2	1
+3	1
+3	2
+4	1
+4	2
+5	1
+5	2
+6	2
+7	1
+8	4
+10	1
+10	2
+11	1
+11	2
+12	2
+13	1
+13	2
+13	3
+14	4
+15	1
+16	2
+17	4
+18	1
+18	2
+19	1
+19	2
+20	1
+20	2
+21	1
+22	1
+22	2
+22	3
+23	1
+23	2
+24	2
+25	2
+26	4
+27	4
+28	1
+28	2
+29	4
+30	2
+31	1
+31	2
+32	2
+33	1
+33	2
+34	1
+34	3
+35	2
+37	1
+37	2
+38	1
+38	2
+39	2
+40	1
+40	2
+41	1
+42	1
+42	2
+43	1
+43	2
+44	1
+44	2
+45	1
+46	1
+47	1
+47	2
+48	1
+49	1
+49	2
+50	3
+51	2
+52	1
+53	1
+53	2
+55	1
+55	2
+56	1
+57	2
+58	2
+59	1
+59	2
+59	3
+60	2
+61	2
+61	3
+62	1
+62	2
+63	1
+63	3
+64	2
+64	3
+65	4
+66	2
+67	1
+67	2
+68	1
+68	2
+69	1
+70	1
+70	2
+71	1
+72	1
+72	2
+73	3
+74	1
+74	2
+75	3
+76	1
+76	2
+78	4
+79	2
+80	1
+80	2
+81	1
+82	1
+82	2
+83	3
+84	1
+85	3
+86	3
+88	1
+88	2
+89	2
+90	1
+90	2
+91	2
+92	2
+93	1
+93	2
+94	1
+94	2
+95	2
+96	1
+96	2
+97	2
+98	1
+99	2
+100	1
+100	2
+102	1
+102	2
+103	1
+103	2
+104	2
+105	1
+105	2
+106	1
+106	2
+107	2
+108	1
+108	2
+109	1
+110	3
+111	3
+112	2
+113	2
+114	3
+115	1
+115	3
+116	2
+116	3
+117	1
+117	2
+118	1
+118	2
+119	1
+119	2
+120	2
+121	4
+122	2
+123	1
+123	3
+124	1
+124	2
+125	1
+126	2
+127	1
+129	3
+130	1
+130	2
+131	1
+131	3
+132	1
+133	3
+134	1
+134	2
+135	1
+135	3
+137	1
+138	1
+138	2
+139	2
+141	1
+141	2
+142	1
+142	3
+143	1
+143	2
+144	1
+144	2
+144	3
+145	1
+146	1
+147	2
+148	1
+148	2
+149	1
+149	2
+150	1
+150	2
+150	3
+151	1
+152	1
+152	2
+153	2
+154	1
+154	2
+155	1
+155	2
+156	1
+156	2
+157	1
+157	2
+159	1
+160	1
+160	2
+161	1
+161	2
+162	2
+163	1
+164	1
+164	2
+165	1
+165	2
+166	1
+167	1
+170	1
+170	2
+171	4
+172	2
+174	1
+174	2
+175	2
+177	2
+178	1
+178	2
+179	1
+179	2
+180	1
+180	2
+181	1
+181	2
+182	1
+182	2
+183	1
+183	2
+184	1
+184	2
+185	2
+186	1
+186	2
+187	1
+187	2
+188	2
+188	3
+189	1
+189	2
+191	1
+193	1
+193	2
+196	1
+196	2
+196	3
+197	2
+197	3
+199	1
+199	2
+201	3
+202	1
+202	2
+203	1
+203	2
+204	1
+204	2
+205	1
+205	2
+206	1
+207	2
+208	1
+208	2
+209	1
+209	2
+210	2
+211	1
+211	2
+212	1
+212	2
+213	1
+214	2
+215	2
+220	1
+220	2
+223	1
+223	2
+224	2
+225	4
+226	2
+228	1
+228	2
+229	1
+230	2
+232	1
+232	2
+233	1
+233	2
+234	1
+234	2
+235	1
+235	2
+237	1
+237	2
+238	1
+238	3
+239	1
+240	2
+242	1
+242	2
+246	1
+246	2
+248	1
+248	2
+254	1
+254	2
+255	1
+255	2
+256	1
+256	2
+259	2
+260	1
+260	2
+261	1
+261	2
+262	1
+262	2
+263	1
+263	2
+264	1
+264	2
+265	1
+266	1
+267	1
+267	2
+271	1
+271	3
+273	1
+274	1
+276	2
+279	2
+282	1
+282	2
+283	1
+283	3
+284	1
+284	2
+286	1
+286	2
+290	1
+290	2
+291	2
+292	1
+292	2
+294	1
+294	2
+296	1
+296	2
+298	1
+298	2
+299	1
+300	1
+301	1
+302	1
+302	2
+303	1
+303	2
+304	2
+304	3
+305	1
+306	1
+307	1
+307	2
+308	1
+308	3
+310	2
+311	3
+312	1
+312	2
+313	1
+314	1
+315	1
+316	2
+316	3
+317	1
+318	1
+318	2
+319	3
+320	1
+321	1
+321	2
+322	1
+322	2
+323	1
+324	1
+324	2
+326	1
+326	2
+327	1
+327	2
+327	3
+328	1
+328	2
+332	1
+332	2
+333	1
+333	2
+333	3
+336	1
+336	2
+338	1
+338	2
+339	2
+340	1
+340	2
+342	2
+344	1
+344	2
+346	1
+348	1
+348	2
+349	1
+349	2
+351	1
+352	1
+352	2
+353	1
+354	1
+355	1
+355	2
+356	1
+362	1
+362	2
+363	2
+364	1
+364	2
+366	1
+367	1
+369	2
+370	1
+370	2
+371	2
+373	1
+375	1
+375	2
+376	1
+376	2
+377	1
+378	1
+379	3
+383	2
+384	1
+384	2
+386	1
+387	1
+387	2
+388	4
+392	2
+394	1
+394	2
+395	2
+396	2
+397	2
+398	1
+398	2
+399	1
+399	3
+400	1
+400	2
+401	1
+401	2
+402	1
+403	1
+406	1
+408	1
+408	2
+413	1
+413	2
+413	3
+414	1
+421	3
+422	1
+422	2
+423	1
+424	1
+425	1
+426	1
+426	2
+427	1
+427	2
+428	1
+429	1
+429	2
+430	2
+431	1
+431	2
+432	1
+433	1
+433	2
+435	1
+436	1
+436	2
+437	1
+437	2
+438	1
+438	2
+439	1
+439	2
+440	2
+442	1
+444	1
+444	2
+445	1
+446	1
+446	2
+446	3
+447	3
+448	1
+450	1
+450	2
+450	3
+456	1
+456	2
+458	1
+460	3
+462	1
+463	2
+466	1
+466	2
+467	1
+467	2
+468	1
+468	2
+469	2
+470	2
+470	3
+472	1
+472	2
+474	1
+474	2
+474	3
+475	1
+478	1
+479	2
+480	2
+484	1
+486	3
+489	1
+489	2
+490	1
+490	2
+490	3
+494	1
+494	2
+497	4
+498	1
+498	2
+499	1
+499	2
+501	1
+501	2
+\.
+
+
+--
+-- Data for Name: recipe_ingredients; Type: TABLE DATA; Schema: public; Owner: koma
+--
+
+COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FROM stdin;
+1	739	200.00	f
+1	300	100.00	f
+1	37	51.00	f
+1	5	50.00	f
+1	260	60.00	f
+1	103	\N	f
+1	2	\N	t
+2	679	320.00	f
+2	294	\N	f
+2	1	110.00	f
+2	49	\N	f
+2	7	80.00	f
+2	146	80.00	f
+2	47	\N	f
+2	2	\N	t
+3	57	\N	f
+3	241	\N	f
+3	23	238.00	f
+3	8	600.00	f
+3	1	110.00	f
+3	3	9.00	f
+3	14	82.62	f
+3	52	\N	f
+3	158	\N	f
+4	1	1000.00	f
+4	7	50.00	f
+4	6	\N	f
+4	49	\N	f
+4	68	\N	f
+4	183	\N	f
+4	239	150.00	f
+4	52	\N	f
+5	161	700.00	f
+5	177	\N	f
+5	44	300.00	f
+5	10	852.00	f
+5	16	61.00	f
+5	1	110.00	f
+5	25	32.00	f
+5	797	\N	f
+5	3	9.00	f
+5	22	\N	f
+5	32	\N	t
+6	6	400.00	f
+6	5	50.00	f
+6	7	40.00	f
+6	28	\N	f
+6	9	3.50	f
+6	744	250.00	f
+6	405	250.00	f
+6	2	6.09	f
+7	11	800.00	f
+7	317	10.00	f
+7	503	15.00	f
+7	641	\N	f
+7	377	200.00	f
+7	440	\N	f
+7	20	\N	f
+8	122	\N	f
+8	24	67.00	f
+8	41	\N	f
+8	815	\N	f
+8	13	\N	f
+8	8	123.00	f
+8	2	\N	t
+10	831	200.00	f
+10	27	\N	f
+10	26	\N	f
+10	58	\N	f
+10	238	\N	f
+10	3	12.00	f
+10	1	110.00	f
+10	8	246.00	f
+10	83	\N	f
+10	286	\N	f
+10	2	\N	t
+11	21	400.00	f
+11	325	300.00	f
+11	659	200.00	f
+11	539	100.00	f
+11	8	123.00	f
+11	14	55.08	f
+11	82	\N	f
+11	47	\N	f
+11	356	\N	f
+11	2	\N	t
+12	10	600.00	f
+12	1	110.00	f
+12	5	300.00	f
+12	14	367.20	f
+12	2	\N	t
+13	57	\N	f
+13	10	426.00	f
+13	1	110.00	f
+13	3	9.00	f
+13	149	400.00	f
+13	138	\N	f
+13	40	\N	f
+13	7	80.00	f
+13	6	80.00	f
+13	12	721.00	f
+13	37	34.00	f
+13	14	55.08	f
+14	8	492.00	f
+14	54	\N	f
+14	41	\N	f
+14	386	200.00	f
+14	625	80.00	f
+14	14	55.08	f
+14	65	1.00	f
+14	2	\N	t
+15	455	1500.00	f
+15	470	500.00	f
+15	446	200.00	f
+15	1	220.00	f
+15	17	80.00	f
+15	157	\N	f
+15	36	\N	f
+15	142	\N	f
+15	197	5.00	f
+15	50	\N	f
+15	9	10.50	f
+15	266	400.00	f
+16	183	\N	f
+16	136	400.00	f
+16	553	120.00	f
+16	132	\N	f
+16	16	61.00	f
+16	194	200.00	f
+16	380	\N	f
+16	9	21.00	f
+16	50	\N	f
+16	54	\N	f
+16	13	\N	t
+16	346	\N	t
+17	158	60.00	f
+17	111	30.00	f
+17	3	3.00	f
+17	146	50.00	f
+17	260	25.00	f
+17	332	91.80	f
+17	119	\N	f
+18	136	700.00	f
+18	758	\N	f
+18	757	\N	f
+18	285	200.00	f
+18	635	30.00	f
+18	159	\N	f
+18	3	12.00	f
+18	31	\N	f
+18	207	\N	f
+18	326	\N	f
+18	24	\N	t
+19	8	492.00	f
+19	5	200.00	f
+19	7	20.00	f
+19	14	13.77	f
+19	391	\N	f
+19	65	1.00	f
+19	95	\N	t
+19	2	\N	t
+20	282	250.00	f
+20	1	110.00	f
+20	16	61.00	f
+20	10	213.00	f
+20	25	16.00	f
+20	7	40.00	f
+20	70	\N	f
+20	82	\N	f
+20	15	\N	t
+20	2	\N	t
+21	6	500.00	f
+21	11	220.00	f
+21	35	400.00	f
+21	107	200.00	f
+21	1	220.00	f
+21	13	\N	f
+21	31	\N	f
+21	103	\N	t
+21	2	\N	t
+22	252	700.00	f
+22	77	150.00	f
+22	17	20.00	f
+22	3	12.00	f
+22	141	\N	f
+22	246	\N	f
+22	27	\N	f
+22	149	400.00	f
+22	1	110.00	f
+22	7	60.00	f
+22	717	\N	f
+22	314	40.00	f
+22	502	\N	f
+22	2	\N	t
+23	362	\N	f
+23	6	40.00	f
+23	5	50.00	f
+23	633	80.00	f
+23	1	110.00	f
+23	143	\N	f
+23	43	50.40	f
+23	133	\N	f
+23	9	10.50	f
+23	71	400.00	f
+24	771	500.00	f
+24	5	50.00	f
+24	6	\N	f
+24	9	10.50	f
+24	231	\N	f
+24	2	\N	f
+25	683	200.00	f
+25	45	200.00	f
+25	660	100.00	f
+25	5	100.00	f
+25	120	\N	f
+25	50	\N	f
+25	106	\N	f
+25	3	9.00	f
+25	48	\N	f
+25	176	150.00	f
+25	20	50.00	f
+25	123	50.00	f
+25	24	\N	t
+25	4	41.40	f
+26	587	500.00	f
+26	37	68.00	f
+26	225	66.00	f
+26	9	100.00	f
+26	691	300.00	f
+26	537	\N	f
+26	586	\N	f
+26	164	\N	t
+27	8	1000.00	f
+27	54	\N	f
+27	3	3.00	f
+27	397	80.00	f
+27	332	73.44	f
+27	381	\N	f
+27	2	\N	t
+28	816	150.00	f
+28	7	60.00	f
+28	14	27.54	f
+28	1	55.00	f
+28	6	100.00	f
+28	12	721.00	f
+28	89	\N	f
+28	5	100.00	f
+28	81	150.00	f
+28	2	\N	t
+29	423	600.00	f
+29	24	670.00	f
+29	41	\N	f
+29	13	\N	f
+29	185	\N	f
+29	542	150.00	f
+29	2	\N	t
+30	127	600.00	f
+30	41	\N	f
+30	8	369.00	f
+30	416	\N	f
+30	43	67.20	f
+30	180	\N	f
+30	3	9.00	f
+30	312	600.00	f
+30	71	400.00	f
+30	13	\N	t
+30	4	41.40	f
+31	613	500.00	f
+31	56	150.00	f
+31	301	\N	f
+31	807	\N	f
+31	374	\N	f
+31	3	9.00	f
+31	17	15.00	f
+31	96	\N	f
+31	250	\N	f
+31	20	\N	f
+31	4	41.40	f
+32	167	500.00	f
+32	225	33.00	f
+32	250	\N	f
+32	109	80.00	f
+32	83	\N	f
+32	374	\N	f
+32	841	\N	f
+32	43	33.60	f
+32	9	7.00	f
+32	3	9.00	f
+32	17	15.00	f
+32	20	\N	f
+32	4	41.40	f
+33	21	1500.00	f
+33	138	\N	f
+33	79	150.00	f
+33	155	300.00	f
+33	1	250.00	f
+33	16	122.00	f
+33	3	12.00	f
+33	6	\N	f
+33	96	\N	f
+33	7	40.00	f
+34	85	\N	f
+34	37	85.00	f
+34	9	80.00	f
+34	743	\N	f
+34	699	\N	f
+35	6	400.00	f
+35	5	200.00	f
+35	1	330.00	f
+35	7	60.00	f
+35	89	\N	f
+35	2	\N	t
+37	678	600.00	f
+37	35	250.00	f
+37	121	200.00	f
+37	689	150.00	f
+37	16	61.00	f
+37	283	150.00	f
+37	5	200.00	f
+37	321	\N	f
+37	130	\N	f
+37	43	33.60	f
+37	3	9.00	f
+37	69	\N	t
+38	646	400.00	f
+38	72	300.00	f
+38	377	300.00	f
+38	1	110.00	f
+38	529	\N	f
+38	321	\N	f
+38	3	9.00	f
+38	20	\N	f
+38	130	\N	f
+39	136	800.00	f
+39	14	73.44	f
+39	15	58.00	f
+39	65	2.00	f
+39	3	9.00	f
+39	175	\N	f
+39	77	200.00	f
+39	54	\N	f
+40	60	500.00	f
+40	555	1000.00	f
+40	77	250.00	f
+40	1	330.00	f
+40	17	30.00	f
+40	3	18.00	f
+40	141	\N	f
+40	262	\N	f
+40	27	\N	f
+40	47	\N	f
+40	12	61.80	f
+40	2	\N	t
+41	551	1500.00	f
+41	72	500.00	f
+41	317	10.00	f
+41	842	20.00	f
+41	43	224.00	f
+41	133	\N	f
+41	268	\N	f
+41	17	30.00	f
+41	3	12.00	f
+41	558	500.00	f
+41	5	200.00	f
+41	20	\N	f
+41	130	\N	f
+42	6	400.00	f
+42	11	200.00	f
+42	4	27.60	f
+42	10	500.00	f
+42	371	250.00	f
+42	1	330.00	f
+42	7	60.00	f
+42	32	\N	t
+43	673	\N	f
+43	422	500.00	f
+43	79	100.00	f
+43	1	110.00	f
+43	3	12.00	f
+43	579	\N	f
+43	270	\N	f
+43	5	200.00	f
+43	821	\N	t
+44	235	1500.00	f
+44	180	\N	f
+44	138	\N	f
+44	1	330.00	f
+44	16	122.00	f
+44	112	150.00	f
+44	491	80.00	f
+44	38	50.00	f
+44	9	10.50	f
+45	140	800.00	f
+45	1	110.00	f
+45	437	\N	f
+45	125	\N	f
+45	75	\N	f
+45	4	55.20	f
+45	20	\N	t
+46	433	400.00	f
+46	300	150.00	f
+46	350	400.00	f
+46	260	80.00	f
+46	83	\N	f
+46	49	\N	f
+46	2	\N	t
+47	149	800.00	f
+47	1	110.00	f
+47	3	12.00	f
+47	5	300.00	f
+47	31	\N	f
+47	208	\N	f
+47	153	\N	f
+47	14	41.31	f
+47	2	\N	t
+48	618	250.00	f
+48	73	\N	f
+48	219	150.00	f
+48	15	58.00	f
+48	3	6.00	f
+48	11	80.00	f
+48	31	\N	f
+48	14	\N	t
+48	2	\N	t
+49	154	700.00	f
+49	730	400.00	f
+49	117	500.00	f
+49	166	300.00	f
+49	72	300.00	f
+49	1	220.00	f
+49	3	18.00	f
+49	22	\N	f
+49	227	\N	f
+49	243	300.00	f
+49	71	600.00	f
+49	4	27.60	f
+50	770	500.00	f
+50	12	257.50	f
+50	11	100.00	f
+50	4	110.40	f
+50	5	100.00	f
+50	146	200.00	f
+50	172	100.00	f
+50	2	6.09	f
+51	56	300.00	f
+51	709	40.00	f
+51	766	\N	f
+51	3	15.00	f
+51	383	\N	f
+51	50	\N	f
+51	178	5.60	f
+51	9	3.50	f
+51	5	100.00	f
+51	71	300.00	f
+51	4	55.20	f
+52	35	300.00	f
+52	1	110.00	f
+52	143	\N	f
+52	43	50.40	f
+52	133	\N	f
+52	268	\N	f
+52	9	10.50	f
+52	17	10.00	f
+52	71	400.00	f
+52	585	\N	t
+53	161	500.00	f
+53	117	200.00	f
+53	443	150.00	f
+53	232	150.00	f
+53	340	\N	f
+53	623	\N	f
+53	1	220.00	f
+53	25	48.00	f
+53	15	\N	t
+54	21	1400.00	f
+54	733	\N	f
+54	162	150.00	f
+54	1	220.00	f
+54	3	12.00	f
+54	163	\N	f
+54	27	\N	f
+54	47	\N	f
+54	14	55.08	f
+54	11	200.00	f
+55	29	300.00	f
+55	64	150.00	f
+55	828	100.00	f
+55	8	600.00	f
+55	1	110.00	f
+55	118	\N	f
+55	163	\N	f
+55	40	\N	f
+55	6	\N	f
+55	295	60.00	f
+55	15	\N	t
+56	1	1000.00	f
+56	82	\N	f
+56	151	\N	f
+56	23	238.00	f
+56	8	246.00	f
+56	10	400.00	f
+56	3	9.00	f
+56	2	\N	t
+57	6	400.00	f
+57	10	150.00	f
+57	12	206.00	f
+57	28	7.00	f
+57	9	3.50	f
+57	3	9.00	f
+57	32	200.00	f
+57	373	150.00	f
+57	2	6.09	f
+58	810	800.00	f
+58	10	1000.00	f
+58	6	200.00	f
+58	53	50.00	f
+58	361	\N	f
+58	104	\N	f
+58	799	\N	t
+58	2	\N	t
+59	275	700.00	f
+59	10	1000.00	f
+59	1	110.00	f
+59	16	122.00	f
+59	98	150.00	f
+59	25	32.00	f
+59	190	\N	f
+59	188	\N	f
+59	6	\N	f
+59	7	60.00	f
+59	12	123.60	f
+59	52	\N	f
+60	774	\N	f
+60	6	80.00	f
+60	5	150.00	f
+60	81	200.00	f
+60	15	58.00	f
+60	2	\N	t
+61	256	250.00	f
+61	11	125.00	f
+61	4	41.40	f
+61	507	1000.00	f
+61	9	100.00	f
+61	40	\N	f
+61	38	80.00	f
+61	81	80.00	f
+61	7	120.00	f
+61	15	58.00	f
+62	272	500.00	f
+62	10	700.00	f
+62	5	400.00	f
+62	1	220.00	f
+62	3	9.00	f
+62	14	73.44	f
+62	838	80.00	f
+62	18	\N	f
+63	271	400.00	f
+63	12	257.50	f
+63	85	\N	f
+63	9	200.00	f
+63	11	100.00	f
+63	6	40.00	f
+63	37	102.00	f
+63	36	\N	f
+63	74	\N	f
+64	35	600.00	f
+64	1	440.00	f
+64	20	\N	f
+64	5	150.00	f
+64	162	80.00	f
+64	82	\N	f
+64	31	\N	f
+64	92	\N	f
+64	776	\N	f
+64	2	\N	t
+65	18	60.00	f
+65	65	\N	f
+65	3	18.00	f
+65	92	\N	f
+65	180	\N	f
+65	14	165.24	f
+65	11	60.00	f
+65	119	\N	f
+66	71	600.00	f
+66	167	250.00	f
+66	45	150.00	f
+66	48	\N	f
+66	3	12.00	f
+66	535	\N	f
+66	536	\N	f
+66	313	\N	f
+66	5	200.00	f
+66	44	150.00	f
+66	4	55.20	f
+67	192	1200.00	f
+67	33	\N	f
+67	48	\N	f
+67	3	18.00	f
+67	83	\N	f
+67	126	40.00	f
+67	17	30.00	f
+67	145	20.00	f
+67	101	\N	f
+67	170	\N	f
+67	620	60.00	f
+67	2	\N	t
+68	202	1000.00	f
+68	43	134.40	f
+68	3	30.00	f
+68	22	\N	f
+68	114	2.90	f
+68	357	\N	f
+68	11	200.00	f
+68	4	27.60	f
+68	71	400.00	f
+69	212	800.00	f
+69	120	\N	f
+69	1	110.00	f
+69	8	369.00	f
+69	194	200.00	f
+69	181	150.00	f
+69	57	\N	f
+69	63	\N	f
+69	50	\N	f
+69	11	2000.00	f
+70	212	700.00	f
+70	177	\N	f
+70	44	400.00	f
+70	10	852.00	f
+70	16	61.00	f
+70	1	110.00	f
+70	187	150.00	f
+70	25	32.00	f
+70	740	80.00	f
+70	3	15.00	f
+70	61	\N	f
+70	32	\N	t
+71	6	450.00	f
+71	128	\N	f
+71	5	50.00	f
+71	73	\N	f
+71	234	600.00	f
+71	9	120.00	f
+71	250	\N	f
+71	7	50.00	f
+71	32	\N	t
+71	2	\N	f
+72	195	80.00	f
+72	16	183.00	f
+72	112	200.00	f
+72	320	150.00	f
+72	1	220.00	f
+72	85	\N	f
+72	125	\N	f
+72	15	58.00	f
+72	9	10.50	f
+72	431	\N	t
+72	7	60.00	f
+73	6	500.00	f
+73	12	226.60	f
+73	28	7.00	f
+73	9	60.00	f
+73	7	80.00	f
+73	5	100.00	f
+73	700	150.00	f
+73	62	100.00	f
+73	40	\N	f
+73	2	6.09	f
+74	46	400.00	f
+74	56	200.00	f
+74	110	60.00	f
+74	42	\N	f
+74	1	110.00	f
+74	5	50.00	f
+74	147	\N	f
+74	68	\N	f
+74	6	\N	f
+74	43	5.60	f
+74	7	60.00	f
+74	292	\N	t
+75	6	600.00	f
+75	12	309.00	f
+75	28	10.00	f
+75	9	80.00	f
+75	78	\N	f
+75	330	100.00	f
+75	697	100.00	f
+75	40	\N	f
+75	5	50.00	f
+75	306	\N	t
+75	2	6.09	f
+76	116	300.00	f
+76	829	200.00	f
+76	593	200.00	f
+76	64	200.00	f
+76	1	440.00	f
+76	149	800.00	f
+76	3	18.00	f
+76	159	\N	f
+76	31	\N	f
+76	92	\N	f
+76	4	184.00	f
+76	2	\N	t
+77	745	400.00	f
+77	3	12.00	f
+77	15	116.00	f
+77	14	73.44	f
+77	31	\N	f
+77	8	246.00	f
+77	18	\N	f
+77	92	\N	t
+77	2	\N	t
+78	18	200.00	f
+78	90	30.00	f
+78	230	40.00	f
+78	8	492.00	f
+78	20	\N	f
+78	15	116.00	f
+78	14	55.08	f
+78	147	\N	f
+78	2	\N	t
+79	230	120.00	f
+79	29	500.00	f
+79	1	110.00	f
+79	725	\N	f
+79	70	\N	f
+79	11	100.00	f
+79	14	55.08	f
+80	29	800.00	f
+80	18	300.00	f
+80	13	200.00	f
+80	756	\N	f
+80	129	200.00	f
+80	137	\N	f
+80	1	220.00	f
+80	27	\N	f
+80	4	92.00	f
+80	71	600.00	f
+81	60	500.00	f
+81	10	426.00	f
+81	77	\N	f
+81	47	\N	f
+81	7	80.00	f
+81	4	41.40	f
+81	2	\N	t
+82	67	800.00	f
+82	100	100.00	f
+82	1	330.00	f
+82	826	\N	f
+82	58	\N	f
+82	288	\N	f
+82	64	100.00	f
+82	30	\N	f
+82	2	\N	t
+83	6	500.00	f
+83	11	250.00	f
+83	100	150.00	f
+83	29	500.00	f
+83	1	500.00	f
+83	58	\N	f
+83	5	50.00	f
+83	69	\N	t
+84	596	1500.00	f
+84	196	120.00	f
+84	140	500.00	f
+84	1	110.00	f
+84	118	\N	f
+84	270	\N	f
+84	12	309.00	f
+84	6	\N	f
+84	52	\N	f
+84	22	\N	f
+84	7	40.00	f
+84	731	\N	t
+85	552	1200.00	f
+85	104	\N	f
+85	627	\N	f
+85	7	80.00	f
+85	159	\N	f
+85	281	\N	f
+85	118	\N	t
+85	735	\N	t
+85	2	\N	t
+86	611	500.00	f
+86	11	325.00	f
+86	303	1.00	f
+86	729	12.00	f
+86	350	400.00	f
+86	172	300.00	f
+86	158	20.00	f
+86	14	55.08	f
+88	121	600.00	f
+88	632	300.00	f
+88	1	110.00	f
+88	8	246.00	f
+88	17	20.00	f
+88	3	12.00	f
+88	63	\N	f
+88	240	2.10	f
+88	141	\N	f
+88	42	\N	f
+88	26	\N	f
+88	2	\N	t
+89	6	300.00	f
+89	26	60.00	f
+89	284	\N	f
+89	11	100.00	f
+89	10	600.00	f
+89	98	150.00	f
+89	240	2.10	f
+89	80	\N	f
+89	141	\N	f
+89	63	\N	f
+89	2	\N	t
+90	6	400.00	f
+90	11	200.00	f
+90	56	400.00	f
+90	645	400.00	f
+90	20	\N	f
+90	17	20.00	f
+90	43	33.60	f
+90	130	\N	f
+90	820	\N	f
+90	4	41.40	f
+90	840	\N	t
+90	2	\N	t
+91	71	600.00	f
+91	5	200.00	f
+91	45	150.00	f
+91	442	100.00	f
+91	98	100.00	f
+91	16	61.00	f
+91	20	\N	f
+91	139	\N	f
+91	216	16.80	f
+91	4	41.40	f
+92	653	\N	f
+92	5	200.00	f
+92	6	80.00	f
+92	8	600.00	f
+92	1	110.00	f
+92	3	6.00	f
+92	207	\N	f
+92	2	\N	t
+93	135	1200.00	f
+93	540	800.00	f
+93	834	\N	f
+93	833	\N	f
+93	1	110.00	f
+93	3	18.00	f
+93	207	\N	f
+93	22	\N	f
+93	787	\N	t
+93	2	\N	t
+94	192	1200.00	f
+94	335	500.00	f
+94	1	330.00	f
+94	17	40.00	f
+94	3	24.00	f
+94	712	\N	f
+94	246	\N	f
+94	257	\N	f
+94	26	120.00	f
+94	2	\N	t
+95	46	600.00	f
+95	88	60.00	f
+95	8	246.00	f
+95	1	110.00	f
+95	197	10.00	f
+95	711	\N	f
+95	63	\N	f
+95	5	50.00	f
+95	13	\N	f
+95	26	120.00	f
+95	2	\N	t
+96	266	400.00	f
+96	45	300.00	f
+96	482	150.00	f
+96	33	\N	f
+96	101	\N	f
+96	126	30.00	f
+96	83	\N	f
+96	48	\N	f
+96	251	\N	f
+96	27	\N	f
+96	4	73.60	f
+97	6	500.00	f
+97	11	280.00	f
+97	214	\N	f
+97	5	50.00	f
+97	4	138.00	f
+97	2	6.09	f
+98	264	1200.00	f
+98	243	500.00	f
+98	520	500.00	f
+98	196	150.00	f
+98	12	154.50	f
+98	7	60.00	f
+98	75	\N	f
+98	615	\N	f
+99	468	125.00	f
+99	257	125.00	f
+99	12	412.00	f
+99	28	7.00	f
+99	5	50.00	f
+99	9	10.50	f
+99	7	80.00	f
+99	51	\N	t
+99	2	\N	f
+100	21	1400.00	f
+100	1	1000.00	f
+100	290	\N	f
+100	786	120.00	f
+100	3	18.00	f
+100	17	40.00	f
+100	5	300.00	f
+100	15	58.00	f
+100	2	\N	t
+102	237	1200.00	f
+102	1	220.00	f
+102	23	357.00	f
+102	3	18.00	f
+102	149	400.00	f
+102	162	100.00	f
+102	99	\N	f
+102	31	\N	f
+102	65	\N	f
+102	49	\N	f
+102	14	55.08	f
+102	71	600.00	f
+103	154	300.00	f
+103	105	400.00	f
+103	1	110.00	f
+103	3	15.00	f
+103	22	\N	f
+103	31	\N	f
+103	134	\N	f
+103	125	\N	f
+103	14	55.08	f
+103	2	\N	t
+104	21	1600.00	f
+104	66	\N	f
+104	209	\N	f
+104	20	\N	f
+104	52	\N	f
+104	17	30.00	f
+104	3	18.00	f
+104	43	67.20	f
+104	24	134.00	f
+104	357	\N	f
+104	4	55.20	f
+105	406	540.00	f
+105	272	300.00	f
+105	1	110.00	f
+105	23	119.00	f
+105	8	246.00	f
+105	20	\N	f
+105	52	\N	f
+105	66	\N	f
+105	4	41.40	f
+105	103	\N	t
+106	105	500.00	f
+106	8	600.00	f
+106	323	\N	f
+106	1	220.00	f
+106	66	\N	f
+106	25	48.00	f
+106	84	\N	f
+106	779	\N	f
+106	22	\N	f
+106	96	\N	f
+106	4	92.00	f
+106	2	\N	t
+107	127	600.00	f
+107	109	150.00	f
+107	163	\N	f
+107	281	\N	f
+107	310	\N	f
+107	55	4.60	f
+107	160	\N	f
+107	4	55.20	f
+107	2	\N	t
+108	666	250.00	f
+108	11	320.00	f
+108	359	150.00	f
+108	7	30.00	f
+108	4	27.60	f
+108	2	6.09	f
+109	550	800.00	f
+109	594	500.00	f
+109	140	400.00	f
+109	264	400.00	f
+109	541	\N	f
+109	471	\N	f
+109	20	\N	f
+109	13	\N	f
+109	42	\N	f
+109	99	\N	f
+109	122	\N	f
+109	2	\N	t
+110	6	250.00	f
+110	7	125.00	f
+110	855	\N	f
+110	11	30.00	f
+110	79	250.00	f
+110	5	150.00	f
+110	85	\N	f
+110	12	103.00	f
+110	89	\N	f
+111	256	500.00	f
+111	12	288.40	f
+111	303	15.00	f
+111	9	55.00	f
+111	2	11.00	f
+111	330	40.00	f
+111	588	280.00	f
+111	5	50.00	f
+112	45	\N	f
+112	6	150.00	f
+112	53	50.00	f
+112	5	50.00	f
+112	11	250.00	f
+112	143	\N	f
+112	43	56.00	f
+112	133	\N	f
+112	194	\N	t
+113	44	500.00	f
+113	6	150.00	f
+113	856	100.00	f
+113	143	\N	f
+113	5	200.00	f
+113	72	200.00	f
+113	20	\N	f
+113	791	40.00	f
+113	736	\N	t
+113	857	\N	t
+113	4	41.40	f
+114	6	400.00	f
+114	11	240.00	f
+114	28	5.00	f
+114	275	400.00	f
+114	1	110.00	f
+114	8	123.00	f
+114	656	\N	f
+114	18	20.00	f
+114	391	\N	f
+114	2	\N	t
+115	222	400.00	f
+115	26	300.00	f
+115	9	500.00	f
+115	11	400.00	f
+115	327	\N	f
+116	121	1000.00	f
+116	386	300.00	f
+116	220	450.00	f
+116	20	\N	f
+116	39	30.00	f
+116	5	150.00	f
+116	14	137.70	f
+116	89	\N	f
+117	10	800.00	f
+117	6	\N	f
+117	82	\N	f
+117	259	\N	f
+117	381	\N	f
+117	3	6.00	f
+117	14	41.31	f
+117	2	\N	t
+118	6	400.00	f
+118	11	200.00	f
+118	1	300.00	f
+118	17	25.00	f
+118	3	15.00	f
+118	13	20.00	f
+118	763	\N	f
+118	8	400.00	f
+118	83	\N	f
+118	69	\N	f
+118	4	41.40	f
+118	2	\N	t
+119	827	250.00	f
+119	19	400.00	f
+119	27	\N	f
+119	26	\N	f
+119	284	\N	f
+119	240	2.10	f
+119	83	\N	f
+119	3	12.00	f
+119	1	110.00	f
+119	2	\N	t
+120	554	300.00	f
+120	5	150.00	f
+120	1	110.00	f
+120	131	\N	f
+120	16	61.00	f
+120	44	200.00	f
+120	548	\N	f
+120	63	\N	f
+120	84	\N	f
+120	4	55.20	f
+120	2	\N	t
+121	795	250.00	f
+121	92	\N	f
+121	41	\N	f
+121	328	\N	f
+121	24	67.00	f
+121	2	\N	t
+122	46	500.00	f
+122	275	300.00	f
+122	56	200.00	f
+122	3	18.00	f
+122	73	\N	f
+122	11	100.00	f
+122	82	\N	f
+122	576	\N	f
+122	562	\N	f
+123	534	3000.00	f
+123	57	600.00	f
+123	3	18.00	f
+123	4	230.00	f
+123	125	\N	f
+123	2	\N	t
+124	56	400.00	f
+124	801	200.00	f
+124	1	110.00	f
+124	5	50.00	f
+124	6	\N	f
+124	12	154.50	f
+124	147	\N	f
+124	7	60.00	f
+124	245	800.00	f
+124	532	\N	t
+125	675	\N	f
+125	7	100.00	f
+125	584	200.00	f
+125	45	200.00	f
+125	5	150.00	f
+125	573	\N	f
+125	41	\N	f
+125	132	\N	f
+125	39	20.00	f
+126	244	\N	f
+126	56	800.00	f
+126	116	150.00	f
+126	1	330.00	f
+126	117	300.00	f
+126	25	48.00	f
+126	22	\N	f
+126	4	55.20	f
+127	543	300.00	f
+127	11	1200.00	f
+127	7	60.00	f
+127	95	200.00	f
+127	32	\N	t
+127	2	12.17	f
+128	8	492.00	f
+128	54	\N	f
+128	1	55.00	f
+128	95	200.00	f
+128	18	20.00	f
+128	255	\N	f
+128	180	\N	f
+128	91	\N	t
+128	2	\N	t
+129	220	500.00	f
+129	95	500.00	f
+129	5	250.00	f
+129	76	250.00	f
+129	73	\N	f
+129	7	120.00	f
+129	255	\N	f
+130	808	500.00	f
+130	140	500.00	f
+130	131	\N	f
+130	16	61.00	f
+130	270	\N	f
+130	650	\N	f
+130	22	\N	f
+130	39	40.00	f
+130	7	40.00	f
+130	2	\N	t
+131	210	250.00	f
+131	11	150.00	f
+131	116	150.00	f
+131	12	721.00	f
+131	7	100.00	f
+131	5	150.00	f
+131	2	\N	t
+132	264	500.00	f
+132	140	700.00	f
+132	1	330.00	f
+132	16	183.00	f
+132	18	20.00	f
+133	6	350.00	f
+133	822	150.00	f
+133	644	\N	f
+133	73	\N	f
+133	2	6.09	f
+133	173	\N	f
+134	498	700.00	f
+134	825	\N	f
+134	677	320.00	f
+134	1	110.00	f
+134	3	12.00	f
+134	49	\N	f
+134	438	\N	f
+134	25	16.00	f
+134	18	20.00	f
+134	14	55.08	f
+135	6	300.00	f
+135	11	150.00	f
+135	4	27.60	f
+135	5	50.00	f
+135	371	600.00	f
+135	852	\N	f
+135	32	200.00	f
+135	42	\N	f
+135	7	60.00	f
+135	2	\N	t
+137	67	1500.00	f
+137	242	1500.00	f
+137	114	\N	f
+137	6	\N	f
+137	11	500.00	f
+137	245	1000.00	f
+137	2	\N	t
+138	334	2000.00	f
+138	48	\N	f
+138	118	\N	f
+138	3	12.00	f
+138	49	\N	f
+138	7	60.00	f
+138	18	30.00	f
+138	312	800.00	f
+138	103	\N	t
+139	298	1200.00	f
+139	1	800.00	f
+139	792	\N	f
+139	575	\N	f
+139	75	\N	f
+139	125	\N	f
+139	7	60.00	f
+140	239	400.00	f
+140	444	400.00	f
+140	49	\N	f
+140	53	\N	f
+140	3	3.00	f
+140	315	\N	f
+140	327	\N	f
+140	818	600.00	f
+141	140	1000.00	f
+141	26	60.00	f
+141	196	100.00	f
+141	1	110.00	f
+141	239	100.00	f
+142	108	3000.00	f
+142	19	400.00	f
+142	201	150.00	f
+142	279	120.00	f
+142	38	100.00	f
+142	62	120.00	f
+142	87	80.00	f
+142	7	100.00	f
+142	59	\N	f
+142	40	\N	f
+142	2	\N	t
+143	475	120.00	f
+143	5	50.00	f
+143	6	\N	f
+143	1	110.00	f
+143	7	40.00	f
+143	13	20.00	f
+143	70	\N	f
+143	2	\N	t
+144	60	600.00	f
+144	29	700.00	f
+144	785	\N	f
+144	1	220.00	f
+144	247	200.00	f
+144	201	100.00	f
+144	38	80.00	f
+144	26	180.00	f
+144	47	\N	f
+144	27	\N	f
+145	29	500.00	f
+145	67	400.00	f
+145	19	\N	f
+145	64	150.00	f
+145	10	852.00	f
+145	1	220.00	f
+145	407	\N	f
+145	201	\N	f
+145	70	\N	f
+145	27	\N	f
+146	161	1500.00	f
+146	6	500.00	f
+146	5	100.00	f
+146	11	180.00	f
+146	1	440.00	f
+146	22	\N	f
+146	114	\N	f
+146	2	\N	t
+147	6	600.00	f
+147	12	309.00	f
+147	28	7.00	f
+147	5	100.00	f
+147	9	21.00	f
+147	7	50.00	f
+147	2	6.09	f
+148	10	1000.00	f
+148	6	250.00	f
+148	622	400.00	f
+148	79	200.00	f
+148	5	50.00	f
+148	2	\N	t
+149	165	700.00	f
+149	117	500.00	f
+149	166	300.00	f
+149	299	30.00	f
+149	1	220.00	f
+149	279	100.00	f
+149	82	\N	f
+149	6	\N	f
+149	32	\N	f
+149	22	\N	f
+150	113	1200.00	f
+150	46	700.00	f
+150	202	400.00	f
+150	1	440.00	f
+150	5	150.00	f
+150	206	\N	f
+150	38	60.00	f
+150	158	20.00	f
+150	12	257.50	f
+150	7	60.00	f
+150	31	\N	f
+150	9	31.50	f
+151	6	600.00	f
+151	97	120.00	f
+151	12	206.00	f
+151	35	600.00	f
+151	1	550.00	f
+151	5	150.00	f
+151	206	\N	f
+151	38	60.00	f
+151	55	6.80	f
+151	31	\N	f
+152	237	800.00	f
+152	154	350.00	f
+152	105	350.00	f
+152	115	\N	f
+152	1	220.00	f
+152	23	238.00	f
+152	3	15.00	f
+152	8	400.00	f
+152	31	\N	f
+152	4	73.60	f
+153	113	800.00	f
+153	339	300.00	f
+153	12	82.40	f
+153	9	10.50	f
+153	7	50.00	f
+153	2	6.09	f
+154	6	600.00	f
+154	7	150.00	f
+154	9	31.50	f
+154	35	500.00	f
+154	10	300.00	f
+154	98	150.00	f
+154	1	330.00	f
+154	305	20.00	f
+154	68	\N	f
+154	31	\N	f
+154	5	150.00	f
+154	91	\N	f
+155	35	600.00	f
+155	81	200.00	f
+155	19	300.00	f
+155	10	600.00	f
+155	5	200.00	f
+155	8	369.00	f
+155	41	\N	f
+155	177	\N	f
+155	18	20.00	f
+155	4	138.00	f
+156	789	700.00	f
+156	102	700.00	f
+156	41	\N	f
+156	8	369.00	f
+156	24	201.00	f
+156	31	\N	f
+156	13	30.00	f
+156	3	12.00	f
+156	4	36.80	f
+157	10	1000.00	f
+157	339	250.00	f
+157	1	110.00	f
+157	93	150.00	f
+157	12	257.50	f
+157	4	55.20	f
+157	5	200.00	f
+157	2	\N	t
+158	311	2000.00	f
+158	4	92.00	f
+158	27	\N	f
+158	120	\N	f
+158	1	220.00	f
+158	8	492.00	f
+158	15	116.00	f
+158	84	\N	f
+159	233	300.00	f
+159	116	400.00	f
+159	29	400.00	f
+159	23	476.00	f
+159	1	450.00	f
+159	57	\N	f
+159	8	492.00	f
+159	25	48.00	f
+159	193	\N	f
+159	15	116.00	f
+159	18	40.00	f
+159	124	\N	f
+159	4	92.00	f
+160	67	2000.00	f
+160	474	500.00	f
+160	105	700.00	f
+160	784	\N	f
+160	87	100.00	f
+160	111	60.00	f
+160	26	100.00	f
+160	78	\N	f
+160	27	\N	f
+160	18	30.00	f
+161	21	1200.00	f
+161	105	500.00	f
+161	57	\N	f
+161	393	500.00	f
+161	10	639.00	f
+161	1	110.00	f
+161	124	\N	f
+161	27	\N	f
+161	36	\N	f
+161	111	60.00	f
+161	4	184.00	f
+162	5	200.00	f
+162	274	200.00	f
+162	10	426.00	f
+162	1	110.00	f
+162	99	\N	f
+162	18	30.00	f
+162	153	\N	f
+162	15	58.00	f
+163	64	400.00	f
+163	397	300.00	f
+163	3	24.00	f
+163	153	\N	f
+163	31	\N	f
+163	5	200.00	f
+163	14	73.44	f
+163	91	80.00	f
+163	99	\N	f
+163	274	150.00	f
+163	15	58.00	f
+163	2	\N	t
+164	557	700.00	f
+164	29	1000.00	f
+164	64	200.00	f
+164	16	244.00	f
+164	353	\N	f
+164	241	\N	f
+164	108	400.00	f
+164	1	220.00	f
+164	25	32.00	f
+164	668	\N	f
+164	7	80.00	f
+164	14	73.44	f
+164	153	\N	f
+165	29	500.00	f
+165	814	150.00	f
+165	64	150.00	f
+165	1	220.00	f
+165	8	400.00	f
+165	25	32.00	f
+165	118	\N	f
+165	13	30.00	f
+165	70	\N	f
+165	36	\N	f
+165	26	50.00	f
+165	15	58.00	f
+166	501	1500.00	f
+166	245	500.00	f
+166	56	500.00	f
+166	1	220.00	f
+166	195	200.00	f
+166	32	\N	f
+166	199	\N	f
+166	171	\N	f
+167	177	500.00	f
+167	128	\N	f
+167	54	\N	f
+167	5	200.00	f
+167	39	40.00	f
+167	20	40.00	f
+167	10	800.00	f
+167	32	\N	f
+167	2	\N	t
+170	174	250.00	f
+170	10	1000.00	f
+170	79	250.00	f
+170	1	220.00	f
+170	7	50.00	f
+170	12	154.50	f
+171	608	200.00	f
+171	128	\N	f
+171	9	31.50	f
+171	59	\N	f
+171	565	200.00	f
+171	42	\N	f
+171	2	\N	t
+172	10	1000.00	f
+172	1	110.00	f
+172	4	92.00	f
+172	32	\N	f
+172	39	20.00	f
+174	355	500.00	f
+174	101	\N	f
+174	17	40.00	f
+174	3	18.00	f
+174	1	330.00	f
+174	687	60.00	f
+174	258	40.00	f
+174	50	\N	f
+174	27	\N	f
+174	55	6.80	f
+174	5	300.00	f
+174	481	100.00	f
+174	13	40.00	f
+174	24	201.00	f
+174	4	92.00	f
+174	2	\N	t
+175	806	150.00	f
+175	109	80.00	f
+175	480	60.00	f
+175	69	40.00	f
+175	3	18.00	f
+175	8	246.00	f
+175	44	200.00	f
+175	30	\N	f
+175	24	134.00	f
+175	50	\N	f
+175	4	55.20	f
+175	2	\N	t
+176	186	600.00	f
+176	33	\N	f
+176	516	\N	f
+176	101	\N	f
+176	126	30.00	f
+176	145	20.00	f
+176	170	\N	f
+176	48	\N	f
+176	3	15.00	f
+176	5	100.00	f
+176	50	\N	f
+176	106	\N	f
+176	94	\N	f
+176	2	\N	t
+177	127	600.00	f
+177	383	\N	f
+177	43	33.60	f
+177	3	15.00	f
+177	9	10.50	f
+177	347	4.60	f
+177	24	201.00	f
+177	213	200.00	f
+177	8	369.00	f
+177	54	\N	f
+177	41	\N	f
+177	5	200.00	f
+177	4	36.80	f
+177	2	\N	t
+178	21	1600.00	f
+178	265	400.00	f
+178	17	80.00	f
+178	3	24.00	f
+178	20	\N	f
+178	130	\N	f
+178	43	67.20	f
+178	30	\N	f
+178	24	134.00	f
+178	54	\N	f
+178	168	\N	f
+178	2	\N	t
+179	530	1500.00	f
+179	782	\N	f
+179	642	\N	f
+179	346	\N	f
+179	3	24.00	f
+179	17	40.00	f
+179	5	100.00	f
+179	9	21.00	f
+179	380	\N	f
+179	96	\N	f
+179	53	\N	f
+179	435	\N	f
+179	4	73.60	f
+179	13	20.00	f
+179	2	\N	t
+180	72	700.00	f
+180	48	\N	f
+180	43	112.00	f
+180	178	16.80	f
+180	139	\N	f
+180	203	30.00	f
+180	724	\N	f
+180	157	\N	f
+180	3	15.00	f
+180	5	200.00	f
+180	19	400.00	f
+180	229	300.00	f
+180	4	36.80	f
+180	2	\N	t
+181	192	1000.00	f
+181	351	400.00	f
+181	301	\N	f
+181	43	112.00	f
+181	139	\N	f
+181	17	50.00	f
+181	3	24.00	f
+181	8	369.00	f
+181	157	\N	f
+181	36	\N	f
+181	203	30.00	f
+181	229	300.00	f
+181	205	100.00	f
+181	20	\N	f
+181	4	55.20	f
+181	2	\N	t
+182	513	2000.00	f
+182	15	174.00	f
+182	3	18.00	f
+182	4	55.20	f
+182	8	492.00	f
+182	41	\N	f
+182	13	30.00	f
+182	30	\N	f
+182	88	400.00	f
+183	254	700.00	f
+183	1	220.00	f
+183	8	492.00	f
+183	3	12.00	f
+183	4	46.00	f
+183	31	\N	f
+183	15	58.00	f
+184	426	300.00	f
+184	105	500.00	f
+184	746	10.00	f
+184	73	\N	f
+184	115	\N	f
+184	5	300.00	f
+184	449	150.00	f
+184	738	100.00	f
+184	4	55.20	f
+184	2	\N	t
+185	88	400.00	f
+185	582	200.00	f
+185	778	\N	f
+185	8	492.00	f
+185	345	\N	f
+185	1	220.00	f
+185	17	30.00	f
+185	3	12.00	f
+185	4	73.60	f
+185	2	\N	t
+186	478	700.00	f
+186	18	60.00	f
+186	3	24.00	f
+186	30	\N	f
+186	25	150.00	f
+186	1	330.00	f
+186	102	400.00	f
+186	44	400.00	f
+186	16	183.00	f
+186	57	\N	f
+186	228	200.00	f
+186	768	\N	f
+186	4	138.00	f
+187	21	1400.00	f
+187	1	1500.00	f
+187	15	290.00	f
+187	460	\N	f
+187	3	18.00	f
+187	66	\N	f
+187	22	\N	f
+187	4	73.60	f
+187	96	\N	f
+187	19	400.00	f
+188	46	900.00	f
+188	110	\N	f
+188	12	412.00	f
+188	1	220.00	f
+188	84	\N	f
+188	27	\N	f
+188	201	100.00	f
+188	38	80.00	f
+188	404	\N	f
+188	61	\N	f
+188	5	150.00	f
+188	22	\N	f
+188	87	50.00	f
+188	4	36.80	f
+189	16	244.00	f
+189	23	357.00	f
+189	1	220.00	f
+189	803	400.00	f
+189	8	400.00	f
+189	84	\N	f
+189	55	2.30	f
+189	30	\N	f
+189	3	12.00	f
+189	17	20.00	f
+189	4	46.00	f
+191	67	1200.00	f
+191	174	120.00	f
+191	10	500.00	f
+191	16	244.00	f
+191	432	400.00	f
+191	1	220.00	f
+191	44	300.00	f
+191	753	\N	f
+192	6	700.00	f
+192	12	309.00	f
+192	28	10.00	f
+192	7	150.00	f
+192	37	68.00	f
+192	9	120.00	f
+192	62	600.00	f
+192	42	\N	f
+192	59	\N	f
+192	688	\N	f
+192	40	\N	f
+192	74	\N	f
+192	2	6.09	f
+193	802	300.00	f
+193	10	500.00	f
+193	117	400.00	f
+193	166	200.00	f
+193	1	110.00	f
+193	3	12.00	f
+193	22	\N	f
+193	4	36.80	f
+194	35	600.00	f
+194	29	600.00	f
+194	44	500.00	f
+194	10	600.00	f
+194	16	244.00	f
+194	8	492.00	f
+194	23	357.00	f
+194	1	330.00	f
+194	320	\N	f
+194	3	\N	f
+194	195	150.00	f
+194	49	\N	f
+194	22	\N	f
+195	6	500.00	f
+195	11	280.00	f
+195	46	600.00	f
+195	1	220.00	f
+195	4	138.00	f
+195	61	\N	f
+195	76	\N	f
+196	187	500.00	f
+196	1	330.00	f
+196	82	\N	f
+196	754	\N	f
+196	6	\N	f
+196	4	92.00	f
+196	70	\N	f
+196	18	20.00	f
+197	136	700.00	f
+197	155	400.00	f
+197	1	220.00	f
+197	23	238.00	f
+197	49	\N	f
+197	25	32.00	f
+197	504	200.00	f
+197	3	12.00	f
+197	55	6.80	f
+197	4	55.20	f
+197	18	20.00	f
+198	6	250.00	f
+198	9	200.00	f
+198	7	150.00	f
+198	5	200.00	f
+198	12	123.60	f
+198	104	\N	f
+198	34	\N	f
+198	51	400.00	f
+198	164	50.00	f
+198	465	\N	f
+198	144	250.00	f
+198	2	\N	f
+199	35	800.00	f
+199	1	220.00	f
+199	68	\N	f
+199	6	\N	f
+199	190	\N	f
+199	25	32.00	f
+199	263	500.00	f
+199	271	400.00	f
+199	5	50.00	f
+199	221	\N	f
+199	4	36.80	f
+200	225	198.00	f
+200	9	350.00	f
+200	53	\N	f
+200	159	\N	f
+200	34	\N	f
+200	85	\N	f
+200	505	\N	f
+200	402	250.00	f
+200	583	\N	f
+201	21	1800.00	f
+201	185	800.00	f
+201	10	700.00	f
+201	108	600.00	f
+201	44	400.00	f
+201	1	330.00	f
+201	524	\N	f
+201	7	80.00	f
+201	103	\N	f
+202	10	1200.00	f
+202	762	300.00	f
+202	7	40.00	f
+202	6	40.00	f
+202	68	\N	f
+202	96	\N	f
+202	190	\N	f
+202	382	\N	f
+203	56	700.00	f
+203	46	300.00	f
+203	10	400.00	f
+203	1	220.00	f
+203	3	9.00	f
+203	40	\N	f
+203	191	1.05	f
+203	209	\N	f
+203	89	\N	f
+203	96	\N	f
+203	263	700.00	f
+203	5	50.00	f
+204	71	600.00	f
+204	154	400.00	f
+204	1	110.00	f
+204	23	119.00	f
+204	3	9.00	f
+204	369	\N	f
+204	13	30.00	f
+204	4	36.80	f
+204	5	200.00	f
+204	115	\N	f
+205	167	600.00	f
+205	19	350.00	f
+205	154	400.00	f
+205	115	\N	f
+205	16	122.00	f
+205	44	200.00	f
+205	8	246.00	f
+205	369	\N	f
+205	24	134.00	f
+205	3	12.00	f
+205	13	30.00	f
+205	4	55.20	f
+206	6	600.00	f
+206	11	280.00	f
+206	29	800.00	f
+206	100	150.00	f
+206	1	220.00	f
+206	3	12.00	f
+207	6	400.00	f
+207	11	180.00	f
+207	29	500.00	f
+207	1	220.00	f
+207	16	122.00	f
+207	44	250.00	f
+207	10	426.00	f
+207	3	12.00	f
+208	67	1800.00	f
+208	6	500.00	f
+208	5	100.00	f
+208	11	170.00	f
+208	1	550.00	f
+208	100	100.00	f
+208	114	\N	f
+208	22	\N	f
+208	13	30.00	f
+208	2	\N	t
+209	6	500.00	f
+209	11	230.00	f
+209	35	500.00	f
+209	23	238.00	f
+209	181	200.00	f
+209	671	200.00	f
+209	8	369.00	f
+209	1	220.00	f
+209	3	18.00	f
+209	25	32.00	f
+209	58	\N	f
+209	80	\N	f
+209	4	110.40	f
+209	13	30.00	f
+210	556	200.00	f
+210	721	400.00	f
+210	1	330.00	f
+210	4	92.00	f
+210	8	246.00	f
+210	54	\N	f
+210	13	40.00	f
+210	184	20.00	f
+210	2	\N	t
+211	29	800.00	f
+211	100	150.00	f
+211	603	800.00	f
+211	1	330.00	f
+211	3	\N	f
+211	58	\N	f
+211	288	\N	f
+211	64	100.00	f
+211	2	\N	t
+212	67	1000.00	f
+212	60	700.00	f
+212	16	500.00	f
+212	38	150.00	f
+212	87	80.00	f
+212	222	50.00	f
+212	1	220.00	f
+212	9	42.00	f
+212	726	\N	f
+212	58	\N	f
+212	78	\N	f
+212	4	138.00	f
+213	6	500.00	f
+213	11	230.00	f
+213	46	500.00	f
+213	1	440.00	f
+213	307	200.00	f
+213	77	\N	f
+213	3	15.00	f
+213	25	32.00	f
+213	80	\N	f
+213	70	\N	f
+213	4	73.60	f
+214	175	\N	f
+214	8	492.00	f
+214	54	\N	f
+214	670	\N	f
+214	693	200.00	f
+214	20	\N	f
+214	18	40.00	f
+214	90	20.00	f
+214	218	\N	f
+214	193	\N	f
+214	15	116.00	f
+214	14	73.44	f
+214	3	6.00	f
+215	230	400.00	f
+215	663	500.00	f
+215	29	500.00	f
+215	1	330.00	f
+215	111	80.00	f
+215	124	\N	f
+215	40	\N	f
+215	14	110.16	f
+220	35	800.00	f
+220	60	600.00	f
+220	1	440.00	f
+220	142	\N	f
+220	78	\N	f
+220	36	\N	f
+220	58	\N	f
+220	114	2.90	f
+220	3	18.00	f
+220	17	40.00	f
+220	10	639.00	f
+220	4	92.00	f
+220	2	\N	t
+222	238	60.00	f
+222	63	\N	f
+222	27	\N	f
+222	331	\N	f
+222	280	\N	f
+222	19	400.00	f
+222	2	\N	t
+223	680	400.00	f
+223	830	250.00	f
+223	1	220.00	f
+223	17	40.00	f
+223	63	\N	f
+223	27	\N	f
+223	31	\N	f
+223	22	\N	f
+223	36	\N	f
+223	78	\N	f
+223	26	80.00	f
+223	10	639.00	f
+223	2	\N	t
+224	107	600.00	f
+224	316	\N	f
+224	50	\N	f
+224	24	268.00	f
+224	819	\N	f
+224	48	\N	f
+224	20	\N	f
+224	90	30.00	f
+224	13	30.00	f
+224	2	\N	t
+225	308	600.00	f
+225	24	201.00	f
+225	3	12.00	f
+225	30	\N	f
+225	661	150.00	f
+225	217	100.00	f
+225	106	\N	f
+225	765	100.00	f
+225	2	\N	t
+226	135	2500.00	f
+226	15	174.00	f
+226	65	\N	f
+226	506	\N	f
+226	41	\N	f
+226	8	369.00	f
+226	18	40.00	f
+228	325	1500.00	f
+228	138	\N	f
+228	3	30.00	f
+228	22	\N	f
+228	1	220.00	f
+228	25	48.00	f
+228	10	600.00	f
+228	98	200.00	f
+228	16	122.00	f
+228	14	55.08	f
+229	6	500.00	f
+229	11	250.00	f
+229	676	500.00	f
+229	5	100.00	f
+229	307	250.00	f
+229	1	110.00	f
+229	18	30.00	f
+229	4	36.80	f
+230	127	500.00	f
+230	293	\N	f
+230	232	150.00	f
+230	421	150.00	f
+230	172	200.00	f
+230	5	200.00	f
+230	8	246.00	f
+230	213	100.00	f
+230	162	60.00	f
+230	132	100.00	f
+230	4	27.60	f
+232	21	1500.00	f
+232	378	120.00	f
+232	69	60.00	f
+232	261	\N	f
+232	342	\N	f
+232	8	492.00	f
+232	273	300.00	f
+232	1	110.00	f
+232	3	15.00	f
+232	10	400.00	f
+232	181	200.00	f
+232	36	\N	f
+232	13	30.00	f
+232	19	350.00	f
+232	2	\N	t
+233	200	700.00	f
+233	107	800.00	f
+233	97	200.00	f
+233	8	500.00	f
+233	261	\N	f
+233	378	80.00	f
+233	69	40.00	f
+233	1	110.00	f
+233	3	15.00	f
+233	94	\N	f
+233	91	\N	f
+233	23	119.00	f
+233	2	\N	t
+234	161	600.00	f
+234	107	500.00	f
+234	21	600.00	f
+234	102	500.00	f
+234	185	400.00	f
+234	148	\N	f
+234	113	\N	f
+234	1	220.00	f
+234	23	238.00	f
+234	13	40.00	f
+234	3	24.00	f
+234	65	\N	f
+234	24	201.00	f
+234	4	55.20	f
+235	148	\N	f
+235	41	\N	f
+235	61	\N	f
+235	7	60.00	f
+235	694	200.00	f
+235	759	200.00	f
+235	5	200.00	f
+235	4	55.20	f
+235	2	\N	t
+237	228	250.00	f
+237	33	\N	f
+237	1	110.00	f
+237	3	15.00	f
+237	108	300.00	f
+237	66	\N	f
+237	52	\N	f
+237	7	40.00	f
+238	401	1000.00	f
+238	77	\N	f
+238	5	200.00	f
+238	6	60.00	f
+238	19	80.00	f
+238	7	80.00	f
+238	3	15.00	f
+238	65	\N	f
+239	220	500.00	f
+239	121	1000.00	f
+239	95	400.00	f
+239	20	\N	f
+239	14	165.24	f
+239	39	30.00	f
+240	6	500.00	f
+240	11	260.00	f
+240	4	92.00	f
+240	95	400.00	f
+240	5	50.00	f
+240	39	30.00	f
+240	108	400.00	f
+240	9	31.50	f
+240	2	6.09	f
+242	523	1000.00	f
+242	427	1000.00	f
+242	79	150.00	f
+242	1	110.00	f
+242	42	\N	f
+242	6	\N	f
+242	395	\N	f
+242	10	800.00	f
+242	22	\N	f
+246	21	1600.00	f
+246	60	600.00	f
+246	1	220.00	f
+246	8	492.00	f
+246	25	32.00	f
+246	137	\N	f
+246	16	122.00	f
+246	420	\N	f
+246	78	\N	f
+246	36	\N	f
+246	3	15.00	f
+246	38	60.00	f
+246	87	60.00	f
+246	26	80.00	f
+248	215	60.00	f
+248	29	600.00	f
+248	10	300.00	f
+248	8	492.00	f
+248	1	220.00	f
+248	3	18.00	f
+248	370	\N	f
+248	5	100.00	f
+248	19	150.00	f
+248	253	\N	f
+248	4	55.20	f
+249	6	500.00	f
+249	5	150.00	f
+249	28	7.00	f
+249	12	206.00	f
+249	26	300.00	f
+249	59	250.00	f
+249	280	\N	f
+249	9	10.50	f
+249	2	6.09	f
+254	123	300.00	f
+254	35	600.00	f
+254	45	300.00	f
+254	372	50.00	f
+254	1	220.00	f
+254	3	18.00	f
+254	17	40.00	f
+254	30	\N	f
+254	4	110.40	f
+254	115	\N	f
+255	21	1400.00	f
+255	115	\N	f
+255	16	183.00	f
+255	181	200.00	f
+255	23	238.00	f
+255	1	220.00	f
+255	8	369.00	f
+255	3	15.00	f
+255	17	30.00	f
+255	66	\N	f
+255	52	\N	f
+256	414	500.00	f
+256	1	330.00	f
+256	8	369.00	f
+256	30	\N	f
+256	3	15.00	f
+256	17	30.00	f
+256	160	\N	f
+256	15	116.00	f
+256	4	73.60	f
+257	21	1400.00	f
+257	1	330.00	f
+257	8	615.00	f
+257	415	200.00	f
+257	23	119.00	f
+257	3	15.00	f
+257	17	30.00	f
+257	66	\N	f
+257	22	\N	f
+257	52	\N	f
+259	21	1600.00	f
+259	344	\N	f
+259	3	24.00	f
+259	15	174.00	f
+259	208	\N	f
+259	14	91.80	f
+259	61	\N	f
+259	7	50.00	f
+259	134	\N	f
+260	35	500.00	f
+260	107	300.00	f
+260	121	300.00	f
+260	569	200.00	f
+260	8	369.00	f
+260	1	220.00	f
+260	3	15.00	f
+260	17	30.00	f
+260	19	400.00	f
+260	4	36.80	f
+261	780	700.00	f
+261	72	700.00	f
+261	33	\N	f
+261	1	220.00	f
+261	3	18.00	f
+261	17	30.00	f
+261	19	400.00	f
+261	4	36.80	f
+262	6	400.00	f
+262	11	220.00	f
+262	129	400.00	f
+262	1	110.00	f
+262	367	\N	f
+262	732	150.00	f
+262	5	200.00	f
+262	122	\N	f
+262	4	36.80	f
+262	2	\N	t
+263	33	\N	f
+263	102	400.00	f
+263	148	\N	f
+263	16	122.00	f
+263	1	110.00	f
+263	3	15.00	f
+263	23	119.00	f
+263	13	30.00	f
+263	156	\N	f
+263	24	134.00	f
+263	4	36.80	f
+264	71	600.00	f
+264	129	400.00	f
+264	1	110.00	f
+264	23	119.00	f
+264	3	12.00	f
+264	4	46.00	f
+264	13	20.00	f
+264	761	150.00	f
+264	115	\N	f
+265	200	800.00	f
+265	107	1000.00	f
+265	97	250.00	f
+265	19	150.00	f
+265	10	500.00	f
+265	1	220.00	f
+265	23	119.00	f
+265	8	246.00	f
+265	156	\N	f
+265	90	20.00	f
+265	91	\N	f
+265	94	\N	f
+266	21	1500.00	f
+266	619	800.00	f
+266	1	220.00	f
+266	3	18.00	f
+266	113	\N	f
+266	65	\N	f
+266	24	134.00	f
+266	19	350.00	f
+267	237	900.00	f
+267	1	220.00	f
+267	23	238.00	f
+267	8	500.00	f
+267	25	32.00	f
+267	3	18.00	f
+267	162	80.00	f
+267	99	\N	f
+267	31	\N	f
+267	134	\N	f
+267	4	55.20	f
+267	19	350.00	f
+268	88	400.00	f
+268	1	440.00	f
+268	12	412.00	f
+268	5	250.00	f
+268	113	200.00	f
+268	2	\N	t
+269	324	500.00	f
+269	5	150.00	f
+269	12	123.60	f
+269	226	\N	f
+269	2	6.09	f
+270	6	600.00	f
+270	11	900.00	f
+270	32	\N	f
+270	7	150.00	f
+270	76	\N	f
+270	59	100.00	f
+270	2	12.17	f
+271	401	1000.00	f
+271	19	200.00	f
+271	77	\N	f
+271	5	200.00	f
+271	6	60.00	f
+271	7	100.00	f
+271	3	15.00	f
+271	65	\N	f
+273	88	300.00	f
+273	10	600.00	f
+273	597	300.00	f
+273	495	200.00	f
+273	7	100.00	f
+273	12	206.00	f
+273	2	\N	t
+274	63	400.00	f
+274	1	110.00	f
+274	3	15.00	f
+274	8	123.00	f
+274	7	30.00	f
+274	249	350.00	f
+274	2	\N	t
+276	514	200.00	f
+276	41	\N	f
+276	30	\N	f
+276	24	201.00	f
+276	169	\N	f
+276	606	300.00	f
+276	11	160.00	f
+276	4	27.60	f
+276	2	\N	t
+279	6	400.00	f
+279	11	240.00	f
+279	5	400.00	f
+279	44	200.00	f
+279	8	369.00	f
+279	1	220.00	f
+279	16	61.00	f
+279	30	\N	f
+279	4	110.40	f
+282	21	1500.00	f
+282	614	800.00	f
+282	1	220.00	f
+282	3	18.00	f
+282	17	30.00	f
+282	343	\N	f
+282	15	116.00	f
+282	57	\N	f
+282	121	200.00	f
+282	4	46.00	f
+282	19	400.00	f
+283	94	\N	f
+283	8	492.00	f
+283	1	220.00	f
+283	3	18.00	f
+283	17	30.00	f
+283	343	\N	f
+283	15	116.00	f
+283	20	\N	f
+283	102	500.00	f
+284	93	350.00	f
+284	1	220.00	f
+284	25	48.00	f
+284	44	300.00	f
+284	16	183.00	f
+284	10	400.00	f
+284	57	\N	f
+284	30	\N	f
+284	4	55.20	f
+284	19	450.00	f
+286	775	\N	f
+286	6	60.00	f
+286	1	110.00	f
+286	16	61.00	f
+286	118	\N	f
+286	49	\N	f
+286	188	\N	f
+286	7	60.00	f
+286	74	\N	f
+286	3	6.00	f
+286	18	30.00	f
+290	67	1000.00	f
+290	76	\N	f
+290	246	\N	f
+290	385	\N	f
+290	749	\N	f
+290	286	\N	f
+290	839	\N	f
+290	36	\N	f
+290	142	\N	f
+290	26	100.00	f
+290	60	400.00	f
+290	2	\N	t
+291	19	300.00	f
+291	832	100.00	f
+291	215	\N	f
+291	10	800.00	f
+291	1	220.00	f
+291	238	\N	f
+291	169	\N	f
+291	27	\N	f
+291	63	\N	f
+291	17	30.00	f
+291	4	92.00	f
+291	13	30.00	f
+291	2	\N	t
+292	591	1000.00	f
+292	538	1200.00	f
+292	384	\N	f
+292	1	220.00	f
+292	131	\N	f
+292	8	500.00	f
+292	3	24.00	f
+292	47	\N	f
+292	223	\N	f
+292	10	500.00	f
+292	14	137.70	f
+292	37	17.00	f
+292	183	\N	f
+294	35	300.00	f
+294	10	700.00	f
+294	1	220.00	f
+294	16	61.00	f
+294	143	\N	f
+294	43	67.20	f
+294	133	\N	f
+294	268	\N	f
+294	9	10.50	f
+294	559	200.00	f
+294	4	18.40	f
+294	181	100.00	f
+296	21	2000.00	f
+296	648	\N	f
+296	342	\N	f
+296	652	\N	f
+296	87	80.00	f
+296	123	60.00	f
+296	69	60.00	f
+296	38	80.00	f
+296	8	369.00	f
+296	273	200.00	f
+296	1	110.00	f
+296	3	18.00	f
+296	36	\N	f
+296	142	\N	f
+296	152	60.00	f
+296	398	\N	f
+296	97	120.00	f
+296	2	\N	t
+298	29	700.00	f
+298	561	400.00	f
+298	781	\N	f
+298	7	120.00	f
+298	77	\N	f
+298	1	110.00	f
+298	3	9.00	f
+298	639	\N	f
+298	134	\N	f
+298	4	36.80	f
+299	6	500.00	f
+299	5	100.00	f
+299	11	180.00	f
+299	29	300.00	f
+299	1	110.00	f
+299	77	\N	f
+299	3	12.00	f
+299	7	100.00	f
+299	55	6.80	f
+299	70	\N	f
+299	218	\N	f
+300	804	600.00	f
+300	224	250.00	f
+300	337	200.00	f
+300	79	200.00	f
+300	528	\N	f
+300	1	110.00	f
+300	3	12.00	f
+300	47	\N	f
+300	82	\N	f
+300	14	45.90	f
+300	2	\N	t
+301	628	2000.00	f
+301	10	800.00	f
+301	208	\N	f
+301	259	\N	f
+301	14	91.80	f
+301	119	\N	f
+301	22	\N	f
+301	1	110.00	f
+302	851	500.00	f
+302	549	800.00	f
+302	33	\N	f
+302	533	\N	f
+302	84	\N	f
+302	27	\N	f
+302	50	\N	f
+302	106	\N	f
+302	48	\N	f
+302	205	100.00	f
+302	24	201.00	f
+302	13	30.00	f
+303	35	900.00	f
+303	640	\N	f
+303	33	\N	f
+303	10	500.00	f
+303	1	220.00	f
+303	109	100.00	f
+303	120	\N	f
+303	106	\N	f
+303	50	\N	f
+303	36	\N	f
+303	78	\N	f
+303	22	\N	f
+303	265	400.00	f
+304	8	1456.00	f
+304	23	476.00	f
+304	116	300.00	f
+304	1	330.00	f
+304	10	600.00	f
+304	18	50.00	f
+304	90	20.00	f
+304	39	30.00	f
+304	14	183.60	f
+304	9	3.50	f
+305	21	1300.00	f
+305	116	120.00	f
+305	5	150.00	f
+305	15	174.00	f
+305	1	110.00	f
+305	16	61.00	f
+305	118	\N	f
+305	39	20.00	f
+305	14	27.54	f
+306	6	600.00	f
+306	5	100.00	f
+306	11	220.00	f
+306	35	400.00	f
+306	107	400.00	f
+306	1	220.00	f
+306	578	50.00	f
+306	22	\N	f
+306	7	60.00	f
+306	32	\N	f
+306	61	\N	f
+307	127	700.00	f
+307	1	220.00	f
+307	155	300.00	f
+307	32	\N	f
+307	75	\N	f
+307	6	\N	f
+307	68	\N	f
+307	7	60.00	f
+307	4	27.60	f
+307	18	20.00	f
+308	706	\N	f
+308	379	\N	f
+308	1	220.00	f
+308	16	122.00	f
+308	112	200.00	f
+308	3	18.00	f
+308	151	\N	f
+308	22	\N	f
+308	165	600.00	f
+308	10	800.00	f
+309	6	150.00	f
+309	164	50.00	f
+309	5	300.00	f
+309	9	200.00	f
+309	7	80.00	f
+309	85	\N	f
+309	305	10.00	f
+309	234	600.00	f
+309	315	\N	f
+309	152	150.00	f
+309	51	60.00	f
+309	2	\N	f
+310	135	4000.00	f
+310	208	\N	f
+310	150	\N	f
+310	463	\N	f
+310	281	\N	f
+310	310	\N	f
+310	75	\N	f
+310	382	\N	f
+310	850	\N	f
+310	293	\N	f
+311	7	110.00	f
+311	9	50.00	f
+311	214	400.00	f
+311	37	68.00	f
+311	24	536.00	f
+311	85	\N	f
+311	51	30.00	f
+311	2	\N	f
+312	72	400.00	f
+312	56	400.00	f
+312	354	400.00	f
+312	50	\N	f
+312	9	42.00	f
+312	24	201.00	f
+312	3	24.00	f
+312	48	\N	f
+312	16	61.00	f
+312	30	\N	f
+312	213	200.00	f
+312	103	\N	f
+313	682	\N	f
+313	45	400.00	f
+313	72	300.00	f
+313	354	150.00	f
+313	213	150.00	f
+313	90	30.00	f
+313	20	30.00	f
+313	93	\N	f
+313	737	\N	f
+313	109	50.00	f
+313	3	6.00	f
+313	2	\N	t
+314	297	1500.00	f
+314	43	168.00	f
+314	525	\N	f
+314	1	110.00	f
+314	3	30.00	f
+314	17	30.00	f
+314	9	31.50	f
+314	130	\N	f
+314	133	\N	f
+314	16	122.00	f
+314	194	300.00	f
+314	283	150.00	f
+314	247	150.00	f
+314	387	\N	f
+314	20	\N	f
+315	823	\N	f
+315	316	200.00	f
+315	526	\N	f
+315	387	\N	f
+315	3	48.00	f
+315	247	\N	f
+315	20	\N	f
+316	452	2000.00	f
+316	6	140.00	f
+316	5	200.00	f
+316	12	206.00	f
+316	451	100.00	f
+316	10	1000.00	f
+316	16	244.00	f
+316	1	220.00	f
+316	68	\N	f
+316	296	\N	f
+316	459	\N	f
+317	276	250.00	f
+317	73	\N	f
+317	6	200.00	f
+317	7	200.00	f
+317	794	300.00	f
+317	5	150.00	f
+317	104	\N	f
+317	85	\N	f
+317	34	\N	f
+317	2	\N	f
+318	165	1000.00	f
+318	242	1000.00	f
+318	135	600.00	f
+318	517	400.00	f
+318	79	300.00	f
+318	35	400.00	f
+318	299	50.00	f
+318	279	150.00	f
+318	1	330.00	f
+318	25	48.00	f
+318	138	\N	f
+318	595	\N	f
+318	22	\N	f
+318	209	\N	f
+318	4	55.20	f
+319	772	1000.00	f
+319	6	250.00	f
+319	7	200.00	f
+319	9	250.00	f
+319	5	300.00	f
+319	199	50.00	f
+319	32	\N	f
+319	34	\N	f
+319	74	\N	f
+319	38	80.00	f
+319	104	\N	f
+319	2	\N	f
+320	186	1000.00	f
+320	45	300.00	f
+320	33	\N	f
+320	631	\N	f
+320	1	220.00	f
+320	8	492.00	f
+320	23	238.00	f
+320	3	18.00	f
+320	24	201.00	f
+320	13	50.00	f
+320	20	\N	f
+320	19	400.00	f
+321	167	600.00	f
+321	6	500.00	f
+321	96	\N	f
+321	7	60.00	f
+321	720	200.00	f
+321	1	110.00	f
+321	3	9.00	f
+321	25	16.00	f
+321	5	150.00	f
+321	81	300.00	f
+321	18	30.00	f
+322	547	800.00	f
+322	341	\N	f
+322	110	\N	f
+322	12	412.00	f
+322	62	80.00	f
+322	146	60.00	f
+322	1	220.00	f
+322	3	15.00	f
+322	27	\N	f
+322	10	600.00	f
+322	5	200.00	f
+322	206	60.00	f
+322	19	350.00	f
+322	4	55.20	f
+323	500	1200.00	f
+323	341	\N	f
+323	24	268.00	f
+323	4	73.60	f
+323	274	400.00	f
+323	132	150.00	f
+323	41	\N	f
+323	122	\N	f
+323	5	150.00	f
+323	206	60.00	f
+323	13	20.00	f
+324	62	500.00	f
+324	466	\N	f
+324	1	220.00	f
+324	9	21.00	f
+324	27	\N	f
+324	40	\N	f
+324	47	\N	f
+324	4	55.20	f
+324	60	500.00	f
+324	490	100.00	f
+326	10	800.00	f
+326	243	300.00	f
+326	518	200.00	f
+326	1	220.00	f
+326	3	12.00	f
+326	14	91.80	f
+326	546	300.00	f
+327	696	1500.00	f
+327	119	150.00	f
+327	473	\N	f
+327	10	800.00	f
+327	23	357.00	f
+327	14	91.80	f
+327	3	9.00	f
+327	125	\N	f
+327	18	20.00	f
+328	252	900.00	f
+328	313	\N	f
+328	109	250.00	f
+328	48	\N	f
+328	3	18.00	f
+328	30	\N	f
+328	80	\N	f
+328	27	\N	f
+328	120	\N	f
+328	106	\N	f
+328	24	134.00	f
+328	4	55.20	f
+328	19	400.00	f
+328	2	\N	t
+332	21	1500.00	f
+332	1	440.00	f
+332	8	800.00	f
+332	3	18.00	f
+332	13	60.00	f
+332	184	40.00	f
+332	399	30.00	f
+332	18	40.00	f
+332	392	\N	f
+332	7	50.00	f
+332	30	\N	f
+333	62	700.00	f
+333	1	330.00	f
+333	3	30.00	f
+333	392	\N	f
+333	492	\N	f
+333	80	\N	f
+333	40	\N	f
+333	191	1.05	f
+333	125	\N	f
+333	7	60.00	f
+333	2	\N	t
+336	64	400.00	f
+336	175	\N	f
+336	77	\N	f
+336	219	\N	f
+336	3	15.00	f
+336	15	58.00	f
+336	26	80.00	f
+336	111	60.00	f
+336	18	30.00	f
+336	55	2.30	f
+336	2	\N	t
+337	6	500.00	f
+337	28	7.00	f
+337	11	280.00	f
+337	29	600.00	f
+337	8	400.00	f
+337	1	220.00	f
+337	193	\N	f
+337	219	\N	f
+337	124	\N	f
+337	111	50.00	f
+337	14	55.08	f
+337	15	58.00	f
+338	21	1500.00	f
+338	87	250.00	f
+338	1	440.00	f
+338	5	300.00	f
+338	7	150.00	f
+338	47	\N	f
+338	163	\N	f
+338	40	\N	f
+338	51	100.00	f
+338	189	\N	f
+338	13	40.00	f
+339	6	600.00	f
+339	69	200.00	f
+339	87	100.00	f
+339	7	100.00	f
+339	226	\N	f
+339	40	\N	f
+339	47	\N	f
+339	189	\N	f
+339	61	\N	f
+339	28	5.00	f
+339	59	800.00	f
+339	2	6.09	f
+340	572	500.00	f
+340	21	1200.00	f
+340	3	30.00	f
+340	80	\N	f
+340	26	80.00	f
+340	78	\N	f
+340	22	\N	f
+340	1	110.00	f
+340	19	400.00	f
+340	15	116.00	f
+342	297	2500.00	f
+342	224	800.00	f
+342	337	500.00	f
+342	119	100.00	f
+342	18	80.00	f
+342	3	24.00	f
+342	65	\N	f
+342	180	\N	f
+342	14	183.60	f
+342	92	\N	f
+342	277	500.00	f
+343	53	300.00	f
+343	6	200.00	f
+343	7	200.00	f
+343	51	150.00	f
+343	37	51.00	f
+343	104	\N	f
+343	74	\N	f
+343	34	\N	f
+343	319	\N	f
+343	304	500.00	f
+343	144	100.00	f
+343	2	\N	f
+344	235	1800.00	f
+344	335	500.00	f
+344	16	183.00	f
+344	112	200.00	f
+344	131	\N	f
+344	1	220.00	f
+344	22	\N	f
+344	114	\N	f
+344	278	100.00	f
+344	400	\N	f
+344	20	30.00	f
+344	10	800.00	f
+344	7	60.00	f
+346	311	1500.00	f
+346	592	800.00	f
+346	1	800.00	f
+346	82	\N	f
+346	259	\N	f
+346	30	\N	f
+346	8	123.00	f
+346	23	119.00	f
+346	110	400.00	f
+346	2	\N	t
+347	5	300.00	f
+347	9	150.00	f
+347	6	150.00	f
+347	7	250.00	f
+347	152	200.00	f
+347	51	150.00	f
+347	853	\N	f
+347	15	58.00	f
+347	389	100.00	f
+347	34	\N	f
+347	2	\N	f
+348	135	1500.00	f
+348	6	500.00	f
+348	12	257.50	f
+348	28	7.00	f
+348	5	50.00	f
+348	398	150.00	f
+348	165	700.00	f
+348	1	330.00	f
+348	151	\N	f
+348	9	10.50	f
+348	97	60.00	f
+348	3	12.00	f
+349	564	400.00	f
+349	10	600.00	f
+349	32	\N	f
+349	6	\N	f
+349	39	50.00	f
+349	5	250.00	f
+349	61	\N	f
+349	151	\N	f
+349	22	\N	f
+349	9	3.50	f
+349	7	40.00	f
+351	846	1000.00	f
+351	6	200.00	f
+351	7	150.00	f
+351	9	150.00	f
+351	40	\N	f
+351	173	80.00	f
+351	12	309.00	f
+351	42	\N	f
+351	37	68.00	f
+351	34	\N	f
+351	53	\N	f
+351	2	\N	f
+352	72	900.00	f
+352	10	1000.00	f
+352	12	515.00	f
+352	7	50.00	f
+352	6	50.00	f
+352	18	100.00	f
+352	89	\N	f
+352	710	200.00	f
+353	116	200.00	f
+353	12	1030.00	f
+353	85	\N	f
+353	87	150.00	f
+353	9	80.00	f
+353	34	\N	f
+353	234	500.00	f
+353	701	80.00	f
+353	53	\N	f
+353	817	\N	f
+353	2	\N	f
+354	458	500.00	f
+354	212	500.00	f
+354	72	300.00	f
+354	521	400.00	f
+354	112	300.00	f
+354	131	\N	f
+354	16	183.00	f
+354	10	400.00	f
+354	1	110.00	f
+354	574	30.00	f
+354	211	300.00	f
+355	35	500.00	f
+355	7	100.00	f
+355	6	120.00	f
+355	68	\N	f
+355	1	110.00	f
+355	18	30.00	f
+355	89	\N	f
+355	5	150.00	f
+355	81	250.00	f
+355	75	100.00	f
+356	10	1200.00	f
+356	20	\N	f
+356	12	257.50	f
+356	7	150.00	f
+356	42	\N	f
+361	607	500.00	f
+361	7	200.00	f
+361	32	\N	f
+361	28	5.00	f
+361	338	250.00	f
+361	9	200.00	f
+361	34	\N	f
+361	37	17.00	f
+361	2	\N	f
+362	265	500.00	f
+362	33	\N	f
+362	168	\N	f
+362	17	30.00	f
+362	83	\N	f
+362	48	\N	f
+362	3	15.00	f
+362	251	\N	f
+362	120	\N	f
+362	106	\N	f
+362	752	100.00	f
+362	123	100.00	f
+362	5	250.00	f
+362	54	\N	f
+362	4	138.00	f
+362	2	\N	t
+363	685	400.00	f
+363	45	200.00	f
+363	508	80.00	f
+363	5	100.00	f
+363	176	150.00	f
+363	509	60.00	f
+363	3	12.00	f
+363	178	16.80	f
+363	216	33.60	f
+363	695	\N	f
+363	97	\N	f
+363	9	3.50	f
+364	453	1500.00	f
+364	93	250.00	f
+364	19	60.00	f
+364	364	\N	f
+364	1	220.00	f
+364	3	18.00	f
+364	57	\N	f
+364	217	200.00	f
+364	229	300.00	f
+364	287	200.00	f
+364	637	150.00	f
+364	4	55.20	f
+365	37	170.00	f
+365	214	400.00	f
+365	318	\N	f
+365	9	200.00	f
+365	34	\N	f
+365	74	\N	f
+365	11	60.00	f
+366	610	500.00	f
+366	11	1200.00	f
+366	483	\N	f
+366	2	6.09	f
+366	4	18.40	f
+367	127	700.00	f
+367	7	200.00	f
+367	17	30.00	f
+367	3	15.00	f
+367	78	\N	f
+367	36	\N	f
+367	629	\N	f
+367	723	\N	f
+367	790	300.00	f
+367	845	\N	f
+367	2	\N	t
+369	6	500.00	f
+369	28	10.00	f
+369	9	100.00	f
+369	11	400.00	f
+369	89	\N	f
+369	2	6.09	f
+369	51	40.00	f
+370	21	1500.00	f
+370	681	500.00	f
+370	361	\N	f
+370	96	\N	f
+370	1	220.00	f
+370	23	238.00	f
+370	3	18.00	f
+370	221	\N	f
+370	47	\N	f
+370	31	\N	f
+370	134	\N	f
+370	98	200.00	f
+370	91	80.00	f
+370	24	134.00	f
+370	14	73.44	f
+371	148	\N	f
+371	3	24.00	f
+371	11	500.00	f
+371	14	55.08	f
+371	24	67.00	f
+371	31	\N	f
+371	2	\N	t
+373	129	250.00	f
+373	105	500.00	f
+373	33	\N	f
+373	66	\N	f
+373	52	\N	f
+373	20	\N	f
+373	3	12.00	f
+373	209	\N	f
+373	2	\N	t
+375	624	700.00	f
+375	7	80.00	f
+375	379	\N	f
+375	11	200.00	f
+375	1	110.00	f
+375	10	1000.00	f
+375	12	206.00	f
+375	291	200.00	f
+375	340	150.00	f
+376	46	800.00	f
+376	199	\N	f
+376	11	200.00	f
+376	1	110.00	f
+376	163	\N	f
+376	89	\N	f
+376	7	60.00	f
+376	6	40.00	f
+376	68	\N	f
+376	98	300.00	f
+376	10	800.00	f
+376	291	150.00	f
+377	6	600.00	f
+377	12	309.00	f
+377	28	10.00	f
+377	7	120.00	f
+377	9	100.00	f
+377	86	4.00	f
+377	5	50.00	f
+377	599	\N	f
+377	37	51.00	f
+377	53	30.00	f
+377	51	200.00	f
+377	144	80.00	f
+377	34	\N	f
+377	2	6.09	f
+378	21	1400.00	f
+378	131	\N	f
+378	16	183.00	f
+378	112	200.00	f
+378	10	500.00	f
+378	1	110.00	f
+378	7	60.00	f
+378	42	\N	f
+378	37	51.00	f
+378	22	\N	f
+378	52	\N	f
+378	18	30.00	f
+378	15	58.00	f
+379	6	500.00	f
+379	12	185.40	f
+379	28	10.00	f
+379	7	250.00	f
+379	5	100.00	f
+379	150	60.00	f
+379	306	250.00	f
+379	34	\N	f
+379	40	\N	f
+379	2	6.09	f
+383	6	400.00	f
+383	12	257.50	f
+383	28	7.00	f
+383	5	100.00	f
+383	9	80.00	f
+383	38	150.00	f
+383	74	\N	f
+383	223	\N	f
+383	34	\N	f
+383	51	50.00	f
+383	2	\N	f
+384	244	1500.00	f
+384	56	700.00	f
+384	46	300.00	f
+384	19	120.00	f
+384	1	330.00	f
+384	117	500.00	f
+384	195	150.00	f
+384	82	\N	f
+384	25	32.00	f
+384	6	\N	f
+384	22	\N	f
+384	4	55.20	f
+386	236	1200.00	f
+386	454	500.00	f
+386	16	122.00	f
+386	112	150.00	f
+386	1	110.00	f
+386	3	36.00	f
+386	37	68.00	f
+386	42	\N	f
+386	61	\N	f
+386	114	\N	f
+386	30	\N	f
+386	2	\N	t
+387	179	500.00	f
+387	5	100.00	f
+387	6	250.00	f
+387	329	50.00	f
+387	9	60.00	f
+387	73	\N	f
+387	74	\N	f
+387	34	\N	f
+387	367	\N	f
+387	441	250.00	f
+387	2	\N	f
+388	429	\N	f
+388	54	500.00	f
+388	62	80.00	f
+388	3	9.00	f
+388	39	40.00	f
+388	255	\N	f
+388	11	200.00	f
+388	2	\N	t
+390	686	400.00	f
+390	33	\N	f
+390	28	5.00	f
+390	9	10.50	f
+390	11	250.00	f
+390	5	300.00	f
+390	41	\N	f
+390	92	\N	f
+390	24	134.00	f
+390	328	\N	f
+390	4	36.80	f
+390	2	\N	t
+392	19	600.00	f
+392	9	150.00	f
+392	26	60.00	f
+392	12	154.50	f
+392	417	\N	f
+392	86	2.00	f
+392	191	1.05	f
+392	2	\N	f
+394	161	1500.00	f
+394	394	300.00	f
+394	174	100.00	f
+394	477	150.00	f
+394	282	100.00	f
+394	1	550.00	f
+394	141	\N	f
+394	262	\N	f
+394	27	\N	f
+394	26	250.00	f
+394	17	60.00	f
+394	63	\N	f
+394	13	50.00	f
+394	15	174.00	f
+394	2	\N	t
+395	46	1000.00	f
+395	1	220.00	f
+395	63	\N	f
+395	13	50.00	f
+395	141	\N	f
+395	80	\N	f
+395	31	\N	f
+395	638	\N	f
+395	258	\N	f
+395	4	36.80	f
+395	560	\N	f
+396	6	600.00	f
+396	11	350.00	f
+396	4	138.00	f
+396	9	10.50	f
+396	2	9.13	f
+397	6	500.00	f
+397	33	\N	f
+397	9	80.00	f
+397	28	7.00	f
+397	5	50.00	f
+397	86	4.00	f
+397	7	50.00	f
+397	2	3.04	f
+398	29	900.00	f
+398	110	\N	f
+398	1	330.00	f
+398	8	492.00	f
+398	479	\N	f
+398	169	\N	f
+398	36	\N	f
+398	78	\N	f
+398	10	400.00	f
+398	4	73.60	f
+398	602	200.00	f
+398	2	\N	t
+399	605	250.00	f
+399	7	125.00	f
+399	9	200.00	f
+399	5	150.00	f
+399	12	1030.00	f
+399	53	40.00	f
+399	338	40.00	f
+399	36	\N	f
+399	198	5.20	f
+399	34	\N	f
+399	2	\N	f
+400	129	400.00	f
+400	704	600.00	f
+400	46	400.00	f
+400	224	300.00	f
+400	19	350.00	f
+400	148	\N	f
+400	348	\N	f
+400	5	200.00	f
+400	413	\N	f
+400	122	\N	f
+400	1	220.00	f
+400	8	369.00	f
+400	31	\N	f
+400	4	138.00	f
+401	21	2000.00	f
+401	102	600.00	f
+401	148	\N	f
+401	113	\N	f
+401	10	600.00	f
+401	1	220.00	f
+401	20	\N	f
+401	8	492.00	f
+401	13	50.00	f
+401	3	18.00	f
+401	31	\N	f
+401	156	\N	f
+401	19	400.00	f
+401	122	\N	f
+401	4	55.20	f
+402	334	1500.00	f
+402	352	1000.00	f
+402	212	800.00	f
+402	21	800.00	f
+402	166	400.00	f
+402	10	800.00	f
+402	6	200.00	f
+402	1	220.00	f
+402	49	\N	f
+402	242	\N	f
+402	13	40.00	f
+402	97	60.00	f
+403	368	\N	f
+403	434	\N	f
+403	122	\N	f
+403	8	492.00	f
+403	132	200.00	f
+403	15	58.00	f
+403	165	150.00	f
+403	734	50.00	f
+406	233	300.00	f
+406	29	600.00	f
+406	19	150.00	f
+406	1	220.00	f
+406	90	50.00	f
+406	13	50.00	f
+406	39	30.00	f
+406	26	60.00	f
+406	3	12.00	f
+406	40	\N	f
+407	6	600.00	f
+407	12	206.00	f
+407	28	7.00	f
+407	26	300.00	f
+407	37	51.00	f
+407	62	500.00	f
+407	9	400.00	f
+407	86	2.00	f
+407	47	\N	f
+407	59	200.00	f
+407	349	\N	f
+407	2	\N	f
+408	21	1200.00	f
+408	60	600.00	f
+408	295	100.00	f
+408	98	200.00	f
+408	16	122.00	f
+408	10	426.00	f
+408	87	80.00	f
+408	38	80.00	f
+408	124	\N	f
+408	137	\N	f
+408	1	220.00	f
+408	25	32.00	f
+408	26	100.00	f
+412	323	\N	f
+412	62	200.00	f
+412	81	80.00	f
+412	193	\N	f
+412	647	\N	f
+412	3	9.00	f
+412	31	\N	f
+412	15	58.00	f
+412	14	91.80	f
+412	175	\N	f
+412	2	\N	t
+413	6	400.00	f
+413	11	180.00	f
+413	29	400.00	f
+413	1	110.00	f
+413	111	50.00	f
+413	124	\N	f
+413	77	\N	f
+413	53	\N	f
+413	5	50.00	f
+413	3	18.00	f
+413	70	\N	f
+413	26	50.00	f
+413	19	300.00	f
+414	173	150.00	f
+414	6	150.00	f
+414	144	100.00	f
+414	150	150.00	f
+414	7	150.00	f
+414	489	\N	f
+414	73	\N	f
+414	11	30.00	f
+414	2	\N	f
+418	6	300.00	f
+418	719	180.00	f
+418	11	80.00	f
+418	7	120.00	f
+418	150	200.00	f
+418	510	\N	f
+418	5	100.00	f
+418	34	\N	f
+418	61	\N	f
+418	38	100.00	f
+418	2	\N	f
+420	600	4132.00	f
+420	764	\N	f
+420	824	400.00	f
+420	42	\N	f
+420	9	60.00	f
+420	173	100.00	f
+421	210	500.00	f
+421	257	200.00	f
+421	12	618.00	f
+421	150	100.00	f
+421	104	\N	f
+421	73	\N	f
+421	7	100.00	f
+421	2	6.09	f
+422	684	400.00	f
+422	45	500.00	f
+422	352	300.00	f
+422	33	\N	f
+422	83	\N	f
+422	48	\N	f
+422	3	15.00	f
+422	101	\N	f
+422	126	30.00	f
+422	145	20.00	f
+422	251	\N	f
+422	626	\N	f
+422	372	40.00	f
+422	567	20.00	f
+422	176	150.00	f
+422	4	110.40	f
+422	2	\N	t
+423	110	\N	f
+423	5	200.00	f
+423	33	\N	f
+423	9	150.00	f
+423	168	\N	f
+423	7	120.00	f
+423	854	\N	f
+423	178	22.40	f
+423	289	\N	f
+424	6	500.00	f
+424	12	257.50	f
+424	28	7.00	f
+424	9	50.00	f
+424	72	900.00	f
+424	43	112.00	f
+424	203	40.00	f
+424	139	\N	f
+424	157	\N	f
+424	205	200.00	f
+424	109	100.00	f
+424	13	40.00	f
+424	4	36.80	f
+424	2	\N	t
+425	285	1000.00	f
+425	488	500.00	f
+425	9	150.00	f
+425	581	80.00	f
+425	6	300.00	f
+425	7	200.00	f
+425	747	40.00	f
+425	373	40.00	f
+425	51	60.00	f
+425	37	34.00	f
+425	53	40.00	f
+425	2	\N	f
+426	266	400.00	f
+426	800	500.00	f
+426	8	600.00	f
+426	48	\N	f
+426	3	18.00	f
+426	55	6.80	f
+426	27	\N	f
+426	50	\N	f
+426	205	150.00	f
+426	109	80.00	f
+426	20	\N	f
+426	13	30.00	f
+426	4	73.60	f
+426	24	134.00	f
+426	2	\N	t
+427	351	500.00	f
+427	202	700.00	f
+427	33	\N	f
+427	258	60.00	f
+427	1	330.00	f
+427	3	18.00	f
+427	17	30.00	f
+427	27	\N	f
+427	55	6.80	f
+427	50	\N	f
+427	5	250.00	f
+427	24	201.00	f
+427	92	\N	f
+427	4	92.00	f
+427	2	\N	t
+428	355	500.00	f
+428	186	700.00	f
+428	33	\N	f
+428	101	\N	f
+428	126	40.00	f
+428	145	30.00	f
+428	170	\N	f
+428	287	200.00	f
+428	176	200.00	f
+428	54	\N	f
+428	217	150.00	f
+428	741	150.00	f
+428	2	\N	t
+429	107	500.00	f
+429	19	60.00	f
+429	101	\N	f
+429	126	30.00	f
+429	145	20.00	f
+429	3	15.00	f
+429	665	\N	f
+429	108	300.00	f
+429	308	300.00	f
+429	57	200.00	f
+429	217	150.00	f
+429	50	\N	f
+429	106	\N	f
+429	4	55.20	f
+429	2	\N	t
+430	6	500.00	f
+430	11	250.00	f
+430	97	80.00	f
+430	104	\N	f
+430	9	50.00	f
+430	304	200.00	f
+430	2	9.13	f
+431	236	1000.00	f
+431	187	300.00	f
+431	224	250.00	f
+431	79	150.00	f
+431	1	220.00	f
+431	16	183.00	f
+431	118	\N	f
+431	10	400.00	f
+431	8	400.00	f
+431	61	\N	f
+431	22	\N	f
+431	55	6.80	f
+431	14	55.08	f
+432	493	2000.00	f
+432	261	\N	f
+432	651	\N	f
+432	8	500.00	f
+432	273	200.00	f
+432	1	220.00	f
+432	3	18.00	f
+432	197	5.00	f
+432	156	\N	f
+432	612	\N	f
+432	90	20.00	f
+432	767	\N	f
+432	2	\N	t
+433	348	\N	f
+433	154	300.00	f
+433	9	120.00	f
+433	152	80.00	f
+433	40	\N	f
+433	191	1.05	f
+433	6	60.00	f
+433	51	40.00	f
+433	32	\N	f
+433	2	\N	f
+435	129	400.00	f
+435	33	\N	f
+435	318	\N	f
+435	185	500.00	f
+435	9	250.00	f
+435	36	\N	f
+435	142	\N	f
+435	38	100.00	f
+435	34	\N	f
+435	7	40.00	f
+435	748	150.00	f
+435	2	\N	f
+436	6	700.00	f
+436	11	400.00	f
+436	104	\N	f
+436	4	138.00	f
+436	26	80.00	f
+436	21	1000.00	f
+436	84	\N	f
+436	3	18.00	f
+436	66	\N	f
+436	10	400.00	f
+436	52	\N	f
+436	2	12.17	f
+437	21	1200.00	f
+437	105	500.00	f
+437	457	300.00	f
+437	33	\N	f
+437	150	\N	f
+437	484	\N	f
+437	1	110.00	f
+437	16	61.00	f
+437	108	200.00	f
+437	66	\N	f
+437	248	\N	f
+437	4	55.20	f
+437	692	300.00	f
+438	544	1000.00	f
+438	35	600.00	f
+438	107	500.00	f
+438	21	500.00	f
+438	1	440.00	f
+438	23	357.00	f
+438	364	\N	f
+438	91	150.00	f
+438	38	120.00	f
+438	99	\N	f
+438	94	\N	f
+438	716	\N	f
+438	97	250.00	f
+438	188	\N	f
+439	235	2000.00	f
+439	1	330.00	f
+439	23	238.00	f
+439	16	183.00	f
+439	131	\N	f
+439	3	24.00	f
+439	8	500.00	f
+439	296	\N	f
+439	190	\N	f
+439	22	\N	f
+439	4	73.60	f
+439	19	500.00	f
+440	127	700.00	f
+440	10	1200.00	f
+440	368	300.00	f
+440	5	200.00	f
+440	1	220.00	f
+440	8	369.00	f
+440	23	119.00	f
+440	75	\N	f
+440	132	100.00	f
+440	248	100.00	f
+442	45	900.00	f
+442	41	\N	f
+442	24	536.00	f
+442	227	\N	f
+442	8	492.00	f
+442	248	\N	f
+442	75	\N	f
+442	13	50.00	f
+442	30	\N	f
+442	662	100.00	f
+442	835	150.00	f
+442	4	36.80	f
+442	2	\N	t
+444	102	1200.00	f
+444	46	400.00	f
+444	1	110.00	f
+444	23	119.00	f
+444	3	9.00	f
+444	25	16.00	f
+444	31	\N	f
+444	5	50.00	f
+445	105	500.00	f
+445	33	\N	f
+445	11	400.00	f
+445	9	21.00	f
+445	38	80.00	f
+445	2	9.13	f
+446	10	2000.00	f
+446	79	300.00	f
+446	1	330.00	f
+446	5	150.00	f
+446	12	206.00	f
+446	32	\N	f
+446	171	\N	f
+447	5	1000.00	f
+447	7	500.00	f
+447	9	400.00	f
+447	6	400.00	f
+447	199	100.00	f
+447	32	\N	f
+447	34	\N	f
+447	74	\N	f
+447	2	\N	f
+448	210	400.00	f
+448	11	180.00	f
+448	7	80.00	f
+448	10	500.00	f
+448	16	600.00	f
+448	32	\N	f
+448	5	100.00	f
+448	9	80.00	f
+448	151	\N	f
+448	40	\N	f
+448	2	6.09	f
+450	705	\N	f
+450	174	400.00	f
+450	269	250.00	f
+450	1	330.00	f
+450	171	\N	f
+450	147	\N	f
+450	363	300.00	f
+450	292	300.00	f
+450	7	60.00	f
+451	179	600.00	f
+451	7	100.00	f
+451	51	120.00	f
+451	34	\N	f
+451	42	\N	f
+451	152	300.00	f
+451	515	30.00	f
+451	38	60.00	f
+451	2	\N	f
+455	6	600.00	f
+455	12	309.00	f
+455	28	10.00	f
+455	9	80.00	f
+455	7	150.00	f
+455	37	51.00	f
+455	718	300.00	f
+455	179	250.00	f
+455	74	\N	f
+455	51	40.00	f
+455	2	6.09	f
+456	6	400.00	f
+456	11	200.00	f
+456	4	36.80	f
+456	179	700.00	f
+456	5	150.00	f
+456	32	\N	f
+456	9	100.00	f
+456	38	80.00	f
+456	399	20.00	f
+456	7	100.00	f
+456	81	80.00	f
+456	2	6.09	f
+457	135	1600.00	f
+457	269	400.00	f
+457	3	24.00	f
+457	617	40.00	f
+457	347	4.60	f
+457	11	150.00	f
+457	363	200.00	f
+457	278	100.00	f
+457	75	100.00	f
+457	277	400.00	f
+458	21	1500.00	f
+458	375	400.00	f
+458	228	200.00	f
+458	16	122.00	f
+458	112	150.00	f
+458	1	110.00	f
+458	37	51.00	f
+458	32	\N	f
+458	6	\N	f
+458	7	50.00	f
+458	15	58.00	f
+458	18	30.00	f
+460	813	\N	f
+460	15	174.00	f
+460	3	18.00	f
+460	18	40.00	f
+460	52	\N	f
+460	14	73.44	f
+460	10	800.00	f
+460	49	\N	f
+460	55	2.30	f
+461	6	500.00	f
+461	11	300.00	f
+461	28	7.00	f
+461	4	46.00	f
+461	136	600.00	f
+461	5	200.00	f
+461	55	4.60	f
+461	30	\N	f
+462	192	1200.00	f
+462	102	500.00	f
+462	108	400.00	f
+462	113	\N	f
+462	658	\N	f
+462	10	400.00	f
+462	16	183.00	f
+462	1	110.00	f
+462	23	119.00	f
+462	13	40.00	f
+462	19	400.00	f
+462	24	134.00	f
+463	358	\N	f
+463	9	40.00	f
+463	5	50.00	f
+463	88	30.00	f
+463	7	40.00	f
+463	359	150.00	f
+463	2	6.09	f
+466	102	1200.00	f
+466	707	800.00	f
+466	44	500.00	f
+466	8	369.00	f
+466	1	110.00	f
+466	159	\N	f
+466	24	201.00	f
+466	30	\N	f
+466	94	\N	f
+466	2	\N	t
+467	456	1000.00	f
+467	200	150.00	f
+467	1	220.00	f
+467	23	119.00	f
+467	8	492.00	f
+467	3	15.00	f
+467	90	30.00	f
+467	411	\N	f
+467	182	\N	f
+467	4	55.20	f
+468	21	1400.00	f
+468	88	300.00	f
+468	360	250.00	f
+468	1	220.00	f
+468	23	119.00	f
+468	8	369.00	f
+468	16	61.00	f
+468	5	50.00	f
+468	182	\N	f
+468	134	\N	f
+468	18	30.00	f
+468	4	46.00	f
+469	324	500.00	f
+469	360	350.00	f
+469	12	103.00	f
+469	88	100.00	f
+469	2	6.09	f
+470	21	1600.00	f
+470	1	1500.00	f
+470	218	60.00	f
+470	14	229.50	f
+470	563	\N	f
+470	111	80.00	f
+470	147	\N	f
+470	86	2.00	f
+470	198	2.60	f
+470	76	\N	f
+472	53	300.00	f
+472	9	700.00	f
+472	11	1500.00	f
+472	26	350.00	f
+472	267	\N	f
+472	47	\N	f
+472	86	4.00	f
+472	314	150.00	f
+472	59	100.00	f
+474	29	1200.00	f
+474	60	600.00	f
+474	10	600.00	f
+474	1	330.00	f
+474	76	\N	f
+474	47	\N	f
+474	8	369.00	f
+474	366	\N	f
+474	499	\N	f
+474	38	80.00	f
+474	26	100.00	f
+475	29	1000.00	f
+475	630	60.00	f
+475	8	492.00	f
+475	1	110.00	f
+475	3	18.00	f
+475	309	\N	f
+475	13	50.00	f
+475	366	\N	f
+475	15	58.00	f
+475	204	\N	f
+475	2	\N	t
+478	6	600.00	f
+478	11	280.00	f
+478	4	110.40	f
+478	21	1400.00	f
+478	353	500.00	f
+478	64	200.00	f
+478	1	220.00	f
+478	36	\N	f
+478	289	\N	f
+478	7	60.00	f
+478	2	\N	t
+479	329	600.00	f
+479	14	165.24	f
+479	11	180.00	f
+479	276	500.00	f
+479	198	5.20	f
+479	223	\N	f
+479	189	\N	f
+479	59	500.00	f
+479	2	\N	f
+480	6	500.00	f
+480	11	550.00	f
+480	28	7.00	f
+480	9	10.50	f
+480	4	36.80	f
+480	2	6.09	f
+483	19	400.00	f
+483	33	\N	f
+483	9	120.00	f
+483	28	5.00	f
+483	86	2.00	f
+483	144	60.00	f
+483	4	110.40	f
+483	2	\N	f
+484	568	400.00	f
+484	445	800.00	f
+484	333	\N	f
+484	35	500.00	f
+484	236	300.00	f
+484	751	150.00	f
+484	336	50.00	f
+484	1	110.00	f
+484	30	\N	f
+484	160	\N	f
+484	2	\N	t
+486	418	2000.00	f
+486	10	1000.00	f
+486	3	30.00	f
+486	15	116.00	f
+486	65	\N	f
+486	36	\N	f
+486	22	\N	f
+486	14	91.80	f
+486	390	200.00	f
+489	6	500.00	f
+489	11	120.00	f
+489	276	600.00	f
+489	226	\N	f
+489	223	\N	f
+489	74	\N	f
+489	409	\N	f
+489	2	\N	f
+490	654	600.00	f
+490	8	400.00	f
+490	773	350.00	f
+490	95	150.00	f
+490	1	110.00	f
+490	3	9.00	f
+490	7	60.00	f
+490	6	\N	f
+490	30	\N	f
+491	88	600.00	f
+491	7	300.00	f
+491	9	400.00	f
+491	37	102.00	f
+491	73	\N	f
+491	34	\N	f
+491	2	\N	f
+493	6	600.00	f
+493	12	288.40	f
+493	28	10.00	f
+493	9	100.00	f
+493	7	100.00	f
+493	5	100.00	f
+493	59	200.00	f
+493	62	200.00	f
+493	74	\N	f
+493	34	\N	f
+493	2	6.09	f
+494	29	1000.00	f
+494	100	200.00	f
+494	1	440.00	f
+494	10	600.00	f
+494	3	12.00	f
+494	58	\N	f
+494	13	40.00	f
+494	204	\N	f
+497	13	50.00	f
+497	39	40.00	f
+497	184	30.00	f
+497	3	12.00	f
+497	20	50.00	f
+497	4	36.80	f
+497	204	\N	f
+497	2	\N	t
+498	6	500.00	f
+498	11	220.00	f
+498	29	600.00	f
+498	1	220.00	f
+498	3	12.00	f
+498	44	150.00	f
+499	487	20.00	f
+499	11	1000.00	f
+499	12	721.00	f
+499	7	40.00	f
+499	2	6.09	f
+499	609	\N	f
+501	6	500.00	f
+501	11	280.00	f
+501	10	600.00	f
+501	20	200.00	f
+501	13	40.00	f
+501	92	\N	f
+501	494	\N	f
+501	4	55.20	f
+\.
+
+
+--
+-- Data for Name: recipe_steps; Type: TABLE DATA; Schema: public; Owner: koma
+--
+
+COPY public.recipe_steps (recipe_id, step_no, instruction, duration_min) FROM stdin;
+1	1	Поставьте кастрюлю с водой на сильный огонь и посолите её как следует — это единственная соль в блюде, сыр и гуанчале солёные сами по себе.	8
+1	2	Выложите гуанчале на холодную сковороду и включите средний огонь. Жир должен вытопиться постепенно, а кусочки — стать золотистыми и хрустящими по краям, минут за 6–8.	8
+1	3	Пока топится жир, разотрите желтки, целое яйцо, тёртый пекорино и перец в густую пасту. Она должна быть комнатной температуры, иначе свернётся от горячей пасты.	3
+1	4	Отварите спагетти на минуту меньше, чем написано на упаковке. Перед тем как сливать, отлейте стакан воды от варки — без неё соус не соберётся.	9
+1	5	Снимите сковороду с огня, переложите в неё пасту и перемешайте с жиром. Дайте сковороде остыть секунд двадцать: она должна быть тёплой, а не горячей.	1
+1	6	Влейте яичную смесь и энергично мешайте, подливая воду от пасты по ложке, пока соус не станет гладким и не обволочёт каждую нить. Подавайте сразу.	2
+2	1	Залейте шафран половником горячего бульона и оставьте настаиваться. Остальной бульон держите на слабом огне: холодный бульон останавливает варку.	2
+2	2	Растопите половину масла и потомите лук на слабом огне до мягкости и прозрачности, не давая ему подрумяниться, минут восемь.	8
+2	3	Всыпьте рис и мешайте пару минут, пока зёрна не станут по краям прозрачными, а в середине — молочно-белыми. Это тостатура, она держит форму зерна.	2
+2	4	Влейте вино и дайте ему полностью выпариться — запах спирта должен уйти.	2
+2	5	Подливайте бульон по половнику, помешивая, и ждите, пока рис почти впитает его перед следующим. Так минут восемнадцать, пока зерно не станет мягким снаружи и чуть упругим внутри.	18
+2	6	Влейте шафрановый настой, снимите с огня и вбейте холодное масло с пармезаном, энергично встряхивая сковороду. Ризотто должно медленно растекаться по тарелке.	2
+3	1	Обжарьте баклажан на сильном огне в двух ложках масла до румяных граней и отложите. Баклажан впитывает масло мгновенно — не добавляйте ещё, он отдаст его обратно.	8
+3	2	В той же сковороде обжарьте кабачок до золотистого цвета, минуты четыре, и отложите к баклажану. Он должен остаться упругим.	4
+3	3	Обжарьте перец до мягкости и лёгких подпалин и тоже отложите.	6
+3	4	На оставшемся масле потомите лук до мягкости, добавьте чеснок и тимьян и держите на огне полминуты, до запаха.	7
+3	5	Положите помидоры и уваривайте на среднем огне до густого соуса, минут двадцать. Он должен держаться на ложке, а не стекать.	20
+3	6	Верните овощи в сковороду, посолите и прогрейте вместе десять минут на слабом огне. Снимите с огня, добавьте базилик и дайте постоять — рататуй вкуснее тёплым, чем горячим.	10
+4	1	Растопите масло в толстостенной кастрюле, положите лук и щепотку соли и держите на среднем огне, помешивая каждые несколько минут. Первые двадцать минут лук будет отдавать воду.	20
+4	2	Дальше начинается собственно карамелизация: лук темнеет до цвета крепкого чая ещё за двадцать пять минут. Если начинает пригорать — убавьте огонь и подлейте ложку воды.	25
+4	3	Всыпьте муку и прогрейте пару минут, чтобы ушёл сырой привкус.	2
+4	4	Влейте вино и соскребите лопаткой всё, что прилипло ко дну. Дайте выпариться наполовину.	4
+4	5	Добавьте бульон и тимьян, доведите до кипения и варите на слабом огне двадцать минут. Посолите и поперчите в конце — бульон мог быть солёным.	20
+4	6	Разлейте по жаропрочным мискам, положите сверху ломтик багета, засыпьте сыром и поставьте под гриль до пузырящейся корочки, минуты на три.	3
+5	1	Залейте мясо холодной водой, доведите до кипения и снимите пену. Варите на слабом огне полтора часа: бульон должен едва подрагивать, иначе он помутнеет.	90
+5	2	Тушите свёклу на сковороде с ложкой масла, томатной пастой и уксусом минут двадцать под крышкой. Именно уксус здесь и сохраняет цвет.	20
+5	3	Отдельно обжарьте лук с морковью до мягкости и золотистого цвета.	8
+5	4	Достаньте мясо, разберите на куски и верните в бульон. Заложите картофель и варите десять минут — до того, как в кастрюлю попадёт кислота.	10
+5	5	Добавьте капусту, через пять минут — свёклу и зажарку. Проварите ещё пять минут, положите лавровый лист и чеснок и сразу снимите с огня.	12
+5	6	Дайте настояться под крышкой хотя бы двадцать минут. Подавайте со сметаной — она смягчает кислоту и связывает вкус.	20
+6	1	Разведите дрожжи с сахаром в тёплом мацони и оставьте на десять минут до пены. Если пены нет, дрожжи мёртвые — начинайте заново.	10
+6	2	Добавьте яйцо, растопленное масло, соль и муку. Вымесите мягкое тесто: оно должно чуть липнуть к рукам, муки больше не добавляйте.	10
+6	3	Накройте и оставьте в тепле на час — тесто должно вырасти вдвое.	60
+6	4	Смешайте оба сыра руками в однородную массу и разделите на четыре шара. Тесто тоже разделите на четыре.	5
+6	5	Раскатайте каждый кусок теста в лепёшку, положите шар сыра в центр, соберите края к середине и защипните. Переверните швом вниз и аккуратно раскатайте до толщины сантиметр.	10
+6	6	Жарьте на сухой сковороде на среднем огне по четыре минуты с каждой стороны, до тёмных пятен. Готовый хачапури смажьте сливочным маслом.	16
+7	1	Залейте комбу холодной водой и поставьте на слабый огонь. Доводите до состояния «вот-вот закипит» минут десять и выньте водоросль до появления пузырей.	10
+7	2	Доведите воду до кипения, всыпьте кацуобуси, сразу снимите с огня и дайте настояться две минуты, пока стружка не осядет.	2
+7	3	Процедите бульон через сито, не отжимая стружку: отжатая даёт горечь.	2
+7	4	Замочите вакамэ в холодной воде на пять минут: она вырастет в несколько раз.	5
+7	5	Прогрейте даси, положите тофу и вакамэ и держите на слабом огне пару минут.	2
+7	6	Разведите мисо в половнике горячего бульона до однородности, влейте обратно и сразу снимите с огня. Посыпьте зелёным луком.	2
+8	1	Разрежьте авокадо, выньте косточку и ложкой достаньте мякоть в миску. Авокадо должно поддаваться под пальцем, но не проваливаться.	5
+8	2	Сразу полейте соком лайма и посолите. Кислота должна попасть на мякоть до того, как та начнёт темнеть.	1
+8	3	Разомните вилкой до крупной неоднородной массы. Куски авокадо должны остаться — это и есть правильная текстура.	3
+8	4	Вмешайте лук, халапеньо и кинзу, попробуйте и добавьте соли или лайма. Помидор кладите последним и аккуратно, чтобы он не пустил сок.	4
+8	5	Подавайте сразу. Если нужно подержать, накройте плёнкой в контакт с поверхностью — воздух и есть причина потемнения.	1
+10	1	Залейте чечевицу тремя стаканами воды, добавьте куркуму и варите под крышкой тридцать минут, пока зёрна не разварятся в мягкую массу.	30
+10	2	Разомните часть чечевицы ложкой прямо в кастрюле и посолите. Консистенция должна быть как у густого супа.	3
+10	3	Отдельно обжарьте лук до золотистого цвета, добавьте помидоры и потушите, пока они не разойдутся в соус. Переложите в чечевицу.	10
+10	4	Разогрейте топлёное масло в маленькой сковороде почти до дымка. Всыпьте семена горчицы: они должны затрещать за несколько секунд.	2
+10	5	Сразу добавьте зиру, через десять секунд — чеснок и чили, ещё через двадцать — асафетиду. Всё это занимает меньше минуты, и отходить нельзя.	1
+68	2	Выньте курицу, обсушите и обжарьте кожей вниз до румяной корочки. Маринад сохраните.	10
+10	6	Вылейте раскалённую тадку прямо в кастрюлю с чечевицей — она должна зашипеть. Перемешайте и подавайте с рисом или лепёшкой.	1
+11	1	Разогрейте масло на широкой сковороде и обжарьте курицу с кроликом до румяной корочки со всех сторон. Это не пять минут: на это уходит четверть часа, и торопиться здесь бессмысленно — весь вкус блюда закладывается тут.	15
+11	2	Сдвиньте мясо к краям, положите в центр зелёную фасоль и обжарьте пару минут. Добавьте тёртый помидор и паприку и жарьте, пока помидор не потемнеет и не перестанет пахнуть сырым.	6
+11	3	Влейте бульон, положите розмарин, шафран и белую фасоль, посолите заметно сильнее, чем кажется нужным, и дайте покипеть десять минут. Сейчас последний момент, когда можно поправить соль.	10
+11	4	Всыпьте рис ровным слоем и распределите его один раз ложкой. Больше не трогайте сковороду до конца готовки — ни мешать, ни разравнивать.	\N
+11	5	Варите на сильном огне десять минут, потом убавьте до среднего и держите ещё восемь, пока бульон не уйдёт. Рис должен виднеться над поверхностью.	18
+11	6	Добавьте огня на полминуты и слушайте: как только появится сухой треск, а не бульканье, снимайте. Это сокаррат. Накройте полотенцем и дайте постоять пять минут.	6
+12	1	Разогрейте масло в глубокой сковороде до негорячего состояния — картофель, брошенный внутрь, должен лениво зашипеть, а не затрещать. Положите картофель с луком и посолите.	3
+12	2	Томите двадцать минут, изредка переворачивая лопаткой. Готово, когда ломтик легко разламывается о край сковороды. Слейте масло через дуршлаг, картофель оставьте.	20
+12	3	Взбейте яйца с щепоткой соли и вмешайте в них тёплый картофель. Дайте постоять десять минут: картофель отдаст крахмал, и тортилья будет держать форму.	10
+12	4	На сковороде диаметром 24 см с ложкой масла вылейте смесь и жарьте на среднем огне четыре минуты, подводя края лопаткой к центру.	4
+12	5	Накройте тарелкой, переверните одним движением и верните в сковороду сырой стороной вниз. Ещё три минуты — и центр останется чуть влажным, как и полагается.	3
+13	1	Посолите ломтики баклажанов и оставьте на полчаса в дуршлаге, потом обсушите. Смажьте маслом и запеките при 200 °C двадцать минут до мягкости и золотистого цвета.	50
+13	2	Обжарьте лук до мягкости, добавьте фарш и жарьте, разбивая комки, пока не выпарится вся вода и мясо не начнёт румяниться. Влейте вино и дайте ему уйти.	15
+13	3	Добавьте чеснок, помидоры и корицу и тушите двадцать минут на слабом огне. Соус должен стать густым: ложка, проведённая по дну, оставляет след.	20
+13	4	Растопите масло, вмешайте муку и прогрейте минуту. Влейте тёплое молоко тонкой струйкой, непрерывно мешая, и варите до густоты сметаны. Снимите с огня, добавьте мускат, желтки и половину сыра.	12
+13	5	Выложите слоями: картофель, баклажаны, мясной соус, снова баклажаны. Залейте бешамелем, посыпьте оставшимся сыром.	\N
+13	6	Запекайте при 180 °C сорок пять минут до золотой корочки. Обязательно дайте постоять полчаса перед нарезкой — горячая мусака не режется, а расползается.	75
+14	1	Нарежьте помидоры крупными дольками и посолите прямо в миске. Оставьте на пять минут — они пустят сок, который станет основой заправки.	5
+14	2	Добавьте огурец, перец и лук. Перемешайте руками, а не ложкой: так овощи не ломаются.	\N
+14	3	Разложите сверху оливки, положите кусок феты и полейте маслом всё вместе. Посыпьте орегано прямо по фете — от масла он раскроется.	\N
+15	1	Залейте кости холодной водой, доведите до кипения и проварите десять минут. Слейте всё, кости промойте под краном, кастрюлю вымойте. Этот шаг и даёт прозрачность.	15
+15	2	Разрежьте лук и имбирь пополам и обожгите срезами на сухой сковороде или прямо на конфорке до чёрных пятен.	8
+15	3	Прогрейте специи на сухой сковороде до запаха и завяжите в марлю. Верните кости в чистую кастрюлю, добавьте грудинку, лук, имбирь и специи, залейте водой на три пальца выше.	5
+15	4	Варите три часа на самом слабом огне: поверхность должна едва подрагивать. Пену снимайте первые полчаса. Грудинку выньте через полтора часа и остудите.	180
+15	5	Процедите бульон через мелкое сито, приправьте рыбным соусом и сахаром. Пробуйте: он должен быть чуть солонее, чем приятно пить, — лапша заберёт своё.	10
+15	6	Отварите лапшу, разложите по мискам. Сверху — ломтики грудинки и сырая вырезка. Залейте кипящим бульоном так, чтобы он накрыл мясо, и подавайте с зеленью, лаймом и чили отдельно.	10
+16	1	Смешайте уксус, сахар и щепотку соли с 100 мл тёплой воды до растворения. Залейте морковь с дайконом и оставьте на час при комнатной температуре.	60
+16	2	Замаринуйте свинину в рыбном соусе с ложкой сахара на двадцать минут, затем обжарьте на сильном огне по три минуты с каждой стороны — до карамельных краёв.	26
+16	3	Прогрейте багеты в духовке при 200 °C пять минут, чтобы корка снова стала хрусткой. Разрежьте вдоль, не до конца.	5
+16	4	Намажьте паштет на одну половину, майонез на другую. Уложите свинину, отжатые маринованные овощи, огурец, кинзу и чили. Прижмите ладонью и сразу подавайте.	\N
+17	1	Промойте базилик и обсушите досуха: капли воды не дадут маслу связаться с листьями. Ступку и пестик подержите в холодильнике.	5
+17	2	Растолките чеснок с крупной солью в пасту. Соль работает абразивом — без неё чеснок будет скользить.	2
+17	3	Добавьте кедровые орехи и разотрите до кремовой массы, потом порциями закладывайте базилик. Движение — круговое, прижимающее, а не толкущее: листья нужно раздавить о стенку, а не разбить.	8
+17	4	Вмешайте оба сыра, затем тонкой струйкой влейте масло, продолжая растирать. Соус должен стать однородным и густым.	5
+18	1	Удалите из чили семена, прогрейте на сухой сковороде до запаха — секунд двадцать на сторону, не дольше, иначе они станут горькими. Залейте кипятком на пятнадцать минут.	18
+18	2	Пробейте размоченные чили с половиной ананаса, ачиоте, уксусом, чесноком, зирой и орегано в гладкую пасту. Посолите.	5
+18	3	Залейте свинину маринадом и оставьте минимум на два часа, лучше на ночь. Дольше суток не держите: ананас размягчит мясо до состояния каши.	120
+18	4	Раскалите сковороду докрасна и обжаривайте мясо порциями по две минуты с каждой стороны. Не перемешивайте, пока не появятся тёмные края.	15
+18	5	Оставшийся ананас обжарьте на той же сковороде и нарежьте кубиком. Мясо нарубите крупно, прогрейте тортильи по двадцать секунд с каждой стороны и собирайте: мясо, ананас, лук, кинза, лайм.	8
+19	1	Нарежьте перец кольцами и обжарьте в смеси масел три-четыре минуты, пока края не начнут темнеть.	4
+19	2	Добавьте помидоры, посолите и тушите на среднем огне десять минут. Ждать нужно до того момента, когда масло отделится и начнёт блестеть по краям — это признак, что вода ушла.	10
+19	3	Убавьте огонь, вбейте яйца прямо в соус и посыпьте хлопьями перца. Мешайте медленно и всего два-три раза, оставляя разводы желтка.	4
+19	4	Снимите с огня, когда белок схватился, а желток ещё влажный — на сковороде яйца дойдут сами. Посыпьте орегано и брынзой.	2
+20	1	Обжарьте лук с морковью в ложке масла до мягкости, добавьте томатную пасту и жарьте ещё минуту, пока она не потемнеет.	8
+20	2	Добавьте чечевицу, картофель и воду, доведите до кипения и варите двадцать пять минут на слабом огне, пока чечевица не разварится полностью.	25
+20	3	Пробейте блендером до полной гладкости. Суп должен получиться плотным, но текучим — если густо, добавьте кипятка.	3
+20	4	Растопите оставшееся масло, снимите с огня и вмешайте мяту с паприкой. Разлейте суп, полейте маслом и подайте с долькой лимона.	3
+21	1	Замесите тесто из муки, воды и щепотки соли. Оно должно получиться заметно круче пельменного — таким, что месить тяжело. Заверните в плёнку и оставьте на сорок минут.	50
+21	2	Порубите мясо ножом на кусочки в несколько миллиметров. Смешайте с луком, кинзой, зирой, солью и перцем.	25
+21	3	Вливайте ледяную воду в фарш порциями, вымешивая рукой, пока масса не станет вязкой и не перестанет впитывать. Уберите в холод на двадцать минут.	25
+26	6	Посыпьте какао через сито непосредственно перед подачей. Если сделать это заранее, какао впитает влагу и станет пятнистым.	\N
+21	4	Раскатайте кружки диаметром 12 см, толщиной около двух миллиметров. Положите столовую ложку фарша и соберите края складками по кругу — их должно быть не меньше восемнадцати. Скрутите верх и защипните.	30
+21	5	Опускайте в большую кастрюлю подсоленного кипятка, помешивая воду шумовкой перед закладкой, чтобы не прилипли. Варите семь-восемь минут после всплытия.	10
+22	1	Смешайте йогурт с половиной имбиря, чеснока и специй, посолите и замаринуйте курицу минимум на час, лучше на ночь.	60
+22	2	Запеките курицу при 220 °C двадцать минут или обжарьте на раскалённой сковороде до тёмных подпалин. Внутри она может остаться слегка недоготовленной — дойдёт в соусе.	20
+22	3	Растопите масло, обжарьте лук с остатком имбиря и чеснока до золотистого цвета. Добавьте помидоры и специи, тушите пятнадцать минут.	20
+22	4	Пробейте соус блендером вместе с размоченным кешью до полной гладкости и верните в сковороду. Именно кешью, а не мука, дают соусу плотность.	5
+22	5	Верните курицу в соус, влейте сливки и прогрейте пять минут, не доводя до кипения. Разотрите касури мети в ладонях, вмешайте и снимите с огня.	6
+23	1	Надрежьте жировую кромку котлет в нескольких местах, чтобы они не свернулись, посолите и обваляйте по очереди в муке, яйце и панко.	8
+23	2	Обжарьте во фритюре при 170 °C по три минуты с каждой стороны до золотистого цвета. Выложите на решётку, а не на бумагу: снизу панировка должна остаться хрустящей.	6
+23	3	Нарежьте котлеты полосками в полтора сантиметра, не сдвигая их — форма пригодится при подаче.	\N
+23	4	В небольшой сковороде доведите даси с соевым соусом, мирином и сахаром до кипения, положите лук и варите три минуты до мягкости.	4
+23	5	Переложите котлету в соус, влейте две трети слегка взболтанного яйца по кругу и накройте на минуту. Влейте остаток, накройте ещё на двадцать секунд и снимите с огня — верхний слой яйца должен остаться жидким.	3
+23	6	Сдвиньте всё содержимое сковороды на рис одним движением, вместе с соусом.	\N
+24	1	Протрите творог через сито или пробейте блендером. Зернистый творог даёт зернистые сырники — этот шаг пропускать нельзя.	5
+24	2	Вмешайте яйцо, сахар, ваниль и соль, затем муку. Тесто останется липким — так и должно быть.	3
+24	3	Мокрыми или подпылёнными мукой руками сформуйте шайбы толщиной около полутора сантиметров. Толще — не прожарятся, тоньше — пересохнут.	7
+24	4	Жарьте на среднем огне под крышкой по три-четыре минуты с каждой стороны. Крышка здесь важнее масла: она пропаривает середину.	8
+25	1	Замочите лапшу в тёплой воде на двадцать минут. Она должна гнуться, но при укусе оставаться жёсткой.	20
+25	2	Растворите пальмовый сахар в тамаринде и рыбном соусе, прогрев их вместе минуту. Попробуйте: должно быть одинаково кисло, солёно и сладко.	3
+25	3	Раскалите вок, обжарьте тофу до корочки, добавьте чеснок с шалотом, через полминуты — креветки. Готовьте до розового цвета и сдвиньте к краю.	3
+25	4	Разбейте яйца в освободившееся место, дайте схватиться и разбейте лопаткой. Положите откинутую лапшу и влейте соус.	2
+25	5	Жарьте, всё время подбрасывая, две минуты, пока лапша не впитает соус и не станет мягкой. Добавьте ростки и зелёный лук, перемешайте один раз и снимайте.	2
+26	1	Взбейте желтки с половиной сахара над кастрюлей с кипящей водой, не касаясь воды, до светлой густой массы — примерно семь минут. Снимите и остудите до комнатной температуры.	10
+26	2	Вмешайте холодный маскарпоне в остывшие желтки ложкой, а не миксером. Миксер разбивает жир, и крем становится зернистым — это первая точка, где тирамису обычно портят.	5
+26	3	Взбейте белки с оставшимся сахаром до устойчивых пиков и вмешайте в крем в три приёма движением снизу вверх.	6
+26	4	Смешайте кофе с марсалой. Окунайте савоярди на одну секунду каждой стороной и укладывайте плотным слоем в форму.	6
+26	5	Выложите половину крема, разровняйте, повторите слой печенья и крема. Затяните плёнкой и уберите в холодильник минимум на шесть часов, лучше на ночь.	5
+27	1	Размочите мякиш в холодной воде десять минут и отожмите досуха.	10
+27	2	Пробейте в блендере помидоры, огурец, перец, чеснок и хлеб до полной гладкости. Это займёт дольше, чем кажется: минуты две на максимуме.	3
+27	3	Не выключая блендер, влейте масло тонкой струйкой. Суп посветлеет и загустеет — это и есть та самая эмульсия.	2
+27	4	Добавьте уксус и соль, попробуйте и досолите. Протрите через сито, если хотите шелковистую текстуру, и охладите не меньше двух часов.	5
+28	1	Растопите сливочное масло с оливковым, обжарьте лук до прозрачности, добавьте хамон и прогрейте минуту — жир вытопится и заберёт вкус.	6
+28	2	Всыпьте муку и жарьте, помешивая, четыре-пять минут, пока она не запахнет орехами и слегка не потемнеет.	5
+28	3	Вливайте тёплое молоко по половнику, каждый раз размешивая до гладкости, прежде чем добавить следующий. Варите ещё десять минут: масса должна отходить от стенок.	15
+28	4	Приправьте мускатом и солью, выложите в форму слоем в два сантиметра, накройте плёнкой в контакт и охладите минимум четыре часа.	240
+28	5	Сформуйте цилиндры влажными руками, обваляйте в яйце и сухарях. Для крепкой корочки повторите панировку дважды.	20
+28	6	Обжарьте во фритюре при 180 °C по две минуты небольшими партиями. В переполненном масле температура падает, и крокеты впитывают жир вместо того, чтобы покрыться корочкой.	10
+29	1	Замочите нарезанный лук в ледяной воде на десять минут и обсушите — уйдёт резкость, останется вкус.	10
+29	2	Выжмите лайм руками, не соковыжималкой: давление на кожуру выпускает горькие масла.	5
+29	3	Посолите рыбу, перемешайте с рубленым ахи и кинзой, залейте соком лайма и оставьте ровно на три-пять минут. Края кубиков побелеют, середина останется прозрачной.	5
+29	4	Добавьте лук, перемешайте один раз и сразу подавайте с бататом и кукурузой. Сок из миски разлейте по стопкам.	2
+30	1	Замаринуйте мясо в соевом соусе с уксусом и чесноком на пятнадцать минут, потом обсушите — влажная поверхность не даст подпалин.	15
+30	2	Раскалите сковороду до дыма и обжарьте мясо двумя партиями по полторы минуты, не перемешивая первые сорок секунд. Выложите на тарелку.	5
+30	3	В той же сковороде обжарьте лук и ахи полторы минуты — лук должен остаться хрустящим внутри.	2
+30	4	Верните мясо, влейте остатки маринада, добавьте помидоры и прогрейте полминуты. Снимите с огня, вмешайте кинзу.	2
+30	5	Подавайте с горячим картофелем фри — часть его перемешивают прямо в сковороде, чтобы он взял соус, — и отдельной порцией риса.	\N
+31	1	Опустите тофу в подсоленную воду при слабом кипении на три минуты и аккуратно откиньте.	5
+31	2	Обжарьте фарш до румяности и вытопленного жира, отодвиньте к краю. Добавьте доубаньцзян и жарьте минуту, пока масло не станет красным.	6
+31	3	Добавьте чеснок, имбирь и чёрные бобы, прогрейте полминуты и влейте бульон. Дайте закипеть.	2
+31	4	Опустите тофу и тушите три минуты, не мешая ложкой — только покачивая сковороду, иначе кубики развалятся.	3
+31	5	Разведите крахмал холодной водой и влейте в два приёма, каждый раз давая соусу закипеть. Снимите с огня, посыпьте молотым сычуаньским перцем и зелёным луком.	3
+32	1	Смешайте курицу с яичным белком, ложкой крахмала, ложкой соевого соуса и щепоткой соли и оставьте на двадцать минут.	20
+32	2	Соберите соус заранее: уксус, оставшийся соевый соус, сахар и оставшийся крахмал с двумя ложками воды. Держите под рукой — времени мешать его в процессе не будет.	3
+32	3	Раскалите масло и обжарьте чили с сычуаньским перцем двадцать секунд, до тёмного цвета, но не до чёрного. Горелый чили горчит.	1
+32	4	Добавьте курицу и жарьте, не трогая, минуту, потом перемешайте и доведите до готовности — ещё две минуты.	3
+32	5	Всыпьте чеснок, имбирь и белую часть зелёного лука, через полминуты влейте соус. Он загустеет за секунды. Снимите с огня, добавьте арахис и зелёную часть лука.	2
+33	1	Залейте курицу вином с морковью, чесноком и травами и оставьте в холоде на ночь. Утром выньте мясо и обсушите, вино сохраните.	480
+49	6	Подавайте фасоль с мясом, отдельно рис, капусту и дольки апельсина. Каждый собирает тарелку сам.	\N
+33	2	Вытопите бекон в сотейнике, выньте его шумовкой. В этом жире обжарьте курицу до тёмной корочки со всех сторон, партиями.	15
+33	3	Присыпьте мукой, перемешайте и прогрейте две минуты. Влейте маринад вместе с овощами и бульон, доведите до кипения и снимите пену.	6
+33	4	Тушите под крышкой на слабом огне или в духовке при 160 °C час. Соус должен едва подрагивать.	60
+33	5	Пока тушится, обжарьте лук в масле до золотистого цвета, отдельно — грибы на сильном огне до румяности.	15
+33	6	Добавьте лук, грибы и бекон в сотейник, дайте всему постоять на слабом огне десять минут и попробуйте соус на соль.	10
+34	1	Разрежьте ваниль вдоль, выскоблите семена и прогрейте со сливками почти до кипения. Снимите и дайте настояться пятнадцать минут.	20
+34	2	Разотрите желтки с сахаром без пены — воздух здесь не нужен. Влейте тёплые сливки тонкой струйкой, непрерывно мешая.	5
+34	3	Процедите через сито и снимите пену с поверхности. Разлейте по формам и поставьте их в глубокий противень.	5
+34	4	Налейте в противень кипяток до половины высоты форм и запекайте при 150 °C сорок минут. Центр должен подрагивать.	45
+34	5	Полностью остудите и держите в холодильнике не меньше четырёх часов. Только потом посыпьте сахаром и сожгите горелкой.	240
+35	1	Смешайте муку, яйца, воду, соль и мускат и бейте тесто ложкой минут пять, пока по поверхности не пойдут пузыри и оно не начнёт тянуться за ложкой.	8
+35	2	Пока тесто отдыхает, обжарьте лук в масле на среднем огне до тёмно-золотого цвета. Это двадцать минут, а не пять: за это время сахар в луке карамелизуется.	20
+35	3	Продавите тесто в кипящую подсоленную воду через шпецле-тёрку или дуршлаг с крупными отверстиями. Готовые шпецле всплывают через минуту — вынимайте шумовкой.	10
+35	4	Выкладывайте в горячую форму слоями: шпецле, сыр, шпецле, сыр. Тепло самой лапши расплавит сыр — духовка не нужна.	3
+35	5	Засыпьте жареным луком и подавайте сразу. Классический гарнир — зелёный салат с уксусной заправкой, и он здесь не украшение, а противовес.	\N
+37	1	Замаринуйте говядину в соевом соусе с чесноком и ложкой кунжутного масла на двадцать минут.	20
+37	2	Бланшируйте шпинат тридцать секунд, отожмите и приправьте кунжутным маслом с щепоткой соли. Ростки отварите три минуты и приправьте так же, но с чесноком.	8
+37	3	Обжарьте по отдельности морковь и грибы — по паре минут каждую, солите отдельно. Мыть сковороду между ними не нужно.	6
+37	4	Обжарьте мясо на сильном огне две минуты. Отдельно пожарьте яйца так, чтобы желток остался жидким.	2
+37	5	Разложите горячий рис по мискам, уложите овощи и мясо секторами, сверху — яйцо и ложку кочхуджана. Перемешивать будет каждый сам.	\N
+38	1	Обжарьте свинину в кунжутном масле на среднем огне до вытопленного жира и румяности — минут пять.	5
+38	2	Добавьте кимчи и жарьте пять минут, пока края не потемнеют. Этот шаг убирает сырую кислоту и делает вкус круглым.	5
+38	3	Вмешайте кочхукару, кочхуджан и чеснок, влейте сок кимчи и воду. Доведите до кипения.	3
+38	4	Варите двадцать минут на среднем огне, добавьте лук и тофу и дайте покипеть ещё пять. Тофу не мешайте — он развалится.	20
+38	5	Снимите с огня, посыпьте зелёным луком и подавайте прямо в кастрюле, с отдельной миской риса.	\N
+50	1	Доведите молоко с водой, маслом и солью почти до кипения.	5
+39	1	Смешайте масло, сок и цедру лимона, орегано, тёртый чеснок, соль и перец. Залейте мясо и оставьте на два часа, но не дольше четырёх.	120
+39	2	Пока маринуется, сделайте дзадзики: смешайте йогурт с отжатым огурцом, зубчиком чеснока, ложкой масла и солью.	10
+39	3	Нанижите мясо на шпажки неплотно — между кусками должен проходить жар. Плотно набитая шпажка внутри останется сырой.	8
+39	4	Готовьте на раскалённом гриле или сковороде-гриль по три минуты с каждой из четырёх сторон. Мясо должно потемнеть, а не побледнеть.	12
+39	5	Дайте мясу отдохнуть пять минут, прогрейте питы по тридцать секунд и подавайте с дзадзики и лимоном.	6
+40	1	Обжарьте лук в гхи до тёмно-золотого цвета — двадцать минут на среднем огне. Половину отложите: это и есть бириста, главный вкус бирьяни.	20
+40	2	Замаринуйте курицу в йогурте с имбирём, чесноком, специями, половиной жареного лука, мятой и солью. Держите час, лучше три.	60
+40	3	Отварите рис в большом количестве подсоленной воды с целыми специями ровно пять минут и откиньте. Зерно должно ломаться, но оставаться белым в середине.	5
+40	4	Выложите маринованную курицу на дно тяжёлой кастрюли, сверху — рис ровным слоем. Полейте шафрановым молоком пятнами, посыпьте оставшимся луком и зеленью.	8
+40	5	Закройте крышкой как можно плотнее — при желании обмотайте фольгой. Держите на сильном огне пять минут, потом на самом слабом сорок. Крышку не открывайте ни разу.	45
+40	6	Дайте постоять десять минут и перемешайте один раз снизу вверх, поднимая курицу к рису, а не размешивая всё в кашу.	12
+41	1	Залейте каркасы холодной водой, доведите до кипения, проварите десять минут и слейте. Промойте кости и кастрюлю — от этого зависит чистота бульона.	15
+41	2	Залейте заново, добавьте имбирь и чеснок и варите три часа на слабом огне. Комбу опустите за двадцать минут до конца и выньте до кипения — при кипячении она даёт горечь.	180
+41	3	Для тарэ уварите соевый соус с мирином, сакэ и шиитаке до трети объёма. Получится густая тёмная жидкость — по две ложки на миску.	20
+41	4	Сварите яйца шесть с половиной минут, охладите в ледяной воде, очистите и оставьте в оставшемся тарэ на два часа.	130
+41	5	Отварите лапшу отдельно строго по времени на упаковке, откиньте и сразу разложите по мискам с тарэ на дне.	5
+41	6	Залейте горячим бульоном, размешайте один раз, чтобы тарэ разошёлся, и уложите свинину, яйцо и зелёный лук. Полейте кунжутным маслом.	\N
+42	1	Залейте муку кипятком с маслом и солью, замесите ложкой, а когда остынет — руками, минут восемь. Накройте и дайте отдохнуть полчаса.	40
+42	2	Обжарьте два луковицы в масле до тёмно-золотого цвета. Половину вмешайте в начинку, половину оставьте для подачи.	20
+42	3	Разомните тёплый картофель с творогом и жареным луком, посолите и поперчите щедро. Начинка должна быть плотной, чтобы держала форму.	10
+42	4	Раскатайте тесто в два миллиметра, вырежьте кружки стаканом, положите чайную ложку начинки и защипните края насухо — мокрое тесто не склеится.	30
+42	5	Варите партиями в широкой кастрюле подсоленной воды. Через минуту после всплытия вынимайте шумовкой.	12
+42	6	Подавайте с оставшимся жареным луком и сметаной. Многие обжаривают варёные пероги на сливочном масле — так тоже правильно.	\N
+43	1	Вытопите бекон в кастрюле, обжарьте в нём лук до мягкости, добавьте чеснок и майоран и прогрейте полминуты.	10
+43	2	Влейте бульон, опустите колбасу целиком и варите на слабом огне тридцать минут. Не протыкайте её — весь сок уйдёт в бульон раньше времени.	30
+43	3	Выньте колбасу, нарежьте кружками и верните в кастрюлю. Взболтайте заквас в банке и влейте, помешивая.	5
+43	4	Прогрейте пять минут, не доводя до бурного кипения, вмешайте сливки и попробуйте. Если кисло слабо — добавьте закваса, соль в конце.	5
+43	5	Разлейте по тарелкам, положите половинку варёного яйца и подавайте с хреном. В Польше журек часто подают в хлебной буханке.	\N
+44	1	Прокипятите уксус с вином, овощами и специями, полностью остудите и залейте мясо. Держите в холоде три-пять дней, переворачивая раз в сутки.	4320
+44	2	Выньте мясо, обсушите бумажным полотенцем и обжарьте в раскалённом сотейнике до тёмной корочки со всех сторон. Маринад процедите, овощи сохраните.	15
+44	3	Обжарьте маринованные овощи в том же жире, добавьте сахар и дайте ему слегка карамелизоваться. Влейте маринад и доведите до кипения.	10
+44	4	Верните мясо, накройте и тушите на слабом огне два часа, переворачивая через час. Вилка должна входить без сопротивления.	120
+44	5	Выньте мясо и держите в тепле. Вмешайте в соус раскрошенные пряники и изюм и варите пятнадцать минут — пряники разойдутся и соус загустеет сам.	15
+44	6	Пробейте соус блендером до гладкости, попробуйте на баланс кислого и сладкого. Нарежьте мясо поперёк волокон и залейте соусом.	8
+45	1	Отварите картофель в мундире до готовности — двадцать минут после закипания. Проверяйте ножом: он должен входить, но не проваливаться.	25
+45	2	Пока варится картофель, прогрейте бульон с луком, уксусом, горчицей, солью и перцем, не доводя до кипения.	5
+45	3	Очистите картофель горячим — держите вилкой — и нарежьте ломтиками в три-четыре миллиметра прямо в миску.	8
+45	4	Залейте горячей заправкой и оставьте на двадцать минут, перемешав один раз. Картофель впитает почти всю жидкость.	20
+45	5	Влейте масло, перемешайте ещё раз и попробуйте. Салат должен быть чуть кислее, чем кажется правильным, — вкус выровняется, пока он стоит.	3
+46	1	Положите гуанчале в холодную сухую сковороду и включите средний огонь. Медленный старт вытапливает жир целиком; на раскалённой сковороде он подгорит снаружи, оставшись жёстким внутри.	8
+46	2	Когда кусочки станут стеклянными и золотыми по краям, выньте половину — они пойдут сверху. Влейте вино и дайте ему выпариться.	3
+46	3	Разомните помидоры руками, добавьте с чили и тушите десять минут. Соус должен загустеть, но не потерять красный цвет.	10
+46	4	Отварите букатини на минуту меньше указанного, переложите в соус с половником воды от варки и доведите на огне полминуты.	10
+46	5	Снимите с огня, вмешайте пекорино и разложите. Сверху — отложенный гуанчале и ещё немного сыра.	\N
+47	1	Обжарьте лук с перцем в масле десять минут, пока перец не станет мягким и сладким.	10
+47	2	Добавьте чеснок, зиру, паприку и харису и прогрейте минуту — до запаха, но не до горелого.	2
+47	3	Влейте помидоры, разомните и тушите пятнадцать минут. Соус готов, когда ложка оставляет след на дне.	15
+47	4	Сделайте ложкой углубления и разбейте в каждое яйцо. Накройте крышкой и держите пять-семь минут: белок должен схватиться, желток остаться жидким.	7
+47	5	Посыпьте фетой и кинзой и подавайте прямо в сковороде с хлебом.	\N
+48	1	Слейте воду с замоченного нута, залейте свежей с содой и варите час-полтора до полного разваливания. Пену и всплывшую кожицу снимайте.	90
+48	2	Откиньте, оставив стакан отвара. Перетрите нут между ладонями под холодной водой — оставшаяся кожица всплывёт.	10
+48	3	Пробейте тахини с чесноком, лимонным соком и солью в блендере — паста побелеет и загустеет. Влейте ледяную воду и взбейте ещё раз: она станет светлой и воздушной.	5
+48	4	Добавьте тёплый нут с зирой и взбивайте не меньше трёх минут, подливая отвар до нужной густоты. Три минуты — не преувеличение, именно они дают текстуру.	5
+48	5	Выложите в тарелку, разгоните ложкой по кругу, залейте оливковым маслом и посыпьте зирой.	\N
+49	1	Отварите солёное мясо в свежей воде двадцать минут и слейте — это последний шаг избавления от соли.	20
+49	2	Залейте фасоль водой на три пальца выше, добавьте лавровый лист, рёбрышки и солёное мясо и варите полтора часа на слабом огне.	90
+49	3	Добавьте грудинку и колбасу и варите ещё час. Фасоль должна разваливаться, а бульон — загустеть сам собой.	60
+49	4	Обжарьте лук с чесноком до золотистого цвета, добавьте половник фасоли, разомните и верните в кастрюлю. Это загустит блюдо и добавит глубины.	10
+49	5	Обжарьте капусту на сильном огне две минуты с чесноком — она должна остаться ярко-зелёной и хрустящей.	2
+50	2	Вылейте всю горячую жидкость в крахмал разом и размешайте лопаткой. Масса будет комковатой и странной — так и должно быть. Дайте остыть до тёплого.	15
+50	3	Вмешайте яйца по одному, а затем оба сыра. Вымешивайте до однородной липкой массы — руками проще, чем ложкой.	8
+50	4	Мокрыми руками скатайте шарики размером с грецкий орех и разложите на противне с зазором в три сантиметра.	10
+50	5	Выпекайте при 200 °C двадцать минут до золотого цвета. Дверцу не открывайте первые пятнадцать: пар выйдет и шарики осядут.	20
+51	1	Растолките чеснок с чили в ступке до грубой пасты. Ступка здесь даёт другой результат, чем нож: сок выходит наружу и попадает в масло.	3
+51	2	Смешайте устричный соус, рыбный, соевый и сахар в чашке — на жарке времени не будет.	2
+51	3	Раскалите вок с двумя ложками масла, бросьте пасту и жарьте двадцать секунд до запаха.	1
+51	4	Выложите фарш и не трогайте минуту, потом разбейте лопаткой и жарьте ещё две. Влейте соус и дайте ему обволочь мясо.	4
+51	5	Снимите с огня и вмешайте базилик — от остаточного тепла он опадёт за секунды. На той же сковороде обжарьте яйца в оставшемся масле до кружевных краёв.	3
+52	1	Доведите даси с соевым соусом, мирином, сакэ, сахаром и тёртым имбирём до кипения в широкой сковороде.	3
+52	2	Положите лук и варите пять минут на среднем огне, пока он не станет полупрозрачным.	5
+52	3	Разложите мясо по поверхности отдельными ломтиками, не кучей, и варите две-три минуты. Пену снимайте.	3
+52	4	Снимите с огня, как только мясо потеряет розовый цвет. Передержанное станет жёстким за минуту.	1
+52	5	Разложите рис по мискам, сверху мясо с луком и две-три ложки бульона. Подавайте с маринованным имбирём.	\N
+53	1	Сварите бульон из говядины и копчёных рёбрышек: полтора часа на слабом огне, снимая пену. Мясо выньте и разберите.	90
+53	2	Обжарьте лук до мягкости, добавьте томатную пасту и жарьте три минуты, пока она не потемнеет и не перестанет пахнуть сырой.	3
+53	3	Добавьте огурцы и потушите пять минут с зажаркой — так они не будут жёсткими в готовом супе.	5
+53	4	Заложите в бульон зажарку, разобранное мясо, колбасу и ветчину, влейте рассол и варите пятнадцать минут.	15
+53	5	Добавьте оливки с каперсами, прогрейте пять минут и снимите с огня. Пробуйте на соль только сейчас: рассол и копчёности уже посолили суп.	6
+53	6	В тарелку — кружок лимона, сметана и зелень. Лимон кладут именно в тарелку: проваренный, он даст горечь.	\N
+54	1	Разотрите чеснок, имбирь, куркуму, шафран, рубленую зелень, масло, соль и перец в пасту. Обмажьте ею курицу и оставьте на час.	60
+54	2	Выложите лук ровным слоем на дно тажина или тяжёлого сотейника — он не даст курице пригореть и станет частью соуса.	5
+54	3	Уложите курицу кожей вверх, влейте воду по краю, накройте и томите на слабом огне сорок минут, не открывая.	40
+54	4	Добавьте кожуру солёного лимона полосками и оливки, накройте и держите ещё двадцать минут.	20
+54	5	Снимите крышку и выпарьте соус пять минут до густоты, если он остался жидким. Пробуйте на соль в самом конце: лимон и оливки уже солёные.	5
+55	1	Обжарьте баранину с луком, имбирём и корицей пять минут, добавьте рубленые сельдерей и зелень и прогрейте ещё две.	5
+55	2	Добавьте тёртые помидоры и нут, залейте двумя литрами воды и варите час на слабом огне, пока нут не станет мягким.	60
+55	3	Заложите чечевицу и варите ещё двадцать минут.	20
+55	4	Размешайте муку в стакане холодной воды до полной гладкости и влейте тонкой струйкой, непрерывно помешивая. Варите пять минут — суп загустеет и станет матовым.	8
+55	5	Всыпьте вермишель и варите до готовности. Подавайте с лимоном и финиками — эта пара не случайна: сладкое и кислое разом.	8
+56	1	Томите лук в смальце на слабом огне двадцать минут до мягкости и золотистого цвета. Это долго и кажется бессмысленным, но именно здесь появляется сладость соуса.	20
+56	2	Снимите с огня, всыпьте паприку и тмин и размешайте. Через полминуты верните на огонь и добавьте мясо.	3
+56	3	Тушите мясо с луком под крышкой полчаса, не добавляя воды: оно даст сок сам. Только потом влейте воду вровень с мясом.	30
+56	4	Варите на слабом огне полтора часа. Добавьте перец, помидоры и чеснок за сорок минут до конца, картофель — за двадцать пять.	90
+56	5	Посолите в самом конце и дайте постоять пятнадцать минут перед подачей.	15
+57	1	Распустите дрожжи с сахаром в тёплом молоке и оставьте на десять минут до пены.	10
+57	2	Смешайте муку, размятый картофель, соль и опару и вымешивайте восемь минут до гладкого мягкого теста. Оно останется липковатым — так и надо.	10
+57	3	Накройте и дайте подойти час в тепле — тесто должно увеличиться вдвое.	60
+57	4	Разделите на четыре части, растяните каждую руками в круг сантиметров двадцать, оставляя края толще.	10
+57	5	Жарьте во фритюре при 175 °C по полторы минуты с каждой стороны. Лепёшка вздуется — так и должно быть, придавливать не нужно.	12
+57	6	Горячую лепёшку натрите разрезанной долькой чеснока, намажьте сметаной и засыпьте сыром.	\N
+58	1	Промойте нарезанный картофель от крахмала, обсушите досуха и обжарьте при 140 °C шесть минут. Он должен стать мягким, но остаться бледным. Выложите остывать.	20
+58	2	Смешайте муку, крахмал и разрыхлитель. Влейте ледяное пиво и размешайте венчиком буквально несколько раз — комочки допустимы, перемешанный кляр становится жёстким.	5
+58	3	Обсушите рыбу, обваляйте в сухой муке и стряхните излишки. Без этого шага кляр соскользнёт при жарке.	5
+58	4	Разогрейте масло до 190 °C. Окуните рыбу в кляр, дайте лишнему стечь и опустите, придерживая пару секунд, чтобы кусок не прилип ко дну. Жарьте шесть минут.	12
+58	5	Выньте рыбу и в том же масле дожарьте картофель три минуты до золотого цвета. Посолите сразу, пока горячий.	6
+59	1	Обжарьте фарш на сильном огне, не перемешивая первую минуту, до тёмных подпалин. Выложите, слив лишний жир.	8
+59	2	В том же сотейнике обжарьте лук с морковью восемь минут, добавьте муку и томатную пасту и прогрейте две минуты.	10
+59	3	Верните мясо, влейте бульон и вустерский соус, добавьте тимьян и тушите двадцать минут без крышки, пока соус не станет густым.	20
+59	4	Отварите картофель, разомните с маслом и горячим молоком до гладкости, посолите щедро. Пюре должно быть плотным, а не текучим.	25
+59	5	Вмешайте горошек в мясо, переложите в форму, накройте пюре и разровняйте вилкой, оставив бороздки.	6
+59	6	Запекайте при 200 °C двадцать пять минут до румяной корочки. Дайте постоять десять минут перед тем, как резать.	35
+60	1	Отбейте мясо между двумя листами плёнки до трёх миллиметров. Бейте плоской стороной молотка, а не зубчатой: зубцы рвут волокна.	10
+60	2	Взбейте яйца вилкой до однородности, но без пены. Посолите мясо и обваляйте по очереди в муке, яйце и сухарях.	8
+60	3	Сухари прижимать нельзя. Панировка должна лежать свободно — только тогда она отойдёт и вздуется.	\N
+60	4	Разогрейте жир слоем в сантиметр до 170 °C и опустите шницель. Жарьте две минуты, всё время покачивая сковороду, чтобы жир набегал сверху.	6
+60	5	Переверните и жарьте ещё полторы минуты до золотого цвета. Выложите на решётку и подавайте немедленно с долькой лимона.	4
+61	1	Замесите тесто из муки, тёплой воды, масла и щепотки соли и вымешивайте десять минут — оно должно стать гладким и очень эластичным. Смажьте маслом, накройте и оставьте на час.	70
+61	2	Обжарьте сухари в половине масла до золотистого цвета. Яблоки смешайте с сахаром, корицей, изюмом, соком и цедрой лимона.	10
+61	3	Расстелите на столе полотенце, присыпьте мукой и растяните тесто тыльной стороной ладоней от центра к краям, пока оно не станет прозрачным. Толстые края обрежьте.	15
+61	4	Смажьте тесто растопленным маслом, посыпьте сухарями треть поверхности и выложите на них яблоки, отступив от краёв.	5
+61	5	Заверните рулетом, поднимая полотенце, — руками тесто порвётся. Подверните края, переложите швом вниз и смажьте маслом.	5
+61	6	Выпекайте при 190 °C сорок минут, смазывая маслом дважды за это время. Подавайте тёплым с сахарной пудрой.	45
+62	1	Отварите вымоченную треску пять минут, остудите и разберите руками на волокна, выбрасывая кожу и кости. Руками, а не вилкой: так чувствуешь мелкие косточки.	15
+62	2	Обжарьте картофельную соломку во фритюре при 180 °C до золотистого хруста, партиями. Выложите на решётку и посолите.	15
+62	3	В широкой сковороде томите лук в оливковом масле десять минут до мягкости и сладости, добавьте чеснок на последнюю минуту.	11
+62	4	Добавьте треску и прогрейте три минуты, затем всыпьте картофель и перемешайте.	4
+62	5	Снимите сковороду с огня, влейте взбитые яйца и мешайте непрерывно полминуты, пока они не станут кремовыми. Посыпьте петрушкой и оливками.	2
+63	1	Сварите сироп из сахара и воды до 100 °C и снимите. Отдельно доведите молоко со сливками, корицей и цедрой почти до кипения.	10
+63	2	Размешайте муку в небольшом количестве холодного молока до гладкости и вмешайте в горячее. Варите, помешивая, до густоты сметаны.	6
+63	3	Влейте горячий сироп тонкой струйкой в молочную основу, снимите с огня и вмешайте желтки. Процедите и полностью остудите.	15
+63	4	Сверните тесто в плотный рулет, нарежьте шайбами по два сантиметра и вдавите каждую в форму большими пальцами, поднимая стенки выше края.	20
+63	5	Разогрейте духовку до максимума, минимум 250 °C. Налейте крем на три четверти и выпекайте двенадцать-пятнадцать минут до чёрных пятен.	15
+64	1	Обжарьте лук в смальце на среднем огне пятнадцать минут до мягкости и прозрачности, не давая ему темнеть.	15
+64	2	Добавьте рубленое мясо, паприку, зиру и чили и жарьте пять минут — мясо должно только потерять розовый цвет, не более.	5
+64	3	Посолите, снимите с огня и полностью остудите, затем уберите в холодильник минимум на четыре часа.	240
+64	4	Вмешайте в холодную начинку рубленые яйца, оливки и зелёный лук.	8
+64	5	На кружок теста положите столовую ложку начинки, смочите край водой, сложите пополам и защипните косичкой репульге, подворачивая уголки внахлёст.	25
+64	6	Смажьте желтком и выпекайте при 220 °C двадцать минут до румяного цвета.	22
+65	1	Растворите соль в тёплой воде — так она разойдётся равномерно, а не осядет на дно банки.	2
+65	2	Разотрите сушёный орегано между ладонями и залейте уксусом на пять минут — он размягчится и отдаст аромат.	5
+65	3	Мелко порубите петрушку и чеснок ножом. Чеснок именно рубят, а не давят: давленый даёт резкость, которая не уйдёт.	8
+65	4	Смешайте всё, влейте масло и размешайте. Дайте постоять два часа при комнатной температуре.	5
+66	1	Растолките шалот, чеснок, чили и терази в ступке в пасту. Она должна пахнуть резко — так и должно быть, при жарке запах смягчится.	8
+66	2	Раскалите вок, обжарьте пасту в масле две минуты до тёмного цвета и глубокого аромата.	3
+66	3	Добавьте курицу и жарьте три минуты, затем креветки и капусту — ещё две.	5
+66	4	Всыпьте холодный рис, разбивая комки лопаткой, влейте кечап манис и жарьте на сильном огне три минуты, постоянно подбрасывая.	4
+66	5	Отдельно пожарьте яйца до кружевных краёв и жидкого желтка. Подавайте рис с яйцом сверху, ломтиками огурца и жареным луком.	5
+67	1	Замочите сушёный чили в кипятке на пятнадцать минут, затем пробейте с шалотом, чесноком, галангалом, имбирём и куркумой в гладкую пасту.	20
+67	2	Обжарьте кокосовую стружку на сухой сковороде до тёмно-коричневого цвета и растолките в маслянистую массу — это керисик, он даст ореховую глубину.	12
+67	3	Обжарьте пасту в широкой кастрюле пять минут, добавьте мясо, кокосовое молоко, отбитый лемонграсс и листья лайма. Доведите до кипения.	5
+67	4	Варите на слабом огне без крышки два с половиной часа, помешивая каждые двадцать минут. Соус будет постепенно густеть и темнеть.	150
+67	5	Вмешайте керисик и продолжайте на среднем огне ещё час, помешивая всё чаще. Молоко расслоится, выделится масло, и мясо начнёт жариться.	60
+67	6	Готово, когда мясо тёмно-коричневое и почти сухое, а масло прозрачное. Посолите и дайте постоять.	10
+68	1	Замаринуйте курицу в соевом соусе с раздавленным чесноком и перцем на тридцать минут.	30
+68	3	Влейте маринад, воду и уксус, добавьте лавровый лист и сахар. Доведите до кипения и не мешайте и не накрывайте десять минут.	12
+68	4	Накройте и тушите на слабом огне двадцать пять минут, перевернув курицу один раз.	25
+68	5	Снимите крышку и уварите соус пять-десять минут до густоты, поливая им курицу. Подавайте с рисом.	10
+69	1	Залейте рёбрышки водой, доведите до кипения, снимите пену и варите час на слабом огне с луком и помидорами.	65
+69	2	Разомните разварившиеся помидоры прямо в кастрюле — они дадут телу супа густоту.	2
+69	3	Добавьте тамариндовую пасту и рыбный соус, попробуйте. Кислота должна быть отчётливой, а не намёком.	3
+69	4	Заложите таро и дайкон, варите десять минут, потом баклажан и фасоль — ещё пять.	15
+69	5	Бросьте зелень и чили, снимите с огня через тридцать секунд. Зелень должна остаться яркой.	2
+70	1	Сварите бульон на рёбрышках: полтора часа на слабом огне со снятой пеной. Мясо выньте и разберите.	95
+70	2	Тушите свёклу отдельно с ложкой масла, томатной пастой и уксусом двадцать минут под крышкой. Уксус здесь и удерживает цвет.	20
+70	3	Обжарьте лук с морковью до мягкости. Заложите в бульон картофель и варите десять минут — до того, как в кастрюлю попадёт кислота.	10
+70	4	Добавьте капусту, через пять минут — свёклу, зажарку и фасоль. Проварите пять минут.	10
+70	5	Разотрите сало с чесноком и зеленью в ступке до пасты и вмешайте в кастрюлю. Сразу снимите с огня и дайте настояться двадцать минут под крышкой.	25
+71	1	Смешайте кефир с содой и оставьте на пять минут — пойдут пузыри. Добавьте яйцо, соль и муку и вымешивайте восемь минут.	15
+71	2	Накройте тесто и дайте отдохнуть полчаса. За это время дайте вишне стечь на дуршлаге.	30
+71	3	Смешайте крахмал с сахаром и обваляйте в них вишню непосредственно перед лепкой.	3
+71	4	Раскатайте тесто в два миллиметра, вырежьте кружки, положите по три-четыре ягоды и защипните край насухо, выпуская воздух.	25
+71	5	Варите в широкой кастрюле подсоленного кипятка партиями. Через две минуты после всплытия вынимайте шумовкой и сразу смазывайте маслом.	12
+72	1	Нашпигуйте мясо полосками копчёного сала, уложив их вдоль волокон. Обложите тёртыми кореньями со специями и уксусом и держите в холоде сутки.	1440
+72	2	Обсушите мясо и обжарьте в масле со всех сторон до тёмной корочки. Выньте.	12
+72	3	В том же сотейнике обжарьте коренья из маринада с луком двадцать минут — они должны заметно потемнеть, это даёт соусу цвет.	20
+72	4	Верните мясо, влейте маринад и воду вровень с овощами и тушите под крышкой два часа на слабом огне.	120
+72	5	Выньте мясо, удалите лавровый лист и пробейте овощи с бульоном блендером до гладкости. Протрите через сито — это тот шаг, который отличает домашнюю свичкову от ресторанной.	15
+72	6	Вмешайте сливки, сок лимона и сахар, прогрейте не доводя до кипения и попробуйте. Мясо нарежьте поперёк волокон и подайте с соусом, брусникой и долькой лимона.	10
+73	1	Распустите дрожжи с ложкой сахара в тёплом молоке, дайте вспениться десять минут.	10
+73	2	Замесите тесто из муки, опары, яиц, сахара и соли, вымешивайте десять минут, затем вмешивайте мягкое масло по кусочку. Дайте подойти час.	75
+73	3	Раскатайте тесто и нарежьте полосками шириной два сантиметра. Смажьте валики маслом и обваляйте в сахаре.	15
+73	4	Намотайте полоску на валик внахлёст на треть ширины, слегка натягивая. Прокатайте по столу, чтобы слои сцепились.	10
+73	5	Смажьте маслом, обваляйте в смеси сахара с орехами и корицей и запекайте при 190 °C восемнадцать минут, поворачивая каждые пять.	20
+73	6	Дайте остыть три минуты и снимите с валика, провернув. Горячий трдельник рвётся, полностью остывший прилипает.	5
+74	1	Замочите хлеб в ста миллилитрах сливок на десять минут и разомните в кашицу.	10
+74	2	Обжарьте лук в масле до мягкости и полностью остудите — тёплый лук начнёт готовить фарш.	10
+74	3	Смешайте оба фарша с панадой, луком, яйцом, душистым перцем и солью и вымешивайте пять минут до липкости.	6
+74	4	Скатайте шарики размером с грецкий орех мокрыми руками и обжарьте в масле партиями, встряхивая сковороду, чтобы они катались и румянились равномерно.	15
+74	5	В той же сковороде размешайте муку с оставшимся жиром, влейте бульон и остальные сливки, добавьте соевый соус и варите пять минут до густоты.	6
+74	6	Верните фрикадельки в соус и прогрейте пять минут. Подавайте с картофельным пюре, брусникой и солёным огурцом.	6
+75	1	Прогрейте молоко до тридцати семи градусов, распустите дрожжи. Смешайте с мукой, сахаром, солью и кардамоном и вымешивайте десять минут.	10
+75	2	Вмешивайте мягкое масло по кусочку, пока тесто не станет гладким и блестящим. Дайте подойти час.	70
+75	3	Разотрите масло с сахаром и корицей в пасту. Раскатайте тесто прямоугольником в полсантиметра и намажьте начинкой по всей поверхности.	15
+75	4	Сложите пласт втрое, нарежьте полосками в два сантиметра, скрутите каждую и завяжите узлом. Разложите на противне.	20
+75	5	Дайте расстояться сорок минут, смажьте яйцом и посыпьте жемчужным сахаром.	45
+75	6	Выпекайте при 220 °C двенадцать минут. Коротко и горячо — так середина остаётся влажной.	14
+76	1	Обжарьте лук в масле на среднем огне двадцать пять минут до тёмно-коричневого цвета, помешивая. Выложите на бумагу — он дойдёт до хруста остывая.	25
+76	2	Отварите чечевицу двадцать минут до мягкости, но не до распада, и откиньте.	20
+76	3	Сварите рис на луковом масле: обжарьте его две минуты, залейте водой один к полутора и варите под крышкой пятнадцать минут.	18
+76	4	Отварите макароны и откиньте. Для соуса обжарьте чеснок в ложке масла до золотистого цвета, влейте уксус и дайте выпариться наполовину.	12
+76	5	Добавьте помидоры, зиру и чили и варите двадцать минут до густоты. Посолите.	20
+76	6	Собирайте в тарелке слоями: рис, чечевица, макароны, нут, соус, жареный лук. Перемешивают уже за столом.	\N
+77	1	Слейте воду с замоченных бобов, залейте свежей на три пальца выше и доведите до кипения. Снимите пену.	15
+77	2	Убавьте до самого слабого огня и томите три-четыре часа под крышкой, пока бобы не станут разваливаться. Воду подливайте по мере надобности.	240
+77	3	Разомните толкушкой примерно половину бобов прямо в кастрюле, оставив остальные целыми.	3
+77	4	Вмешайте раздавленный чеснок и посолите. Разложите по тарелкам.	3
+77	5	В каждую тарелку — оливковое масло щедро, сок лимона, зира, помидор, петрушка и чили по вкусу. Подавайте с лепёшкой.	\N
+78	1	Промойте булгур и залейте соком одного лимона. Оставьте набухать пятнадцать минут.	15
+78	2	Вымойте петрушку заранее и обсушите досуха — лучше час на полотенце. Оборвите толстые стебли и рубите ножом мелко, но без фанатизма.	12
+78	3	Нарежьте помидоры мелким кубиком и посолите отдельно — они пустят сок, который пойдёт в булгур.	5
+78	4	Смешайте всё вместе с соком второго лимона, маслом и душистым перцем. Дайте постоять десять минут перед подачей.	12
+79	1	Залейте булгур холодной водой на десять минут, откиньте и отожмите досуха. Миску с булгуром поставьте в холодильник — всё для нейе должно быть холодным.	12
+79	2	Зачистите баранину от жира и плёнок до чистого мускула и нарежьте кубиками. Пробейте в комбайне с луком до гладкой пасты, не давая чаше нагреться.	12
+79	3	Добавьте булгур, специи, мяту и соль. Вымешивайте, смачивая руки ледяной водой, пока паста не станет однородной и блестящей.	10
+79	4	Распределите пасту по холодному блюду слоем в полтора сантиметра, продавите бороздки тыльной стороной ложки и щедро залейте оливковым маслом.	4
+79	5	Подавайте сразу — с листьями мяты, дольками белого лука и лепёшками. Нейе не хранят: остатки в тот же вечер обжаривают котлетками.	2
+80	1	Обжарьте лук с куркумой до золотистого цвета, добавьте мясо и обжарьте до корочки со всех сторон.	15
+80	2	Залейте водой вровень, добавьте фасоль и варите час на слабом огне.	60
+85	2	Обсыпьте разрыхлителем и перемешайте, чтобы покрытие было тонким и ровным. Слишком много даст мыльный привкус.	5
+80	3	Пока варится, мелко порубите всю зелень и жарьте её в масле двадцать минут, помешивая. Она уменьшится вчетверо и потемнеет — так и должно быть. В конце добавьте пажитник на две минуты.	22
+80	4	Вмешайте зелень в кастрюлю, проколите сушёные лаймы вилкой и опустите целиком. Варите ещё час на слабом огне.	60
+80	5	Разомните лаймы о стенку кастрюли, посолите и дайте постоять пятнадцать минут. Соус должен быть тёмным и густым, с отделившимся маслом сверху.	18
+81	1	Промойте рис до прозрачной воды и замочите в солёной воде на час. Это убирает лишний крахмал и даёт зёрнам вырасти длиннее.	65
+81	2	Отварите рис в большом количестве кипящей солёной воды пять-семь минут: зерно должно гнуться, но ломаться при нажатии. Откиньте и промойте тёплой водой.	10
+81	3	Растолките шафран и распустите в двух ложках горячей воды. Смешайте пару ложек риса с йогуртом и шафраном — это будет корка.	5
+81	4	Разогрейте масло в кастрюле, выложите кружки картофеля вплотную, сверху рисово-йогуртовую смесь, затем остальной рис горкой.	8
+81	5	Проделайте ручкой ложки пять отверстий до дна — через них пойдёт пар. Полейте растопленным маслом.	3
+81	6	Накройте крышкой, обёрнутой полотенцем, и держите на сильном огне пять минут, потом на самом слабом сорок пять. Крышку не открывайте.	50
+81	7	Поставьте дно кастрюли в холодную воду на минуту — корка отойдёт. Переверните на блюдо одним движением.	3
+82	1	Промойте рис до прозрачной воды и залейте тёплой солёной водой на время готовки зирвака.	5
+82	2	Вытопите курдючный жир в казане до шкварок, выньте их. Обжарьте мясо на сильном огне до тёмной корочки.	15
+82	3	Добавьте лук и жарьте до золотистого цвета, потом морковь — и не мешайте пять минут, дайте ей схватиться. Затем перемешайте и жарьте ещё десять.	20
+82	4	Влейте кипяток вровень с продуктами, добавьте нут, зиру, барбарис, чили и головки чеснока целиком. Варите на слабом огне сорок минут — это зирвак.	40
+82	5	Посолите зирвак заметно сильнее, чем нужно: рис заберёт соль. Выложите рис ровным слоем шумовкой, не перемешивая, и залейте кипятком на два пальца выше риса.	8
+82	6	Варите на сильном огне без крышки, пока вода не уйдёт под уровень риса. Соберите рис горкой, проткните до дна в нескольких местах, накройте и держите двадцать минут на самом слабом огне.	35
+83	1	Замесите тесто из муки, тёплой воды и соли, вымешивайте десять минут и оставьте под плёнкой на полчаса.	40
+83	2	Раскатайте тесто в тонкий пласт, смажьте растопленным жиром, сверните плотным рулетом и уберите в холод на полчаса.	40
+83	3	Смешайте рубленое мясо с луком, зирой и перцем. Солите непосредственно перед лепкой, не раньше.	15
+83	4	Нарежьте рулет шайбами в два сантиметра, каждую положите срезом вверх и раскатайте в кружок — слои останутся видны.	15
+83	5	Положите начинку и защипните треугольником, плотно прижимая швы. Уложите швом вниз, смажьте яйцом и посыпьте кунжутом.	20
+83	6	Выпекайте при 220 °C десять минут, затем убавьте до 190 °C и держите ещё двадцать пять до тёмно-золотого цвета.	35
+84	1	Промойте моллюсков и проварите в стакане воды под крышкой пять минут, пока не раскроются. Нераскрывшихся выбросьте. Бульон процедите через марлю — в нём остаётся песок.	12
+84	2	Достаньте мясо из раковин и порубите крупно. Отложите — оно вернётся в самом конце.	8
+84	3	Вытопите бекон в кастрюле, добавьте масло, лук и сельдерей и томите восемь минут до мягкости.	10
+84	4	Всыпьте муку, прогрейте две минуты, влейте процеженный бульон от моллюсков и молоко, добавьте картофель, тимьян и лавровый лист.	5
+84	5	Варите пятнадцать минут до мягкости картофеля. Разомните несколько кусочков о стенку — суп станет гуще без лишней муки.	15
+84	6	Влейте сливки, верните моллюсков и прогрейте две минуты, не доводя до кипения. Попробуйте на соль и подавайте с крекерами.	4
+85	1	Обсушите крылья бумажным полотенцем, посолите и оставьте на решётке в холодильнике открытыми минимум четыре часа, лучше ночь.	240
+85	3	Разложите на решётке над противнем и запекайте при 120 °C двадцать минут — жир вытопится.	20
+85	4	Поднимите температуру до 220 °C и запекайте ещё двадцать пять минут до тёмно-золотого цвета и хруста.	25
+85	5	Растопите масло, снимите с огня и вбейте венчиком перечный соус, уксус и чесночный порошок до однородной эмульсии.	4
+85	6	Перемешайте горячие крылья с соусом в миске и подавайте немедленно с сельдереем и соусом из голубого сыра.	2
+86	1	Растворите дрожжи в воде, добавьте муку и мешайте до грубого теста. Дайте постоять двадцать минут, потом вмешайте соль и вымешивайте десять минут до гладкости.	35
+86	2	Оставьте на два часа при комнатной температуре, затем разделите на четыре шара и уберите в холодильник на сутки.	1440
+86	3	Достаньте тесто за три часа до выпечки. Разомните помидоры руками с щепоткой соли — соус готов.	180
+86	4	Разогрейте духовку с камнем или сталью на максимуме не меньше часа. Это дольше, чем кажется нужным, и это обязательно.	60
+86	5	Растяните шар пальцами от центра к краям, оставляя бортик нетронутым. Скалку не берите: она выдавит воздух из бортика, и он не поднимется.	5
+86	6	Нанесите тонкий слой соуса, разложите моцареллу, сбрызните маслом. Выпекайте семь-девять минут до пятнистого бортика и добавьте базилик уже на готовую.	9
+88	1	Опустите шпинат в кипяток на девяносто секунд и сразу переложите в ледяную воду. Отожмите и пробейте с чили в пюре.	8
+88	2	Прогрейте панир в горячей подсоленной воде десять минут, потом откиньте.	10
+88	3	Обжарьте зиру в гхи до потрескивания, добавьте лук и жарьте до золотистого цвета, затем имбирь с чесноком на минуту.	10
+88	4	Добавьте помидоры и тушите семь минут, пока они не разойдутся и масло не начнёт отделяться по краям.	8
+88	5	Вмешайте шпинатное пюре, гарам масалу и соль, прогрейте ровно минуту. Добавьте панир и сливки, снимите с огня.	3
+89	1	Вотрите гхи в муку с аджваном и солью до состояния влажного песка — сжатая в кулаке смесь должна держать форму.	8
+89	2	Добавляйте холодную воду понемногу до плотного, тугого теста. Оно должно быть жёстче пельменного. Накройте и оставьте на полчаса.	35
+89	3	Обжарьте зиру в ложке масла, добавьте чили, специи, горошек и крупно размятый картофель. Прогрейте пять минут и остудите.	12
+89	4	Разделите тесто на шарики, раскатайте каждый в овал и разрежьте пополам. Из половинки сверните конус, смочив прямой край водой.	20
+89	5	Наполните конус, защипните верх плотно и уложите швом вверх. Слабый шов раскроется во фритюре.	15
+89	6	Опустите в масло при 150 °C и жарьте двенадцать-пятнадцать минут, поднимая температуру к концу до 180 °C. Тесто должно покрыться мелкими пузырьками, а не крупными.	30
+90	1	Замесите тесто из муки и тёплой воды, вымешивайте восемь минут и оставьте под плёнкой на полчаса.	40
+90	2	Посолите нашинкованную капусту и оставьте на пятнадцать минут, потом отожмите руками досуха.	18
+90	3	Вымешивайте фарш с имбирём, соевым соусом и кунжутным маслом в одну сторону, подливая бульон, пока масса не станет вязкой. Вмешайте капусту и зелёный лук.	10
+90	4	Раскатайте кружки диаметром восемь сантиметров, тоньше по краям и толще в центре. Положите начинку и защипните складками с одной стороны.	30
+90	5	Разогрейте масло в сковороде, выложите пельмени швом вверх и жарьте три минуты до золотого дна.	4
+90	6	Влейте сто миллилитров воды и сразу накройте крышкой. Через семь минут снимите крышку и дайте воде выпариться до хруста.	10
+91	1	Отделите два желтка и перемешайте с холодным рисом руками, пока каждое зерно не покроется плёнкой. Оставшиеся яйца взбейте отдельно.	6
+91	2	Раскалите вок с ложкой масла до дыма, вылейте взбитые яйца, дайте схватиться и разбейте лопаткой на кусочки. Выложите.	2
+91	3	Обжарьте креветки полторы минуты, добавьте ветчину, морковь и горошек и жарьте ещё минуту. Выложите к яйцам.	3
+91	4	Влейте оставшееся масло, выложите рис и жарьте три минуты на максимальном огне, всё время подбрасывая. Зёрна должны прыгать по воку, а не лежать.	3
+91	5	Верните всё в вок, влейте вино по краю и соевый соус, приправьте и подбросьте ещё тридцать секунд. Посыпьте зелёным луком.	2
+92	1	Обожгите перцы на открытом огне или под грилем до чёрных пузырей по всей поверхности, сложите в пакет на десять минут и снимите кожу.	20
+92	2	Сделайте продольный надрез, аккуратно выньте семена, оставив плодоножку. Набейте сыром и защипните зубочисткой.	12
+92	3	Для соуса пробейте помидоры с луком и чесноком, обжарьте пюре в ложке масла десять минут с орегано и посолите.	14
+92	4	Взбейте белки до устойчивых пиков, добавьте щепотку соли и по одному вмешайте желтки, стараясь не осадить массу.	8
+92	5	Обваляйте перец в муке, окуните в кляр и опустите в масло при 180 °C. Жарьте по две минуты с каждой стороны, поливая маслом сверху.	15
+92	6	Выложите на решётку, выньте зубочистки и подавайте в тарелке с горячим томатным соусом снизу, а не сверху.	3
+93	1	Залейте свинину водой, добавьте половину лука, три зубчика чеснока и лавровый лист и варите два часа на слабом огне, снимая пену.	125
+93	2	Удалите из чили семена, прогрейте на сухой сковороде двадцать секунд с каждой стороны и залейте кипятком на двадцать минут.	22
+93	3	Пробейте чили с оставшимся луком, чесноком и стаканом бульона в блендере и обязательно процедите через сито.	8
+93	4	Обжарьте процеженный соус в ложке жира пять минут — он потемнеет и загустеет. Влейте в кастрюлю с мясом.	5
+93	5	Добавьте промытую кукурузу и орегано и варите ещё сорок минут. Мясо разберите на волокна и верните.	45
+93	6	Подавайте с мисками нарезанного редиса, капусты, лука, дольками лайма, орегано и тостадами. Каждый собирает свою тарелку.	\N
+94	1	Обжарьте лук в гхи до тёмно-золотого цвета — двадцать минут. Половину отложите на подачу.	20
+94	2	Добавьте имбирь с чесноком, специи и чили, прогрейте минуту, затем мясо и кости и обжарьте до потери сырого цвета.	12
+94	3	Залейте водой на три пальца выше, доведите до кипения, снимите пену и томите на самом слабом огне четыре-пять часов. Мясо должно распадаться от прикосновения.	280
+94	4	Размешайте муку в стакане холодной воды до гладкости и влейте тонкой струйкой, непрерывно помешивая. Варите десять минут — соус загустеет и станет глянцевым.	12
+94	5	Выньте кости, выложите мозг отдельно. Подавайте с жареным луком, соломкой имбиря, кинзой, зелёным чили и лимоном — каждый добавляет своё.	8
+95	1	Смешайте фарш с кукурузной мукой, яйцом, луком, чили, кинзой, раздавленным кориандром, гранатовыми семенами и солью.	10
+95	2	Вмешайте помидоры в последнюю очередь, чтобы они не пустили сок раньше времени, и уберите в холод на двадцать минут.	22
+95	3	Мокрыми руками сформуйте плоские котлеты диаметром двенадцать сантиметров и толщиной в сантиметр.	10
+95	4	Разогрейте топлёное масло слоем в полсантиметра и жарьте по три-четыре минуты с каждой стороны на среднем огне, не накрывая.	16
+95	5	Подавайте с лепёшкой, кольцами лука и лимоном. Традиционно поверх каждой котлеты разбивают яйцо прямо на сковороде.	\N
+119	3	Обжарьте шпинат с чесноком на сильном огне две минуты — он должен остаться ярким.	2
+96	1	Замочите сушёный чили в кипятке пятнадцать минут, затем пробейте с шалотом, лемонграссом, галангалом, куркумой и белачаном в гладкую пасту.	20
+96	2	Обжаривайте пасту в масле на среднем огне пятнадцать минут, помешивая. Готово, когда масло начнёт отделяться и всплывать по краям.	15
+96	3	Влейте бульон, доведите до кипения и варите десять минут. Добавьте креветки и тофу на три минуты.	13
+96	4	Влейте кокосовое молоко и прогрейте, не доводя до бурного кипения. Посолите.	5
+96	5	Разложите отваренную лапшу по мискам, залейте бульоном и подайте с ростками, огурцом и лаймом отдельно.	8
+97	1	Замесите тесто из муки, воды, яйца, сгущёнки и соли и вымешивайте пятнадцать минут — оно должно стать очень эластичным и гладким.	18
+97	2	Разделите на шары, обмажьте каждый маслом и уложите в миску, залив маслом. Оставьте минимум на четыре часа.	240
+97	3	На смазанном маслом столе расплющите шар и растягивайте от центра, хлопая по нему ладонями, пока лист не станет прозрачным.	5
+97	4	Смажьте лист гхи, сложите края к центру и скатайте в тугую спираль. Дайте полежать десять минут.	12
+97	5	Расплющите спираль в круг и жарьте на среднем огне по две минуты с каждой стороны на гхи до золотистых пятен.	16
+97	6	Сразу со сковороды сомните лепёшку ладонями с двух сторон — слои разойдутся. Подавайте с далом или карри.	\N
+98	1	Отварите картофель в подсоленной воде двадцать минут. За семь минут до конца заложите сверху капусту — она дойдёт на пару.	20
+98	2	Пока варится, прогрейте колбасу в кипятке двадцать минут, не давая кипеть, — кожура лопнет и весь жир уйдёт в воду.	20
+98	3	Вытопите бекон до хруста и отложите, жир сохраните.	8
+98	4	Слейте воду, разомните картофель с капустой толкушкой, добавляя горячее молоко, масло, беконный жир и горчицу.	6
+98	5	Вмешайте шкварки, разложите по тарелкам, сделайте ямку и налейте в неё подливу. Колбасу нарежьте и положите сверху.	4
+99	1	Распустите дрожжи с сахаром в половине тёплого молока и дайте вспениться десять минут.	10
+99	2	Смешайте обе муки с солью, влейте опару, яйцо и остальное молоко и размешайте венчиком до гладкости.	5
+99	3	Накройте и оставьте на час в тепле. Тесто станет пузырчатым и увеличится примерно вдвое.	60
+99	4	Разогрейте сковороду для поффертьес или обычную, смажьте маслом и налейте тесто в углубления, не перемешивая его в миске.	5
+99	5	Через минуту, когда края схватятся, переверните вилкой и жарьте ещё сорок секунд.	12
+99	6	Подавайте горячими с кусочком сливочного масла сверху и щедрой сахарной пудрой.	\N
+100	1	Замаринуйте курицу в соке лимона с солью на полчаса.	30
+100	2	Томите лук в сухой кастрюле на среднем огне сорок минут, помешивая. Он даст сок, уварится и превратится в тёмную пасту. Масла и воды не добавлять.	40
+100	3	Добавьте нитер киббе, чеснок и имбирь, прогрейте пять минут, затем всыпьте бербере и жарьте ещё пять — специи должны раскрыться в жире.	12
+100	4	Влейте вино и стакан воды, положите курицу и тушите под крышкой сорок минут на слабом огне.	40
+100	5	Надрежьте варёные яйца в нескольких местах и опустите в соус на последние десять минут.	12
+100	6	Подавайте с инджерой. Соус должен быть густым, тёмно-красным, с отделившимся маслом сверху.	\N
+102	1	Отварите мясо целым куском в подсоленной воде с луковицей полтора часа, пока оно не станет разбираться на волокна. Бульон сохраните.	90
+102	2	Остудите и разберите руками вдоль волокон на тонкие полоски.	15
+102	3	Томите лук с перцем в оливковом масле двадцать минут до полной мягкости, потом добавьте чеснок, зиру и орегано на минуту.	20
+102	4	Влейте вино, дайте выпариться наполовину, добавьте помидоры и стакан бульона. Тушите десять минут.	14
+102	5	Верните мясо, добавьте оливки и каперсы и тушите ещё двадцать минут на слабом огне. Подавайте с рисом и жареным подорожником.	22
+103	1	Отварите фасоль в трёх литрах воды с лавровым листом час, до состояния почти готовой. Отвар не сливайте — он и есть основа блюда.	60
+103	2	Обжарьте лук с перцем в оливковом масле пятнадцать минут до мягкости, добавьте чеснок, зиру и орегано на минуту.	15
+103	3	Отмерьте фасолевый отвар: на каждую часть риса нужно две части жидкости по объёму. Не хватит — долейте воды.	3
+103	4	Смешайте рис, фасоль, отвар, половину софрито и уксус, посолите и доведите до кипения.	5
+103	5	Убавьте огонь, накройте и варите двадцать минут, не открывая крышку. Дайте постоять десять минут, вмешайте остаток софрито вилкой.	32
+104	1	Пробейте в блендере чили, душистый перец, зелёный лук, тимьян, имбирь, чеснок, соевый соус, сок лайма, сахар, мускат и масло в густую пасту.	10
+104	2	Сделайте на курице глубокие надрезы до кости и вотрите маринад руками в перчатках, заполняя надрезы.	15
+104	3	Оставьте в холодильнике минимум на восемь часов, лучше на сутки.	480
+104	4	Разложите угли в одну сторону мангала, бросьте на них замоченные ягоды душистого перца и щепу. Курицу положите на противоположную сторону, вдали от прямого жара.	15
+104	5	Готовьте под крышкой при 150–160 °C полтора часа, переворачивая раз в полчаса и подбрасывая щепу.	90
+104	6	Последние десять минут переложите на прямой жар для корочки. Подавайте с лаймом и лепёшкой фестиваль.	12
+105	1	Отварите вымоченную треску двадцать минут, слейте воду, остудите и разберите на волокна, выбрасывая кожу и кости.	20
+105	2	Обжарьте лук с перцем в масле восемь минут, добавьте тимьян и целый скотч-боннет — он даст аромат без остроты, если его не резать.	8
+105	3	Добавьте треску и помидоры и прогрейте пять минут.	5
+105	4	Всыпьте аки, поперчите и прогрейте две минуты, только покачивая сковороду. Лопаткой не мешать.	3
+105	5	Выньте перец и подавайте с жареным подорожником, лепёшкой или варёной ямсовой смесью.	\N
+106	1	Пробейте помидоры, перец, одну луковицу и скотч-боннет в блендере до гладкости.	6
+106	2	Обжарьте вторую луковицу в масле до мягкости, добавьте томатную пасту и жарьте пять минут, пока она не потемнеет.	5
+106	3	Влейте пюре и уваривайте двадцать пять минут на среднем огне, помешивая. Соус потемнеет, загустеет, и масло начнёт отделяться по краям.	25
+106	4	Добавьте карри, тимьян, лавровый лист и бульон, посолите и доведите до кипения.	5
+106	5	Всыпьте промытый рис, перемешайте один раз, накройте фольгой и крышкой и варите на самом слабом огне двадцать пять минут. Не открывайте и не мешайте.	27
+106	6	Снимите с огня и дайте постоять десять минут. Перемешайте вилкой снизу вверх, поднимая нижний слой.	12
+107	1	Смелите арахис в мелкую крошку, заверните в полотенце и отожмите как следует — на ткани останется масло, а порошок станет сухим.	12
+107	2	Смешайте арахисовый порошок с имбирём, чесноком, кайенским перцем, паприкой, раскрошенным кубиком и солью — это ясуйя.	5
+107	3	Смажьте полоски мяса маслом и обваляйте в половине обсыпки. Оставьте на полчаса.	32
+107	4	Нанижите мясо на шпажки волной, чтобы жар проходил между складками, и жарьте на сильном огне по две-три минуты с каждой стороны.	8
+107	5	Горячее мясо посыпьте второй половиной обсыпки и подавайте с кольцами лука, помидором и капустой.	\N
+108	1	Растворите соль в тёплой воде и всыпьте муку, размешивая рукой. Добавьте масло и сыр.	5
+108	2	Вымешивайте три минуты и дайте постоять пять. Тесто должно перестать липнуть и легко скатываться в шар.	9
+108	3	Сформуйте лепёшки диаметром десять сантиметров и толщиной полтора. Края разгладьте мокрыми пальцами — трещины разойдутся при жарке.	8
+108	4	Обжарьте на сухой сковороде с каплей масла по четыре минуты с каждой стороны до плотной корочки.	8
+108	5	Доведите в духовке при 180 °C десять минут. Готовая арепа звучит глухо, если постучать.	12
+108	6	Разрежьте горячей вдоль, не до конца, и набейте начинкой: сыром, авокадо, тушёным мясом или яйцом.	\N
+109	1	Сварите курицу в двух с половиной литрах воды с зелёным луком и кинзой сорок минут. Выньте и разберите на волокна, бульон процедите.	45
+109	2	Верните бульон в кастрюлю, заложите мелкий жёлтый картофель и варите двадцать минут, пока он полностью не разварится и не загустит суп.	22
+109	3	Добавьте два других сорта картофеля и кукурузу и варите ещё двадцать минут.	22
+109	4	Всыпьте гуаскас за пять минут до конца — при долгой варке они горчат.	6
+109	5	Верните курицу, посолите и подавайте, поставив на стол миски со сливками, каперсами и нарезанным авокадо.	5
+110	1	Порубите холодное масло с мукой и щепоткой соли в крошку, добавьте яйцо и ледяную воду и соберите тесто, не вымешивая. Уберите в холод на час.	70
+110	2	Раскатайте тесто, выложите в форму, наколите вилкой и снова уберите в холод на двадцать минут — это защищает от усадки.	25
+110	3	Накройте пергаментом с грузом и выпекайте вслепую при 190 °C пятнадцать минут, потом снимите груз и допеките пять минут до сухого дна.	22
+110	4	Вытопите грудинку до румяности и обсушите на бумаге — лишний жир расслоит заливку.	8
+110	5	Взбейте яйца со сливками и молоком без пены, приправьте мускатом и перцем. Соль почти не нужна — грудинка солёная.	5
+110	6	Разложите грудинку по основе, залейте и выпекайте при 170 °C тридцать пять минут. Центр должен чуть подрагивать, когда вынимаете.	40
+111	1	Замесите тесто из муки, холодного молока, дрожжей, сахара, соли и мягкого масла пять минут. Не перемешивайте дольше: сильная клейковина помешает раскатке.	8
+111	2	Расплющите тесто в прямоугольник, заверните и уберите в холодильник минимум на четыре часа, лучше на ночь.	240
+111	3	Отбейте холодное масло скалкой в квадрат толщиной в сантиметр и держите в холоде. Оно должно гнуться, но не ломаться и не таять.	12
+111	4	Раскатайте тесто вдвое больше масляного квадрата, положите масло по центру и заверните края конвертом, защипнув швы.	10
+111	5	Раскатайте в длинный прямоугольник и сложите втрое. Уберите в холод на сорок минут. Повторите ещё два раза — всего три сложения.	150
+111	6	Раскатайте пласт толщиной четыре миллиметра, нарежьте треугольниками с основанием десять сантиметров и сверните от основания к вершине, слегка натягивая.	20
+111	7	Расстаивайте два часа при 25 °C — не теплее, иначе масло вытечет. Смажьте яйцом и выпекайте при 200 °C восемнадцать минут.	140
+112	1	Надрежьте креветки с внутренней стороны в трёх местах и слегка распрямите — так они не свернутся кольцом при жарке.	10
+112	2	Смешайте даси, соевый соус и мирин, доведите до кипения и снимите — это соус тэнцую. Подавайте с тёртым дайконом.	5
+112	3	Разогрейте масло до 180 °C. Только когда оно готово, замешивайте кляр — не раньше.	8
+112	4	Взбейте холодное яйцо с ледяной водой, всыпьте муку с крахмалом и перемешайте палочками пять-шесть движений. Комки оставьте.	2
+112	5	Обваляйте продукты в сухой муке, окуните в кляр и опускайте в масло по три-четыре штуки. Жарьте полторы-две минуты.	15
+112	6	Выкладывайте на решётку, никогда на бумагу. Между партиями снимайте с масла всплывшие кусочки кляра — они горят и портят вкус.	3
+113	1	Смешайте муку, тёртый ямс и даси и оставьте на полчаса в холодильнике — тесто станет однороднее.	32
+113	2	Вмешайте яйца в тесто, потом капусту, зелёный лук и тэнкасу. Мешайте снизу вверх и недолго — капуста не должна пустить сок.	6
+113	3	Выложите на разогретую сковороду четверть массы горкой диаметром пятнадцать сантиметров и не приплющивайте — воздух внутри нужен.	3
+113	4	Разложите сверху ломтики грудинки и жарьте пять минут под крышкой на среднем огне.	6
+113	5	Переверните двумя лопатками одним решительным движением и жарьте ещё пять минут, теперь уже не накрывая.	6
+113	6	Смажьте соусом окономи, начертите майонезом полосы и проведите по ним зубочисткой поперёк. Посыпьте кацуобуси и аонори.	2
+114	1	Замесите тесто из муки, воды, дрожжей и соли, вымешивайте восемь минут и дайте подойти час.	70
+114	2	Пробейте лук, перец и помидор в блендере, отожмите через сито — лишняя вода не нужна.	8
+114	3	Смешайте фарш с овощной пастой, бибер сальчасы, рубленой петрушкой, хлопьями перца и солью. Масса должна быть густой, как паштет.	8
+114	4	Разогрейте духовку с камнем на максимуме сорок минут.	40
+114	5	Раскатайте шарики теста до толщины бумаги, диаметром двадцать пять сантиметров, и намажьте начинкой тонким слоем до самых краёв.	15
+114	6	Выпекайте на камне три-четыре минуты. Края должны подрумяниться, а середина остаться мягкой — лахмаджун сворачивают в трубочку.	20
+115	1	Сварите сироп: сахар с водой довести до кипения, варить пятнадцать минут, добавить лимонный сок и полностью остудить.	60
+115	2	Растопите масло и дайте отстояться — используйте только прозрачный верхний слой, осадок вылейте.	10
+115	3	Уложите в смазанную форму двадцать листов, смазывая каждый маслом. Посыпьте фисташками ровным слоем.	25
+115	4	Накройте ещё двадцатью листами, так же смазывая каждый. Верхний слой смажьте особенно щедро.	25
+115	5	Разрежьте острым ножом на ромбы до самого дна формы.	8
+115	6	Выпекайте при 170 °C час до глубокого золотого цвета. Достаньте и сразу залейте холодным сиропом по надрезам.	60
+115	7	Оставьте на шесть часов, лучше на ночь. Резать и подавать раньше бессмысленно: сироп не дошёл до нижних слоёв.	360
+116	1	Нарубите шпинат, посолите и оставьте на двадцать минут. Отожмите руками горстями досуха — воды выйдет больше, чем кажется возможным.	25
+116	2	Обжарьте зелёный лук в ложке масла до мягкости и остудите.	8
+116	3	Смешайте шпинат с луком, фетой, укропом, яйцами, мускатом и перцем. Соль пробуйте: фета уже солёная.	6
+116	4	Уложите в форму семь листов фило, смазывая каждый оливковым маслом и оставляя края свисать.	10
+116	5	Выложите начинку, заверните свисающие края внутрь и накройте ещё шестью листами, смазывая каждый.	10
+116	6	Надрежьте верх на порции, не доходя до начинки, сбрызните водой и выпекайте при 180 °C пятьдесят минут до тёмно-золотого цвета.	55
+117	1	Нарежьте картофель неровными кусками — сколотые грани дают больше хрустящей поверхности. Промойте от крахмала и обсушите досуха.	12
+117	2	Обжарьте при 140 °C восемь минут до мягкости, не давая подрумяниться. Выложите остывать минимум на десять минут.	20
+117	3	Для соуса обжарьте чеснок в оливковом масле, снимите с огня, всыпьте муку и обе паприки и размешайте. Паприка на огне сгорит за секунды.	5
+117	4	Верните на слабый огонь, влейте бульон тонкой струйкой, помешивая, и варите пять минут до густоты соуса. Добавьте уксус и соль.	8
+117	5	Поднимите масло до 190 °C и обжарьте картофель ещё три минуты до тёмно-золотой корочки. Посолите сразу.	6
+117	6	Выложите на блюдо и залейте горячим соусом непосредственно перед подачей.	\N
+118	1	Замесите тесто из муки, холодной воды и щепотки соли, вымешивайте восемь минут и оставьте под плёнкой на полчаса.	40
+118	2	Смешайте рубленое мясо с луком, имбирём, чесноком, кинзой, тимуром, ложкой масла и солью. Не вымешивайте до пасты — куски должны остаться.	12
+118	3	Обожгите помидоры на открытом огне до чёрных пятен, обжарьте чили и кунжут на сухой сковороде и пробейте всё вместе с солью в соус.	15
+118	4	Раскатайте кружки диаметром восемь сантиметров, тоньше по краям. Положите ложку начинки и защипните складками по кругу, скрутив верх.	35
+118	5	Смажьте пароварку маслом и готовьте момо десять минут на сильном пару, не давая им соприкасаться.	12
+119	1	Промойте чечевицу и варите в литре воды с куркумой тридцать минут, пока она полностью не разойдётся. Снимайте пену первые пять минут.	32
+119	2	Поставьте рис. Пока варится, обжарьте лук, добавьте картофель с цветной капустой, немного куркумы и воды и тушите пятнадцать минут — это таркари.	20
+119	4	Для джхане раскалите гхи, бросьте аджван, зиру, сушёный чили и чеснок и жарьте двадцать секунд до запаха.	2
+119	5	Вылейте раскалённое масло со специями прямо в дал — он зашипит. Размешайте, посолите и сразу подавайте.	3
+119	6	Соберите тарелку: рис в центре, дал в мисочке, таркари и зелень вокруг, ачар с краю.	\N
+120	1	Нарежьте лепёшки полосками в сантиметр — так их проще рубить дальше.	6
+120	2	Раскалите большую сковороду с маслом, обжарьте лук, порей и чили две минуты, добавьте морковь с капустой и жарьте ещё три.	6
+120	3	Сдвиньте овощи, разбейте яйца в свободное место, дайте схватиться и разбейте лопаткой.	3
+120	4	Добавьте курицу, порошок карри и полоски роти и начинайте рубить двумя лопатками, перемешивая. Три минуты активной работы.	4
+120	5	Влейте соус карри по краю и продолжайте рубить ещё минуту. Масса должна быть влажной, но не мокрой.	3
+121	1	Разотрите хлопья чили с солью и мальдивской рыбой в ступке в грубую пасту.	4
+121	2	Добавьте лук и продолжайте растирать — он должен пустить сок и окрасить пасту.	3
+121	3	Вмешайте кокос руками, перетирая массу между ладонями, пока она не станет равномерно красной.	5
+121	4	Влейте сок лайма, перемешайте и попробуйте. Самбол должен быть острым, кислым и солёным одновременно.	3
+122	1	Смешайте все три фарша с раздавленным чесноком, содой, паприкой, солью и перцем.	6
+122	2	Вымешивайте руками десять минут, подливая ледяную воду понемногу, пока масса не станет липкой и однородной.	12
+122	3	Накройте плёнкой в контакт и уберите в холодильник минимум на двенадцать часов.	720
+122	4	Мокрыми руками скатайте колбаски длиной восемь сантиметров и толщиной с большой палец.	15
+122	5	Жарьте на раскалённых углях или сковороде-гриль по три минуты с каждой стороны, переворачивая один раз.	6
+122	6	Разрежьте тёплый сомун, вложите чевапи, добавьте гору сырого лука и каймак.	\N
+123	1	Запеките перец и баклажаны при 220 °C или на открытом огне до чёрных пузырей по всей поверхности.	40
+123	2	Сложите горячими в закрытую кастрюлю на двадцать минут — пар отделит кожу сам.	22
+123	3	Очистите от кожи и семян и оставьте мякоть в дуршлаге на два-три часа. Не отжимайте — вода должна стечь сама.	180
+123	4	Пропустите через мясорубку или порубите ножом — не в блендере: нужна грубая текстура, а не пюре.	15
+123	5	Уваривайте в кастрюле с половиной масла на слабом огне час, помешивая каждые десять минут.	60
+123	6	Добавьте чеснок, уксус, соль и оставшееся масло и варите ещё полчаса, пока масло не начнёт отделяться. Разложите горячим по стерильным банкам.	32
+124	1	Смешайте оба фарша с тёртым луком, яйцом, мукой, солью, перцем и душистым перцем.	5
+124	2	Вымешивайте пять минут, подливая молоко порциями. Масса должна стать вязкой и тянуться за ложкой.	7
+124	3	Уберите в холодильник на полчаса — холодный фарс держит форму лучше.	32
+124	4	Растопите масло на среднем огне. Столовой ложкой, смоченной в воде, набирайте фарш и выкладывайте на сковороду, приплющивая.	5
+124	5	Жарьте по шесть минут с каждой стороны до тёмно-коричневой корочки. Не торопитесь — цвет и есть вкус.	12
+124	6	Подавайте с отварным картофелем, маринованной красной капустой и подливой из сковороды.	\N
+125	1	Намажьте каждый ломоть маслом до самых краёв. Слой должен быть заметным на глаз, а не прозрачным.	6
+125	2	Для сельди: лист салата, сверху кусочки сельди, кольца лука и каперсы. Салат отделяет маринад от хлеба.	6
+125	3	Для креветок: выложите их плотно рядами внахлёст, сверху ложка майонеза, ломтик лимона и укроп.	8
+125	4	Для яйца: кружки варёного яйца внахлёст, майонез полосой, укроп и щепотка соли сверху.	5
+125	5	Подавайте сразу, ножом и вилкой. Смёрребрёд не берут руками — он для этого не сконструирован.	\N
+126	1	Разберите кочан на листья, срежьте толстые прожилки. Слишком кислые листья промойте, слишком солёные вымочите двадцать минут.	25
+184	6	Обжарьте кружки спелого подорожника до карамельного цвета.	10
+126	2	Обжарьте мелко нарезанный лук в масле до мягкости, добавьте томатную пасту и прогрейте две минуты. Полностью остудите.	15
+126	3	Смешайте фарш с рисом, остывшим луком, чабером, солью и перцем.	8
+126	4	Кладите столовую ложку начинки на лист, заворачивайте рулетом и подгибайте края внутрь пальцем. Голубцы должны получиться небольшими, с два пальца.	35
+126	5	Выложите на дно кастрюли рубленую капусту и рёбрышки, сверху голубцы плотными слоями, между ними лавровый лист. Накройте оставшейся капустой и листьями.	12
+126	6	Залейте водой вровень с верхним слоем и томите три часа на самом слабом огне или в духовке при 150 °C.	180
+127	1	Доведите подсоленную воду до кипения. Отложите горсть крупы — она пригодится в конце.	6
+127	2	Всыпайте крупу тонкой струйкой, непрерывно мешая венчиком. Не переставайте, пока вся не войдёт.	5
+127	3	Убавьте огонь до минимума и варите тридцать минут, помешивая деревянной ложкой каждые три-четыре минуты. Масса будет отходить от стенок.	30
+127	4	Всыпьте отложенную горсть крупы и вмешайте — она даст лёгкую зернистость, которая в мамалыге ценится.	4
+127	5	Вмешайте масло, переверните на доску и дайте постоять пять минут. Режьте ниткой на ломти и подавайте с брынзой и сметаной.	8
+128	1	Обожгите перец на открытом огне до чёрной кожи, сложите в закрытую посуду на десять минут и очистите.	20
+128	2	Нарежьте помидоры и огурцы крупным кубиком в два сантиметра, перец — полосками.	8
+128	3	Смешайте овощи с луком и петрушкой, заправьте маслом, уксусом и солью.	4
+128	4	Выложите горкой в блюдо и засыпьте тёртой брынзой сверху, не перемешивая. Украсьте оливками.	3
+129	1	Разомните брынзу вилкой, вмешайте четыре яйца — начинка должна остаться рассыпчатой, а не превратиться в пасту.	6
+129	2	Смешайте растопленное масло с подсолнечным — так листы будут и хрустеть, и не гореть.	3
+129	3	Разложите два листа фило внахлёст, смажьте маслом, рассыпьте начинку крошкой вдоль длинной стороны и сверните неплотной колбаской.	12
+129	4	Уложите колбаску спиралью в круглую форму от центра к краям, оставляя между витками пару миллиметров.	10
+129	5	Взбейте йогурт с оставшимся яйцом и содой и вылейте на баницу, стараясь попасть в щели между витками.	4
+129	6	Выпекайте при 180 °C сорок пять минут до тёмно-золотого цвета. Накройте полотенцем на десять минут после духовки.	50
+130	1	Залейте голову и хребет полутора литрами воды, добавьте душистый перец и лавровый лист и варите двадцать пять минут, снимая пену. Процедите.	30
+130	2	Обжарьте порей с морковью в масле пять минут, не давая им темнеть.	5
+130	3	Влейте процеженный бульон, заложите картофель и варите пятнадцать минут до мягкости.	16
+130	4	Влейте сливки и прогрейте, не доводя до кипения. Посолите.	4
+130	5	Опустите кусочки лосося и держите на слабом огне ровно пять минут. Рыба должна остаться цельными кусками.	6
+130	6	Разлейте по тарелкам, в каждую положите кусочек сливочного масла и щедрую горсть укропа.	\N
+131	1	Сварите рис в молоке на слабом огне сорок минут до состояния жидковатой каши. Посолите и остудите.	45
+131	2	Замесите тесто из ржаной муки, воды и соли, вымешивайте пять минут. Оно будет плотным и не липким.	7
+131	3	Разделите на шестнадцать шариков и раскатайте каждый в овал толщиной в полмиллиметра. Подпыляйте ржаной мукой, а не пшеничной.	25
+131	4	Выложите ложку каши по центру, оставив свободными края, и защипните края гофрировкой, оставив начинку открытой.	20
+131	5	Выпекайте при 250 °C пятнадцать минут — коротко и очень горячо, иначе тонкое тесто высохнет.	18
+131	6	Растопите половину масла с равным количеством горячей воды и окуните горячие пирожки. Накройте полотенцем на десять минут.	12
+131	7	Разомните варёные яйца с оставшимся мягким маслом и солью — это мунавой, яичное масло. Подавайте им пирожки.	6
+132	1	Уложите мясо в кастрюлю сырым, добавьте лук, морковь и первую партию картофеля, нарезанную крупно.	10
+184	7	Подавайте с яйцом, гари, шито и подорожником, всё на одной тарелке.	5
+132	2	Залейте бульоном, доведите до кипения, снимите пену и томите под крышкой полтора часа на самом слабом огне.	95
+132	3	Разомните разварившийся картофель о стенку кастрюли — бульон загустеет и станет молочно-белым.	5
+132	4	Добавьте вторую партию картофеля крупными кусками и варите ещё сорок минут.	40
+132	5	Посолите, поперчите и дайте постоять пятнадцать минут. Посыпьте петрушкой перед подачей.	16
+133	1	Разогрейте духовку до 220 °C заранее. Хлеб должен отправиться в неё сразу после замеса, ждать он не может.	15
+133	2	Смешайте обе муки, соду и соль в миске и хорошо перемешайте, чтобы сода разошлась равномерно.	3
+133	3	Влейте пахту и перемешайте ножом или рукой ровно до соединения. Тесто будет липким и неровным — так и надо.	2
+133	4	Выложите на присыпанный мукой противень, придайте форму круглой буханки и прорежьте глубокий крест почти до дна.	2
+133	5	Посыпьте овсяными хлопьями и выпекайте пятнадцать минут при 220 °C, затем тридцать при 190 °C.	47
+133	6	Готовый хлеб звучит глухо, если постучать по дну. Остудите на решётке минимум час: горячий содовый хлеб не режется.	60
+134	1	Обжарьте лук с чесноком в оливковом масле до мягкости, добавьте каракатицу и жарьте пять минут — она выпустит воду.	5
+134	2	Влейте половину вина, добавьте томатную пасту и тушите двадцать пять минут под крышкой, подливая бульон, пока каракатица не станет мягкой.	27
+134	3	Всыпьте рис и обжаривайте две минуты, пока зёрна не станут прозрачными по краям. Влейте оставшееся вино.	4
+134	4	Подливайте горячий бульон половниками, помешивая, восемнадцать минут. Каждую порцию добавляйте, когда предыдущая почти впиталась.	18
+134	5	За пять минут до готовности вмешайте чернила. Ризотто станет чёрным за секунды.	5
+134	6	Снимите с огня, вмешайте ложку оливкового масла и петрушку, накройте на две минуты и подавайте.	4
+135	1	Замесите тесто из муки, тёплой воды, масла, яйца и соли и вымешивайте десять минут до эластичности. Смажьте маслом и оставьте на полчаса.	42
+135	2	Разомните творог вилкой с яйцами, сметаной и солью. Начинка должна быть плотной, а не текучей.	6
+135	3	Растяните тесто на полотенце руками до прозрачности, смажьте растопленным маслом и разложите начинку по трети поверхности.	15
+135	4	Сверните рулетом, поднимая полотенце, и нарежьте на куски по восемь сантиметров, прижимая края ребром ладони, чтобы они запечатались.	10
+135	5	Отварите в подсоленной воде пять минут после всплытия и выньте шумовкой.	5
+135	6	Уложите в форму, залейте сливками, полейте растопленным маслом и запекайте при 200 °C двадцать пять минут до румяной корочки.	28
+137	1	Уложите на дно кастрюли слой мяса жиром вниз, посолите и посыпьте горошинами перца.	5
+137	2	Сверху слой капусты, снова соль и перец, если хотите — присыпьте мукой. Чередуйте слои, пока не кончится всё.	10
+137	3	Влейте воду по стенке — она должна доходить до половины высоты, не выше.	2
+137	4	Доведите до кипения, накройте и томите два часа на самом слабом огне. Не перемешивайте: слои должны остаться слоями.	120
+137	5	Готово, когда мясо отходит от кости. Подавайте с отварным картофелем, поливая бульоном из кастрюли.	5
+138	1	Переберите мидии: выбросьте разбитые и те, что не закрываются при постукивании. Оборвите бороду и промойте под краном.	20
+138	2	Растопите масло в широкой кастрюле, обжарьте шалот, сельдерей и чеснок пять минут до мягкости, не давая им темнеть.	6
+138	3	Влейте вино, добавьте тимьян и лавровый лист и доведите до кипения.	3
+138	4	Высыпьте мидии, сразу накройте крышкой и держите на сильном огне пять минут, встряхнув кастрюлю пару раз.	6
+138	5	Снимите крышку: раковины должны быть открыты. Закрытые выбросьте. Посыпьте петрушкой, поперчите и подавайте с картофелем фри и бульоном в отдельной чашке.	3
+139	1	Обсушите мясо и обжарьте в масле партиями до тёмной корочки. Выложите.	15
+139	2	В том же жире томите лук двадцать минут до мягкости и золотистого цвета — он даст соусу сладость и густоту.	20
+139	3	Верните мясо, влейте пиво, добавьте сироп, уксус, тимьян и лавровый лист. Жидкость должна почти покрывать мясо.	5
+139	4	Намажьте хлеб горчицей и уложите горчицей вниз поверх мяса. Не размешивайте.	3
+139	5	Накройте и томите три часа на самом слабом огне или в духовке при 150 °C. Хлеб разойдётся сам.	180
+139	6	Размешайте соус, попробуйте на баланс сладкого и кислого и подавайте с картофелем фри.	5
+140	1	Натрите котелок изнутри разрезанной долькой чеснока и оставьте её внутри.	2
+140	2	Перемешайте оба тёртых сыра с крахмалом руками, пока каждый кусочек не покроется.	4
+140	3	Прогрейте вино с лимонным соком до появления пузырьков по краю, но не до кипения.	4
+140	4	Добавляйте сыр горстями, каждый раз размешивая восьмёркой до полного расплавления, прежде чем класть следующую.	10
+140	5	Когда масса станет однородной и потянется за ложкой, влейте кирш, приправьте мускатом и перцем.	3
+140	6	Перенесите на горелку и держите на самом слабом огне. Хлеб накалывают за корку, а не за мякиш.	\N
+141	1	Отварите картофель в мундире двадцать минут — до состояния, когда нож входит с сопротивлением. Полностью остудите и оставьте на ночь в холодильнике.	20
+141	2	Очистите и натрите на крупной тёрке прямо в миску. Не промывайте и не отжимайте.	8
+141	3	Посолите, поперчите и, если используете, вмешайте обжаренные бекон с луком и сыр.	5
+141	4	Разогрейте половину масла в сковороде, выложите массу ровным слоем и придавите лопаткой один раз.	3
+141	5	Жарьте на среднем огне двенадцать минут, не трогая. Периодически потряхивайте сковороду — рёшти должен скользить целиком.	12
+141	6	Накройте тарелкой, переверните, добавьте оставшееся масло и жарьте вторую сторону ещё десять минут.	12
+142	1	Срежьте у тыквы верхушку с хвостиком — это будет крышка. Ложкой выберите семена и рыхлую мякоть, оставив стенку в два пальца.	15
+142	2	Отварите рис в подсоленной воде семь минут — до полуготовности — и откиньте на дуршлаг.	7
+142	3	Залейте сухофрукты кипятком на десять минут, откиньте и крупно нарежьте курагу и чернослив. Орехи порубите.	12
+142	4	Смешайте рис с сухофруктами, орехами, растопленным маслом, мёдом и корицей. Посолите — сладкая начинка без соли будет плоской.	5
+142	5	Наполните тыкву начинкой, не утрамбовывая, накройте срезанной крышкой и поставьте на противень.	5
+142	6	Запекайте при 180 °C полтора часа. Готовность проверяют ножом сбоку: он должен входить в стенку без усилия.	90
+142	7	Дайте постоять пятнадцать минут, вынесите целиком и разрежьте на дольки от макушки к дну.	15
+143	1	Замочите дзавар на ночь, затем отварите в литре воды до мягкости, минут двадцать пять. Воду не сливайте.	27
+143	2	Взбейте мацун с яйцом и мукой до полной однородности. Комков остаться не должно — каждый из них станет хлопьями в супе.	5
+143	3	Перелейте смесь в холодную кастрюлю и грейте на среднем огне, помешивая деревянной ложкой в одну сторону, пока не закипит.	20
+143	4	Как только пойдут первые пузыри, вмешайте крупу вместе с её водой и держите на слабом огне ещё пять минут.	6
+143	5	Обжарьте лук в сливочном масле до золотистого и вмешайте в суп вместе с сушёной мятой. Посолите.	8
+143	6	Разлейте по тарелкам и посыпьте кинзой. Кипятить повторно спас нельзя — разогревают только до горячего.	2
+144	1	Замочите рис в подсоленной воде на час, потом отварите семь минут в большом объёме воды и откиньте.	20
+144	2	Залейте шафран тремя ложками кипятка и оставьте настаиваться — он даст и цвет, и запах.	3
+144	3	Обжарьте баранину до корочки, добавьте лук и жарьте до мягкости. Всыпьте каштаны, курагу, изюм и куркуму, тушите двадцать минут.	30
+144	4	Смажьте форму топлёным маслом и выстелите лавашем внахлёст, оставив края свисать наружу.	8
+144	5	Выложите слоями: рис, начинку, снова рис. Полейте шафранным настоем и оставшимся маслом.	7
+144	6	Заверните края лаваша внутрь, накройте фольгой и запекайте при 180 °C сорок минут, потом снимите фольгу и держите ещё пятнадцать до румяности.	57
+144	7	Дайте постоять десять минут, накройте блюдом и переверните. Режьте на столе.	12
+145	1	Залейте мясо на кости холодной водой, доведите до кипения и снимайте пену. Добавьте нут и варите на слабом огне час.	65
+145	2	Вмешайте в фарш тёртую луковицу, рис, соль и перец и вымешивайте пять минут, пока масса не начнёт тянуться за рукой.	8
+145	3	Разделите фарш на четыре части. В каждую спрячьте по алыче и кураге и слепите плотный шар без трещин.	10
+145	4	Опустите кюфту в едва кипящий бульон и варите тридцать минут, не мешая. Первые пять минут не трогайте вовсе.	32
+145	5	Добавьте картофель целиком и куркуму и варите ещё двадцать минут, пока картофель не станет мягким.	22
+145	6	В каждую тарелку положите кюфту, картофелину и нут, залейте бульоном и разотрите над тарелкой сушёную мяту.	5
+146	1	Залейте мясо холодной водой, доведите до кипения, снимите пену и варите на самом слабом огне два с половиной часа с перцем и лавром.	155
+146	2	Замесите крутое тесто из муки, яиц, воды и соли и оставьте под плёнкой на сорок минут.	50
+146	3	Раскатайте тесто в пласт толщиной в миллиметр и нарежьте квадратами со стороной около восьми сантиметров.	20
+146	4	Нарежьте лук кольцами, залейте половником горячего бульона и дайте постоять десять минут — это сорпа для подливы.	12
+146	5	Выньте мясо, снимите жир с бульона в отдельную миску и отварите в этом бульоне квадраты теста порциями по три-четыре минуты.	15
+146	6	Разберите мясо на тонкие пласты поперёк волокон. Выложите тесто на большое блюдо, сверху мясо, сверху лук с бульоном.	12
+146	7	Оставшийся бульон подайте горячим в пиалах с зеленью — его пьют до или вместе с блюдом.	5
+147	1	Растворите дрожжи и сахар в тёплом молоке и оставьте на десять минут до появления пены.	12
+147	2	Вмешайте яйца, растопленное масло, соль и муку и замесите мягкое тесто. Оно должно чуть липнуть к рукам.	12
+147	3	Накройте и оставьте в тепле на час, пока тесто не удвоится.	60
+147	4	Обомните, раскатайте в пласт толщиной полтора сантиметра и нарежьте квадратами или ромбами по три сантиметра.	12
+147	5	Дайте заготовкам постоять под полотенцем двадцать минут — второй подъём и есть причина пустоты внутри.	20
+147	6	Разогрейте масло до 170 °C и жарьте партиями по две-три минуты, переворачивая, до ровного золотистого цвета.	20
+147	7	Выкладывайте на бумагу и подавайте тёплыми — с чаем, сметаной или мёдом.	3
+148	1	Натрите картофель на мелкой тёрке и слегка отожмите — воды должно уйти немного, полностью сухая масса не свяжется.	15
+148	2	Вмешайте муку, яйцо и соль. Масса должна медленно сползать с ложки, а не литься.	5
+148	3	Обжарьте грудинку на сухой сковороде до хруста и снимите, оставив жир.	10
+148	4	Продавите тесто в кипящую подсоленную воду через дуршлаг с крупными отверстиями. Клёцки готовы, когда всплывут — минуты через три.	10
+148	5	Откиньте клёцки, верните в тёплую кастрюлю и вмешайте брынзу с ложкой воды от варки. Огонь не включайте.	4
+148	6	Разложите по тарелкам, полейте горячим жиром и посыпьте шкварками.	3
+149	1	Замочите грибы в стакане тёплой воды на двадцать минут. Воду сохраните.	22
+149	2	Отварите копчёные рёбрышки в двух литрах воды сорок минут с лавровым листом.	40
+426	6	Отварите рисовую лапшу, промойте и разложите по мискам.	8
+149	3	Отожмите капусту, рассол отложите. Добавьте капусту, грибы с их водой и чернослив в бульон и варите тридцать минут.	32
+149	4	Обжарьте лук, снимите с огня, вмешайте паприку и муку и разведите половником бульона до однородности.	10
+149	5	Вылейте заправку в кастрюлю, добавьте колбасу и варите ещё пятнадцать минут.	16
+149	6	Снимите мясо с костей, верните в суп и доведите кислоту рассолом по вкусу. Подавайте со сметаной.	8
+150	1	Обжарьте мелко нарезанный лук до прозрачности, добавьте фарш, зиру, соль и перец и жарьте до готовности. Дайте пино остыть — тёплое даст воду.	25
+150	2	Пробейте кукурузу с базиликом и молоком в блендере до крупной, но однородной массы.	8
+150	3	Уварите эту массу со сливочным маслом на среднем огне, помешивая, минут пятнадцать — до густоты, в которой ложка стоит.	17
+150	4	Разложите пино по глиняным формам, сверху — кусок курицы, половинка яйца и пара оливок с изюмом.	8
+150	5	Закройте кукурузной массой слоем в два сантиметра, разровняйте и посыпьте сахаром.	5
+150	6	Запекайте при 200 °C сорок минут, последние пять — под грилем, до тёмной карамельной корки.	45
+151	1	Нарежьте лук кубиком и томите в жире двадцать минут на слабом огне — он должен стать сладким, а не золотистым.	22
+151	2	Добавьте мясо, паприку и зиру и тушите двадцать минут. Лука по объёму должно быть не меньше, чем мяса.	22
+151	3	Уберите начинку в холодильник минимум на три часа, лучше на ночь.	10
+151	4	Замесите тесто из муки, растопленного жира, тёплого молока и соли. Вымешивайте десять минут и дайте отдохнуть полчаса.	40
+151	5	Раскатайте кругами диаметром двадцать сантиметров. На каждый — две ложки начинки, оливка, четвертинка яйца и щепоть изюма.	20
+151	6	Сложите конвертом, защипните края и подверните их дважды. Проколите верх зубочисткой, чтобы вышел пар.	15
+151	7	Смажьте желтком и пеките при 200 °C двадцать пять минут до тёмно-золотого цвета.	27
+152	1	Отварите фасоль с половиной лука и чесноком до мягкости — час-полтора. Посолите в конце.	90
+152	2	Отварите говядину целым куском в подсоленной воде час двадцать. Выньте и остудите настолько, чтобы брать руками.	85
+152	3	Разберите мясо на волокна вдоль. Поперёк рвать нельзя — получится крошка.	12
+152	4	Обжарьте оставшийся лук, перец и чеснок, добавьте помидоры и зиру, потом мясо, и тушите двадцать минут с половником бульона.	20
+152	5	Отварите рис рассыпчатым, без масла и специй — он здесь нейтральная часть.	20
+152	6	Нарежьте подорожник по диагонали и обжарьте на среднем огне до карамельного цвета с обеих сторон.	10
+152	7	Соберите тарелку секторами: рис, фасоль, мясо и бананы рядом, не смешивая.	5
+153	1	Срежьте зёрна с початков и пробейте блендером с молоком, сахаром и солью до крупного, но текучего пюре.	10
+153	2	Дайте тесту постоять десять минут. Крахмал набухнет, и оладьи будут держать форму.	10
+153	3	Разогрейте сковороду до среднего жара, смажьте маслом и вылейте половник теста, разровняв в круг сантиметр толщиной.	4
+153	4	Жарьте четыре минуты, пока края не подсохнут и низ не станет пятнистым, переверните и дайте ещё три.	4
+153	5	Положите на горячую качапу кусок масла и сыр, сложите пополам и прижмите лопаткой.	3
+153	6	Подавайте сразу. Остывшая качапа теряет мягкость и становится похожа на плотный корж.	2
+154	1	Обжарьте лук с ахи и зирой, добавьте мясо и жарьте до готовности. Влейте бульон и проварите десять минут.	25
+154	2	Распустите желатин в паре ложек горячей воды и вмешайте в рагу вместе с картофелем и горошком.	6
+154	3	Остудите начинку и уберите в холодильник минимум на четыре часа — она должна стать плотным желе.	15
+154	4	Замесите тесто из муки, размягчённого масла, сахара, ачиоте, соли и тёплой воды. Дайте отдохнуть полчаса.	40
+154	5	Раскатайте круги в пятнадцать сантиметров. На каждый — ложка холодного желе, долька яйца и оливка.	20
+154	6	Защипните шов косичкой поверху и поставьте пирожки швом вверх. Любая щель — это вытекший бульон.	20
+154	7	Пеките при 220 °C двадцать пять минут. Высокий жар нужен, чтобы тесто схватилось раньше, чем растает желе.	25
+155	1	Отбейте мясо через плёнку до толщины три-четыре миллиметра. Работайте от центра к краям, иначе куски порвутся.	15
+155	2	Посолите, поперчите и обваляйте в сухарях, прижимая их ладонью. Яйцо для панировки здесь не используют.	8
+155	3	Нарежьте помидоры, лук и свёклу мелким кубиком, смешайте с петрушкой, солью и ложкой масла.	10
+155	4	Обжарьте кружки варёного картофеля до румяности и держите в тепле.	10
+155	5	Жарьте отбивные по полторы минуты с каждой стороны в горячем масле — тонкое мясо готовится мгновенно.	8
+155	6	Пожарьте яйца, оставив желток жидким.	5
+155	7	Соберите: рис, картофель, отбивная во всю тарелку, яйцо и сырая смесь сверху.	4
+156	1	Замаринуйте лук в соке двух лаймов с солью и оставьте минимум на пятнадцать минут.	16
+156	2	Обжарьте чеснок и помидоры с зирой пять минут, влейте полтора литра воды и доведите до кипения.	5
+156	3	Опустите тунца целым куском и варите пятнадцать минут на слабом огне. Бурного кипения рыба не терпит.	17
+156	4	Выньте рыбу, процедите бульон и верните на огонь. Отварите в нём юкку двадцать минут до мягкости.	22
+156	5	Разберите тунца на крупные хлопья, убрав тёмные части, и верните в кастрюлю на две минуты.	8
+156	6	Разлейте по тарелкам, сверху — маринованный лук с его соком и кинза. Подавайте с долькой лайма.	4
+157	1	Отварите картофель в мундире, очистите горячим и разомните в сухое пюре. Никакой жидкости не добавляйте.	30
+157	2	Прогрейте ачиоте в ложке масла минуту и вмешайте окрашенное масло в пюре вместе с солью.	5
+157	3	Слепите шарики, вдавите в каждый кубик сыра, закройте и приплюсните в лепёшку в сантиметр толщиной.	15
+157	4	Охладите лепёшки полчаса — так они держат форму на сковороде.	30
+157	5	Для соуса обжарьте лук, добавьте арахисовую пасту и молоко и проварите пять минут до густоты сливок.	12
+157	6	Жарьте лепёшки на среднем огне по четыре минуты с каждой стороны до румяной корки.	8
+157	7	Подавайте с яичницей, соусом и салатом из авокадо.	6
+158	1	Разрежьте рыбу вдоль спины, не разделяя брюхо, выпотрошите и разверните книгой. Хребет оставьте на месте.	20
+158	2	Смешайте масло, куркуму, тамаринд, карри, соль и перец и смажьте мякоть. Кожу не трогайте.	8
+158	3	Оставьте рыбу на полчаса при комнатной температуре — холодная будет готовиться неравномерно.	30
+158	4	Разожгите огонь и дайте ему прогореть до устойчивого пламени. Установите рыбу вертикально мякотью к огню в полуметре от него.	15
+158	5	Готовьте час, поворачивая по мере надобности. Мякоть должна побелеть и подсохнуть по краям, но не подгореть.	60
+158	6	Переложите рыбу кожей вниз на угли, выложите сверху лук и помидоры и держите ещё десять минут.	12
+158	7	Подавайте прямо на доске, с лепёшкой, лимоном и сырым луком.	5
+159	1	Промойте рис и смешайте с фаршем, рубленой петрушкой, томатной пастой, бахаратом, маслом, солью и перцем.	15
+159	2	Срежьте у перцев и помидоров крышечки, выньте мякоть. Разберите лук на слои, ошпарив его целиком.	25
+159	3	Заверните начинку в виноградные листья плотными валиками — рис разбухнет вдвое, оставьте ему место.	30
+159	4	Наполните овощи начинкой на две трети и закройте срезанными крышечками.	15
+159	5	Выложите на дно кастрюли кружки помидора, затем слоями голубцы и фаршированные овощи, самые плотные — вниз.	12
+159	6	Смешайте воду с гранатовым соусом, лимонным соком и солью и залейте так, чтобы жидкость доходила до верхнего слоя.	5
+159	7	Накройте тарелкой с грузом и варите на слабом огне час пятнадцать. Подавайте, перевернув кастрюлю на блюдо.	78
+160	1	Замочите джамид в тёплой воде на четыре часа, разомните руками и процедите через сито до однородной жидкости.	25
+160	2	Отварите баранину с кардамоном час двадцать, снимая пену. Бульон сохраните.	85
+185	1	Смешайте кукурузное и маниоковое тесто с литром воды и солью до однородной жидкой массы без комков.	10
+160	3	Влейте разведённый джамид в кастрюлю с мясом и доводите до кипения, непрерывно помешивая в одном направлении.	15
+160	4	Убавьте огонь до минимума и томите сорок минут. Соус загустеет и станет кремовым.	42
+160	5	Сварите рис на мясном бульоне с куркумой и ложкой топлёного масла.	25
+160	6	Обжарьте миндаль и кедровые орехи в топлёном масле до золотистого и отложите.	8
+160	7	Выстелите блюдо лепёшкой, смочите её соусом, выложите рис, сверху мясо, полейте соусом и посыпьте орехами и петрушкой.	10
+161	1	Отварите курицу с луком, корицей и бахаратом сорок минут. Мясо выньте, бульон процедите.	40
+161	2	Замочите рис в тёплой воде на двадцать минут и промойте до прозрачной воды.	22
+161	3	Нарежьте баклажаны кружками, посолите и дайте постоять пятнадцать минут, потом обсушите и обжарьте до румяности.	30
+161	4	Обжарьте соцветия цветной капусты и кружки картофеля до золотистого и выложите на бумагу.	20
+161	5	Выложите на дно кастрюли картофель, затем баклажаны по стенкам, курицу, капусту и сверху рис. Не утрамбовывайте.	12
+161	6	Залейте горячим бульоном на палец выше риса, доведите до кипения и варите под крышкой сорок минут на слабом огне.	45
+161	7	Снимите с огня, дайте постоять десять минут, накройте блюдом и переверните одним движением. Посыпьте орехами.	14
+162	1	Смешайте размятый картофель с тунцом, рубленым луком, каперсами, петрушкой, хариссой, солью и перцем.	12
+162	2	Разогрейте масло до 180 °C. Проверьте кусочком теста — он должен всплыть сразу и зашипеть.	6
+162	3	Положите лист на тарелку, выложите на половину две ложки начинки и сделайте в ней углубление.	3
+162	4	Разбейте яйцо в углубление, посолите и сразу же сложите лист пополам, прижав края.	2
+162	5	Опустите брик в масло и жарьте по сорок секунд с каждой стороны, придерживая шумовкой.	3
+162	6	Выложите на бумагу и подавайте немедленно с долькой лимона.	2
+163	1	Отварите нут в двух литрах воды с половиной чеснока полтора часа, пока он не станет мягким, но целым.	90
+163	2	Разотрите оставшийся чеснок с солью и тмином в пасту и вмешайте в бульон. Посолите.	6
+163	3	Отварите яйца всмятку — шесть минут от закипания — и очистите.	10
+163	4	Наломайте хлеб крупными кусками в глубокие миски, заполнив их наполовину.	4
+163	5	Залейте хлеб горячим бульоном с нутом так, чтобы он полностью пропитался.	3
+163	6	Положите сверху яйцо, ложку хариссы, оливки, каперсы и тунца, полейте оливковым маслом и лимоном.	4
+164	1	Обжарьте мясо с луком в нижнем ярусе кускусницы, добавьте томатную пасту, специи, нут и залейте водой. Варите час.	60
+164	2	Сбрызните кускус водой с маслом и разотрите руками, чтобы крупинки разошлись. Пропарьте пятнадцать минут.	20
+164	3	Высыпьте крупу в широкое блюдо, снова сбрызните водой, разрыхлите и дайте остыть пять минут.	8
+164	4	Верните на пар ещё на пятнадцать минут. Тем временем добавьте в бульон морковь и репу.	17
+164	5	Повторите разрыхление третий раз, добавив сливочное масло, и пропарьте последние десять минут.	14
+164	6	Заложите в бульон кабачки и тыкву на последние двадцать минут — они готовятся быстрее корнеплодов.	20
+164	7	Выложите кускус горкой, сверху мясо и овощи. Бульон подайте в отдельной миске, хариссу — в третьей.	8
+165	1	Обжарьте мясо с луком и сельдереем в топлёном масле до румяности, десять минут.	12
+165	2	Добавьте тёртые помидоры, томатную пасту, корицу, соль и перец и тушите пять минут.	7
+165	3	Залейте двумя литрами кипятка, добавьте нут и варите сорок минут на слабом огне.	42
+165	4	Промойте фрик, всыпьте в суп и варите ещё двадцать минут, помешивая — крупа оседает и пригорает.	22
+165	5	Вмешайте кинзу за пять минут до конца и доведите густоту водой, если суп стал слишком плотным.	6
+165	6	Разлейте по тарелкам, разотрите сверху сушёную мяту и добавьте лимонный сок.	3
+166	1	Натрите сырой картофель на мелкой тёрке и отожмите через полотенце. Жидкость соберите в миску.	25
+166	2	Дайте жидкости постоять десять минут, слейте воду, а осевший крахмал вмешайте обратно в тёртую массу.	12
+166	3	Разомните варёный картофель и соедините с тёртым, добавив крахмал и соль. Масса должна лепиться и не липнуть.	10
+166	4	Смешайте фарш с половиной мелко нарезанного лука, майораном, солью и перцем и слепите четыре плотных шарика.	10
+166	5	Возьмите мокрыми руками ком теста, расплющите на ладони, положите начинку и залепите в удлинённый овал.	15
+166	6	Опустите в едва кипящую подсоленную воду и варите двадцать пять минут. Не мешайте — только качните кастрюлю в первую минуту.	28
+166	7	Вытопите сало с оставшимся луком до шкварок, полейте цеппелинай и подайте со сметаной.	12
+167	1	Отварите свёклу до мягкости, остудите полностью и натрите на крупной тёрке.	45
+167	2	Нарежьте огурцы соломкой, порубите укроп и зелёный лук.	8
+167	3	Смешайте свёклу, огурцы и зелень со сметаной и посолите — до кефира, чтобы соль разошлась.	5
+167	4	Влейте холодный кефир и размешайте. Суп станет ровного розового цвета.	3
+167	5	Уберите в холодильник на час. Тёплый шалтибарщяй не имеет смысла.	60
+167	6	Отварите картофель и подайте горячим на отдельной тарелке. В суп положите половинки яиц.	25
+170	1	Промойте перловку и варите в подсоленной воде час, пока она не станет мягкой.	62
+170	2	Добавьте в ту же кастрюлю крупно нарезанный картофель и варите ещё двадцать минут.	22
+170	3	Вытопите грудинку до шкварок, добавьте лук и жарьте до золотистого.	14
+170	4	Слейте с крупы и картофеля почти всю воду, оставив полстакана.	3
+170	5	Разомните толкушкой с маслом и молоком, оставив зёрна перловки различимыми. Посолите и поперчите.	8
+170	6	Разложите по тарелкам и полейте шкварками с луком и вытопленным жиром.	4
+171	1	Взбейте кефир с сахаром и щепотью соли до полного растворения сахара.	3
+171	2	Всыпайте каму понемногу, размешивая венчиком, — всё сразу даст комки, которые уже не разбить.	5
+171	3	Дайте постоять пятнадцать минут, чтобы мука набухла, и проверьте густоту — при необходимости добавьте кефира.	15
+171	4	Вмешайте мёд и разлейте по стаканам.	3
+171	5	Охладите час и подавайте с ягодами и, если хотите, ложкой взбитых сливок.	5
+172	1	Натрите картофель и лук на мелкой тёрке в одну миску.	15
+172	2	Дайте массе постоять три минуты и слейте отстоявшуюся сверху воду, не трогая осадок.	5
+172	3	Посолите и поперчите. Ничего больше не добавляйте.	2
+172	4	Разогрейте масло на среднем огне и выкладывайте массу столовой ложкой, приплющивая до толщины в полсантиметра.	4
+172	5	Жарьте по три-четыре минуты с каждой стороны до тёмно-золотой хрустящей корки.	20
+172	6	Выложите на бумагу и подавайте немедленно со сметаной и укропом.	3
+174	1	Отварите рыбу с лемонграссом и куркумой пятнадцать минут, выньте и разберите на мясо, выбросив кости и кожу. Бульон процедите.	25
+174	2	Разотрите лук, чеснок и имбирь в пасту и обжарьте её в масле с паприкой до тёмного цвета и характерного запаха.	15
+174	3	Разомните рыбу вилкой и вмешайте в пасту, обжаривая пять минут — она должна распасться на волокна.	8
+174	4	Переложите всё в кастрюлю с бульоном, влейте рыбный соус и варите двадцать минут на слабом огне.	22
+174	5	Разведите рисовую и нутовую муку холодной водой до жидкой кашицы и вливайте в суп тонкой струйкой, помешивая.	10
+174	6	Проварите ещё двадцать минут, пока бульон не загустеет до консистенции жидких сливок.	22
+174	7	Отварите лапшу, разложите по мискам, залейте супом и подайте с яйцом, горохом, кинзой и лаймом.	12
+175	1	Обжарьте пластины чеснока в масле до золотистого и сразу выньте — за лишние секунды он станет горьким.	6
+175	2	Подсушите кунжут на сухой сковороде до запаха, две минуты, помешивая.	4
+175	3	Промойте чайную пасту холодной водой, если она очень солёная, и отожмите.	5
+175	4	Нарежьте капусту тонкой соломкой, помидоры дольками, чили кольцами.	10
+175	5	Соедините всё в миске, добавьте арахис, бобы, кунжут, чесночное масло, рыбный соус и сок лайма.	5
+175	6	Перемешайте руками непосредственно перед подачей и посыпьте жареным чесноком.	3
+176	1	Растолките в ступке лемонграсс, галангал, куркуму, чеснок, шалот и половину листьев лайма в однородную пасту.	20
+176	2	Прогрейте пасту в сотейнике с половиной кокосового молока пять минут, до запаха.	5
+176	3	Снимите с огня, остудите до тёплого и вмешайте яйца, рыбный соус, пальмовый сахар и оставшееся молоко.	8
+176	4	Соедините с кусками рыбы и оставьте мариноваться пятнадцать минут.	16
+176	5	Сложите из банановых листьев чашки или возьмите керамические формочки. На дно положите листья шпината.	10
+176	6	Разложите рыбу с соусом по формам, не заполняя доверху, и готовьте на пару двадцать минут.	22
+176	7	Полейте кокосовыми сливками, посыпьте нарезанными листьями лайма и подавайте с рисом.	4
+177	1	Замаринуйте мясо в устричном и соевом соусах с чесноком, сахаром и половиной перца на двадцать минут.	22
+177	2	Смешайте сок лаймов с оставшимся перцем и щепотью соли — это соус для макания.	5
+177	3	Выложите на блюдо салат, кружки помидора, огурца и кольца красного лука.	8
+177	4	Раскалите сковороду до максимума и обжарьте мясо партиями по полторы минуты, не перемешивая постоянно.	10
+177	5	Пожарьте яйца до жидкого желтка.	5
+177	6	Выложите мясо на овощи, сверху яичницу, соус подайте в маленьких мисках отдельно каждому.	4
+178	1	Натрите курицу солью снаружи и внутри, вложите в полость половину имбиря и зелёный лук.	10
+178	2	Доведите в кастрюле воду до кипения, опустите курицу целиком, снова доведите до кипения и сразу выключите огонь.	15
+178	3	Держите под крышкой сорок минут, не открывая. Готовность проверяют по прозрачному соку из бедра.	42
+178	4	Переложите курицу в ледяную воду на десять минут, затем обсушите и смажьте кунжутным маслом.	12
+178	5	Снимите с бульона жир, обжарьте в нём рубленый чеснок и имбирь, всыпьте промытый рис и жарьте три минуты.	10
+178	6	Залейте рис бульоном в пропорции один к полутора, добавьте лист пандана и варите под крышкой пятнадцать минут.	18
+178	7	Растолките чили с чесноком, имбирём и лаймом в соус. Разберите курицу и подайте с рисом, огурцом, соусом и миской бульона.	15
+179	1	Разделайте краба: снимите панцирь, разрубите тело на четыре части, клешни расколите тыльной стороной ножа.	20
+179	2	Растолките чеснок, имбирь и чили в пасту и обжарьте в масле три минуты до запаха.	8
+179	3	Добавьте самбал, кетчуп, сахар и уксус и прогрейте две минуты, чтобы соус потемнел.	4
+179	4	Влейте бульон, доведите до кипения и опустите куски краба. Тушите под крышкой восемь минут.	10
+179	5	Разведите крахмал холодной водой и вмешайте в соус до загустения.	4
+179	6	Выключите огонь и влейте взбитые яйца тонкой струйкой, размешивая один раз по кругу.	3
+179	7	Посыпьте кинзой и подавайте с обжаренными мантоу.	6
+180	1	Нарежьте грудинку кубиком в сантиметр, не отделяя жир от мяса.	20
+180	2	Обжарьте нарезанный шалот в масле до тёмно-золотого хруста и выньте половину для подачи.	12
+180	3	В том же масле обжарьте свинину до румяности, вытопив часть жира, десять минут.	12
+180	4	Влейте вино, дайте выпариться минуту, добавьте оба соевых соуса, сахар, специи и чеснок.	5
+180	5	Залейте водой вровень с мясом, доведите до кипения и тушите под крышкой полтора часа на самом слабом огне.	95
+180	6	Положите варёные яйца в соус на последние двадцать минут — они возьмут цвет и вкус.	5
+180	7	Подавайте на рисе, с половинкой яйца, отварной зеленью и жареным шалотом сверху.	10
+181	1	Залейте мясо холодной водой, доведите до кипения, проварите две минуты и слейте — это уберёт муть.	12
+181	2	Обжарьте имбирь, чеснок и доубаньцзян в масле пять минут, пока масло не станет красным.	5
+181	3	Добавьте помидоры, вино и соевый соус, прогрейте три минуты и верните мясо в кастрюлю.	6
+181	4	Залейте водой на два пальца выше мяса, положите бадьян, корицу и сахар и варите два часа на слабом огне.	125
+181	5	Выньте мясо, нарежьте толстыми ломтями и верните в бульон на десять минут.	14
+181	6	Отварите лапшу в отдельной кастрюле в чистой воде и ошпарьте бок-чой.	10
+181	7	Разложите лапшу по мискам, сверху мясо и зелень, залейте бульоном и добавьте маринованную горчичную зелень и зелёный лук.	8
+182	1	Натрите мясо солью, перцем, соком двух лимонов, растёртым чесноком и маслом. Оставьте на час.	15
+182	2	Разожгите угли и дайте им покрыться пеплом. Жар должен быть таким, чтобы ладонь над решёткой держалась пять секунд.	25
+182	3	Положите мясо целыми кусками и жарьте, переворачивая каждые десять минут, час двадцать.	82
+182	4	Смешайте нарезанные кубиком помидоры, лук, кинзу и чили с соком лимона и солью — это качамбари.	12
+182	5	Для угали вскипятите литр воды, всыпайте муку, непрерывно размешивая деревянной ложкой, и вымешивайте пятнадцать минут до плотной массы.	20
+182	6	Дайте мясу постоять десять минут, нарежьте мелко поперёк волокон и подайте с угали, качамбари и солью.	12
+183	1	Снимите с листьев жёсткие черешки, сверните листья в рулон и нарежьте тонкой соломкой.	12
+183	2	Обжарьте лук в масле до мягкости, добавьте чеснок и зиру и прогрейте минуту.	8
+183	3	Положите нарезанные помидоры и тушите семь минут, пока они не разойдутся в пасту.	9
+183	4	Добавьте зелень, посолите и перемешайте. Она осядет вдвое за минуту.	3
+183	5	Влейте полстакана воды, накройте и тушите десять минут — зелень должна стать мягкой, но остаться зелёной.	11
+183	6	Сбрызните лимоном и подавайте с угали или рисом.	2
+184	1	Промойте листья сорго и отварите их в полутора литрах воды десять минут — вода станет тёмно-красной.	12
+184	2	Выньте листья, добавьте щепоть соды и бобы и варите сорок пять минут до почти готовности.	47
+184	3	Промойте рис до прозрачной воды и всыпьте в кастрюлю. Жидкости должно быть на палец выше уровня риса.	6
+184	4	Посолите, накройте и варите двадцать минут на слабом огне, не перемешивая.	22
+184	5	Снимите с огня и дайте постоять под крышкой десять минут, потом разрыхлите вилкой.	12
+185	2	Поставьте на средний огонь и вымешивайте деревянной лопаткой не переставая. Масса начнёт густеть через пять минут.	8
+185	3	Продолжайте вымешивать двадцать минут, прижимая массу к стенкам, пока она не станет плотной и глянцевой.	22
+185	4	Сформируйте влажными руками шары и заверните каждый в пищевую плёнку или банановый лист.	8
+185	5	Натрите рыбу солью, имбирём и чесноком и обжарьте на гриле или сковороде по восемь минут с каждой стороны.	20
+185	6	Разотрите в ступке помидоры, хабанеро, лук, соль и ложку масла в грубый соус.	10
+185	7	Подавайте шар банку, рыбу и миску соуса. Едят руками, отщипывая тесто и макая в соус.	4
+186	1	Растолките петрушку, чеснок, чили и соль в пасту роф и набейте ею надрезы в кусках рыбы.	20
+186	2	Обжарьте рыбу в масле по три минуты с каждой стороны и отложите.	6
+186	3	В том же масле обжарьте лук до мягкости, добавьте томатную пасту и жарьте пять минут, пока она не потемнеет.	12
+186	4	Влейте два литра воды, добавьте тамаринд и овощи и варите двадцать пять минут.	27
+186	5	Верните рыбу в кастрюлю на десять минут, потом выньте её и овощи и держите в тепле.	14
+186	6	Всыпьте промытый рис в оставшийся бульон — жидкости должно быть вдвое больше риса — и варите под крышкой тридцать минут, не мешая.	32
+186	7	Выложите рис на большое блюдо, сверху рыбу и овощи. Пригоревший слой со дна распределите отдельно.	10
+187	1	Смешайте сок лимонов, горчицу, чеснок, соль и перец, залейте курицу и лук и уберите в холод минимум на четыре часа.	20
+187	2	Выньте курицу, обсушите и обжарьте в масле до румяной корки со всех сторон.	15
+187	3	В том же сотейнике томите лук из маринада на среднем огне двадцать пять минут, пока он не станет золотистым и мягким.	27
+187	4	Влейте оставшийся маринад и бульон, положите лавровый лист и целый перец чили.	4
+187	5	Верните курицу, накройте и тушите тридцать минут на слабом огне.	32
+187	6	Снимите крышку и выпарите соус ещё десять минут до густоты. Перец выньте.	12
+187	7	Подавайте с отварным рисом, выложив лук поверх курицы.	5
+188	1	Замочите хлеб в половине молока на десять минут и отожмите, молоко сохраните.	12
+188	2	Обжарьте лук в масле до мягкости, добавьте карри и куркуму и прогрейте минуту до запаха.	10
+188	3	Добавьте фарш и жарьте, разбивая комки, до потери розового цвета — десять минут.	12
+188	4	Вмешайте хлеб, курагу, изюм, чатни, уксус, соль и перец и снимите с огня.	6
+188	5	Выложите в форму, разровняйте и запекайте при 180 °C сорок минут.	42
+188	6	Взбейте яйца с оставшимся молоком и вылейте сверху, воткните в заливку лавровые листья и посыпьте миндалём.	6
+188	7	Верните в духовку на двадцать минут, пока заливка не схватится и не станет золотистой.	22
+189	1	Натрите морковь на крупной тёрке, перец и лук нарежьте тонкой соломкой.	15
+189	2	Обжарьте лук с чесноком, имбирём и чили в масле до мягкости, пять минут.	7
+189	3	Добавьте карри и паприку и прогрейте минуту — специи должны раскрыться в масле.	2
+189	4	Всыпьте перец и морковь и жарьте пять минут на сильном огне, помешивая.	6
+189	5	Влейте помидоры, посолите и тушите семь минут, пока соус не загустеет.	9
+189	6	Вмешайте фасоль, прогрейте три минуты и снимите с огня. Овощи должны остаться упругими.	5
+196	7	Дайте постоять десять минут и подайте прямо в сковороде, посыпав петрушкой.	12
+191	1	Залейте мясо тремя литрами холодной воды, доведите до кипения и тщательно снимите пену.	20
+191	2	Варите на слабом огне полтора часа, не давая закипать бурно — бульон должен остаться прозрачным.	90
+191	3	Добавьте перловку и лук и варите ещё сорок минут.	42
+191	4	Заложите морковь, брюкву и картофель, нарезанные крупными кусками, и варите двадцать минут.	22
+191	5	Добавьте капусту на последние десять минут, посолите и поперчите.	12
+191	6	Разложите мясо по тарелкам, залейте бульоном с овощами и подайте с ржаным хлебом.	5
+192	1	Растворите дрожжи в тёплом молоке с ложкой сахара и оставьте на десять минут до пены.	12
+192	2	Замесите тесто из муки, опары, желтков, сахара, размягчённого масла, цедры и соли. Вымешивайте пятнадцать минут.	18
+192	3	Оставьте в тепле на час двадцать, пока тесто не удвоится.	82
+192	4	Прогрейте сливки с мёдом, залейте ими молотые орехи, добавьте ром и корицу и остудите до тёплого.	15
+192	5	Раскатайте тесто в прямоугольник толщиной три миллиметра и намажьте начинкой, отступив от краёв два сантиметра.	20
+192	6	Сверните плотным рулетом с длинной стороны, уложите в кольцевую форму швом вниз и дайте подойти сорок минут.	45
+192	7	Проколите рулет спицей в нескольких местах и пеките при 170 °C час до тёмно-золотого цвета.	62
+193	1	Отварите замоченную фасоль в отдельной кастрюле до мягкости, час. Воду не сливайте.	62
+193	2	Отварите копчёные рёбрышки в полутора литрах воды сорок минут с лавровым листом.	40
+193	3	Добавьте квашеную репу или капусту вместе с частью рассола и варите двадцать минут.	22
+193	4	Заложите нарезанный картофель и колбасу и варите ещё двадцать минут.	22
+193	5	Обжарьте лук с чесноком в масле до золотистого и вмешайте в суп.	8
+193	6	Добавьте фасоль с её водой, разомните часть картофеля прямо в кастрюле и проварите пять минут.	8
+193	7	Снимите мясо с костей, верните в суп, посолите и поперчите.	8
+194	1	Нарежьте все овощи крупными кусками — они должны выдержать четыре часа и не развалиться.	30
+194	2	Выложите на дно горшка кубики сала, сверху мясо, посолите и поперчите.	8
+194	3	Уложите слоями лук, морковь, корень петрушки, картофель, перец, капусту и помидоры.	10
+194	4	Вложите целую головку чеснока и лавровый лист, влейте вино и воду до половины высоты горшка.	5
+194	5	Накройте крышкой и поставьте в духовку на 150 °C на четыре часа. Не открывайте и не мешайте.	245
+194	6	Подавайте прямо из горшка, зачерпывая до дна, чтобы в тарелку попали все слои.	6
+195	1	Замесите тесто из муки, тёплой воды, ложки масла, уксуса и соли и вымешивайте пятнадцать минут до эластичности.	18
+195	2	Разделите на четыре шара, смажьте маслом, накройте и оставьте на сорок минут.	45
+195	3	Смешайте сырой фарш с луком, солью, перцем и двумя ложками воды — вода нужна, чтобы начинка не пересохла.	8
+195	4	Растяните шар руками на застеленном скатертью столе до прозрачного листа, начиная от центра и двигаясь к краям.	20
+195	5	Сбрызните лист маслом, выложите начинку полосой вдоль края и сверните в длинный тонкий рулет.	12
+195	6	Уложите рулеты спиралью в круглую форму от центра, смажьте маслом и пеките при 200 °C сорок минут.	45
+195	7	Сбрызните горячий бурек водой и накройте полотенцем на пять минут — корка станет мягче. Подавайте с йогуртом.	8
+196	1	Слейте воду с замоченной фасоли, залейте свежей, доведите до кипения и через десять минут снова слейте.	15
+196	2	Залейте в третий раз, добавьте одну целую луковицу и варите час до мягкости, не солив.	62
+196	3	Обжарьте нарезанный лук в масле до золотистого, снимите с огня и вмешайте паприку и муку.	12
+196	4	Слейте с фасоли часть воды, оставив её вровень с бобами, посолите и вмешайте заправку.	6
+196	5	Переложите в глиняную сковороду, разложите сверху сушёные перцы и посыпьте мятой.	5
+196	6	Запекайте при 200 °C сорок минут, пока сверху не образуется румяная корка.	42
+197	1	Обжарьте свинину крупными кубиками в масле до румяной корки со всех сторон.	12
+197	2	Добавьте лук и перец и жарьте до мягкости, семь минут.	9
+197	3	Положите грибы и жарьте на сильном огне пять минут, пока не выпарится их вода.	7
+197	4	Снимите с огня, вмешайте паприку, чеснок и томатную пасту, влейте вино и верните на огонь на три минуты.	6
+197	5	Разложите по глиняным горшочкам, долейте воды до уровня мяса, посолите и накройте.	8
+197	6	Запекайте при 180 °C пятьдесят минут.	52
+197	7	Снимите крышки, посыпьте тёртым кашкавалом и держите ещё десять минут до румяной сырной корки.	12
+198	1	Взбейте масло с сахаром добела, вводите яйца по одному, затем вмешайте ваниль.	12
+198	2	Вмешайте просеянную муку с разрыхлителем и солью попеременно с молоком.	8
+198	3	Вылейте в квадратную форму и пеките при 180 °C двадцать восемь минут до сухой шпажки.	30
+198	4	Полностью остудите и оставьте бисквит на ночь незакрытым.	20
+198	5	Нарежьте на кубики со стороной пять сантиметров.	10
+198	6	Размешайте сахарную пудру с какао и горячим молоком до жидкой глазури, которая стекает с ложки струйкой.	6
+198	7	Обмакните каждый кубик на две вилки, дайте стечь и обваляйте в кокосовой стружке. Дайте застыть час.	30
+199	1	Обжарьте мясо порциями до румяной корки, чтобы оно не пустило сок, и отложите.	15
+199	2	Обжарьте лук до мягкости, всыпьте муку и прогрейте две минуты.	2
+199	3	Верните мясо, влейте бульон, добавьте вустерский соус и томатную пасту и тушите сорок минут до густоты.	45
+199	4	Полностью остудите начинку, лучше в холодильнике.	30
+199	5	Выстелите формочки песочным тестом, обрежьте края и наполните холодной начинкой.	20
+199	6	Накройте кругами слоёного теста, защипните края и сделайте прорезь по центру.	12
+199	7	Смажьте яйцом и пеките при 200 °C двадцать пять минут до тёмно-золотой крышки.	28
+200	1	Взбейте белки комнатной температуры до мягких пиков в идеально сухой и обезжиренной миске.	6
+200	2	Всыпайте сахар по столовой ложке, продолжая взбивать, пока масса не станет плотной и глянцевой.	10
+200	3	Проверьте пальцами: если чувствуются крупинки сахара, взбивайте дальше — иначе корка будет плакать сиропом.	3
+200	4	Вмешайте лопаткой крахмал, уксус и ваниль в три движения, не больше.	3
+200	5	Выложите на пергамент круг диаметром двадцать два сантиметра, приподняв края и оставив углубление в центре.	6
+200	6	Пеките при 120 °C полтора часа, потом выключите духовку и оставьте павлову внутри до полного остывания.	90
+200	7	Взбейте сливки, выложите в углубление и украсьте киви, ягодами и мякотью маракуйи прямо перед подачей.	12
+201	1	Натрите курицу копчёной солью и перцем и оставьте на полчаса.	32
+201	2	Нарежьте батат, картофель и тыкву крупными кусками, капусту — четвертинками.	15
+201	3	Заверните щепу в фольгу, сделайте несколько проколов и положите на дно глубокого противня.	5
+201	4	Уложите на решётку над щепой овощи, сверху курицу, посыпьте солью и разложите кусочки масла.	10
+201	5	Плотно затяните противень двумя слоями фольги — пар не должен выходить.	5
+201	6	Запекайте при 160 °C два часа, не открывая.	120
+201	7	Снимите фольгу и дайте курице подрумяниться десять минут при 200 °C.	12
+202	1	Нарежьте картофель брусками в сантиметр и вымачивайте в холодной воде двадцать минут, чтобы ушёл крахмал.	25
+202	2	Обсушите бруски насухо. Мокрый картофель во фритюре брызгается и не даёт корки.	8
+202	3	Растопите масло, всыпьте муку и обжаривайте ру до орехового цвета, четыре минуты.	6
+202	4	Влейте оба бульона, добавьте вустерский соус и уксус и варите подливу пятнадцать минут до густоты.	17
+202	5	Обжарьте картофель при 150 °C шесть минут до мягкости и выложите на решётку остывать.	15
+202	6	Поднимите температуру до 190 °C и обжарьте второй раз три минуты до хрустящей корки. Посолите.	10
+202	7	Выложите фри в миску, разбросайте сырные зёрна и залейте кипящей подливой. Подавайте немедленно.	4
+203	1	Обжарьте лук с чесноком до мягкости, добавьте оба фарша и жарьте, разбивая комки, десять минут.	15
+203	2	Всыпьте все специи, посолите, поперчите и влейте бульон.	4
+203	3	Тушите на слабом огне сорок минут, пока жидкость почти не выпарится.	40
+203	4	Вмешайте размятый картофель и полностью остудите начинку.	25
+203	5	Выстелите форму тестом, выложите холодную начинку и разровняйте.	12
+203	6	Накройте вторым пластом, защипните края, сделайте прорези и смажьте яйцом.	10
+203	7	Пеките при 200 °C пятнадцать минут, затем при 180 °C ещё сорок, до тёмно-золотой корки.	58
+204	1	Обжарьте мелко нарезанный лук, перец и чеснок в масле до мягкости, пять минут.	7
+204	2	Добавьте фасоль вместе с половником её отвара и прогрейте три минуты.	5
+204	3	Всыпьте холодный рис и перемешайте, разбивая комки лопаткой.	4
+204	4	Влейте соус Лисано, посолите и жарьте на среднем огне семь минут, изредка помешивая.	9
+204	5	Вмешайте рубленую кинзу и снимите с огня.	2
+204	6	Подавайте с яичницей, жареным подорожником и, по желанию, сметаной или свежим сыром.	10
+205	1	Замаринуйте курицу в соке лайма, чесноке, соусе Лисано, соли и перце на двадцать минут.	22
+205	2	Сварите рис рассыпчатым и разогрейте фасоль с ложкой её отвара.	22
+205	3	Нарежьте чайот и морковь мелким кубиком и потушите с чесноком десять минут — это пикадильо.	14
+205	4	Обжарьте курицу на среднем огне по шесть минут с каждой стороны.	12
+205	5	Обжарьте кружки спелого подорожника до карамельного цвета.	8
+205	6	Смешайте нашинкованную капусту с помидорами, кинзой, соком лайма и солью.	6
+205	7	Соберите тарелку секторами: рис, фасоль, курица, пикадильо, салат, бананы — не перемешивая.	5
+206	1	Замесите крутое тесто из муки, воды и соли и оставьте под плёнкой на сорок минут.	50
+206	2	Порубите баранину и жир ножом на кусочки размером с горошину.	25
+206	3	Смешайте мясо с мелко нарезанным луком, чесноком, солью, перцем и четвертью стакана воды.	8
+206	4	Раскатайте кружки диаметром десять сантиметров, оставляя середину толще краёв.	20
+206	5	Положите ложку начинки и защипните края складками по кругу, оставив вверху отверстие.	25
+206	6	Смажьте решётку пароварки жиром и выложите буузы, не касаясь друг друга.	6
+206	7	Варите на пару восемнадцать минут. Тесто станет полупрозрачным, а внутри соберётся бульон.	18
+207	1	Замесите крутое тесто из муки, воды и соли и дайте отдохнуть тридцать минут.	40
+207	2	Раскатайте тонко, смажьте жиром, сверните рулетом и нарежьте поперёк полосками в полсантиметра.	20
+207	3	Разберите полоски руками и разложите на доске, чтобы не слиплись.	8
+207	4	Обжарьте баранину в жире на сильном огне до корки, добавьте лук, морковь, картофель и капусту.	15
+207	5	Влейте стакан воды, посолите и поперчите, доведите до кипения.	5
+207	6	Уложите лапшу ровным слоем поверх мяса, не перемешивая, накройте и держите двадцать минут на слабом огне.	22
+207	7	Снимите крышку, добавьте чеснок и перемешайте всё вместе. Подавайте сразу.	5
+208	1	Залейте мясо холодной водой, доведите до кипения, снимите пену и варите два с половиной часа с перцем и лавром.	155
+208	2	Замесите крутое тесто из муки, яиц, воды и соли и оставьте на сорок минут.	50
+208	3	Раскатайте в пласт в миллиметр и нарежьте ромбами со стороной шесть сантиметров.	22
+208	4	Вытопите курдючный жир, обжарьте в нём нарезанный кольцами лук до мягкости.	12
+208	5	Влейте в лук два половника бульона и тушите десять минут до густой подливы — это чык.	12
+208	6	Отварите ромбы теста в процеженном бульоне порциями по четыре минуты и сразу выкладывайте на блюдо.	15
+208	7	Разберите мясо на пласты, выложите поверх теста, залейте чыком и посыпьте кинзой. Бульон подайте в пиалах.	12
+209	1	Замесите тесто из муки, тёплой солёной воды и вымешивайте пятнадцать минут до гладкости.	20
+215	1	Залейте булгур холодной водой на двадцать минут и отожмите досуха.	25
+209	2	Разделите на жгуты, обильно смажьте маслом, уложите в миску и оставьте на час под плёнкой.	65
+209	3	Вытягивайте жгут, складывая вдвое и раскачивая, пока нити не станут толщиной со спичку.	25
+209	4	Обжарьте мясо в раскалённом масле до корки, добавьте лук, зиру и кориандр.	12
+209	5	Закладывайте овощи по очереди: редьку, фасоль, перец, в конце помидоры и томатную пасту.	12
+209	6	Влейте стакан кипятка, посолите и тушите десять минут — овощи должны остаться упругими.	12
+209	7	Отварите лапшу в большом объёме кипятка три минуты, откиньте и разложите по тарелкам. Сверху ваджа и кинза.	10
+210	1	Залейте курут горячей водой на двадцать минут и разотрите руками в однородную жидкость.	22
+210	2	Процедите через сито, чтобы убрать нерастворившиеся крупинки. Жидкость должна быть как жидкая сметана.	6
+210	3	Нарежьте лук кольцами и обжарьте в масле до золотистого, десять минут.	12
+210	4	Наломайте фатир крупными кусками в широкое блюдо.	5
+210	5	Залейте хлеб курутом и дайте постоять пять минут, чтобы он пропитался.	6
+210	6	Выложите сверху жареный лук вместе с маслом, помидоры, огурцы и зелень.	5
+211	1	Промойте рис в семи водах и залейте тёплой подсоленной водой на час.	15
+211	2	Вытопите курдючный жир в казане и выньте шкварки.	12
+211	3	Обжарьте мясо до тёмной корки, добавьте лук и жарьте до золотистого.	18
+211	4	Всыпьте морковь и жарьте десять минут, не перемешивая первые пять — она должна прогреться, а не пустить сок.	12
+211	5	Влейте кипяток на два пальца выше, добавьте нут, зиру, барбарис и соль и томите зирвак сорок минут.	42
+211	6	Выложите рис ровным слоем, вдавите головки чеснока и долейте кипятка на сантиметр выше риса.	8
+211	7	Варите на сильном огне до выпаривания воды, соберите рис горкой, проткните до дна, накройте и держите двадцать минут на минимальном огне.	32
+212	1	Замочите рис в подсоленной воде на два часа и промойте до прозрачной воды.	15
+212	2	Обжарьте лук в масле до тёмно-золотого, добавьте мясо и жарьте до корки.	20
+212	3	Влейте литр воды, добавьте кардамон и соль и варите час, пока мясо не станет мягким. Бульон процедите.	65
+212	4	Растопите две ложки сахара на сухой сковороде до тёмной карамели и осторожно разведите половником бульона.	8
+212	5	Обжарьте морковь с оставшимся сахаром пять минут до блеска, добавьте изюм и орехи и снимите с огня.	5
+212	6	Отварите рис в кипятке пять минут до полуготовности и откиньте.	5
+212	7	Выложите рис на мясо в казане, полейте карамельным бульоном, посыпьте чар масалой, проткните до дна и держите под крышкой тридцать минут на слабом огне. Подавайте с морковью и изюмом сверху.	35
+213	1	Замесите тесто из муки, воды и соли, вымешивайте десять минут и оставьте на сорок под плёнкой.	52
+213	2	Смешайте фарш с мелко нарезанным луком, солью, перцем и кориандром. Воду не добавляйте.	12
+213	3	Отварите жёлтый горох сорок минут до мягкости с ложкой томатной пасты и солью.	40
+213	4	Разотрите чеснок с солью и вмешайте в йогурт, разведя его водой до жидкой сметаны.	6
+213	5	Раскатайте тесто тонко и нарежьте квадратами восемь на восемь сантиметров.	20
+213	6	Положите начинку и соедините углы крест-накрест, оставив четыре открытых уголка.	25
+213	7	Варите на пару двадцать пять минут. Выложите на слой йогурта, полейте гороховым соусом, ещё йогуртом и посыпьте мятой.	25
+214	1	Разорвите лепёшки руками на куски в два пальца и обжарьте в оливковом масле до румяности.	10
+214	2	Выложите хлеб на бумагу и посыпьте половиной сумаха, пока он ещё горячий.	3
+214	3	Нарежьте помидоры, огурцы и редис крупными неровными кусками — салат должен быть грубым, а не аккуратным.	12
+214	4	Нарвите салат руками, порубите зелень и зелёный лук.	6
+214	5	Взбейте заправку из лимонного сока, гранатового соуса, растёртого чеснока, оставшегося сумаха, масла и соли.	5
+214	6	Смешайте овощи с заправкой, добавьте хлеб и подавайте немедленно.	3
+215	2	Пробейте постную говядину с одной луковицей в комбайне до пасты и вмешайте булгур, соль и половину специй.	15
+215	3	Вымешивайте массу пять минут, смачивая руки водой, пока она не станет гладкой и липкой.	7
+215	4	Обжарьте оставшийся лук, добавьте бараний фарш, специи и кедровые орехи и жарьте десять минут.	10
+215	5	Выложите половину массы в смазанный противень слоем в сантиметр, разровняйте мокрой ладонью.	8
+215	6	Распределите начинку и накройте второй половиной массы, разровняв так же.	10
+215	7	Нарежьте ромбами до дна, залейте оливковым маслом и пеките при 200 °C сорок минут до румяной корки.	45
+220	1	Промойте рис до прозрачной воды и замочите на двадцать минут.	22
+220	2	Отварите говядину с половиной специй сорок минут до мягкости. Бульон сохраните.	40
+220	3	Обжарьте лук в масле на среднем огне двадцать минут — до тёмно-коричневого, почти чёрного цвета.	20
+220	4	Добавьте чеснок, имбирь и оставшиеся специи и прогрейте две минуты.	4
+220	5	Положите варёное мясо и картофель кубиками, перемешайте и прогрейте пять минут.	7
+220	6	Всыпьте рис, влейте бульон в полтора раза больше объёма риса и посолите.	5
+220	7	Доведите до кипения, накройте и варите двадцать минут на слабом огне, не открывая. Дайте постоять десять минут.	30
+222	1	Замочите семена горчицы в тёплой воде на двадцать минут.	22
+222	2	Разотрите их с двумя чили, щепотью соли и небольшим количеством воды в гладкую пасту.	10
+222	3	Натрите стейки куркумой и солью и оставьте на десять минут.	12
+222	4	Прогрейте горчичное масло до дымка, снимите с огня и остудите минуту — сырое масло горчит.	5
+222	5	Всыпьте чернушку, влейте горчичную пасту, разведённую половиной стакана воды, и прогрейте три минуты.	5
+222	6	Уложите рыбу в один слой, разложите оставшиеся чили целиком, накройте и томите двенадцать минут.	14
+222	7	Полейте ложкой сырого горчичного масла, снимите с огня и подавайте с рисом.	4
+223	1	Подсушите чечевицу мунг на сухой сковороде пять минут до орехового запаха и промойте.	10
+223	2	Промойте рис и обсушите. Мокрый не обжарится, а сварится в собственной воде.	8
+223	3	Разогрейте топлёное масло, обжарьте картофель до румяности и выньте.	10
+223	4	В том же масле обжарьте лавровый лист, корицу и кардамон, затем лук и имбирь до золотистого.	10
+223	5	Всыпьте рис и чечевицу, добавьте куркуму и зиру и обжаривайте пять минут, помешивая.	7
+223	6	Влейте кипяток вдвое больше объёма крупы, верните картофель, посолите и добавьте целые чили.	5
+223	7	Накройте и варите двадцать минут на слабом огне, потом дайте постоять десять минут не открывая.	32
+224	1	Обжарьте сырой клейкий рис на сухой сковороде десять минут до тёмно-золотого цвета, помешивая.	10
+224	2	Смелите остывший рис в ступке или мельнице в грубый порошок.	6
+224	3	Порубите свинину ножом мелко, но не в пасту — кусочки должны угадываться.	15
+224	4	Готовьте мясо в сковороде с двумя ложками воды на среднем огне пять минут, разбивая комки.	5
+224	5	Снимите с огня и дайте остыть до тёплого, минут пять.	6
+224	6	Вмешайте рыбный соус, сок лайма, чили, шалот и рисовый порошок.	4
+224	7	Добавьте зелень, перемешайте и подавайте с клейким рисом и сырыми овощами.	4
+225	1	Очистите папайю и нашинкуйте тонкой длинной соломкой ножом или тёркой для сом тама.	15
+225	2	Растолките в ступке чеснок и чили в грубую пасту.	4
+225	3	Добавьте нарезанную фасоль и слегка раздавите её пестиком.	3
+225	4	Положите помидоры и раздавите их до выделения сока.	3
+225	5	Влейте падэк, сок лайма и пальмовый сахар и перемешайте пестиком с ложкой.	3
+225	6	Всыпьте папайю и работайте пестиком, подбрасывая ложкой, две минуты — волокна должны стать мягкими.	4
+225	7	Попробуйте и поправьте на кислоту, соль и остроту. Подавайте с клейким рисом.	3
+226	1	Нарежьте мясо крупными кусками граммов по двести, с жиром — он нужен.	15
+226	2	Обильно посолите и поперчите со всех сторон и оставьте на полчаса при комнатной температуре.	32
+226	3	Разожгите угли и разгребите их к краям, оставив центр свободным. Прямой жар под мясом не нужен.	30
+226	4	Нанижите куски на вертел, оставляя между ними по сантиметру.	10
+226	5	Вращайте вертел медленно и непрерывно два часа. Мясо должно потемнеть постепенно, а не схватиться коркой сразу.	125
+226	6	Посыпьте орегано за десять минут до конца и сбрызните лимоном.	6
+226	7	Снимите, нарежьте крупно и подавайте в пите с луком, помидорами и петрушкой.	10
+228	1	Залейте разделанного кролика вином с половиной чеснока и лавровым листом и оставьте на сутки в холоде.	20
+228	2	Выньте мясо, обсушите и обжарьте в оливковом масле до румяной корки. Маринад сохраните.	15
+228	3	Обжарьте лук и оставшийся чеснок до мягкости, добавьте томатную пасту и прогрейте три минуты.	10
+228	4	Верните мясо, влейте маринад, посолите и тушите под крышкой час на слабом огне.	65
+228	5	Добавьте картофель и морковь и тушите ещё двадцать пять минут.	27
+228	6	Всыпьте горошек на последние десять минут.	12
+228	7	Отлейте часть соуса и заправьте им спагетти — это первая перемена. Мясо подайте следом.	10
+229	1	Замесите тесто из муки, воды и соли, вымешивайте десять минут и оставьте на полчаса.	42
+229	2	Отварите горох с луком сорок минут до полной мягкости, разомните, посолите и поперчите.	40
+229	3	Смешайте рикотту с яйцами, петрушкой, солью и перцем.	6
+229	4	Раскатайте тесто очень тонко, смажьте жиром, сверните рулетом и оставьте в холоде на двадцать минут.	30
+229	5	Нарежьте рулет на кусочки, каждый раскатайте в кружок — слои дадут ту самую слоистость.	20
+229	6	Выложите начинку и защипните: рикотту — лодочкой с открытым верхом, горох — ромбом.	20
+229	7	Пеките при 220 °C тридцать минут до тёмно-золотого цвета и подавайте горячими.	32
+230	1	Отбейте мясо через плёнку до толщины четыре миллиметра, посолите и поперчите.	12
+230	2	Обжарьте бекон до хруста и выложите на бумагу.	8
+230	3	Раскалите сковороду и обжарьте стейки по сорок пять секунд с каждой стороны.	6
+230	4	Положите на мясо сыр прямо в сковороде и накройте на тридцать секунд, чтобы он подтаял.	3
+230	5	Пожарьте яйца до жидкого желтка и подсушите разрезанные булочки на сухой сковороде.	8
+230	6	Смажьте обе половины майонезом, положите салат, помидор, мясо с сыром, ветчину, бекон и яйцо.	6
+230	7	Закройте, воткните шпажку с оливкой и подавайте с картофелем фри.	3
+232	1	Отварите курицу с луковицей и солью сорок минут. Бульон сохраните.	40
+232	2	Обжарьте тыквенные семечки и кунжут на сухой сковороде до тёмно-золотого, помешивая.	10
+232	3	На той же сковороде обожгите перцы, помидоры, томатильо и чеснок до чёрных пятен.	15
+232	4	Пробейте всё в блендере с двумя половниками бульона и корицей до гладкого соуса.	8
+232	5	Процедите соус через сито — в нём останутся шкурки перцев, которые портят текстуру.	6
+232	6	Проварите соус двадцать минут, помешивая, пока он не загустеет и не потемнеет.	22
+232	7	Опустите курицу, картофель и фасоль и тушите пятнадцать минут. Подавайте с рисом и кинзой.	18
+233	1	Отварите свинину с луком и солью час. Бульон процедите и сохраните.	60
+233	2	Обжарьте семечки, кунжут, перцы и помидоры на сухой сковороде и пробейте в блендере с бульоном — это рекадо.	20
+233	3	Проварите рекадо двадцать минут до густоты и посолите.	22
+233	4	Разведите масеку тёплым бульоном, добавьте растопленный смалец и вымешивайте двадцать минут на слабом огне.	25
+233	5	Прогрейте банановые листья над огнём по десять секунд, чтобы они стали гибкими.	12
+240	1	Замесите мягкое тесто из муки, тёплой воды, ложки масла и соли и вымешивайте десять минут.	14
+233	6	На лист выложите тесто, сверху кусок мяса, ложку рекадо, полоску перца и оливку. Заверните в два листа.	35
+233	7	Уложите свёртки в кастрюлю швом вниз и варите на пару полтора часа.	95
+234	1	Замаринуйте все виды мяса в соке лайма, растёртом чесноке, орегано, соли и перце на час.	20
+234	2	Обжарьте мясо порциями в большой кастрюле до румяной корки.	20
+234	3	Добавьте лук и перец, залейте тремя литрами воды и варите час на слабом огне.	65
+234	4	Заложите юкку и яутию, нарезанные крупными кусками, и варите двадцать минут.	22
+234	5	Добавьте батат, подорожник и кукурузу и варите ещё двадцать минут.	22
+234	6	Разомните пару кусков юкки прямо в кастрюле, чтобы суп загустел.	5
+234	7	Вмешайте кинзу, попробуйте на соль и подавайте с белым рисом и авокадо.	8
+235	1	Очистите подорожник под водой, разрежьте пополам и отварите в подсоленной воде двадцать минут до мягкости.	25
+235	2	Отлейте стакан воды от варки и остудите её.	5
+235	3	Замаринуйте нарезанный кольцами лук в уксусе с солью и оставьте на пятнадцать минут.	16
+235	4	Разомните горячий подорожник с маслом, подливая холодную воду, до гладкого пюре.	8
+235	5	Обжарьте ломти салями и сыра на сухой сковороде до румяности.	10
+235	6	Пожарьте яйца и соберите тарелку: пюре, сверху лук с уксусом, рядом салями, сыр и яйцо.	8
+237	1	Промойте листья, снимите жёсткие черешки и крупно нарежьте.	15
+237	2	Обжарьте лук и чеснок в масле до мягкости.	7
+237	3	Добавьте листья, окру, тыкву, тимьян и целый скотч-боннет, залейте водой на два пальца.	6
+237	4	Варите сорок минут на слабом огне под крышкой. Меньше нельзя: сырые листья таро жгут рот.	40
+237	5	Выньте перец и тимьян, влейте кокосовое молоко и прогрейте пять минут не кипятя.	7
+237	6	Разбейте суп веничком или пестиком до состояния густого, но не идеально гладкого пюре.	6
+238	1	Натрите мясо солью, перцем, чесноком и орегано и запекайте при 190 °C сорок минут с кусочками масла.	45
+238	2	Отварите рис до полуготовности, семь минут, и откиньте.	10
+238	3	Растопите оставшееся масло, вмешайте муку и прогрейте две минуты до орехового запаха.	5
+238	4	Взбейте йогурт с яйцами и солью, влейте мучную смесь и размешайте до полной однородности.	8
+238	5	Вмешайте рис. Он впитает часть влаги и не даст соусу расслоиться.	3
+238	6	Разложите мясо с соком в форме и залейте йогуртовой смесью.	5
+238	7	Запекайте при 180 °C сорок пять минут, пока верх не подрумянится, а середина не будет чуть дрожать.	45
+239	1	Ошпарьте шпинат кипятком, откиньте и отожмите руками досуха.	12
+239	2	Нарежьте шпинат, смешайте с раскрошенной брынзой, зелёным луком, укропом и перцем. Соль добавляйте осторожно — брынза солёная.	10
+239	3	Смажьте форму маслом и уложите три листа фило, промазывая каждый.	6
+239	4	Распределите треть начинки, накройте двумя листами с маслом и повторите ещё дважды.	12
+239	5	Закройте тремя листами сверху, подверните края внутрь и щедро смажьте маслом.	6
+239	6	Нарежьте квадратами до низа острым ножом — резать после выпечки не получится.	4
+239	7	Пеките при 190 °C сорок пять минут до тёмно-золотой хрустящей корки.	45
+463	4	Разогрейте сковороду с маслом на среднем огне до лёгкого дымка.	4
+240	2	Разделите на шесть шаров, обильно смажьте маслом и оставьте под плёнкой на сорок минут.	45
+240	3	Разомните брынзу с яйцом и укропом. Натрите тыкву и смешайте с сахаром для второй начинки.	12
+240	4	Растяните шар руками на смазанном маслом столе в тонкий круг, пока не станет просвечивать.	15
+240	5	Выложите начинку в центр и заверните края к середине, складывая в конверт или в круг.	12
+240	6	Приплющите ладонью до толщины полтора сантиметра.	4
+240	7	Жарьте на раскалённой сухой сковороде по четыре минуты с каждой стороны до пятнистой корки.	26
+242	1	Вымочите мясо в холодной воде четыре часа, меняя воду дважды.	15
+242	2	Залейте свежей водой, доведите до кипения, проварите десять минут и слейте.	15
+242	3	Залейте снова, добавьте лавровый лист и варите час двадцать до мягкости. Бульон сохраните.	85
+242	4	Вылущите бобы из стручков, ошпарьте кипятком на минуту и снимите плёнку с каждого.	30
+242	5	Вытопите грудинку, обжарьте в жире лук, всыпьте муку и прогрейте две минуты.	10
+242	6	Влейте два половника бульона и сливки, добавьте чабер и бобы и тушите десять минут.	12
+242	7	Нарежьте мясо толстыми ломтями и подайте с бобами и отварным картофелем.	12
+246	1	Промойте рис до прозрачной воды и замочите на двадцать минут.	22
+246	2	Обжарьте лук в топлёном масле до золотистого, добавьте чеснок, кардамон и корицу.	12
+246	3	Обжарьте курицу со всех сторон, добавьте томатную пасту, помидоры, морковь и бахарат.	15
+246	4	Проколите сушёные лаймы и опустите в кастрюлю, залейте водой и варите тридцать минут.	32
+246	5	Выньте курицу, обсушите и поставьте под гриль на десять минут до румяной корки.	12
+246	6	Всыпьте рис в бульон — жидкости должно быть в полтора раза больше — посолите и варите двадцать минут под крышкой.	25
+246	7	Обжарьте миндаль и изюм в масле, выложите рис на блюдо, сверху курицу, посыпьте орехами.	12
+248	1	Слейте воду с замоченного пажитника, промойте несколько раз и смелите в пасту.	15
+248	2	Взбивайте пасту с холодной водой венчиком или миксером десять минут, пока она не станет белой пеной.	12
+248	3	Обжарьте лук и чеснок, добавьте мясо и жарьте до румяности.	15
+248	4	Добавьте помидоры и картофель, залейте водой, посолите и тушите час до мягкости мяса.	65
+248	5	Раскалите каменный или чугунный горшок и перелейте в него кипящее рагу.	10
+248	6	Вбейте яйца прямо в кипящее рагу и размешайте — они схватятся нитями.	3
+248	7	Выложите сверху хульбу и ложку жуга и несите на стол, пока кипит. Подавайте с лепёшкой и рисом.	5
+249	1	Растворите дрожжи с сахаром в тёплом молоке и оставьте на десять минут.	12
+249	2	Замесите мягкое тесто из муки, яиц, опары, соли и двух ложек топлёного масла и вымешивайте пятнадцать минут.	18
+249	3	Дайте подойти в тепле час до удвоения.	62
+249	4	Разделите на десять шаров, смажьте маслом и оставьте на двадцать минут под плёнкой.	25
+249	5	Растяните первый шар руками до размера формы и уложите на дно, обильно смазав топлёным маслом.	15
+249	6	Повторите с остальными, промазывая каждый слой. Верхний тоже смажьте и посыпьте чернушкой.	25
+249	7	Пеките при 190 °C тридцать пять минут и залейте мёдом сразу, пока хлеб горячий.	35
+254	1	Отварите листья в подсоленной воде десять минут, отожмите и повторите ещё дважды со свежей водой.	40
+254	2	Отварите арахис двадцать минут до мягкости и пробейте в блендере с водой в густую пасту.	27
+254	3	Обжарьте говядину до румяности, добавьте лук, чеснок, имбирь и чили.	15
+254	4	Залейте водой, добавьте сушёные креветки и тушите сорок минут до мягкости мяса.	42
+254	5	Вмешайте арахисовую пасту и проварите пятнадцать минут, помешивая — она легко пригорает.	17
+254	6	Добавьте отжатые листья и свежие креветки и потушите ещё десять минут.	12
+254	7	Подавайте с жареным подорожником или варёным маниоком.	12
+255	1	Замаринуйте курицу в растёртых чесноке, имбире, тимьяне, соли и перце на полчаса.	32
+255	2	Обжарьте курицу в масле до румяной корки со всех сторон и выньте.	15
+255	3	Нарежьте подорожник крупными кусками и обжарьте в том же масле до карамельных краёв.	12
+255	4	Слейте почти всё масло, обжарьте лук, помидоры и перец до мягкости.	10
+255	5	Верните курицу, добавьте морковь, фасоль и целый скотч-боннет, влейте стакан воды и тушите двадцать минут.	22
+255	6	Выньте перец, вмешайте подорожник и прогрейте три минуты. Подавайте сразу.	6
+256	1	Разотрите чеснок, имбирь, чили, бульонный кубик, соль и масло в пасту.	8
+256	2	Сделайте на рыбе надрезы по бокам и вотрите пасту внутрь и снаружи. Оставьте на двадцать минут.	25
+256	3	Разрыхлите атьеке руками, сбрызните горячей водой и посолите.	5
+256	4	Накройте и распаривайте десять минут — на пару или просто под крышкой в тёплом месте.	12
+256	5	Нарежьте лук, помидоры и чили и смешайте с соком лимона, солью и ложкой масла.	10
+256	6	Жарьте рыбу на углях или в сковороде-гриль по семь минут с каждой стороны.	14
+256	7	Подайте атьеке, рыбу и салат на одной тарелке, с долькой лимона.	4
+257	1	Нарежьте лук, помидоры, баклажаны и перец крупными кусками.	12
+257	2	Сложите курицу и все овощи в горшок, добавьте чеснок, имбирь, тимьян, лавровый лист, соль и перец.	8
+257	3	Положите сверху целый скотч-боннет, не разрезая.	2
+257	4	Закройте крышкой и запечатайте стык полоской теста из муки с водой или обмотайте фольгой.	6
+257	5	Поставьте на самый слабый огонь или в духовку на 160 °C на час двадцать.	82
+257	6	Каждые пятнадцать минут встряхивайте горшок, держа крышку. Не открывайте ни разу.	5
+257	7	Снимите печать, выньте перец и подавайте с атьеке или рисом.	6
+259	1	Разрежьте курицу вдоль хребта, разверните и придавите, чтобы она легла плоско.	10
+259	2	Пробейте в блендере чили, чеснок, сок двух лимонов, паприку, уксус, орегано, масло и соль.	8
+259	3	Отлейте половину соуса в отдельную миску — она пойдёт на смазывание.	2
+259	4	Обмажьте курицу оставшимся соусом, втирая под кожу, и уберите в холод на ночь.	12
+259	5	Разожгите угли и разгребите к краям — жар должен быть непрямым.	25
+259	6	Жарьте курицу кожей вверх тридцать минут, потом переверните и держите ещё пятнадцать.	48
+259	7	Последние пять минут смазывайте отложенным соусом с растопленным маслом. Подавайте с лимоном.	8
+260	1	Обжарьте лук, чеснок и имбирь в масле до мягкости, пять минут.	7
+260	2	Добавьте оба вида мяса и помидоры и прогрейте, не добиваясь корки.	8
+260	3	Залейте полутора литрами воды, посолите и варите час на слабом огне.	62
+260	4	Промойте зелень и крупно нарежьте, убрав жёсткие стебли.	12
+260	5	Заложите листовую горчицу и шпинат и варите десять минут.	12
+260	6	Добавьте мафану на последние пять минут — от долгой варки её эффект слабеет.	7
+260	7	Подавайте в глубоких тарелках с большой порцией отварного риса.	6
+261	1	Обжарьте свинину крупными кусками до румяности со всех сторон.	15
+261	2	Добавьте лук, чеснок и имбирь и жарьте до мягкости.	8
+261	3	Вмешайте листья маниока, залейте водой вровень и посолите.	6
+261	4	Тушите под крышкой час на слабом огне, помешивая каждые пятнадцать минут.	60
+261	5	Снимите крышку и выпарите лишнюю жидкость — блюдо должно быть густым, а не жидким.	12
+261	6	Влейте кокосовое молоко и прогрейте пять минут не кипятя. Подавайте с рисом.	8
+262	1	Разотрите муку с жиром и солью в крошку, влейте горячую воду и замесите мягкое тесто.	12
+262	2	Разделите на восемь шаров, смажьте маслом и дайте отдохнуть двадцать минут под полотенцем.	22
+262	3	Обжарьте лук в масле, добавьте варёную фасоль с частью отвара и разомните в гладкое пюре.	12
+262	4	Жарьте пюре на среднем огне десять минут, пока оно не станет держать форму на ложке.	10
+262	5	Раскатайте шары в тонкие круги двадцати сантиметров.	12
+262	6	Жарьте на сухой раскалённой сковороде по минуте с каждой стороны — до пятен, но без сухости.	12
+262	7	Намажьте фасоль на половину лепёшки, добавьте сметану и сыр, сложите пополам и подавайте горячей.	6
+263	1	Отбейте мясо конха молотком и нарежьте небольшими кусками. Сбрызните лаймом.	20
+263	2	Обжарьте лук, чеснок и перец в масле с ачиоте до мягкости.	8
+263	3	Влейте половину кокосового молока, разбавленного водой, и доведите до кипения.	6
+263	4	Опустите мясо и варите на слабом огне сорок минут до мягкости.	42
+263	5	Добавьте юкку, подорожник и морковь крупными кусками и варите двадцать минут.	22
+263	6	Влейте оставшееся густое кокосовое молоко и прогрейте пять минут не кипятя.	7
+263	7	Посыпьте кинзой и подавайте с лаймом и жареным подорожником.	5
+264	1	Обжарьте лук, чеснок и перец в масле до мягкости, пять минут.	7
+264	2	Добавьте фасоль с половником её отвара и прогрейте три минуты.	5
+264	3	Всыпьте холодный рис и перемешайте, разбивая комки лопаткой.	4
+264	4	Жарьте на сильном огне восемь минут, не перемешивая последние три — снизу должна образоваться корочка.	8
+264	5	Посолите, поперчите и вмешайте кинзу.	3
+264	6	Подавайте с жареным подорожником, сыром куахада и яичницей.	10
+265	1	Замаринуйте свинину в соке кислых апельсинов, ачиоте, чесноке, соли и перце на ночь.	20
+265	2	Замочите рис на два часа и слейте воду.	10
+265	3	Разведите масеку тёплой водой, добавьте растопленный смалец, ачиоте и соль и вымешивайте пятнадцать минут до гладкости.	20
+265	4	Прогрейте банановые листья над огнём, чтобы они стали гибкими.	12
+265	5	На лист выложите большую ложку теста, сверху свинину, рис, кружки картофеля, лук, перец, помидор, оливку и лист мяты.	35
+265	6	Заверните в два листа плотным свёртком и перевяжите бечёвкой крест-накрест.	25
+265	7	Варите в большой кастрюле с водой три часа, подливая кипяток по мере выкипания.	180
+266	1	Натрите курицу солью, чесноком, орегано и соком лайма и оставьте на двадцать минут.	22
+266	2	Залейте курицу тремя литрами холодной воды, доведите до кипения и снимите пену.	15
+266	3	Добавьте лук и половину кулантро и варите час на слабом огне.	62
+266	4	Очистите ньяме, нарежьте крупными кусками и заложите в кастрюлю вместе с кукурузой.	15
+266	5	Варите двадцать пять минут, пока ньяме не станет мягким.	25
+266	6	Разомните пару кусков ньяме прямо в бульоне, чтобы суп загустел.	5
+266	7	Вмешайте оставшийся кулантро, посолите и подавайте с отдельной тарелкой белого риса.	8
+267	1	Отварите мясо целым куском в подсоленной воде с лавровым листом полтора часа. Бульон сохраните.	90
+267	2	Остудите мясо и разберите руками на длинные волокна вдоль.	15
+267	3	Обжарьте лук, перец и чеснок в масле до мягкости, восемь минут.	10
+267	4	Добавьте помидоры, томатную пасту, зиру и орегано и тушите десять минут до густоты.	12
+267	5	Вмешайте мясо, оливки и каперсы и тушите двадцать минут, подливая бульон по столовой ложке.	22
+267	6	Выпарите лишнюю жидкость на открытом огне — соус должен обволакивать волокна.	8
+267	7	Посыпьте кулантро и подавайте с рисом и жареным подорожником.	5
+268	1	Нарежьте лук тонко и томите в жире на слабом огне двадцать минут до полной мягкости и сладости.	22
+268	2	Залейте лук молоком, снимите с огня и остудите до тёплого.	12
+268	3	Разотрите сыр и смешайте с кукурузной мукой и зёрнами кукурузы.	8
+268	4	Вмешайте луково-молочную смесь и желтки, посолите с осторожностью — сыр уже солёный.	6
+268	5	Взбейте белки до устойчивых пиков и вмешайте лопаткой в три приёма.	8
+268	6	Выложите в смазанную форму слоем в четыре сантиметра.	4
+268	7	Пеките при 190 °C пятьдесят минут до тёмно-золотой корки. Дайте постоять двадцать минут перед нарезкой.	72
+269	1	Разогрейте духовку до 220 °C заранее — тесто должно попасть в горячую.	15
+269	2	Разотрите размягчённый жир с яйцами и солью до однородности.	6
+269	3	Вмешайте тёртый сыр и анис, растирая массу руками, пока сыр не разойдётся равномерно.	5
+269	4	Всыпайте крахмал понемногу, подливая молоко, пока тесто не станет плотным и пластичным.	8
+269	5	Скатайте колбаски и соедините концы в кольца диаметром восемь сантиметров.	12
+269	6	Пеките двадцать пять минут до румяных пятен. Подавайте тёплыми.	25
+270	1	Взбейте муку с водой и солью в жидкое тесто без комков — гуще блинного, но текучее.	10
+270	2	Разведите сметану холодной водой до консистенции жидких сливок и посолите.	5
+270	3	Смажьте круглую форму маслом и налейте тесто полосами от центра к краям, как спицы колеса.	8
+270	4	Поставьте под верхний гриль на четыре минуты, пока слой не схватится и не пойдёт пятнами.	6
+270	5	Сбрызните разведённой сметаной и налейте следующий слой в промежутки между предыдущими полосами.	5
+270	6	Повторяйте, чередуя направление полос, пока тесто не кончится — обычно двадцать-двадцать пять слоёв.	60
+270	7	Полейте растопленным маслом, дайте постоять десять минут и подавайте с йогуртом или мёдом.	14
+271	1	Натрите мясо солью, перцем, чесноком и орегано и запекайте при 190 °C сорок минут.	45
+271	2	Отварите рис до полуготовности, семь минут, и откиньте на дуршлаг.	10
+271	3	Растопите масло, вмешайте муку и прогрейте две минуты до орехового запаха.	5
+271	4	Взбейте йогурт с яйцами и солью до полной гладкости и влейте мучную смесь.	8
+271	5	Выложите рис ровным слоем в глиняную форму, сверху мясо с его соками.	6
+271	6	Залейте йогуртовой смесью так, чтобы она покрыла всё на палец.	3
+271	7	Запекайте при 180 °C пятьдесят минут, пока верх не подрумянится, а середина не будет чуть дрожать.	52
+273	1	Отварите нарезанный картофель в подсоленной воде двадцать минут до полной мягкости.	20
+273	2	Не сливая воду, всыпайте кукурузную муку тонкой струйкой, непрерывно размешивая.	8
+273	3	Варите на слабом огне пятнадцать минут, помешивая деревянной лопаткой — каша быстро пригорает.	15
+273	4	Разомните картофель прямо в кастрюле вместе с кашей до однородности.	6
+273	5	Вмешайте раскрошенный сыр и каймак, подливая горячее молоко, и работайте лопаткой пять минут.	8
+273	6	Выложите в миску, сделайте углубление и залейте растопленным маслом. Подавайте сразу.	5
+274	1	Разрежьте чили вдоль на четвертинки. Семена оставляют — в Бутане их не вычищают.	12
+274	2	Сложите чили, нарезанный лук, чеснок и помидор в кастрюлю и залейте водой вровень.	5
+274	3	Доведите до кипения и варите десять минут, пока чили не станет мягким.	10
+274	4	Раскрошите сыр в кастрюлю, убавьте огонь и не мешайте две минуты — он должен начать расходиться сам.	4
+274	5	Перемешайте до кремового соуса, добавьте масло и посолите с осторожностью — сыр солёный.	5
+274	6	Подавайте с красным рисом, который в Бутане варят до состояния чуть липкого.	8
+276	1	Замесите тесто из муки, воды, ложки масла и соли и оставьте на двадцать минут.	25
+276	2	Нарежьте лук, чили и листья карри как можно мельче.	10
+276	3	Перетрите лук, чили и соль руками, пока лук не пустит сок и не станет мягким.	5
+276	4	Добавьте тёртый кокос и разобранный тунец и продолжайте перетирать пальцами до однородности.	6
+276	5	Выжмите сок лаймов и перемешайте ещё раз. Попробуйте и поправьте на соль и кислоту.	4
+276	6	Раскатайте тесто в тонкие лепёшки и жарьте на сухой сковороде по минуте с каждой стороны.	15
+276	7	Подавайте мас хуни с горячими роши и чёрным чаем.	4
+291	1	Замочите рис отдельно, а чечевицу с пажитником отдельно, на шесть часов каждое.	15
+279	1	Замесите мягкое тесто из муки, тёплой воды, ложки масла и соли и оставьте на двадцать минут.	25
+279	2	Раскатайте шар тонко, смажьте маслом, сверните жгутом, закрутите улиткой и раскатайте снова.	15
+279	3	Жарьте чапати на среднем огне по полторы минуты с каждой стороны и держите под полотенцем.	15
+279	4	Нашинкуйте капусту, морковь, лук, помидоры и чили как можно тоньше.	12
+279	5	Взбейте яйца с овощами, солью и перцем — овощи должны быть внутри омлета, а не сверху.	5
+279	6	Вылейте порцию яиц на сковороду, дайте схватиться и положите сверху чапати, прижав лопаткой.	8
+279	7	Переверните вместе, снимите на доску омлетом вверх и сверните плотным рулетом.	6
+282	1	Натрите курицу солью, перцем, чесноком и соком лимона и оставьте на двадцать минут.	22
+282	2	Обжарьте курицу в масле до румяной корки со всех сторон и выньте.	15
+282	3	Обжарьте лук с имбирём до мягкости, добавьте пальмовую мякоть и разведите стаканом воды.	10
+282	4	Проварите соус двадцать минут, помешивая, пока сверху не выступит слой красного масла.	22
+282	5	Верните курицу, добавьте баклажаны и целый пили-пили и тушите тридцать минут.	32
+282	6	Вмешайте шпинат на последние пять минут и выньте перец.	7
+282	7	Подавайте с рисом или с кашей фуфу из маниока.	10
+283	1	Сделайте на рыбе надрезы по бокам и натрите солью, перцем и соком лимона.	12
+283	2	Разотрите чеснок, имбирь и чили в пасту и вотрите в надрезы и брюшко.	10
+283	3	Прогрейте банановые листья над огнём, чтобы они стали гибкими и не ломались.	8
+283	4	Разложите на листе кружки помидора и лука, сверху рыбу, снова помидоры и зелёный лук.	10
+283	5	Заверните в три листа плотным свёртком и перевяжите полоской того же листа.	10
+283	6	Положите свёртки на угли и запекайте по пятнадцать минут с каждой стороны.	32
+283	7	Подавайте прямо в листе, с варёным маниоком или рисом.	12
+284	1	Обжарьте мясо в масле до румяной корки, добавьте лук и жарьте до мягкости.	15
+284	2	Вмешайте томатную пасту и прогрейте пять минут, пока она не потемнеет.	7
+284	3	Залейте полутора литрами воды, посолите и варите сорок минут.	42
+284	4	Разведите арахисовую пасту двумя половниками бульона до однородности без комков.	5
+284	5	Влейте пасту в кастрюлю тонкой струйкой, непрерывно размешивая.	5
+284	6	Добавьте овощи крупными кусками и целый чили и тушите тридцать минут, помешивая.	32
+284	7	Дождитесь, пока сверху выступит арахисовое масло, выньте перец и подавайте с рисом.	12
+286	1	Обвяжите каждый кусок кулинарной нитью по окружности, чтобы мясо не отошло от кости.	10
+286	2	Надрежьте плёнку по краю в двух-трёх местах — иначе куски свернутся при обжарке.	5
+286	3	Обваляйте в муке и обжарьте в масле до тёмной корки с обеих сторон, по четыре минуты.	12
+286	4	Выньте мясо, обжарьте мелко нарезанные лук, морковь и сельдерей до мягкости.	12
+286	5	Влейте вино и выпарите наполовину, соскребая со дна пригоревшее.	8
+286	6	Верните мясо, влейте бульон до половины высоты кусков и тушите под крышкой два часа на слабом огне.	125
+286	7	Смешайте рубленую цедру, чеснок и петрушку и посыпьте оссобуко перед подачей.	8
+290	1	Прогрейте в топлёном масле кардамон, корицу и гвоздику до запаха, минуту.	3
+290	2	Добавьте асафетиду и сразу мясо и обжаривайте до румяности, десять минут.	12
+290	3	Снимите с огня, вмешайте кашмирский чили — на огне он горит за секунды и даёт горечь.	3
+290	4	Верните на слабый огонь и вводите взбитый йогурт по половнику, размешивая после каждого.	12
+290	5	Всыпьте фенхель и сухой имбирь, посолите и залейте стаканом горячей воды.	5
+290	6	Тушите под крышкой час двадцать на слабом огне, пока мясо не станет отходить от кости.	85
+290	7	Снимите крышку и выпарите соус до состояния, когда сверху выступит масло. Подавайте с рисом.	15
+291	2	Смелите чечевицу в лёгкую пышную пасту, затем рис — в чуть зернистую, и соедините.	20
+291	3	Посолите, накройте и оставьте в тепле на восемь-двенадцать часов, пока тесто не поднимется и не запахнет кисло.	20
+291	4	Прокалите в масле семена горчицы до треска, добавьте листья карри, лук, чили и имбирь.	10
+291	5	Всыпьте куркуму и размятый картофель, посолите и прогрейте пять минут — это начинка.	12
+291	6	Раскалите плоскую сковороду, протрите луковицей с маслом и вылейте половник теста, размазав спиралью от центра.	8
+291	7	Сбрызните маслом по краю и жарьте до румяного низа, две минуты. Выложите начинку и сложите пополам.	22
+292	1	Обжарьте лук, порей и фенхель в оливковом масле десять минут до мягкости.	10
+292	2	Добавьте мелкую рыбу целиком, помидоры, чеснок, цедру и шафран и жарьте пять минут.	7
+292	3	Залейте двумя литрами воды, доведите до кипения и варите сорок минут, не накрывая.	42
+292	4	Протрите всё через сито, вдавливая мякоть, и верните бульон в кастрюлю.	15
+292	5	Отварите картофель в бульоне пятнадцать минут, потом опустите крупную рыбу порядком, начиная с самой плотной.	22
+292	6	Взбейте руй: желток, чеснок, шафран, щепоть кайенского перца и оливковое масло тонкой струйкой.	10
+292	7	Подайте бульон в тарелках с гренками и руем, а рыбу с картофелем — отдельным блюдом.	10
+294	1	Нарежьте картофель крупными кусками и вымочите десять минут в холодной воде, чтобы ушёл крахмал.	12
+294	2	Обжарьте лук в масле две минуты, добавьте тонко нарезанную говядину и жарьте до потери розового цвета.	2
+294	3	Добавьте картофель и морковь и перемешайте, чтобы они покрылись жиром от мяса.	4
+294	4	Влейте даси, саке и сахар, доведите до кипения и снимите пену.	6
+294	5	Накройте отосибутой или кругом фольги с дырочкой и тушите десять минут на среднем огне.	12
+294	6	Влейте соевый соус и мирин и тушите ещё пятнадцать минут, пока жидкости не останется на дне.	17
+294	7	Добавьте фасоль на последние три минуты, снимите с огня и дайте настояться двадцать минут.	24
+296	1	Отварите курицу с луковицей и чесноком сорок минут. Бульон процедите и сохраните.	40
+296	2	Очистите перцы от семян и обжарьте на сухой сковороде по десять секунд с каждой стороны, не давая почернеть.	15
+296	3	Залейте перцы кипятком на двадцать минут, чтобы размякли.	22
+296	4	Обжарьте по очереди миндаль, арахис, кунжут, изюм и хлеб в смальце, каждый отдельно.	25
+296	5	Обожгите помидоры, томатильо и чеснок на сухой сковороде до чёрных пятен.	15
+296	6	Пробейте всё в блендере с бульоном партиями и протрите через сито дважды.	25
+296	7	Варите соус час на слабом огне, помешивая, вмешайте шоколад и соль, опустите курицу и прогрейте.	70
+298	1	Нарежьте баранину очень тонкими ломтями, посолите, поперчите и оставьте на двадцать минут.	22
+298	2	Обжарьте лук и чеснок в масле, добавьте пасту из перца и прогрейте минуту.	7
+298	3	Влейте томатное пюре, добавьте орегано и варите соус пятнадцать минут до густоты.	17
+298	4	Нарежьте пиде кубиками и подсушите в духовке при 180 °C восемь минут.	12
+298	5	Обжарьте ломти баранины на очень сильном огне партиями по полторы минуты.	10
+298	6	Разложите хлеб по тарелкам, полейте частью соуса, сверху мясо и остальной соус.	6
+298	7	Растопите масло до шипения и полейте им мясо. Положите йогурт сбоку и подавайте с жареным перцем.	6
+299	1	Замесите крутое тесто из муки, яиц, воды и соли и вымешивайте пятнадцать минут.	18
+299	2	Накройте и оставьте отдыхать на сорок минут — иначе тесто будет пружинить при раскатке.	45
+299	3	Смешайте фарш с тёртым луком, солью и перцем и отожмите лишний сок.	8
+299	4	Раскатайте тесто в пласт толщиной в миллиметр и нарежьте квадратами по два сантиметра.	25
+299	5	На каждый квадрат положите начинку на кончике ножа и защипните четыре угла вверх в узелок.	40
+299	6	Отварите манты в подсоленной воде восемь минут и откиньте, сохранив половник отвара.	8
+299	7	Взбейте йогурт с чесноком, разложите манты, залейте йогуртом, полейте маслом с паприкой и мятой.	10
+300	1	Замочите фасоль на двенадцать часов в холодной воде и слейте.	10
+300	2	Сложите фасоль, копчёности, лук, чеснок и оливковое масло в кастрюлю и залейте холодной водой на три пальца.	8
+300	3	Доведите до кипения, снимите пену и убавьте огонь до едва заметного дрожания поверхности.	15
+300	4	Варите два с половиной часа, подливая по полстакана холодной воды каждые тридцать минут.	150
+300	5	Выньте луковицу и чеснок, разотрите их с шафраном и паприкой и верните в кастрюлю.	8
+300	6	Посолите в самом конце и дайте настояться полчаса перед подачей.	8
+300	7	Выньте копчёности, нарежьте и подайте на отдельном блюде, фасоль — в супнице.	10
+301	1	Вскипятите большую кастрюлю воды с луковицей и лавровым листом. Соль не добавляйте.	15
+301	2	Возьмите осьминога за голову и опустите щупальца в кипяток на пять секунд, потом выньте. Повторите трижды.	6
+301	3	Опустите осьминога целиком и варите при слабом кипении сорок минут.	42
+301	4	Проверьте вилкой в самой толстой части щупальца: она должна входить без усилия.	3
+301	5	Выключите огонь и оставьте осьминога в воде на пятнадцать минут — он дойдёт и станет мягче.	17
+301	6	Отварите картофель в том же бульоне и нарежьте кружками.	25
+301	7	Нарежьте щупальца ножницами на кусочки в сантиметр, выложите на картофель, посыпьте паприкой и солью, полейте маслом.	10
+302	1	Отложите пятую часть лапши, разберите на пряди и обжарьте во фритюре до золотистого хруста.	12
+302	2	Прогрейте густую часть кокосового молока в сотейнике, не мешая, пока не отделится масло.	10
+302	3	Обжарьте в этом масле пасту карри, порошок карри и куркуму три минуты до глубокого запаха.	3
+302	4	Положите курицу и обваляйте в пасте, чтобы она покрылась со всех сторон.	5
+302	5	Влейте оставшееся кокосовое молоко и воду, добавьте рыбный соус и сахар и варите тридцать минут.	32
+302	6	Отварите оставшуюся лапшу и разложите по мискам.	8
+302	7	Залейте карри с курицей, сверху положите жареную лапшу, шалот, маринованную зелень, кинзу и дольку лайма.	6
+303	1	Прогрейте густую часть кокосового молока, не мешая, пока не отделится масло.	10
+303	2	Обжарьте пасту массаман в этом масле четыре минуты, пока она не потемнеет и не запахнет.	4
+303	3	Добавьте говядину и обваляйте в пасте, потом положите корицу, кардамон и лавровый лист.	8
+303	4	Влейте оставшееся кокосовое молоко и тушите на слабом огне час, пока мясо не станет мягким.	65
+303	5	Заложите картофель и лук крупными кусками и варите ещё двадцать минут.	22
+303	6	Вмешайте тамаринд, пальмовый сахар и рыбный соус и попробуйте: должно быть сладко, кисло и солёно разом.	8
+303	7	Добавьте арахис, прогрейте пять минут и подавайте с жасминовым рисом.	8
+304	1	Срежьте у помидоров крышечки и выберите мякоть ложкой, не повредив стенки.	15
+304	2	Пробейте мякоть блендером и добавьте сахар — он уберёт кислоту помидоров.	6
+304	3	Обжарьте лук в оливковом масле десять минут до мягкости и сладости.	10
+304	4	Смешайте сырой рис с луком, зеленью, половиной томатного пюре, солью и перцем.	8
+304	5	Наполните овощи на две трети, накройте крышечками и поставьте в форму.	15
+304	6	Разложите между ними картофель дольками, залейте оставшимся пюре и щедро полейте маслом.	10
+304	7	Запекайте под фольгой при 180 °C час, потом снимите фольгу и держите ещё двадцать минут.	80
+305	1	Залейте курицу двумя с половиной литрами холодной воды, доведите до кипения и снимите пену.	15
+305	2	Добавьте лук, морковь и сельдерей и варите на слабом огне сорок пять минут.	47
+305	3	Выньте курицу, процедите бульон и верните его на огонь. Отварите в нём рис пятнадцать минут.	18
+305	4	Разберите мясо на волокна, выбросив кожу и кости.	12
+305	5	Взбейте яйца с соком лимонов до однородной пены в отдельной миске.	5
+305	6	Вливайте горячий бульон в яично-лимонную смесь половником, непрерывно взбивая, пока миска не станет тёплой.	6
+305	7	Влейте смесь обратно в кастрюлю на снятом огне, верните мясо и прогрейте, не доводя до кипения.	8
+306	1	Замесите крутое тесто из муки, яиц, ледяной воды и соли и вымешивайте пятнадцать минут.	18
+306	2	Заверните в плёнку и уберите в холодильник на сорок минут.	45
+306	3	Порубите мясо ножом или пропустите через крупную решётку, смешайте с тёртым луком, солью и перцем.	20
+306	4	Вмешайте колотый лёд в фарш и уберите его в холод на двадцать минут.	22
+306	5	Раскатайте тесто в пласт толщиной в миллиметр и вырежьте кружки диаметром шесть сантиметров.	20
+306	6	На каждый кружок положите чайную ложку фарша, сложите полумесяцем, защипните и соедините концы кольцом.	45
+306	7	Варите в кипящем подсоленном бульоне с лавровым листом четыре минуты после всплытия, подавайте с маслом и сметаной.	12
+307	1	Нарежьте мясо поперёк волокон соломкой толщиной в сантиметр, обсушите бумагой и поперчите.	15
+307	2	Раскалите сковороду и обжарьте мясо порциями по полторы минуты, не переворачивая часто.	10
+307	3	Выньте мясо, обжарьте грибы на сильном огне до испарения их воды.	8
+307	4	Добавьте масло и лук и жарьте до мягкости и золотистого цвета.	10
+307	5	Всыпьте муку, прогрейте минуту и влейте бульон, размешивая до гладкости.	6
+307	6	Снимите с огня, вмешайте сметану и горчицу и посолите.	4
+307	7	Верните мясо с выделившимся соком, прогрейте минуту не кипятя и посыпьте петрушкой.	4
+308	1	Надрежьте шкуру ромбами через полтора сантиметра, доходя до жира, но не до мяса.	12
+308	2	Натрите рульки крупной солью, перцем, тмином и чесноком, втирая всё в надрезы.	10
+308	3	Уложите в кастрюлю с луком, морковью, сельдереем и лавровым листом, залейте пивом и водой.	8
+308	4	Варите на слабом огне час, не давая бурно кипеть.	60
+308	5	Переложите рульки на противень, обсушите шкуру бумагой и запекайте при 180 °C час двадцать.	85
+308	6	Каждые двадцать минут поливайте пивом из кастрюли и жиром с противня.	6
+308	7	Поднимите температуру до 240 °C на последние десять минут, пока корка не вздуется пузырями.	12
+309	1	Взбейте яйца с сахаром на водяной бане до тёплого, затем миксером десять минут до плотной светлой пены.	18
+309	2	Просейте муку с какао и вмешайте лопаткой в три приёма, затем растопленное масло.	10
+309	3	Испеките бисквит при 175 °C тридцать пять минут и полностью остудите, лучше за ночь.	40
+309	4	Разрежьте бисквит на три коржа и пропитайте каждый вишнёвым сиропом с киршем.	12
+309	5	Распустите желатин, взбейте сливки с пудрой и вмешайте желатин тонкой струйкой.	12
+309	6	Собирайте: корж, сливки, вишня, снова сливки — и так три раза, заканчивая сливками.	20
+309	7	Обсыпьте бока и верх шоколадной стружкой, украсьте вишней и охладите четыре часа.	20
+310	1	Смешайте паприку, сахар, горчичный и чесночный порошок, кайенский перец, соль и чёрный перец.	8
+310	2	Обмажьте лопатку горчицей — она нужна как связка — и обваляйте в сухой смеси со всех сторон.	12
+310	3	Оставьте мясо в холодильнике на ночь, накрыв плёнкой.	10
+310	4	Выведите коптильню или духовку на 110 °C и достаньте мясо за час до готовки, чтобы оно согрелось.	60
+310	5	Коптите жирной стороной вверх шесть часов, сбрызгивая смесью уксуса и яблочного сока каждый час.	360
+310	6	Когда температура внутри дойдёт до 75 °C и остановится, заверните мясо в фольгу и верните в жар.	15
+310	7	Держите до 95 °C внутри, ещё часа четыре, дайте отдохнуть час в фольге и разберите руками на волокна.	260
+311	1	Измельчите крекеры в мелкую крошку и смешайте с растопленным маслом, сахаром и щепотью соли.	10
+311	2	Утрамбуйте крошку в форму, поднимая по бортам, и запеките при 175 °C десять минут.	15
+311	3	Взбейте желтки с цедрой двух лаймов до посветления — минуты три.	5
+311	4	Влейте сгущённое молоко и взбивайте ещё три минуты, пока смесь не станет густой.	5
+311	5	Вливайте сок лаймов тонкой струйкой при работающем миксере — смесь загустеет прямо в миске.	5
+311	6	Вылейте начинку в основу и запекайте при 160 °C пятнадцать минут, пока края не схватятся, а центр не будет дрожать.	18
+311	7	Остудите и охладите четыре часа, затем украсьте взбитыми сливками с пудрой.	15
+312	1	Замаринуйте ломтики грудинки и фарш отдельно в рыбном соусе, сахаре, шалоте, чесноке и перце на час.	25
+312	2	Слепите из фарша плоские котлетки толщиной в сантиметр — они прожарятся быстро и равномерно.	12
+312	3	Нарежьте папайю и морковь тонкими ломтиками и замаринуйте в уксусе с сахаром на двадцать минут.	22
+312	4	Смешайте рыбный соус, сахар, сок лайма, воду, чеснок и чили и прогрейте до тёплого — это ныок чам.	10
+312	5	Отварите вермишель две минуты, промойте холодной водой и разложите по тарелкам.	2
+312	6	Жарьте грудинку и котлетки на углях по три минуты с каждой стороны до карамельных краёв.	6
+312	7	Опустите горячее мясо прямо в тёплый соус с маринованными овощами и подайте с лапшой, салатом и травами.	6
+313	1	Отварите грудинку в подсоленной воде тридцать минут, остудите и нарежьте тонкими ломтями.	30
+313	2	Отварите креветки две минуты, остудите и разрежьте каждую вдоль пополам.	2
+313	3	Отварите вермишель, промойте холодной водой и хорошо обсушите.	8
+313	4	Разведите арахисовую пасту с хойсином, чесноком и водой до консистенции жидких сливок.	6
+313	5	Смочите лист рисовой бумаги в тёплой воде на две секунды и положите на влажное полотенце.	4
+313	6	Уложите две половинки креветки срезом вниз в верхней трети, ниже — салат, лапшу, мясо и травы.	15
+313	7	Заверните низ, подверните бока и скатайте плотным рулетом. Подавайте с арахисовым соусом.	12
+314	1	Вымочите рёбра в холодной воде час, меняя воду дважды, пока она не станет прозрачной.	65
+314	2	Опустите рёбра в кипяток на пять минут, слейте и промойте под холодной водой.	10
+314	3	Пробейте грушу, лук, чеснок и имбирь в блендере до однородного пюре.	8
+314	4	Смешайте пюре с соевым соусом, сахаром, мирином и кунжутным маслом и залейте им рёбра.	8
+314	5	Доведите до кипения, снимите пену и тушите под крышкой полтора часа на слабом огне.	90
+314	6	Добавьте морковь, дайкон, грибы, каштаны и финики и тушите ещё двадцать пять минут.	27
+314	7	Снимите крышку и выпарите соус до глянца, поливая им рёбра. Посыпьте зелёным луком.	15
+315	1	Замочите клейкий рис в холодной воде на два часа и откиньте на сито.	10
+315	2	Промойте цыплят, удалите лишний жир у полости и обсушите.	12
+315	3	Наполните каждую полость рисом на две трети, добавив корень женьшеня, чеснок, каштан и финик.	15
+315	4	Скрестите ножки и заправьте одну в надрез на другой — так полость закроется без ниток.	8
+315	5	Уложите цыплят в кастрюлю плотно и залейте холодной водой, чтобы она едва покрывала.	5
+315	6	Доведите до кипения, снимите пену и варите на слабом огне час с четвертью.	75
+315	7	Подавайте каждого цыплёнка в своей миске с бульоном, с солью и перцем отдельно на блюдце.	8
+316	1	Взбейте муку, яйца, молоко и соль в гладкое тесто и оставьте отдыхать час в холодильнике.	70
+316	2	Достаньте мясо из холодильника за час до готовки и обсушите, посолите и поперчите.	60
+316	3	Обжарьте отруб на сковороде со всех сторон до тёмной корки, по две минуты на грань.	12
+316	4	Уложите на овощи в противень и запекайте при 200 °C двадцать минут, потом при 160 °C ещё сорок для розового центра.	65
+316	5	Выньте мясо, накройте фольгой и дайте отдохнуть двадцать минут — оно продолжит доходить.	22
+316	6	Раскалите формы для пудинга с ложкой жира в каждой при 220 °C, пока жир не задымит.	12
+316	7	Разлейте холодное тесто по формам наполовину и пеките двадцать минут, не открывая дверцу.	22
+317	1	Залейте нарезанные финики стаканом кипятка с содой и оставьте на пятнадцать минут.	18
+317	2	Разомните финики вилкой в грубую пасту вместе с их водой.	5
+317	3	Взбейте сто граммов масла со ста пятьюдесятью граммами сахара добела и введите яйца по одному.	10
+317	4	Вмешайте муку с разрыхлителем, затем финиковую пасту — тесто получится жидким, и это нормально.	6
+317	5	Вылейте в смазанную форму и пеките при 180 °C тридцать пять минут до влажной шпажки с крошками.	38
+317	6	Растопите оставшееся масло с оставшимся сахаром и сливками и варите соус пять минут до густоты.	8
+317	7	Наколите тёплый кекс шпажкой, полейте половиной соуса и подавайте с остальным в кувшине.	6
+318	1	Замочите сушёные грибы в стакане тёплой воды на полчаса и нарежьте, воду процедите и сохраните.	35
+318	2	Отожмите квашеную капусту, нашинкуйте свежую и потушите обе в отдельных кастрюлях по тридцать минут.	35
+318	3	Обжарьте грудинку до шкварок, в её жире подрумяньте свинину и говядину кусками, затем лук.	25
+318	4	Соедините обе капусты, мясо, колбасу, грибы с их водой, чернослив, томатную пасту и специи в большой кастрюле.	15
+318	5	Влейте вино, доведите до кипения и тушите два часа на самом слабом огне, помешивая изредка.	125
+318	6	Полностью остудите и оставьте на сутки в холоде, потом снова доведите до кипения и тушите час.	65
+318	7	Повторите цикл ещё раз на третий день. Подавайте с ржаным хлебом и рюмкой водки.	65
+319	1	Разотрите муку со ста граммами холодного масла, ложкой сахара, желтком и разрыхлителем в крошку и замесите тесто.	12
+319	2	Утрамбуйте тесто в форму и запеките при 180 °C пятнадцать минут до бледно-золотого цвета.	18
+319	3	Протрите творог через сито дважды — от этого зависит вся гладкость начинки.	15
+319	4	Взбейте оставшееся масло с сахаром добела, введите желтки по одному, затем творог, сметану, крахмал, ваниль и цедру.	15
+319	5	Взбейте белки с щепотью соли до устойчивых пиков и вмешайте лопаткой в три приёма.	10
+319	6	Вмешайте изюм, вылейте начинку на основу и разровняйте.	5
+319	7	Пеките при 160 °C пятьдесят пять минут, затем выключите духовку и оставьте пирог внутри с приоткрытой дверцей на час.	55
+320	1	Натрите рыбу солью, перцем, растёртым чесноком и соком лаймов и оставьте на двадцать минут.	25
+320	2	Нарежьте лук, помидоры и перец кольцами одинаковой толщины.	12
+320	3	Выстелите дно глиняного горшка половиной колец лука, помидора и перца.	5
+320	4	Уложите рыбу в один слой, сверху креветки и оставшиеся овощи, посолите.	8
+320	5	Влейте кокосовое молоко и масло денде по краю, не заливая рыбу сверху.	4
+320	6	Накройте и тушите двадцать минут на среднем огне, покачивая горшок, но не размешивая.	22
+320	7	Посыпьте кинзой и зелёным луком и подавайте прямо в горшке, с рисом и фарофой.	6
+321	1	Отварите курицу в подсоленной воде двадцать минут, выньте и разберите руками на волокна. Бульон сохраните.	20
+321	2	Обжарьте лук и чеснок, добавьте курицу, томатную пасту, петрушку и соль и потушите пять минут.	5
+321	3	Доведите бульон с маслом до кипения, всыпьте всю муку разом и вымешивайте на огне пять минут.	5
+321	4	Выложите тесто на стол и вымешивайте руками, пока оно не станет гладким и перестанет липнуть.	12
+321	5	Расплющите кусок теста на ладони, положите начинку и немного катупири, залепите и вытяните каплю с кончиком.	35
+321	6	Обваляйте в яйце и сухарях, повторите ещё раз и охладите двадцать минут.	30
+321	7	Жарьте партиями в масле при 175 °C по четыре минуты до тёмно-золотого цвета.	20
+322	1	Отварите куриную грудку в подсоленной воде двадцать минут и разберите руками на тонкие волокна.	30
+322	2	Замочите хлеб без корок в молоке на десять минут.	12
+322	3	Обжарьте лук с чесноком в масле до мягкости, добавьте пасту ахи и куркуму и жарьте пять минут.	12
+322	4	Пробейте в блендере размоченный хлеб с молоком, орехами и обжаренным луком до гладкости.	8
+322	5	Верните смесь в сотейник и варите десять минут на слабом огне, помешивая.	12
+322	6	Вмешайте курицу и пармезан, посолите и прогрейте пять минут до густоты сметаны.	8
+322	7	Подавайте на отварном картофеле и рисе, украсив яйцом и оливками.	10
+323	1	Отварите картофель в мундире до полной мягкости, очистите горячим и пропустите через пресс.	35
+323	2	Вымешивайте пюре руками пять минут, пока оно не станет однородным и упругим.	7
+323	3	Остудите пюре до комнатной температуры, потом вмешайте пасту ахи, сок лаймов, масло и соль.	12
+323	4	Смешайте тунец с майонезом, мелко нарезанным красным луком и кинзой.	8
+323	5	Выложите в форму половину пюре слоем в полтора сантиметра и разровняйте.	6
+323	6	Распределите начинку и ломтики авокадо, накройте второй половиной пюре.	8
+323	7	Охладите два часа, украсьте яйцом и оливками и подавайте холодной.	12
+324	1	Подсушите орехи на сухой сковороде пять минут, остудите и смелите почти в пасту.	15
+324	2	Обжарьте лук в масле до золотистого, добавьте куркуму и мясо и подрумяньте со всех сторон.	18
+324	3	Выньте мясо, всыпьте ореховую пасту в кастрюлю и залейте литром горячей воды.	6
+324	4	Варите соус час на слабом огне, помешивая каждые десять минут — он начнёт темнеть и отдавать масло.	60
+324	5	Влейте гранатовую патоку, добавьте корицу, сахар и шафран и верните мясо в кастрюлю.	6
+324	6	Тушите ещё час, пока соус не станет тёмно-коричневым и густым, а масло не выступит по краям.	60
+324	7	Попробуйте и поправьте баланс кислого и сладкого, подавайте с рисом и зёрнами граната.	10
+337	2	Оставьте тесто подходить в тепле час, пока оно не удвоится.	62
+326	1	Обжарьте лук и чеснок в половине оливкового масла до мягкости, восемь минут.	10
+326	2	Добавьте нарезанный картофель, залейте полутора литрами воды и варите двадцать минут до полной мягкости.	22
+326	3	Пробейте суп блендером до гладкого крема и посолите.	5
+326	4	Обжарьте ломтики шоурису на сухой сковороде до подрумянивания и выложите на бумагу.	8
+326	5	Сверните листья капусты в тугой рулон и нарежьте поперёк в нитку.	12
+326	6	Доведите крем до кипения, всыпьте капусту и варите ровно три минуты.	3
+326	7	Разлейте по тарелкам, положите ломтики колбасы и полейте сырым оливковым маслом.	4
+327	1	Промойте сардины, не потроша, и обсушите бумагой снаружи.	10
+327	2	Засыпьте рыбу крупной солью со всех сторон и оставьте на полчаса при комнатной температуре.	32
+327	3	Разожгите угли и дайте им покрыться пеплом — прямое пламя сожжёт кожу за минуту.	25
+327	4	Запеките перцы на углях до чёрной кожуры, очистите и заправьте маслом, чесноком и уксусом.	20
+327	5	Стряхните с рыбы лишнюю соль и уложите на раскалённую смазанную решётку.	5
+327	6	Жарьте по четыре минуты с каждой стороны, переворачивая ровно один раз.	8
+327	7	Выложите сардины на ломти хлеба и подавайте с варёным картофелем и перечным салатом.	8
+328	1	Нарежьте курицу кубиками по два сантиметра и залейте смесью кечапа маниса, чеснока, кориандра и куркумы.	20
+328	2	Оставьте мариноваться минимум два часа, лучше на ночь в холодильнике.	12
+328	3	Смелите арахис в крупную крошку, оставив немного целых орехов для подачи.	8
+328	4	Обжарьте шалот, чеснок и чили в масле до мягкости, добавьте молотый арахис и прогрейте три минуты.	10
+328	5	Влейте стакан воды, тамаринд, пальмовый сахар и кечап манис и варите соус десять минут до густоты.	12
+328	6	Нанижите куски вплотную на замоченные шпажки, по пять-шесть на каждую.	12
+328	7	Жарьте на сильных углях по две минуты с каждой стороны, смазывая кечапом манисом. Подавайте с соусом и рисом.	4
+342	6	Переверните рёбра и дайте им сорок минут мясом вниз до корки.	42
+332	1	Обжарьте куски курицы в сухой толстостенной кастрюле без масла до румяной корки.	15
+332	2	Выньте мясо, положите сливочное масло и обжарьте лук до мягкости в вытопившемся жире.	12
+332	3	Снимите с помидоров кожицу, натрите их на тёрке и добавьте к луку.	12
+332	4	Верните курицу, посолите, добавьте хмели-сунели и целый чили и накройте крышкой.	6
+332	5	Тушите тридцать минут на слабом огне, ни разу не подливая воду.	30
+332	6	Порубите всю зелень и чеснок крупно, но не в кашу.	10
+332	7	Вмешайте зелень с чесноком, накройте, снимите с огня и дайте настояться десять минут.	12
+333	1	Отварите птицу в подсоленной воде час, выньте и запеките при 200 °C двадцать минут до румяности.	85
+333	2	Процедите бульон, снимите жир и обжарьте в нём мелко нарезанный лук до полной мягкости.	20
+333	3	Смелите орехи дважды и отожмите руками выступившее масло в отдельную чашку.	20
+333	4	Разотрите чеснок с солью и специями и смешайте с ореховой массой.	10
+333	5	Разведите ореховую массу тёплым бульоном до консистенции жидкой сметаны и вмешайте в лук.	12
+333	6	Прогрейте соус двадцать минут на самом слабом огне, не давая закипеть, и вмешайте уксус.	20
+333	7	Разберите птицу на куски, залейте соусом и охладите не меньше шести часов. Полейте ореховым маслом перед подачей.	20
+336	1	Отварите нут в несолёной воде полтора часа до полной мягкости, воду сохраните.	90
+336	2	Разорвите питы на куски в два пальца и обжарьте в масле до золотистого хруста.	12
+336	3	Взбейте йогурт с тахини, растёртым чесноком, лимонным соком и солью до гладкости.	6
+336	4	Разведите йогуртовую смесь парой ложек нутового отвара до консистенции густых сливок.	4
+336	5	Обжарьте кедровые орехи в топлёном масле до золотистого и снимите с огня.	6
+336	6	Выложите в блюдо жареный хлеб, сверху горячий нут с ложкой его отвара.	5
+336	7	Залейте йогуртом, полейте маслом с орехами, посыпьте паприкой и петрушкой и подавайте немедленно.	5
+337	1	Растворите дрожжи в тёплой воде, замесите мягкое тесто с мукой, маслом и солью и вымешивайте десять минут.	14
+337	3	Натрите помидоры и лук на тёрке и отожмите через сито, оставив немного сока.	12
+337	4	Смешайте фарш с тёртыми овощами, гранатовым соусом, тахини, бахаратом, солью и перцем.	8
+337	5	Разделите тесто на шарики и раскатайте в кружки диаметром десять сантиметров.	15
+337	6	Разложите начинку тонким слоем, оставив полсантиметра по краю, и посыпьте кедровыми орехами.	12
+337	7	Пеките при 220 °C восемь минут, пока края не подрумянятся. Подавайте с лимоном.	12
+338	1	Тушите курицу с луком, шафраном, имбирём, кинзой и небольшим количеством воды час до мягкости.	65
+338	2	Выньте мясо, разберите на волокна и уварите соус с луком до состояния густой пасты.	20
+338	3	Вбейте яйца в горячую пасту и мешайте на слабом огне до крупных хлопьев, потом остудите.	12
+338	4	Обжарьте миндаль до золотистого, остудите и смелите с половиной сахарной пудры и ложкой корицы.	15
+338	5	Выстелите форму листами теста внахлёст, смазывая каждый растопленным маслом, с большим запасом по краям.	12
+338	6	Уложите яично-луковую массу, сверху мясо, затем миндальный слой, сбрызните флёрдоранжем.	12
+338	7	Заверните края внутрь, накройте ещё двумя листами, смажьте маслом и пеките при 190 °C сорок минут. Посыпьте пудрой и корицей.	48
+339	1	Обжарьте сто пятьдесят граммов кунжута и миндаль на сухой сковороде и смелите в грубую пасту.	18
+339	2	Смешайте муку с ореховой пастой, анисом, корицей, шафраном, дрожжами и солью.	8
+339	3	Добавьте растопленное масло, флёрдоранж, уксус и тёплую воду и вымешивайте пятнадцать минут до гладкости.	18
+339	4	Дайте тесту отдохнуть час под плёнкой.	62
+339	5	Раскатайте тонко, нарежьте прямоугольниками, сделайте в каждом четыре продольных надреза.	25
+339	6	Проденьте пальцы через надрезы через один и сверните заготовку в форму цветка, защипнув концы.	35
+339	7	Жарьте при 165 °C по четыре минуты до золотистого, сразу опускайте в тёплый мёд на пять минут и посыпайте кунжутом.	40
+340	1	Отварите курицу с луком, кардамоном и лавровым листом сорок пять минут и процедите бульон.	45
+340	2	Мелко порубите листья молохии ножом-мезалуной или пробейте блендером до однородной зелёной массы.	15
+340	3	Доведите бульон до кипения, всыпьте листья и сразу убавьте огонь до минимума.	6
+340	4	Держите суп на грани кипения десять минут, помешивая, — он должен загустеть и стать тягучим.	12
+340	5	Разотрите чеснок с солью в пасту и обжарьте её в топлёном масле с кориандром до тёмно-золотого.	8
+340	6	Влейте зажарку в суп — она зашипит — и сразу накройте крышкой на минуту.	4
+340	7	Подавайте с отварным рисом, курицей и лимоном, каждому в отдельной тарелке.	10
+342	1	Разожгите дрова в стороне от решётки и дайте им прогореть до углей, минут сорок.	45
+342	2	Смешайте петрушку, чеснок, орегано, уксус, масло и хлопья чили — чимичурри должен постоять час.	15
+342	3	Подгребите тонкий слой углей под часть решётки и положите колбаски — они идут первыми.	25
+342	4	Посолите рёбра крупной солью со всех сторон и уложите костью вниз на умеренный жар.	10
+342	5	Жарьте рёбра костью вниз два часа, подгребая угли так, чтобы ладонь над решёткой держалась семь секунд.	120
+342	7	Добавьте пашину на последние двадцать минут, дайте мясу отдохнуть десять и подавайте с чимичурри.	32
+343	1	Взбейте мягкое масло с сахарной пудрой добела, минуты четыре.	6
+343	2	Введите желтки по одному, затем ваниль, цедру и коньяк.	5
+343	3	Просейте крахмал с мукой, разрыхлителем и солью и вмешайте лопаткой, не вымешивая долго.	6
+343	4	Заверните тесто в плёнку и уберите в холодильник на час.	62
+343	5	Раскатайте до толщины полсантиметра и вырежьте кружки диаметром четыре сантиметра.	20
+343	6	Пеките при 170 °C двенадцать минут — коржики должны остаться бледными, лишь низ слегка золотится.	15
+343	7	Полностью остудите, соедините попарно дульсе де лече и обваляйте бока в кокосовой стружке.	20
+344	1	Вскипятите три литра воды с кореньями, лавровым листом и перцем и опустите мясо в кипяток.	20
+344	2	Снимите пену и держите на грани кипения два с половиной часа, ни разу не давая забурлить.	155
+344	3	Разрежьте луковицы пополам и обожгите срезом на сухой сковороде до чёрного — они дадут бульону цвет.	10
+344	4	Добавьте обожжённый лук и мозговые кости в кастрюлю на последний час.	6
+344	5	Натрите яблоки и смешайте с хреном — это апфелькрен, и делать его нужно перед подачей.	10
+344	6	Отварите картофель, нарежьте кружками и обжарьте в масле до румяности.	25
+344	7	Нарежьте мясо поперёк волокон, подайте бульон отдельно, мясо — с хреном, картофелем и зелёным луком.	12
+346	1	Нарежьте карпа стейками, посолите и уберите в холод на час — соль уплотнит мясо.	65
+346	2	Сложите в котелок мелкую рыбу, головы, хребты и весь нарезанный лук и залейте водой.	12
+346	3	Варите час на среднем огне, пока рыба и лук полностью не разварятся.	60
+346	4	Протрите отвар через сито, вдавливая мякоть, и верните в котелок. Кости выбросьте.	15
+346	5	Снимите котелок с огня и вмешайте оба вида паприки, размешав до однородного цвета.	5
+346	6	Верните на огонь, добавьте помидор, перец и острый стручок и доведите до кипения.	8
+346	7	Опустите стейки карпа и икру и варите двенадцать минут, только покачивая котелок. Подавайте с белым хлебом.	15
+347	1	Взбейте яйца с сахаром на водяной бане до тёплого, затем миксером восемь минут до плотной пены.	15
+347	2	Вмешайте просеянную муку лопаткой в три приёма, стараясь не осадить массу.	8
+347	3	Начертите на пергаменте шесть кругов и размажьте по каждому тонкий слой теста.	15
+347	4	Пеките коржи при 200 °C по шесть минут до золотистых краёв и сразу снимайте с пергамента.	40
+347	5	Взбейте яйца с сахарной пудрой на водяной бане до густоты, остудите и соедините с мягким маслом и растопленным шоколадом.	25
+347	6	Растопите сахар для карамели с лимонным соком до янтарного и вылейте на самый ровный корж.	10
+347	7	Разрежьте карамельный корж горячим смазанным ножом на двенадцать секторов, соберите торт и уложите сектора сверху.	25
+348	1	Натрите свинину солью, перцем, тмином и чесноком и оставьте на час при комнатной температуре.	62
+348	2	Обжарьте мясо в смальце со всех сторон, добавьте лук и залейте водой до половины куска.	20
+348	3	Тушите под крышкой при 160 °C полтора часа, поливая соком каждые двадцать минут.	90
+354	4	Выньте мясо, снимите с костей и верните в суп кусками.	15
+348	4	Замесите тесто из муки, тёплого молока с дрожжами, яйца и соли и дайте подойти сорок минут.	50
+348	5	Вмешайте кубики чёрствого хлеба, сформуйте два батона и варите в кипятке по десять минут с каждой стороны.	25
+348	6	Потушите квашеную капусту с луком, тмином и сахаром двадцать пять минут.	27
+348	7	Нарежьте кнедлики ниткой, мясо ломтями и подайте с капустой, полив соусом из формы.	12
+349	1	Отварите нарезанный картофель в полутора литрах воды с тмином и лавровым листом пятнадцать минут.	15
+349	2	Обжарьте нарезанные грибы в масле до испарения их воды и добавьте в кастрюлю.	12
+349	3	Проварите вместе десять минут, чтобы грибы отдали вкус бульону.	12
+349	4	Размешайте сметану с мукой до однородности без комков.	4
+349	5	Снимите суп с огня, вмешайте сметанную смесь, верните на слабый огонь и прогрейте пять минут не кипятя.	8
+349	6	Добавьте уксус, сахар, соль, перец и почти весь укроп и попробуйте на баланс кислого и сливочного.	5
+349	7	Сварите яйца-пашот в подкисленной воде и опустите по одному в каждую тарелку, посыпав оставшимся укропом.	12
+351	1	Очистите яблоки, нарежьте толстыми дольками и разложите в смазанной форме.	15
+351	2	Посыпьте яблоки половиной сахара и корицей и слегка перемешайте прямо в форме.	4
+351	3	Разотрите холодное масло с мукой, оставшимся сахаром и солью кончиками пальцев в крупную крошку.	10
+351	4	Вмешайте овсяные хлопья и распределите крошку по яблокам, не приминая её.	5
+351	5	Пеките при 190 °C сорок минут, пока верх не станет золотистым, а сок не начнёт булькать по краям.	45
+351	6	Прогрейте молоко со сливками и стручком ванили, не доводя до кипения.	8
+351	7	Взбейте желтки с крахмалом, вводите горячее молоко тонкой струйкой и варите соус до густоты, помешивая.	12
+352	1	Обсушите ломти грудинки бумагой и посолите с обеих сторон.	8
+352	2	Выложите на холодную сухую сковороду в один слой и включите средний огонь.	5
+352	3	Жарьте по восемь минут с каждой стороны, сливая вытопившийся жир в чашку.	16
+352	4	Отварите картофель в мундире до мягкости и очистите горячим.	25
+352	5	Растопите масло, вмешайте муку и прогрейте две минуты, не давая ей потемнеть.	5
+352	6	Влейте молоко тонкой струйкой, размешивая до гладкости, и варите соус пять минут.	8
+352	7	Вмешайте гору рубленой петрушки, мускатный орех, соль и перец и подавайте с грудинкой, картофелем и свёклой.	8
+353	1	Промойте рис, залейте молоком с ванилью и солью и варите час на самом слабом огне, помешивая.	65
+353	2	Остудите кашу полностью — лучше поставить миску в холодную воду и мешать, чтобы не образовалась плёнка.	30
+353	3	Ошпарьте миндаль, снимите шкурку и порубите крупно, оставив один орех целым.	15
+353	4	Вмешайте в холодную кашу рубленый миндаль, сахар и херес.	5
+353	5	Взбейте сливки до мягких пиков и вмешайте лопаткой в три приёма, не осаживая.	10
+353	6	Спрячьте целый миндаль в массе и охладите пудинг не меньше трёх часов.	10
+353	7	Проварите вишню с сахаром десять минут, загустите разведённым крахмалом и подавайте соус горячим.	15
+354	1	Промойте горох и залейте вместе с рёбрышками и грудинкой двумя с половиной литрами холодной воды.	10
+354	2	Доведите до кипения, снимите пену и варите на слабом огне час, пока горох не начнёт распадаться.	60
+354	3	Добавьте картофель, морковь, сельдерей и лук и варите ещё час, помешивая, чтобы не пригорело.	65
+354	5	Добавьте нарезанный порей и листья сельдерея и проварите двадцать минут.	22
+354	6	Полностью остудите и оставьте на ночь в холодильнике — суп загустеет.	15
+354	7	Разогрейте, положите нарезанную колбасу на пять минут и подавайте с ржаным хлебом.	15
+355	1	Отварите говядину в бульоне полтора часа до полной мягкости и разберите на мелкие волокна.	90
+355	2	Обжарьте лук в масле, всыпьте муку и прогрейте три минуты, не давая ей потемнеть.	3
+355	3	Влейте горячий бульон тонкой струйкой и варите до состояния очень густой пасты, минут десять.	12
+355	4	Вмешайте мясо, петрушку, мускатный орех, соль и перец, разровняйте в форме и охладите четыре часа.	15
+355	5	Скатайте из застывшей массы шарики размером с грецкий орех влажными руками.	20
+355	6	Обваляйте в муке, яйце и сухарях, охладите двадцать минут, затем повторите яйцо и сухари.	35
+355	7	Жарьте при 180 °C по три минуты до тёмно-золотого цвета и подавайте с горчицей.	20
+356	1	Отварите картофель в мундире в подсоленной воде до полной мягкости, двадцать пять минут.	25
+356	2	Прогрейте молоко со сливками и нарезанным зелёным луком до горячего и оставьте настаиваться десять минут.	10
+356	3	Нашинкуйте капусту и потушите в половине масла восемь минут до мягкости.	10
+356	4	Очистите картофель горячим и разомните толкушкой, не используя блендер.	10
+356	5	Процедите горячее молоко в пюре и вымешайте до гладкости, посолите и поперчите.	8
+356	6	Вмешайте тушёную капусту и настоянный зелёный лук из молока.	5
+356	7	Выложите горкой, сделайте в центре углубление и положите туда оставшееся масло.	4
+361	1	Замесите тесто из муки, размягчённого масла, сметаны, дрожжей и соли и вымешивайте десять минут.	14
+361	2	Заверните тесто в плёнку и охладите час.	62
+361	3	Разотрите муку для начинки с холодным маслом, сахаром и ванилью до влажной крошки.	12
+361	4	Раскатайте тесто прямоугольником, смажьте маслом, сложите втрое и охладите двадцать минут.	25
+361	5	Повторите раскатку и складывание ещё раз, потом раскатайте в пласт толщиной в сантиметр.	20
+361	6	Распределите начинку по половине пласта, накройте второй половиной и защипните края.	12
+361	7	Нанесите узор вилкой, смажьте желтком и пеките при 180 °C сорок минут до тёмно-золотого цвета.	45
+362	1	Промойте рис до прозрачной воды и залейте кокосовым молоком, разбавленным водой, с солью и панданом.	15
+362	2	Добавьте ломтики имбиря и варите под крышкой пятнадцать минут, затем дайте постоять десять.	27
+362	3	Замочите сушёный чили в кипятке двадцать минут и пробейте с шалотом, чесноком и белачаном в пасту.	25
+362	4	Обжаривайте пасту в масле двадцать минут на среднем огне, пока масло не выступит по краям.	20
+362	5	Добавьте тамаринд, пальмовый сахар и соль и потушите самбал ещё десять минут до густоты.	12
+362	6	Обжарьте анчоусы и арахис по отдельности до хруста и отварите яйца вкрутую.	18
+362	7	Соберите тарелку: горка риса, ложка самбала, анчоусы, арахис, половинка яйца и ломтики огурца.	8
+363	1	Разберите свежую лапшу на отдельные полоски руками, стараясь их не порвать.	8
+363	2	Приготовьте все ингредиенты и соусы рядом с плитой — на готовку уйдёт четыре минуты, и отвлекаться будет некогда.	12
+363	3	Раскалите вок до дымка, растопите смалец и обжарьте чеснок и колбасу двадцать секунд.	3
+363	4	Добавьте креветки и ракушки и жарьте тридцать секунд, не перемешивая постоянно.	2
+363	5	Сдвиньте всё к краю, разбейте яйца в центр и дайте им схватиться десять секунд, потом разбейте лопаткой.	2
+363	6	Всыпьте лапшу, влейте оба соевых соуса, самбал и сахар и жарьте, подбрасывая, полторы минуты.	3
+363	7	Бросьте ростки и зелёный лук, перемешайте двадцать секунд и подавайте немедленно.	2
+364	1	Отварите хвост в воде три часа на слабом огне, снимая пену. Бульон сохраните.	190
+364	2	Обжарьте рис на сухой сковороде до коричневого цвета и смелите в мелкий порошок.	15
+364	3	Прогрейте семена аннато в масле три минуты и процедите — окрашенное масло и есть цвет блюда.	3
+364	4	Обжарьте лук и чеснок в ачиотовом масле, добавьте арахисовую пасту и разведите бульоном.	12
+364	5	Вмешайте рисовую муку и варите соус пятнадцать минут, помешивая, до густоты сметаны.	17
+364	6	Верните хвост в соус и прогрейте десять минут, чтобы мясо пропиталось.	12
+364	7	Отварите овощи отдельно до упругости, разложите поверх мяса и подавайте с рисом и багоонгом.	15
+365	1	Растопите сахар с водой до янтарной карамели и разлейте по формам, покачивая, чтобы покрыть дно.	12
+365	2	Дайте карамели застыть в формах, пока готовите смесь.	8
+365	3	Разотрите желтки венчиком, не взбивая до пены — пузыри воздуха дадут дырки.	6
+365	4	Вмешайте оба вида молока, ваниль и цедру, размешивая медленно.	5
+365	5	Процедите смесь через мелкое сито дважды и снимите пену с поверхности ложкой.	8
+365	6	Разлейте по формам поверх карамели и плотно затяните каждую фольгой.	6
+365	7	Готовьте на пару сорок минут при слабом кипении, охладите четыре часа и переверните на блюдо.	45
+366	1	Смешайте муку тефф с водой до консистенции жидких сливок, без комков.	12
+366	2	Накройте тканью и оставьте при комнатной температуре на три дня, не перемешивая.	10
+366	3	Слейте отстоявшуюся сверху жидкость — она горчит, и оставлять её нельзя.	5
+366	4	Отберите стакан теста, заварите его в кипятке до густой пасты и вмешайте обратно.	15
+366	5	Дайте тесту постоять ещё два часа и разведите водой до консистенции очень жидких сливок.	15
+366	6	Разогрейте широкую сковороду, слегка смажьте маслом и вылейте тесто спиралью от края к центру.	8
+366	7	Накройте крышкой на две минуты, пока по всей поверхности не выступят глазки, и снимите не переворачивая.	35
+367	1	Растопите масло на слабом огне с имбирём, чесноком, кардамоном, корицей и пажитником.	10
+367	2	Томите двадцать минут, не давая закипеть, пока пена не осядет и масло не станет прозрачным.	20
+367	3	Процедите нитер киббе через марлю и держите тёплым.	8
+367	4	Срежьте с мяса все плёнки и жилы и порубите его ножом очень мелко, почти в пасту.	25
+367	5	Вмешайте в мясо тёплое нитер киббе, мытмыту и соль, работая руками две минуты.	5
+367	6	Прогрейте массу на сковороде тридцать секунд до температуры тела, не давая ей побелеть.	3
+367	7	Подайте на ынджере с сыром аиб и тушёной зеленью, разложенными рядом.	8
+369	1	Растворите дрожжи с сахаром в тёплой воде и оставьте на десять минут до появления пены.	12
+369	2	Вмешайте муку, мускатный орех и соль венчиком до гладкого жидкого теста без комков.	8
+369	3	Накройте и оставьте в тепле на час — тесто должно удвоиться и покрыться пузырями.	62
+369	4	Разогрейте масло до 170 °C и проверьте каплей теста — она должна всплыть за две секунды.	8
+369	5	Наберите тесто в ладонь и выдавите шарик между большим и указательным пальцем прямо в масло.	12
+369	6	Жарьте по три минуты, переворачивая шумовкой, до ровного золотисто-коричневого цвета.	18
+369	7	Выложите на бумагу и подавайте тёплыми, посыпав сахарной пудрой.	5
+370	1	Натрите курицу солью, перцем, зирой, орегано, чесноком и соком лайма и оставьте на полчаса.	35
+370	2	Обжарьте курицу в оливковом масле до румяной корки со всех сторон и выньте.	15
+370	3	Томите лук, перец и чеснок в том же масле двадцать минут до полной мягкости — это софрито.	20
+370	4	Добавьте томатный соус и шафран, размоченный в ложке тёплой воды, и прогрейте пять минут.	7
+370	5	Верните курицу, влейте пиво и бульон, доведите до кипения и посолите.	8
+370	6	Всыпьте рис ровным слоем, накройте и варите двадцать минут на слабом огне, не перемешивая.	22
+370	7	Разложите сверху горошек и оливки, накройте и дайте постоять десять минут перед подачей.	12
+371	1	Надрежьте кожуру подорожника вдоль и снимите её, поддевая ножом — руками зелёный не очистить.	10
+371	2	Нарежьте поперёк кусками в три сантиметра.	5
+371	3	Растолките половину чеснока с солью и разведите в полулитре тёплой воды.	6
+371	4	Обжарьте куски в масле при 160 °C четыре минуты, пока они не станут мягкими, но не золотыми.	12
+371	5	Расплющите каждый кусок дном стакана или прессом до толщины в сантиметр.	8
+371	6	Обмакните лепёшки в чесночную воду на секунду и обсушите бумагой.	5
+371	7	Обжарьте второй раз при 190 °C две минуты до хрустящей корки, посолите и подайте с мохо из оставшегося чеснока, оливкового масла и лайма.	12
+377	7	Пеките при 200 °C двенадцать минут, остудите, нанесите глазурь кольцом и посыпьте кокосом.	25
+373	1	Отварите замоченную фасоль в полутора литрах воды час, пока она не станет мягкой.	60
+373	2	Добавьте кокосовое молоко, чеснок, зелёный лук, тимьян и душистый перец и доведите до кипения.	8
+373	3	Промойте рис до прозрачной воды и всыпьте в кастрюлю, разровняв ложкой.	8
+373	4	Положите целый скотч-боннет сверху, посолите и убедитесь, что жидкость покрывает рис на палец.	5
+373	5	Накройте и варите двадцать минут на слабом огне, ни разу не открывая крышку.	22
+373	6	Снимите с огня и дайте постоять под крышкой десять минут.	12
+373	7	Выньте перец и веточки тимьяна, разрыхлите рис вилкой и подавайте.	5
+375	1	Достаньте оленину из морозильника и настрогайте острым ножом тонкими стружками.	15
+375	2	Растопите масло в чугунной сковороде и раскалите его до лёгкого дымка.	5
+375	3	Всыпьте замороженную стружку и жарьте на сильном огне, пока не выпарится вся вода.	12
+375	4	Добавьте нарезанный лук и жарьте ещё пять минут до румяности.	7
+375	5	Влейте пиво и воду, посолите, поперчите и тушите под крышкой полчаса.	32
+375	6	Отварите картофель и разомните с горячим молоком в гладкое пюре.	30
+375	7	Подавайте мясо на пюре с ложкой брусники и солёными огурцами.	6
+376	1	Вымешайте фарш с крахмалом, солью, перцем, имбирём и мускатным орехом пять минут.	8
+376	2	Вводите ледяную воду по ложке, продолжая вымешивать, пока масса не станет липкой и однородной.	10
+376	3	Вмешайте тёртый лук и уберите фарш в холодильник на двадцать минут.	22
+376	4	Сформуйте плоские овальные котлеты мокрыми руками, граммов по сто каждая.	12
+376	5	Обжарьте котлеты в масле по четыре минуты с каждой стороны и переложите в кастрюлю.	15
+376	6	Всыпьте муку в сковороду с оставшимся жиром и прогрейте до орехового цвета, потом влейте бульон.	10
+376	7	Залейте котлеты соусом и тушите двадцать минут. Подавайте с картофелем, горошком и брусникой.	25
+377	1	Растворите дрожжи в тёплом молоке с ложкой сахара и оставьте на десять минут.	12
+377	2	Замесите тесто из муки, опары, сахара, кардамона, яйца, соли и мягкого масла и вымешивайте пятнадцать минут.	18
+377	3	Дайте подойти в тепле час до удвоения.	62
+377	4	Сварите крем из молока, желтков, крахмала, сахара и ванили и полностью остудите под плёнкой.	25
+377	5	Разделите тесто на двенадцать шаров, выложите на противень и дайте расстояться сорок минут.	45
+377	6	Сделайте дном стакана углубление в каждой булочке и выложите туда ложку крема.	10
+378	1	Отварите курицу с луком, лавровым листом и тимьяном сорок минут и процедите бульон.	40
+378	2	Нарежьте порей, морковь и сельдерей тонкой соломкой одинаковой длины.	20
+378	3	Потомите овощи в масле десять минут, не давая им подрумяниться.	12
+378	4	Влейте бульон, добавьте картофель брусочками и варите пятнадцать минут.	17
+378	5	Разберите курицу на куски и верните в кастрюлю, снимите с огня.	12
+378	6	Взбейте желтки со сливками и вводите горячий бульон половником, размешивая, пока миска не станет тёплой.	8
+378	7	Влейте смесь обратно в кастрюлю на снятом огне, прогрейте не кипятя, добавьте лимон и петрушку.	8
+379	1	Растворите дрожжи в тёплом молоке и оставьте на десять минут до появления пены.	12
+379	2	Замесите тесто из муки, опары, яиц, коричневого сахара, ванили, корицы и соли.	12
+379	3	Вводите мягкое масло по частям, вымешивая, пока тесто не станет гладким и эластичным.	15
+379	4	Дайте подойти в тепле полтора часа до удвоения.	92
+379	5	Вмешайте жемчужный сахар руками, распределив его равномерно, но не вымешивая долго.	8
+379	6	Разделите тесто на десять комков и дайте им постоять пятнадцать минут.	18
+379	7	Выпекайте в вафельнице по три минуты до тёмно-золотого цвета с карамельной корочкой.	25
+383	1	Замочите изюм в ракии на двадцать минут, чтобы он набух и отдал аромат.	22
+383	2	Растворите дрожжи в тёплом молоке с ложкой сахара и оставьте до пены.	12
+383	3	Взбейте яйца с оставшимся сахаром, цедрой, ванилью и солью.	6
+383	4	Соедините с опарой и мукой и размешайте венчиком до жидкого теста без комков.	8
+383	5	Вмешайте изюм вместе с ракией и оставьте тесто подходить час в тепле.	65
+383	6	Разогрейте масло до 170 °C и опускайте тесто двумя чайными ложками, формуя неровные шарики.	10
+383	7	Жарьте по три минуты, переворачивая, до тёмно-золотого цвета, и посыпьте пудрой горячими.	18
+384	1	Разберите кочан на листья, промойте от лишнего рассола и срежьте толстые прожилки.	20
+384	2	Обжарьте нарезанный лук в масле до мягкости и остудите.	12
+384	3	Смешайте оба фарша с сырым рисом, луком, ложкой паприки, солью и перцем.	10
+384	4	Заверните начинку в листья плотными свёртками, подгибая края внутрь.	40
+384	5	Выстелите дно кастрюли рублеными обрезками капусты и половиной рёбрышек.	8
+384	6	Уложите сарму слоями, перекладывая рёбрышками и салом, залейте водой вровень с верхним слоем.	12
+384	7	Тушите два с половиной часа на слабом огне, в конце добавив заправку из муки, паприки и томатной пасты.	150
+386	1	Промойте рубец несколько раз в холодной воде и потрите его солью, потом снова промойте.	20
+386	2	Отварите рубец в воде с половиной уксуса десять минут и слейте первую воду.	10
+386	3	Залейте свежей водой вместе с костями и кореньями и варите четыре часа на слабом огне.	245
+386	4	Выньте рубец, нарежьте тонкой соломкой и верните в процеженный бульон.	20
+386	5	Растолките чеснок с солью в пасту и разведите половником бульона.	8
+386	6	Взбейте желтки со сливками, вводите горячий бульон половником, непрерывно размешивая.	8
+386	7	Влейте смесь в снятую с огня кастрюлю, добавьте чеснок и оставшийся уксус, прогрейте не кипятя.	8
+387	1	Отожмите творог через марлю и протрите через сито, чтобы убрать крупинки.	15
+387	2	Смешайте творог с яйцами, сахаром, цедрой, ванилью, содой и солью.	8
+387	3	Вмешайте манку и муку понемногу, пока тесто не станет мягким, но перестанет липнуть к рукам.	10
+387	4	Дайте тесту постоять двадцать минут — манка набухнет, и лепить станет проще.	22
+387	5	Слепите шесть колец диаметром десять сантиметров и шесть шариков размером с грецкий орех.	15
+387	6	Жарьте при 165 °C по три минуты с каждой стороны до золотистого цвета.	18
+387	7	Выложите кольцо на тарелку, залейте сметаной и вареньем, сверху положите шарик.	6
+388	1	Натрите огурцы на крупной тёрке или нарежьте мелким кубиком и посолите.	10
+388	2	Оставьте огурцы на десять минут, чтобы они отдали воду, но воду не сливайте.	12
+388	3	Растолките чеснок с солью в пасту, чтобы он не попадался кусочками.	5
+388	4	Смелите грецкие орехи в мелкую крошку, оставив немного крупных кусочков.	6
+388	5	Взбейте йогурт венчиком с холодной водой до однородности и добавьте чеснок и орехи.	5
+388	6	Вмешайте огурцы с их соком, рубленый укроп и подсолнечное масло.	5
+388	7	Охладите час и подавайте с кубиком льда в каждой тарелке.	8
+390	1	Растворите дрожжи с сахаром в тёплой воде и оставьте на десять минут до пены.	12
+390	2	Смешайте рисовую муку с опарой и половиной кокосового молока до гладкого теста.	8
+390	3	Накройте и оставьте бродить на ночь при комнатной температуре, часов на восемь.	10
+390	4	Утром вмешайте оставшееся кокосовое молоко и соль — тесто должно стать как жидкие сливки.	6
+390	5	Смешайте мелко нарезанный лук, хлопья чили, мальдивскую рыбу, сок лайма и соль — это лунумирис.	10
+390	6	Раскалите небольшой вок, смажьте маслом и налейте половник теста, сразу раскрутив сковороду.	8
+390	7	Разбейте яйцо в центр, накройте крышкой и готовьте три минуты до хрустящих краёв. Подавайте с лунумирисом.	30
+392	1	Замочите рис в холодной воде на ночь, слейте и обсушите полотенцем.	12
+392	2	Смелите мокрый рис в блендере с молоком до гладкой густой пасты без крупинок.	20
+392	3	Вмешайте сахар, растопленное топлёное масло, размятый банан, кардамон, гвоздику и соль.	8
+392	4	Взбивайте тесто рукой двадцать минут круговыми движениями, вбивая воздух.	22
+392	5	Дайте тесту постоять час — оно слегка забродит и станет пузыристым.	62
+392	6	Разогрейте масло до 165 °C и вылейте тесто в масло кольцом одним непрерывным движением.	10
+392	7	Жарьте по две минуты с каждой стороны, переворачивая двумя палочками, до золотистого цвета.	30
+394	1	Замочите пшеницу на ночь, а чана дал и перловку на четыре часа, и промойте.	15
+394	2	Обжарьте три луковицы в топлёном масле до тёмно-коричневого и отложите половину для подачи.	25
+394	3	Обжарьте мясо с оставшимся луком, пастой из имбиря и чеснока и всеми специями.	20
+394	4	Залейте водой и тушите три часа, пока мясо не начнёт распадаться на волокна.	190
+394	5	Отварите пшеницу, перловку и оба вида дала в отдельной кастрюле три часа до полного распада.	190
+394	6	Выньте кости, соедините обе части и взбивайте деревянной колотушкой сорок минут до однородности.	45
+394	7	Подавайте с жареным луком, имбирём, чили, кинзой и лимоном, разложенными сверху.	12
+395	1	Натрите лук на мелкой тёрке и отожмите через марлю досуха, сок вылейте.	12
+395	2	Обжарьте нутовую муку на сухой сковороде до орехового запаха и остудите.	6
+395	3	Смешайте фарш с луком, пастой из имбиря и чеснока, папайей, специями, кинзой и чили.	10
+395	4	Вымешивайте массу десять минут, пока она не станет липкой и не начнёт тянуться за рукой.	12
+395	5	Вмешайте нутовую муку и уберите фарш в холодильник минимум на час.	65
+395	6	Мокрыми руками налепите фарш на плоские шампуры ровным слоем в два сантиметра.	15
+395	7	Жарьте на сильных углях по четыре минуты с каждой стороны, смазывая маслом. Подавайте с нааном.	15
+396	1	Смешайте муку с солью и сахаром, влейте тёплую воду и две ложки масла.	8
+396	2	Вымешивайте тесто пятнадцать минут, пока оно не станет гладким и эластичным.	18
+396	3	Накройте влажным полотенцем и дайте отдохнуть час при комнатной температуре.	62
+396	4	Разделите на восемь шаров, раскатайте каждый в тонкий круг и щедро смажьте маслом.	15
+396	5	Сверните круг в жгут, закрутите улиткой и придавите ладонью.	12
+396	6	Дайте улиткам постоять пятнадцать минут и раскатайте каждую в круг заново.	20
+396	7	Жарьте на сухой сковороде по полторы минуты с каждой стороны, смазывая маслом, до румяных пятен.	25
+397	1	Подогрейте кокосовое молоко до тёплого и растворите в нём дрожжи с ложкой сахара.	12
+397	2	Смешайте муку с оставшимся сахаром, кардамоном и солью.	5
+397	3	Вмешайте яйцо, растопленное масло и кокосовую опару и замесите мягкое тесто.	12
+397	4	Дайте подойти в тепле час до удвоения.	62
+397	5	Разделите тесто на четыре части, раскатайте каждую в круг толщиной в сантиметр.	12
+397	6	Разрежьте каждый круг на четыре треугольника и дайте им постоять пятнадцать минут.	18
+397	7	Жарьте при 170 °C по две минуты с каждой стороны до золотистого цвета.	20
+398	1	Обжарьте лук в масле до тёмно-золотого, добавьте корицу, кардамон и листья карри.	15
+398	2	Вмешайте пасту из имбиря и чеснока и порошок карри и прогрейте две минуты.	4
+398	3	Добавьте баранину и обжарьте до румяности, обваливая её в специях.	12
+398	4	Положите нарезанные помидоры, посолите и тушите под крышкой час на слабом огне.	65
+398	5	Заложите картофель крупными кусками и тушите ещё двадцать пять минут.	27
+398	6	Снимите крышку и выпарите соус до густоты, при которой ложка оставляет след.	12
+398	7	Разрежьте буханки пополам, выньте мякиш, наполните карри и положите мякиш сверху.	10
+399	1	Разотрите муку с холодным маслом, ложкой сахара и яйцом в тесто и охладите полчаса.	35
+399	2	Выстелите тестом форму и запеките вслепую при 180 °C пятнадцать минут до бледно-золотого.	20
+399	3	Прогрейте молоко с палочкой корицы до горячего и оставьте настояться десять минут.	10
+399	4	Взбейте оставшиеся яйца с сахаром, мукой, крахмалом, ванилью и солью до гладкости.	6
+399	5	Вливайте горячее молоко тонкой струйкой, непрерывно размешивая, и верните на огонь.	8
+399	6	Варите на среднем огне восемь минут, пока начинка не загустеет до состояния густых сливок.	8
+399	7	Вылейте начинку в основу, охладите три часа и посыпьте молотой корицей перед подачей.	12
+400	1	Отварите фасоль с нарезанным зелёным подорожником полтора часа до мягкости и густоты.	90
+400	2	Отварите свиную грудинку в подсоленной воде сорок минут и полностью обсушите.	40
+400	3	Обжарьте грудинку шкурой вниз в глубоком масле, пока шкура не вздуется и не захрустит.	20
+400	4	Приготовьте огао: обжарьте лук с помидорами и зирой, добавьте фарш и жарьте до готовности.	20
+400	5	Обжарьте чорисо, отварите рис и пожарьте кружки спелого подорожника до карамельного цвета.	30
+400	6	Испеките арепы на сухой сковороде и пожарьте яйца до жидкого желтка.	20
+400	7	Соберите поднос: фасоль, рис, фарш, чичаррон, чорисо, яйцо, арепа, банан и авокадо рядом.	10
+401	1	Обжарьте мелко нарезанные лук, зелёный лук, помидоры и чеснок с зирой и ачиоте до пасты.	20
+401	2	Положите курицу в кастрюлю, добавьте половину гуасо и залейте четырьмя литрами воды.	10
+401	3	Доведите до кипения, снимите пену и варите сорок минут на слабом огне.	40
+401	4	Заложите кукурузу початками и юкку крупными кусками и варите двадцать минут.	22
+401	5	Добавьте подорожник и картофель и варите ещё двадцать пять минут.	27
+401	6	Разомните пару кусков юкки прямо в кастрюле, чтобы суп загустел, и вмешайте оставшийся гуасо.	8
+401	7	Посыпьте кинзой и подавайте с белым рисом и авокадо на отдельных тарелках.	10
+402	1	Промойте моллюсков в нескольких водах и выбросьте все раскрытые до готовки.	20
+402	2	Отварите половину картофеля, разомните и замесите с мукой и смальцем плотные лепёшки чапалеле.	30
+402	3	Выстелите дно кастрюли капустными листьями в два слоя.	6
+402	4	Уложите моллюсков первым слоем, влейте вино и накройте новыми капустными листьями.	10
+402	5	Разложите рёбрышки, курицу, колбасу и лук вторым слоем и снова накройте листьями.	10
+402	6	Положите сверху целый картофель и лепёшки, накройте листьями и плотно закройте крышкой.	8
+402	7	Готовьте на среднем огне час, не открывая. Подавайте слоями, с бульоном со дна в отдельных пиалах.	60
+403	1	Разомните авокадо вилкой с солью и соком лимона в грубое пюре, не пробивая до гладкости.	8
+403	2	Нарежьте помидоры мелким кубиком, посолите и откиньте на сито, чтобы стекла лишняя вода.	10
+403	3	Отварите сосиски в воде на слабом огне пять минут, не давая им лопнуть.	5
+403	4	Прогрейте булочки на пару или в духовке две минуты — они должны быть мягкими и тёплыми.	2
+403	5	Вложите сосиску в булочку и разложите сверху отжатые помидоры ровным слоем.	4
+403	6	Выложите горку авокадо поверх помидоров, закрыв их полностью.	4
+403	7	Завершите щедрой полосой майонеза сверху и подайте с соусом ахи отдельно.	3
+406	1	Ошпарьте свежие листья кипятком на минуту, консервированные вымочите полчаса в холодной воде.	32
+406	2	Промойте рис и смешайте с фаршем, мелко нарезанным луком, солью, перцем и корицей.	12
+406	3	Порубите всю зелень мелко и вмешайте в начинку — её объём должен быть заметен.	12
+406	4	Кладите на лист чайную ложку начинки, подверните бока и сверните плотным валиком в палец толщиной.	45
+406	5	Выстелите дно кастрюли рваными листьями и уложите долму плотными слоями швом вниз.	12
+406	6	Разложите сверху кусочки топлёного масла, залейте водой вровень с верхним слоем и накройте тарелкой с грузом.	6
+406	7	Варите час на слабом огне и подавайте с мацони, взбитым с растёртым чесноком и солью.	60
+407	1	Растворите дрожжи в тёплом молоке, замесите тесто с мукой, желтками, ложкой масла и солью.	18
+407	2	Дайте тесту подойти час в тепле и разделите на восемь равных шаров.	70
+407	3	Смешайте молотые орехи с половиной сахара и кардамоном — это начинка.	8
+407	4	Раскатайте первый шар по размеру формы, уложите и обильно смажьте топлёным маслом.	12
+407	5	Чередуйте слои теста и ореховой начинки, промазывая маслом, пока не кончится тесто.	35
+407	6	Нарежьте ромбами до самого дна, вдавите по половинке ореха и смажьте шафранным настоем.	15
+407	7	Пеките при 180 °C сорок пять минут и залейте горячим сиропом из мёда и оставшегося сахара.	55
+408	1	Отварите курицу с луком, проколотым чёрным лаймом и бахаратом сорок минут. Бульон сохраните.	40
+408	2	Промойте рис до прозрачной воды и замочите на двадцать минут.	22
+408	3	Обжарьте вермишель в топлёном масле до тёмно-коричневого цвета, помешивая.	8
+426	5	Смелите арахис в грубую крошку, оставив несколько целых орехов.	6
+408	4	Обжарьте по отдельности картофель, морковь, миндаль и изюм и выложите на бумагу.	25
+408	5	Разберите курицу на куски и обжарьте их с томатной пастой до румяности.	12
+408	6	Отварите рис с обжаренной вермишелью в процеженном бульоне двадцать минут под крышкой.	20
+408	7	Выложите рис на блюдо, сверху курицу и все обжаренные добавки, не перемешивая.	10
+412	1	Обожгите перцы на открытом огне или под грилем до чёрной кожуры со всех сторон.	20
+412	2	Сложите их в миску, накройте плёнкой на пятнадцать минут и снимите кожуру и семена.	20
+412	3	Подсушите грецкие орехи на сухой сковороде пять минут до орехового запаха.	8
+412	4	Растолките орехи в ступке или пробейте в блендере короткими импульсами до крупной крошки.	10
+412	5	Пробейте перцы с чесноком, гранатовым соусом, лимоном, зирой и перцем алеппо.	6
+412	6	Вмешайте орехи и сухари вручную и посолите, оставив массу зернистой.	6
+412	7	Влейте оливковое масло тонкой струйкой, размешивая, и охладите час перед подачей.	8
+413	1	Замесите крутое тесто из муки, воды и соли и оставьте отдыхать сорок минут.	50
+413	2	Обжарьте лук с фаршем, бахаратом, солью и перцем, добавьте кедровые орехи и остудите.	15
+413	3	Раскатайте тесто тонко и вырежьте кружки диаметром четыре сантиметра.	20
+413	4	Слепите полумесяцы с начинкой и соедините концы кольцом, как тортеллини.	40
+413	5	Запекайте пельмени при 200 °C двенадцать минут до румяного цвета.	15
+413	6	Взбейте йогурт с крахмалом, яйцом и солью и доводите до кипения, непрерывно мешая в одну сторону.	15
+413	7	Опустите пельмени в соус, варите десять минут и полейте маслом с чесноком и мятой.	15
+414	1	Смешайте овсяные хлопья, муку, кокосовую стружку, сахар и соль в большой миске.	6
+414	2	Растопите масло с золотым сиропом на слабом огне, не давая закипеть.	8
+414	3	Разведите соду в кипятке и сразу влейте в масляную смесь — она вспенится.	3
+414	4	Вылейте вспенившуюся смесь в сухие ингредиенты и размешайте до однородности.	5
+414	5	Скатайте шарики размером с грецкий орех и выложите на противень с большими промежутками.	10
+414	6	Приплющите каждый шарик ладонью до толщины в сантиметр — они ещё расплывутся при выпечке.	5
+414	7	Пеките при 160 °C от двенадцати до восемнадцати минут и остудите на противне, а не на решётке.	22
+418	1	Разотрите муку с холодным маслом в крупную крошку и соберите тесто ледяной водой.	12
+418	2	Заверните в плёнку и охладите полчаса, не вымешивая тесто долго.	32
+418	3	Раскатайте тесто и выстелите им формочки для маффинов, подняв бортики до верха.	15
+418	4	Растопите масло, вмешайте сахар, кленовый сироп, уксус, ваниль и соль.	8
+418	5	Остудите смесь до тёплой и только потом вмешайте яйца — в горячую они свернутся.	8
+418	6	Разложите изюм по корзиночкам и залейте начинкой на две трети, не выше.	8
+418	7	Пеките при 200 °C восемнадцать минут для текучей начинки или двадцать две для плотной.	25
+420	1	Нагрейте молоко до 85 °C, помешивая, и держите десять минут, не давая закипеть.	20
+420	2	Остудите молоко до 40 °C, поставив кастрюлю в холодную воду.	20
+420	3	Разведите закваску половником тёплого молока и вмешайте обратно в кастрюлю.	5
+420	4	Добавьте сычужный фермент, размешайте несколько секунд и накройте крышкой.	3
+420	5	Оставьте в тепле на двенадцать часов, пока масса не схватится в плотный сгусток.	10
+420	6	Выложите сгусток в ткань и подвесьте над миской на шесть часов, чтобы стекла сыворотка.	15
+420	7	Взбейте скир до гладкости и подавайте с черникой, сливками и овсяными хлопьями.	10
+421	1	Смешайте оба вида муки с сахаром, разрыхлителем, содой и солью в большой миске.	6
+421	2	Подогрейте молоко с сиропом до тёплого, чтобы сироп разошёлся.	8
+421	3	Влейте жидкость в сухие ингредиенты и размешайте ложкой до однородного густого теста.	8
+421	4	Смажьте форму маслом и вылейте тесто, заполнив её на две трети.	6
+421	5	Затяните форму двумя слоями фольги и обвяжите бечёвкой, чтобы пар не выходил.	8
+421	6	Поставьте форму в глубокий противень с водой и запекайте при 100 °C двенадцать часов.	725
+421	7	Полностью остудите в форме и выдержите сутки перед нарезкой. Подавайте с маслом.	20
+422	1	Очистите креветки, панцири обжарьте и отварите в литре воды двадцать минут, затем процедите.	27
+422	2	Замочите сушёный чили и сушёные креветки в кипятке на двадцать минут.	22
+422	3	Пробейте чили, шалот, чеснок, лемонграсс, галангал, куркуму, орехи и белачан в пасту.	15
+422	4	Обжаривайте пасту в масле двадцать минут на среднем огне, пока масло не выступит по краям.	20
+422	5	Влейте креветочный бульон, добавьте лист лаксы и варите пятнадцать минут.	17
+422	6	Влейте кокосовое молоко, посолите и прогрейте пять минут, не давая закипеть.	7
+422	7	Нарежьте отваренную лапшу короткими отрезками, разложите по мискам с креветками и ростками и залейте бульоном.	12
+423	1	Завяжите листья пандана узлом и прогрейте с кокосовым молоком до горячего, не кипятя.	10
+423	2	Взбейте яйца с сахаром до растворения сахара и процедите через мелкое сито.	8
+423	3	Вливайте тёплое кокосовое молоко в яйца тонкой струйкой, непрерывно размешивая.	6
+423	4	Варите смесь на водяной бане сорок минут, мешая деревянной ложкой, до густоты джема.	40
+423	5	Выньте листья пандана и полностью остудите кайю — она загустеет ещё сильнее.	20
+423	6	Отварите яйца ровно шесть минут и подайте в мисочке с соевым соусом и белым перцем.	6
+423	7	Подсушите хлеб до хруста, намажьте кайей и положите холодный ломтик масла между двумя кусками.	8
+424	1	Растворите дрожжи с ложкой сахара в тёплом молоке и оставьте на десять минут.	12
+424	2	Замесите тесто из муки, опары, оставшегося сахара, масла и соли и вымешивайте пятнадцать минут.	18
+424	3	Бланшируйте грудинку две минуты, промойте и тушите в соевом соусе, вине, сахаре и бадьяне полтора часа.	95
+424	4	Дайте тесту подойти час, раскатайте в овалы и сложите каждый пополам с полоской пергамента внутри.	75
+424	5	Дайте булочкам расстояться тридцать минут и готовьте на пару двенадцать минут.	45
+424	6	Растолките арахис с двумя ложками сахара в грубую крошку.	8
+424	7	Раскройте булочку, вложите ломоть грудинки, зелень, арахисовую крошку и кинзу.	10
+425	1	Натрите ананас и зимнюю дыню на крупной тёрке и отожмите сок через марлю.	25
+425	2	Уварите отжатый сок отдельно до половины объёма — он вернётся в начинку как концентрат.	25
+425	3	Тушите мякоть с сахаром и мальтозой на слабом огне час, помешивая каждые пять минут.	60
+425	4	Влейте уваренный сок и доведите начинку до состояния, когда лопатка оставляет след на дне.	20
+425	5	Взбейте масло с сахарной пудрой, желтками, сухим молоком, сыром и солью, вмешайте муку и крахмал.	15
+425	6	Охладите тесто полчаса, разделите на шарики и расплющите каждый в ладони.	35
+425	7	Заверните шарик начинки в тесто, вложите в квадратную форму и пеките при 170 °C двадцать пять минут, перевернув на середине.	40
+426	1	Обжарьте нарезанный шалот в масле до тёмно-золотого и отложите половину для подачи.	15
+426	2	Добавьте чеснок, паприку и куркуму и прогрейте минуту до запаха.	3
+426	3	Положите куриный фарш и жарьте, разбивая комки, пока он не побелеет.	10
+426	4	Добавьте нарезанные помидоры и рыбный соус и тушите двадцать пять минут до густой пасты.	27
+426	7	Выложите соус на лапшу, посыпьте арахисом, жареным шалотом, маринованной зеленью и кинзой.	6
+427	1	Растолките лук, чеснок и имбирь в пасту и обжарьте её в масле с куркумой и паприкой.	12
+427	2	Добавьте курицу мелкими кусками и жарьте, пока она не побелеет со всех сторон.	10
+427	3	Влейте литр воды и рыбный соус и варите двадцать минут на слабом огне.	22
+427	4	Разведите нутовую муку в стакане холодной воды до полной гладкости без комков.	5
+427	5	Вливайте разведённую муку в бульон тонкой струйкой, непрерывно размешивая венчиком.	6
+427	6	Проварите десять минут до густоты, влейте кокосовое молоко и прогрейте пять минут не кипятя.	17
+427	7	Отварите лапшу, разложите по мискам, залейте бульоном и подайте с яйцом, лаймом и чили.	12
+428	1	Отварите рыбу в подсоленной воде десять минут, выньте и разберите руками, убрав все кости.	20
+428	2	Растолките в ступке лемонграсс, галангал, куркуму и листья лайма в пасту крыонг.	20
+428	3	Разотрите разобранную рыбу с пастой в ступке, оставляя волокна различимыми.	12
+428	4	Прогрейте рыбно-пряную массу в сотейнике пять минут, добавьте прахок и рыбный бульон.	5
+428	5	Влейте кокосовое молоко и прогрейте десять минут, не давая закипеть.	12
+428	6	Нашинкуйте все овощи тонко и разложите горой на большом блюде.	20
+428	7	Отварите лапшу, промойте холодной водой и подавайте холодной, залив тёплым карри.	12
+429	1	Обжарьте рис на сухой сковороде до тёмно-золотого и смелите в мелкий порошок.	15
+429	2	Растолките лемонграсс, галангал, куркуму и чеснок в пасту крыонг.	15
+429	3	Обжарьте пасту в масле пять минут, добавьте прахок и прогрейте ещё две.	5
+429	4	Добавьте свинину и обжарьте до румяности, потом залейте полутора литрами воды.	15
+429	5	Варите двадцать минут, затем заложите тыкву, папайю и баклажан.	20
+429	6	Всыпьте рисовый порошок, размешав его сначала в половнике бульона, и проварите десять минут.	12
+429	7	Добавьте фасоль и листья моринги на последние пять минут, доведите вкус рыбным соусом и сахаром.	8
+430	1	Смешайте муку с солью и разрыхлителем в большой миске.	5
+430	2	Растопите смалец и влейте в горячую воду, размешав до однородности.	6
+430	3	Влейте жидкость в муку и замесите тесто ложкой, пока оно не остынет достаточно для рук.	8
+430	4	Вымешивайте руками десять минут до гладкого эластичного теста.	12
+430	5	Накройте и дайте отдохнуть двадцать минут при комнатной температуре.	22
+430	6	Разделите на восемь частей, раскатайте в круги толщиной полсантиметра и сделайте надрез в центре.	15
+430	7	Жарьте при 180 °C по полторы минуты с каждой стороны и подавайте с сахаром или дульсе де лече.	20
+431	1	Промойте рубец несколько раз, потрите солью и промойте снова до полной чистоты.	20
+431	2	Проварите рубец в воде с половиной уксуса десять минут и слейте первую воду.	15
+431	3	Залейте свежей водой с лавровым листом и варите три часа до полной мягкости.	190
+431	4	Отварите фасоль отдельно до мягкости, час с четвертью, и отставьте с её отваром.	75
+431	5	Обжарьте грудинку и нарезанный чорисо, добавьте лук, морковь и сельдерей и потомите десять минут.	10
+431	6	Вмешайте паприку и помидоры, добавьте нарезанный рубец с частью его бульона и картофель.	12
+431	7	Варите двадцать пять минут, вмешайте фасоль с отваром, посолите и прогрейте ещё десять.	38
+432	1	Отварите индейку с луковицей в трёх литрах воды полтора часа, снимая пену.	90
+432	2	Очистите перцы от семян и обожгите на сухой сковороде по десять секунд с каждой стороны.	10
+432	3	Обожгите помидоры, томатильо, лук и чеснок на той же сковороде до чёрных пятен.	15
+432	4	Подсушите кориандр, ачиоте и мускатный цвет на сухой сковороде до запаха.	6
+432	5	Пробейте всё в блендере с двумя половниками бульона до гладкой красной массы.	8
+432	6	Процедите массу через сито в кастрюлю с индейкой и варите двадцать пять минут.	28
+432	7	Добавьте самат и мяту на последние пять минут и подавайте с кукурузными тамалито.	8
+433	1	Отварите подорожник в кожуре двадцать минут, пока он не станет полностью мягким.	20
+433	2	Очистите горячим и разомните в гладкое пюре с щепотью соли и мукой.	10
+433	3	Охладите пюре в холодильнике полчаса — тёплое не слепится в шарики.	32
+433	4	Разомните варёную фасоль и уварите её с сахаром, корицей и гвоздикой до густой пасты.	20
+433	5	Вмешайте шоколад в горячую фасолевую пасту и полностью остудите.	20
+433	6	Расплющите пюре на ладони, положите фасолевую начинку и залепите в плотный шарик.	20
+433	7	Жарьте при 170 °C по три минуты до румяной корки и подавайте с пудрой и сметаной.	18
+435	1	Отварите замоченную фасоль в свежей воде час, пока она не станет полностью мягкой.	60
+435	2	Пробейте фасоль блендером с частью её отвара до гладкой массы.	8
+435	3	Процедите массу через сито, вдавливая ложкой, и выбросьте оставшуюся кожуру.	12
+435	4	Верните на огонь, добавьте кокосовое и концентрированное молоко, корицу, гвоздику и сахар.	8
+435	5	Варите двадцать минут на слабом огне, помешивая, чтобы не пригорело.	20
+435	6	Добавьте батат кусками и изюм и варите ещё двадцать минут до мягкости батата.	22
+435	7	Вмешайте ваниль, масло и щепоть соли, охладите и подавайте холодным с печеньем.	15
+436	1	Замесите мягкое тесто из муки, разрыхлителя, соли и тёплой воды и вымешивайте десять минут.	14
+436	2	Накройте и дайте отдохнуть час — тесто должно стать податливым и не пружинить.	62
+436	3	Замаринуйте курицу с карри, чесноком, тимьяном и солью и потушите с картофелем сорок минут.	50
+436	4	Разделите тесто на шесть шаров, раскатайте каждый тонко и смажьте маслом.	15
+436	5	Сверните круг жгутом, закрутите спиралью и дайте постоять двадцать минут.	25
+436	6	Раскатайте спирали заново в круги и жарьте на сухой сковороде по полторы минуты с каждой стороны, смазывая топлёным маслом.	25
+436	7	Снимите лепёшку на доску и разбейте её двумя лопатками в мягкие лохмотья. Подавайте с карри.	8
+437	1	Замаринуйте курицу в зелёной приправе, кетчупе, соли и перце минимум на час.	65
+437	2	Разогрейте масло в казане и всыпьте сахар, не размешивая ложкой.	5
+437	3	Дождитесь, пока сахар потемнеет почти до чёрного и начнёт дымиться, и сразу выложите курицу.	5
+437	4	Обжарьте курицу, обваливая в карамели, пока каждый кусок не станет тёмно-коричневым.	12
+437	5	Добавьте лук, морковь, тыкву и голубиный горох и прогрейте пять минут.	7
+437	6	Всыпьте промытый рис, влейте кокосовое молоко с водой на палец выше и положите целый чили.	6
+437	7	Накройте и варите двадцать пять минут на слабом огне, не открывая. Подавайте с салатом из капусты.	28
+438	1	Прогрейте семена аннато в смальце пять минут и процедите — окрашенный жир пойдёт и в тесто, и в гисо.	5
+438	2	Обжарьте лук и перец в ачиотовом жире, добавьте все три вида мяса и обжарьте до румяности.	25
+438	3	Влейте вино и бульон и тушите час, пока мясо не станет мягким, а соус густым.	65
+438	4	Полностью остудите гисо, лучше оставив его на ночь в холодильнике.	20
+438	5	Замесите тесто из масарепы, тёплого бульона, ачиотового жира и соли до пластичности.	20
+438	6	Прогрейте банановые листья, разложите на каждый лепёшку теста, гисо, оливки, изюм и каперсы.	45
+438	7	Заверните в два листа, перевяжите бечёвкой крест-накрест и варите в воде час двадцать.	90
+439	1	Наколите мясо ножом в нескольких местах, натрите солью, перцем и чесноком и оставьте на час.	65
+439	2	Растопите панелу в масле в казане до почти чёрного цвета, не размешивая ложкой.	10
+439	3	Опустите мясо в карамель и обжарьте со всех сторон до чёрной корки, минут пятнадцать.	18
+439	4	Выньте мясо, обжарьте в том же жире лук, перец, морковь и порей до мягкости.	15
+439	5	Верните мясо, добавьте помидоры, вино, вустерский соус и лавровый лист, залейте водой наполовину.	8
+439	6	Тушите под крышкой четыре часа на самом слабом огне, переворачивая кусок каждый час.	250
+439	7	Выньте мясо, процедите соус, уварите его вдвое и нарежьте говядину поперёк волокон.	20
+440	1	Нарежьте картофель толстыми брусочками и вымочите в холодной воде двадцать минут.	25
+440	2	Обсушите картофель и обжарьте дважды: при 150 °C до мягкости, потом при 190 °C до хруста.	25
+440	3	Обжарьте говядину кубиками на сильном огне порциями по две минуты и отложите.	12
+440	4	Обжарьте нарезанные сосиски до румяности и добавьте лук с перцем на пять минут.	5
+440	5	Верните мясо в сковороду, добавьте помидоры и горчицу и прогрейте три минуты.	5
+440	6	Пожарьте яйца до жидкого желтка и нарежьте локото тонкими кольцами.	8
+440	7	Выложите картофель горой, сверху мясо с овощами, яйца и кольца локото, полейте майонезом и кетчупом.	6
+442	1	Очистите креветки, панцири отварите в литре воды двадцать минут и процедите бульон.	27
+442	2	Отварите креветки в этом бульоне ровно две минуты и сразу переложите в ледяную воду.	2
+442	3	Полностью охладите бульон — он станет основой заправки.	30
+442	4	Нарежьте красный лук тонкими перьями, промойте холодной водой и замаринуйте в соке лаймов с солью.	15
+442	5	Пробейте два помидора в пюре и смешайте с кетчупом, горчицей, соком апельсинов и холодным бульоном.	10
+442	6	Соедините креветки, маринованный лук, нарезанные помидоры и заправку.	6
+442	7	Охладите час, вмешайте кинзу и подавайте с попкорном и чипсами из подорожника.	8
+444	1	Очистите юкку, удалите жёсткую сердцевину и отварите в подсоленной воде до полной мягкости.	30
+444	2	Разомните юкку горячей и вымешивайте с яйцом и солью до пластичного теста.	12
+444	3	Обжарьте лук, перец и чеснок, добавьте фарш, зиру и томатную пасту и жарьте до готовности.	15
+444	4	Вмешайте кулантро в начинку и полностью её остудите.	20
+444	5	Возьмите ком теста мокрыми руками, расплющите на ладони и положите начинку в центр.	15
+444	6	Залепите и вытяните в продолговатую форму с заострёнными концами.	12
+444	7	Жарьте при 175 °C по четыре минуты до тёмно-золотой корки и подавайте горячими.	20
+445	1	Влейте кокосовое молоко в казан и варите на среднем огне, помешивая.	10
+445	2	Продолжайте варить, пока молоко не разделится на масло и коричневые шкварки.	15
+445	3	Как только шкварки станут тёмно-коричневыми, сразу влейте воду, чтобы остановить карамелизацию.	4
+445	4	Добавьте сахар, соль и изюм и доведите до кипения.	5
+445	5	Промойте рис до прозрачной воды и всыпьте в кастрюлю ровным слоем.	6
+445	6	Варите на среднем огне без крышки, пока жидкость не сравняется с уровнем риса.	12
+445	7	Накройте, убавьте огонь до минимума и держите двадцать минут, ни разу не открывая.	22
+446	1	Вытопите грудинку до шкварок, добавьте нарезанный лук и жарьте до золотистого цвета.	18
+446	2	Натрите картофель на мелкой тёрке и слегка отожмите, собрав жидкость в миску.	25
+446	3	Дайте жидкости отстояться десять минут, слейте воду и вмешайте осевший крахмал обратно.	12
+446	4	Влейте горячее молоко и горячий жир с луком и шкварками, размешивая быстро.	6
+446	5	Вмешайте яйца, соль, перец и майоран до однородной густой массы.	5
+446	6	Вылейте в смазанную форму слоем в четыре сантиметра и разровняйте.	5
+446	7	Запекайте при 180 °C полтора часа до тёмно-золотой корки и дайте постоять двадцать минут.	100
+447	1	Отделите белки от желтков и взбейте белки с половиной сахара до устойчивых пиков.	15
+447	2	Взбейте мягкое масло с оставшимся сахаром добела, минут восемь.	10
+447	3	Вводите желтки по одному, продолжая взбивать, затем вмешайте сметану, ваниль и цедру.	12
+447	4	Просейте муку с крахмалом и солью и вмешайте лопаткой в три приёма.	8
+447	5	Вмешайте взбитые белки осторожно, чтобы не осадить массу — тесто должно остаться пышным.	8
+447	6	Разогрейте духовку до 190 °C и вылейте первый тонкий слой на смазанный вертел или в форму.	8
+447	7	Запекайте каждый слой по три минуты до румяности и лейте следующий, пока тесто не кончится.	85
+448	1	Замесите тесто из ржаной муки, тёплой воды, растопленного масла и соли и дайте отдохнуть полчаса.	40
+448	2	Отварите картофель и морковь по отдельности до полной мягкости.	30
+448	3	Разомните картофель со сметаной, яйцом, тмином и солью в гладкое пюре.	10
+448	4	Разомните морковь со сметаной, яйцом, сахаром и корицей в отдельное пюре.	10
+448	5	Раскатайте тесто тонко, вырежьте круги и сформуйте бортики пальцами, подворачивая края.	20
+448	6	Выложите картофельное пюре первым слоем, сверху морковное, разровняйте ложкой.	12
+448	7	Пеките при 200 °C двадцать пять минут и посыпьте корицей ещё горячими.	25
+450	1	Отварите перловку в подсоленной воде сорок минут до полуготовности и откиньте.	40
+450	2	Вытопите сало до шкварок, добавьте лук и жарьте до золотистого цвета.	18
+450	3	Полностью остудите и крупу, и жир с луком, иначе кровь свернётся при смешивании.	25
+450	4	Процедите кровь через сито и смешайте с крупой, жиром, майораном, душистым перцем и солью.	12
+450	5	Промойте кишки и набейте их массой на две трети, оставляя место для разбухания крупы.	25
+450	6	Перевяжите колбасы через каждые двадцать сантиметров и наколите иглой в нескольких местах.	12
+450	7	Запекайте при 180 °C сорок пять минут с кусочками масла и подавайте с брусничным вареньем.	45
+451	1	Протрите творог через мелкое сито дважды, чтобы не осталось ни одной крупинки.	15
+451	2	Взбейте мягкое масло с сахарной пудрой, ванилью и солью до пышности.	8
+451	3	Соедините творог с масляной смесью и вмешайте сливки до консистенции плотного крема.	8
+451	4	Вмешайте изюм и сформуйте двенадцать батончиков размером с палец.	15
+451	5	Разложите батончики на пергаменте и заморозьте на два часа до полной твёрдости.	15
+451	6	Растопите шоколад с кокосовым маслом на водяной бане до гладкости и остудите до тёплого.	12
+451	7	Обмакните замороженные батончики на двух вилках, дайте стечь и выложите на пергамент застывать.	15
+455	1	Растворите дрожжи с ложкой сахара в тёплом молоке и оставьте на пятнадцать минут до пены.	17
+455	2	Замесите тесто из муки, опары, желтков, оставшегося сахара, цедры, соли и половины масла.	18
+455	3	Дайте подойти в тепле час, пока тесто не удвоится в объёме.	62
+455	4	Разделите на двенадцать шаров и расплющите каждый в лепёшку на ладони.	12
+455	5	Положите ложку повидла или творога, залепите шов и переверните швом вниз.	15
+455	6	Обмакните каждую булочку в растопленное масло и уложите вплотную в форму.	10
+455	7	Дайте расстояться сорок минут, пеките при 180 °C тридцать пять минут и посыпьте пудрой.	78
+456	1	Замесите мягкое тесто из муки, тёплой воды, масла и соли и вымешивайте пятнадцать минут.	18
+456	2	Накройте тёплой миской и оставьте отдыхать сорок минут — тесто должно стать податливым.	45
+456	3	Разотрите творог с яйцами, сметаной, сахаром и изюмом до однородности.	10
+456	4	Растяните тесто руками на скатерти до просвечивания, как для штруделя.	20
+456	5	Распределите начинку по листу, оставив края свободными, и сверните рулетом с помощью скатерти.	12
+456	6	Заверните рулет в чистую ткань свободно, завяжите концы и опустите в кипящую подсоленную воду.	10
+456	7	Варите сорок минут, разверните, нарежьте кружками и обжарьте в масле с сухарями.	55
+457	1	Нарежьте свинину и сало кубиками и охладите почти до заморозки.	25
+457	2	Пропустите мясо через крупную решётку мясорубки, а сало через среднюю.	15
+457	3	Вмешайте нитритную соль, растёртый чеснок, перец и ледяную воду и вымешивайте до липкости.	15
+457	4	Оставьте фарш в холодильнике на сутки, чтобы соль распределилась и цвет закрепился.	10
+457	5	Набейте кишки плотно, но без пузырей, и перевяжите парами по двадцать сантиметров.	25
+457	6	Подсушите колбасы на воздухе два часа и подкоптите холодным дымом, если есть возможность.	15
+457	7	Опустите в воду 75 °C и держите двадцать пять минут, не давая закипеть. Подавайте с хреном и горчицей.	30
+458	1	Отварите курицу и телятину с луком, морковью и сельдереем час, снимая пену.	60
+458	2	Выньте мясо, процедите бульон и разберите курицу на мелкие волокна.	20
+458	3	Промойте бамию под холодной водой и обсушите, не срезая шляпки.	8
+458	4	Растопите масло, вмешайте муку и прогрейте две минуты, не давая ей потемнеть.	5
+458	5	Влейте бульон в мучную заправку, добавьте бамию и варите пятнадцать минут.	17
+458	6	Взбейте желтки со сметаной и вводите горячий бульон половником, непрерывно размешивая.	8
+458	7	Снимите кастрюлю с огня, влейте смесь, верните мясо и прогрейте не кипятя. Добавьте лимон и петрушку.	8
+460	1	Промойте форель, обсушите и сделайте по два надреза с каждой стороны.	10
+460	2	Натрите рыбу солью, перцем, паприкой и оливковым маслом снаружи и внутри.	8
+460	3	Вложите в брюшко ломтики лимона, чеснок, петрушку и тимьян.	8
+460	4	Нарежьте картофель тонкими кружками и разложите по смазанному противню внахлёст.	12
+460	5	Уложите рыбу на картофель, полейте вином и оставшимся маслом.	5
+460	6	Запекайте при 200 °C двадцать пять минут, пока кожа не подрумянится.	25
+460	7	Проверьте готовность у хребта и подавайте прямо с противня с долькой лимона.	6
+461	1	Нарежьте свинину кубиками в сантиметр, посолите щедро и оставьте на два часа в холоде.	20
+461	2	Разведите дрожжи в тёплой воде и оставьте на десять минут до пены.	12
+461	3	Замесите мягкое тесто из муки, опары, масла и соли и вымешивайте десять минут.	14
+461	4	Дайте подойти час в тепле, пока тесто не удвоится.	62
+461	5	Разделите тесто на четыре части и растяните каждую в овал длиной в тридцать сантиметров.	15
+461	6	Подверните края внутрь, сделав бортик, и разложите мясо с паприкой по всей поверхности.	12
+461	7	Пеките при 250 °C двадцать минут, разбейте сверху яйцо и допеките ещё пять.	28
+462	1	Залейте голяшку холодной водой, доведите до кипения и тщательно снимите пену.	20
+462	2	Добавьте лук, перец и соль и варите на слабом огне два часа до мягкости мяса.	125
+462	3	Нарежьте юкку крупными кусками, удалив жёсткую сердцевину, и заложите в бульон.	15
+462	4	Через двадцать минут добавьте кукурузу початками и морковь.	22
+462	5	Ещё через двадцать минут заложите картофель и тыкву крупными кусками.	22
+462	6	Последним кладите плантайн и варите десять минут, не дольше.	12
+462	7	Выньте гущу шумовкой на блюдо, бульон разлейте в чашки и подайте с рисом, кинзой и лаймом.	12
+463	1	Срежьте зёрна с початков ножом, ведя лезвие вдоль стержня.	15
+463	2	Перемелите зёрна в блендере короткими импульсами до крупитчатой массы.	6
+463	3	Вмешайте яйцо, сахар, соль и кукурузную муку до консистенции густой сметаны.	5
+463	5	Вылейте половник теста и разровняйте в круг диаметром пятнадцать сантиметров.	4
+463	6	Жарьте по три минуты с каждой стороны до румяных пятен и упругости в центре.	16
+463	7	Подавайте горячими с натильей и ломтиком свежего сыра.	5
+466	1	Нашинкуйте капусту тонко, смешайте с помидорами, луком, уксусом, соком лайма и солью.	20
+466	2	Оставьте курьидо мариноваться не меньше часа, изредка перемешивая.	65
+466	3	Нарежьте свиную шкуру квадратами, посолите и оставьте на двадцать минут.	22
+466	4	Вытапливайте шкуру в собственном жире на слабом огне сорок минут.	40
+466	5	Увеличьте огонь и жарьте ещё десять минут, пока шкварки не вздуются и не станут хрустящими.	14
+466	6	Отварите юкку в подсоленной воде до мягкости, вырезав жёсткую сердцевину.	35
+466	7	Выложите юкку на банановый лист, сверху курьидо и шкварки, добавьте острый перец.	10
+467	1	Отварите грудинку с луковицей и солью полтора часа до полной мягкости.	90
+467	2	Выньте мясо, сохраните бульон и разберите говядину руками на тонкие волокна.	20
+467	3	Обжарьте лук, чеснок, перец и помидоры с аннато до густой основы.	18
+467	4	Разведите масу в холодном бульоне до гладкости, без единого комка.	8
+467	5	Добавьте волокна мяса в овощную основу и прогрейте пять минут.	7
+467	6	Влейте разведённую масу тонкой струёй, непрерывно размешивая, и варите двадцать минут.	24
+467	7	Влейте апельсиновый сок, вмешайте рубленую мяту и подавайте с рисом.	8
+468	1	Обжарьте куски курицы с аннато до румяной корки со всех сторон.	15
+468	2	Добавьте лук, перец, помидоры и морковь и потомите до мягкости овощей.	15
+468	3	Залейте двумя литрами воды, посолите и варите сорок минут на слабом огне.	45
+468	4	Смешайте кукурузную муку с натёртым сыром, яйцом, орегано и щепотью соли.	8
+468	5	Добавьте пару ложек горячего бульона и вымесите плотное тесто, которое держит форму.	8
+468	6	Скатайте шарики размером с грецкий орех, уплотняя их между ладонями.	15
+468	7	Опустите шарики в кипящий бульон, не мешайте пять минут и варите двадцать. Посыпьте петрушкой.	25
+469	1	Смешайте крахмал маниоки с кукурузной мукой и солью в широкой миске.	4
+469	2	Вотрите мягкий жир в сухую смесь пальцами, пока она не станет похожа на влажный песок.	8
+469	3	Вмешайте натёртый сыр, продолжая перетирать массу руками.	6
+469	4	Добавляйте молоко по ложке, пока крошка не начнёт слипаться при сжатии в кулаке.	6
+469	5	Разогрейте сухую сковороду на среднем огне, не добавляя ни капли масла.	4
+469	6	Насыпьте крошку слоем в сантиметр и прижмите лопаткой по всей поверхности.	6
+469	7	Жарьте пять минут, переверните тарелкой и доведите вторую сторону до румяности.	22
+470	1	Натрите курицу солью, перцем, душистым перцем, кардамоном и корицей и оставьте на полчаса.	35
+470	2	Нарежьте лук тонкими полукольцами — полтора килограмма займут минут двадцать.	22
+470	3	Томите лук в оливковом масле на слабом огне сорок минут, пока он не станет прозрачным и сладким.	40
+470	4	Вмешайте в лук две трети сумаха и соль и потомите ещё пять минут.	7
+470	5	Обжарьте курицу до румяной корки и запеките при 200 °C двадцать пять минут.	40
+470	6	Обжарьте кедровые орехи на сухой сковороде до золотистого цвета, следя, чтобы не подгорели.	6
+470	7	Выложите лепёшку, на неё лук, сверху курицу, полейте маслом из противня и посыпьте сумахом и орехами.	10
+472	1	Разведите крахмал в половине холодной воды до полной гладкости, без комков.	10
+472	2	Сварите сироп из сахара и оставшейся воды и доведите до кипения.	12
+472	3	Влейте крахмальную смесь в кипящий сироп тонкой струёй, непрерывно размешивая.	8
+472	4	Замочите шафран в ложке горячей воды и влейте в массу вместе с кардамоном.	6
+472	5	Мешайте на слабом огне полтора часа, добавляя топлёное масло понемногу.	95
+472	6	Вмешайте мёд, розовую воду и обжаренные кешью, когда масса начнёт отставать от стенок.	25
+472	7	Выложите в форму слоем в три сантиметра, разровняйте и остудите шесть часов.	15
+474	1	Замаринуйте баранину в йогурте с хавайджем и солью на два часа.	20
+474	2	Промойте рис до прозрачной воды и замочите на тридцать минут.	35
+474	3	Обжарьте лук в топлёном масле до тёмно-золотого цвета и отложите половину.	18
+474	4	Обжарьте мясо с оставшимся луком, добавьте помидоры и кардамон и тушите час.	70
+474	5	Обжарьте картофель кружками до румяной корки на отдельной сковороде.	18
+474	6	Отварите рис в подсоленной воде семь минут до полуготовности и откиньте.	7
+474	7	Соберите слоями мясо, рис, картофель и изюм, полейте шафраном полосами и запекайте под крышкой тридцать минут.	35
+475	1	Залейте молотый пажитник холодной водой и оставьте на шесть часов, дважды сменив воду.	20
+475	2	Отварите баранину с луком и солью полтора часа до мягкости, сохранив бульон.	90
+475	3	Разберите мясо на мелкие куски и верните в процеженный бульон.	15
+475	4	Растолките чеснок, чили и кинзу в пасту сахавик в ступке.	12
+475	5	Добавьте помидоры, хавайдж и половину пасты в рагу и уварите до густоты.	25
+475	6	Слейте воду с пажитника и взбейте его венчиком с ложкой холодной воды в белую пену.	15
+475	7	Разлейте рагу в раскалённые миски, выложите пену сверху и подайте кипящим с лепёшками.	10
+478	1	Замесите крутое тесто из муки, воды, ложки масла и соли и вымешивайте пятнадцать минут.	18
+478	2	Раскатайте тесто в тонкий лист и нарежьте лапшой шириной в два миллиметра.	40
+478	3	Разложите лапшу на полотенце, присыпьте мукой и подсушите двадцать минут.	22
+478	4	Отварите курицу с луком, нутом, корицей и белым перцем в двух литрах воды сорок минут.	40
+478	5	Добавьте репу дольками и варите ещё двадцать минут до мягкости.	22
+478	6	Пропарьте лапшу над бульоном пятнадцать минут, снимите, сбрызните маслом и перемешайте.	20
+478	7	Повторите пропаривание дважды, выложите лапшу горкой, сверху курицу и репу и залейте бульоном.	45
+479	1	Перетрите манную крупу с оливковым маслом и солью руками, пока она не станет влажной насквозь.	12
+479	2	Оставьте смесь на полчаса, чтобы крупа впитала масло и набухла.	32
+479	3	Добавляйте тёплую воду с апельсиновой водой понемногу, собирая тесто без вымешивания.	10
+479	4	Распарьте финики над паром и растолките с корицей и цедрой в однородную пасту.	20
+479	5	Раскатайте тесто в полосу, положите жгут финиковой пасты по центру и закройте краями.	20
+479	6	Прижмите полосу и нарежьте наискось ромбами шириной в четыре сантиметра.	12
+479	7	Обжарьте во фритюре при 170 °C до золотистого цвета и опустите горячими в холодный мёд на пять минут.	35
+480	1	Разведите дрожжи с сахаром в тёплой воде и оставьте на десять минут до пены.	12
+480	2	Всыпьте муку с солью и размешайте венчиком до гладкого жидкого теста без комков.	8
+480	3	Влейте масло и вымешайте ещё минуту, пока тесто не станет глянцевым.	3
+480	4	Накройте и оставьте в тепле на час, пока по поверхности не пойдут пузыри.	62
+480	5	Разогрейте сухую сковороду на среднем огне и вылейте половник теста.	5
+480	6	Накройте крышкой и жарьте пять минут, пока верх не схватится и не станет матовым.	25
+480	7	Снимите, не переворачивая, и складывайте стопкой под полотенце.	6
+483	1	Слейте воду с замоченного риса и перемелите его с кокосовым молоком в гладкое жидкое тесто.	15
+483	2	Вмешайте дрожжи, сахар, кардамон, соль и кокосовую стружку.	6
+483	3	Оставьте тесто бродить четыре часа в тепле, пока оно не покроется пузырями.	20
+483	4	Размешайте тесто и проверьте густоту: оно должно литься лентой, а не падать комом.	5
+483	5	Разогрейте сковороду с лунками и смажьте каждую маслом с помощью кисти.	6
+483	6	Наполните лунки на три четверти и пеките три минуты, пока края не схватятся.	12
+483	7	Переверните оладьи шпажкой и допеките ещё три минуты до румяного шара.	18
+484	1	Отварите говядину и рубец с луком и бульонным кубиком час до мягкости.	60
+484	2	Замочите сушёную рыбу в горячей воде на двадцать минут и разберите, удалив кости.	25
+484	3	Нарежьте лист эру предельно тонко, собирая его в тугой рулет перед резкой.	30
+484	4	Промойте водяной лист и нарежьте крупно — он всё равно осядет при варке.	12
+484	5	Выложите водяной лист в кастрюлю с мясом и дайте ему осесть, отдав сок.	12
+484	6	Добавьте эру, рыбу, креветки и чили и тушите двадцать минут под крышкой.	22
+484	7	Влейте пальмовое масло, перемешайте и потомите ещё десять минут без крышки.	14
+486	1	Сделайте в баранине глубокие надрезы и вложите в каждый дольку чеснока.	15
+486	2	Натрите мясо солью, перцем, орегано, оливковым маслом и соком лимона.	10
+486	3	Оставьте баранину мариноваться в холодильнике не меньше четырёх часов.	15
+486	4	Нарежьте картофель крупными дольками и уложите на дно глиняной посуды.	12
+486	5	Положите мясо на картофель, добавьте лавровый лист, корицу и половинки лимона.	8
+486	6	Закройте крышкой и запечатайте стык полосой теста или двойной фольгой.	10
+486	7	Запекайте при 160 °C пять часов, не открывая, и дайте постоять двадцать минут.	320
+489	1	Изрубите финики ножом и сложите в сотейник с цедрой, анисом и ликёром.	20
+489	2	Варите начинку на слабом огне двадцать минут до густой однородной пасты.	20
+489	3	Полностью остудите начинку — тёплая порвёт тесто при заворачивании.	30
+489	4	Порубите маргарин в муку с солью до состояния крошки и соберите тесто на холодной воде.	15
+489	5	Раскатайте тесто в длинную полосу шириной в двенадцать сантиметров.	15
+489	6	Выложите финиковый жгут по центру, закройте краями и прижмите шов.	15
+489	7	Нарежьте наискось ромбами и обжарьте при 180 °C по две минуты с каждой стороны.	35
+490	1	Обожгите перцы на открытом огне или под грилем до чёрной кожуры.	18
+490	2	Сложите горячие перцы в пакет на десять минут и снимите кожуру.	15
+490	3	Обжарьте лук с чесноком в масле до мягкости и всыпьте ложку муки.	10
+490	4	Добавьте нарезанные помидоры и уварите до густой основы без жидкости.	12
+490	5	Нарежьте очищенные перцы полосами и вмешайте в томатную основу.	8
+490	6	Разомните творожный сыр с брынзой вилкой и вмешайте в горячую массу.	8
+490	7	Переложите в глиняную сковороду и запекайте при 200 °C двадцать минут до пузырей.	25
+491	1	Взбивайте мягкое масло с сахаром деревянной ложкой двадцать минут до пышной светлой массы.	22
+491	2	Вводите желтки по одному, продолжая взбивать в том же направлении.	12
+491	3	Добавьте ваниль, соль и соду и взбейте ещё пять минут.	7
+491	4	Всыпайте кукурузную муку понемногу, вымешивая до плотного, но пластичного теста.	12
+491	5	Дайте тесту постоять пятнадцать минут, чтобы мука впитала влагу.	16
+491	6	Сформуйте шары размером с грецкий орех и разложите на пергаменте с большим отступом.	15
+491	7	Пеките при 170 °C двадцать минут до бледно-золотого края и остудите на противне.	25
+493	1	Разведите дрожжи с ложкой сахара в тёплом молоке и оставьте до пены.	15
+493	2	Замесите тесто из муки, опары, яиц, сахара, цедры, ванили, соли и мягкого масла.	20
+493	3	Дайте подойти в тепле час с четвертью, пока тесто не удвоится.	78
+493	4	Разделите тесто на двенадцать частей и раскатайте каждую в жгут длиной сорок сантиметров.	18
+493	5	Сверните жгут восьмёркой, соединив концы, и уложите на противень.	15
+493	6	Дайте расстояться тридцать минут и пеките при 180 °C двадцать минут до румяности.	55
+493	7	Смажьте горячие мученичи мёдом и обильно посыпьте молотыми орехами.	10
+494	1	Нарежьте курдючный жир кубиками и вытопите в казане до золотых шкварок.	18
+494	2	Выньте шкварки шумовкой и отложите — их вернут в самом конце.	4
+494	3	Нарежьте мясо кусками с грецкий орех и обжарьте порциями до тёмной корки.	20
+494	4	Верните всё мясо в казан, посолите, добавьте зиру и накройте на пятнадцать минут.	18
+494	5	Добавьте лук крупными полукольцами и жарьте, пока он не станет прозрачным.	12
+494	6	Положите картофель крупными кусками и жарьте ещё двадцать минут под крышкой.	24
+494	7	Верните шкварки, добавьте чеснок и кинзу и подайте прямо из казана с лепёшкой.	8
+497	1	Выстелите дуршлаг плотной тканью в два слоя и вылейте в него катык.	8
+497	2	Свяжите концы ткани узлом и подвесьте над миской в холодном месте.	6
+497	3	Оставьте стекать сутки, пока масса не станет плотной, как мягкий творог.	10
+497	4	Растолките чеснок с щепотью соли в ступке до однородной пасты.	5
+497	5	Порубите кинзу, укроп, райхон и зелёный лук как можно мельче.	12
+497	6	Вмешайте зелень и чеснок в откинутую массу лопаткой, не растирая.	6
+497	7	Посолите, разровняйте в миске, сделайте ложкой углубление и налейте в него масло.	5
+498	1	Замесите пресное тесто из муки, воды и соли и вымешивайте десять минут до гладкости.	14
+498	2	Накройте тесто и оставьте отдыхать тридцать минут.	32
+498	3	Порубите баранину ножом мелко, вместе с жиром, и смешайте с луком и чесноком.	25
+498	4	Влейте бульон в фарш и вымешайте до жидковатой, но не текучей массы.	8
+498	5	Разделите тесто на шарики и раскатайте каждый в круг диаметром двенадцать сантиметров.	20
+498	6	Положите начинку на половину, сложите пополам и защипните край плотно и ровно.	25
+498	7	Обжарьте в масле слоем в сантиметр по три минуты с каждой стороны до пузырчатой корки.	35
+499	1	Раскрошите прессованный чай и залейте его литром холодной воды в кастрюле.	5
+499	2	Доведите до кипения и варите пять минут, пока настой не станет тёмным.	5
+499	3	Влейте молоко и снова доведите до кипения, следя, чтобы не убежало.	8
+499	4	Посолите и варите ещё пять минут на слабом огне.	6
+499	5	Черпайте чай половником и лейте обратно с высоты десяток раз.	5
+499	6	Добавьте сливочное масло и размешайте до полного растворения.	3
+499	7	Процедите в пиалы и подавайте горячим, при желании с обжаренной мукой.	5
+501	1	Замесите мягкое тесто из муки, тёплой воды, ложки масла и соли.	14
+501	2	Накройте тесто и оставьте отдыхать тридцать минут.	32
+501	3	Отварите картофель до мягкости, слейте и разомните в пюре без молока.	28
+501	4	Вмешайте в пюре зелёный лук, кинзу, чили, соль и перец.	10
+501	5	Разделите тесто на шесть частей и раскатайте каждую в тонкий круг.	18
+501	6	Разложите начинку тонким слоем на половину круга и накройте второй половиной, прижав край.	15
+501	7	Жарьте на сковороде, смазанной кистью, по четыре минуты с каждой стороны до пятен.	30
+\.
+
+
+--
+-- Data for Name: recipes; Type: TABLE DATA; Schema: public; Owner: koma
+--
+
+COPY public.recipes (id, title, description, servings, cook_time_min, needs_microwave, needs_stove, needs_oven, image_url, author_id) FROM stdin;
+1	Спагетти карбонара	Паста на четырёх ингредиентах: гуанчале, яйца, пекорино и перец. Сливок в ней нет и никогда не было.	2	15	f	t	f	https://theunitools.com/recipes/spaghetti-carbonara.jpg	\N
+2	Ризотто по-милански	Шафрановое ризотто на бульоне, которое мешают почти непрерывно: от этого рис отдаёт крахмал и получается кремовым.	4	25	f	t	f	https://theunitools.com/recipes/risotto-alla-milanese.jpg	\N
+3	Рататуй	Прованское овощное рагу, где каждый овощ обжаривают отдельно, а потом соединяют — иначе получится каша.	4	45	f	t	f	https://theunitools.com/recipes/ratatouille.jpg	\N
+4	Луковый суп	Суп из лука, бульона и хлеба с сыром. Весь вкус берётся из карамелизации, которая занимает не двадцать минут, а сорок.	4	60	f	t	f	https://theunitools.com/recipes/french-onion-soup.jpg	\N
+5	Борщ	Свекольный суп на говяжьем бульоне, где кислота держит и цвет, и вкус. Свёклу тушат отдельно, а не варят в кастрюле.	6	120	f	t	f	https://theunitools.com/recipes/borscht.jpg	\N
+6	Хачапури имеретинский	Круглая лепёшка с сыром внутри, а не сверху. Тесто на мацони, начинки — столько же, сколько теста.	4	20	f	t	f	https://theunitools.com/recipes/khachapuri-imeruli.jpg	\N
+7	Мисо-суп	Суп из даси и мисо, который готовится десять минут. Кипятить мисо нельзя — от этого пропадает и аромат, и польза.	4	15	f	f	f	https://theunitools.com/recipes/miso-soup.jpg	\N
+8	Гуакамоле	Авокадо, лайм, лук и чили, размятые вилкой. Ни блендера, ни сметаны — от них получается соус, а не гуакамоле.	4	0	f	f	f	https://theunitools.com/recipes/guacamole.jpg	\N
+10	Дал тадка	Чечевичная похлёбка, в которую в конце выливают раскалённое масло со специями. Этот шаг и делает блюдо.	4	35	f	t	f	https://theunitools.com/recipes/dal-tadka.jpg	\N
+11	Паэлья валенсиана	Рис на широкой сковороде с курицей, кроликом и фасолью. Мешать нельзя ни разу — от этого зависит корочка на дне.	4	45	f	t	f	https://theunitools.com/recipes/paella-valenciana.jpg	\N
+12	Испанская тортилья	Толстый омлет с картофелем и луком, где картофель не жарят, а томят в масле почти до состояния пюре.	4	35	f	t	f	https://theunitools.com/recipes/tortilla-espanola.jpg	\N
+13	Мусака	Баклажаны, мясной соус с корицей и толстый слой бешамеля, запечённые до плотности, которую можно резать ножом.	6	75	f	t	t	https://theunitools.com/recipes/moussaka.jpg	\N
+14	Хориатики	Деревенский салат без листьев: помидоры, огурец, лук, оливки и целый кусок феты сверху.	4	0	f	f	f	https://theunitools.com/recipes/horiatiki-salata.jpg	\N
+15	Фо бо	Прозрачный говяжий бульон с обожжённым имбирём и специями, рисовая лапша и говядина, которая доваривается прямо в миске.	4	240	f	t	f	https://theunitools.com/recipes/pho-bo.jpg	\N
+16	Бань ми	Французский багет с вьетнамской начинкой: паштет, свинина, маринованные овощи и кинза в одном сэндвиче.	4	15	f	t	t	https://theunitools.com/recipes/banh-mi.jpg	\N
+17	Песто алла дженовезе	Базилик, растёртый с чесноком и кедровыми орехами. Ни нагрева, ни блендера — только ступка и холод.	4	0	f	f	f	https://theunitools.com/recipes/pesto-alla-genovese.jpg	\N
+18	Такос аль пастор	Свинина в маринаде из сушёных чили и ананаса, обжаренная до карамельных краёв, в кукурузной тортилье.	4	20	f	t	f	https://theunitools.com/recipes/tacos-al-pastor.jpg	\N
+19	Менемен	Яйца, томлённые в помидорах с зелёным перцем. Их не взбивают и не мешают часто — иначе получится обычная яичница.	2	20	f	t	f	https://theunitools.com/recipes/menemen.jpg	\N
+20	Мерджимек чорбасы	Суп из красной чечевицы, который пробивают в пюре и подают с лимоном и маслом с паприкой.	4	35	f	t	f	https://theunitools.com/recipes/mercimek-corbasi.jpg	\N
+21	Хинкали	Мешочки из крутого теста с рубленым мясом и бульоном внутри. Бульон появляется сам — от воды, вмешанной в фарш.	4	15	f	t	f	https://theunitools.com/recipes/khinkali.jpg	\N
+22	Курица масала в сливочном соусе	Курица, маринованная в йогурте и запечённая, в томатно-сливочном соусе с пажитником.	4	40	f	t	t	https://theunitools.com/recipes/murgh-makhani.jpg	\N
+23	Кацудон	Панированная свиная котлета, доваренная в сладко-солёном бульоне с яйцом и выложенная на рис.	2	20	f	t	f	https://theunitools.com/recipes/katsudon.jpg	\N
+24	Сырники	Творожные оладьи, где творога должно быть много, а муки — ровно столько, чтобы они не развалились.	4	15	f	t	f	https://theunitools.com/recipes/syrniki.jpg	\N
+25	Пад тай	Рисовая лапша, обжаренная с тамариндом, рыбным соусом и пальмовым сахаром. Всё готовится за четыре минуты.	2	10	f	t	f	https://theunitools.com/recipes/pad-thai.jpg	\N
+26	Тирамису	Савоярди в кофе под кремом из маскарпоне. Без выпечки, но с двумя местами, где всё может пойти не так.	6	0	f	t	f	https://theunitools.com/recipes/tiramisu.jpg	\N
+27	Гаспачо	Холодный томатный суп, который взбивают с хлебом и маслом до состояния эмульсии — от этого он и получается плотным, а не водянистым.	4	0	f	f	f	https://theunitools.com/recipes/gazpacho.jpg	\N
+28	Крокеты с хамоном	Густая бешамель с хамоном, охлаждённая до плотности, обваленная в сухарях и обжаренная во фритюре.	4	25	f	t	f	https://theunitools.com/recipes/croquetas-de-jamon.jpg	\N
+29	Севиче	Сырая рыба в соке лайма с луком и перцем ахи. Маринуется минуты, а не часы — иначе получается варёная.	4	0	f	f	f	https://theunitools.com/recipes/ceviche.jpg	\N
+30	Ломо сальтадо	Говядина, обжаренная в воке с луком и помидорами, поданная с картофелем фри и рисом одновременно.	4	20	f	t	f	https://theunitools.com/recipes/lomo-saltado.jpg	\N
+31	Мапо тофу	Тофу в остром соусе из доубаньцзяна с сычуаньским перцем, который не жжёт, а немеет.	4	15	f	t	f	https://theunitools.com/recipes/mapo-tofu.jpg	\N
+32	Курица гунбао	Кубики курицы с арахисом и сушёным чили в кисло-сладком соусе, где уксус важнее сахара.	4	10	f	t	f	https://theunitools.com/recipes/gong-bao-chicken.jpg	\N
+33	Кок-о-вен	Курица, томлённая в красном вине с беконом, грибами и мелким луком. Маринование накануне решает половину дела.	4	90	f	t	t	https://theunitools.com/recipes/coq-au-vin.jpg	\N
+34	Крем-брюле	Заварной крем на желтках, запечённый на водяной бане и покрытый коркой из сожжённого сахара.	4	45	f	t	t	https://theunitools.com/recipes/creme-brulee.jpg	\N
+35	Кезешпецле	Швабская яичная лапша, слоями пересыпанная сыром и засыпанная жареным луком.	4	30	f	t	t	https://theunitools.com/recipes/kaesespaetzle.jpg	\N
+37	Пибимпап	Рис под отдельно приготовленными овощами, мясом и яйцом, который перемешивают с кочхуджаном прямо перед едой.	4	20	f	t	f	https://theunitools.com/recipes/bibimbap.jpg	\N
+38	Кимчхи чиге	Тушёное блюдо из перекисшего кимчи со свининой и тофу. Чем старее кимчи, тем лучше результат.	4	30	f	t	f	https://theunitools.com/recipes/kimchi-jjigae.jpg	\N
+39	Сувлаки	Свинина на шпажках в маринаде из лимона, орегано и оливкового масла, приготовленная быстро и на сильном жаре.	4	15	f	t	f	https://theunitools.com/recipes/souvlaki.jpg	\N
+40	Бирьяни с курицей	Рис и маринованная курица, доведённые вместе под крышкой: слои готовятся паром, а не перемешиванием.	6	60	f	t	f	https://theunitools.com/recipes/chicken-biryani.jpg	\N
+41	Сёю рамен	Бульон, тарэ и масло — три отдельные части, которые собирают в миске, а не варят вместе.	4	180	f	t	f	https://theunitools.com/recipes/shoyu-ramen.jpg	\N
+42	Пероги руске	Вареники с картофелем и творожным сыром, поданные с жареным луком и сметаной.	4	20	f	t	f	https://theunitools.com/recipes/pierogi-ruskie.jpg	\N
+43	Журек	Кислый суп на ржаной закваске с белой колбасой и яйцом. Кислоту даёт брожение, а не уксус.	4	50	f	t	f	https://theunitools.com/recipes/zurek.jpg	\N
+44	Заурбратен	Говядина, вымоченная в уксусном маринаде несколько дней и тушённая в нём же, с соусом на имбирных пряниках.	6	150	f	t	t	https://theunitools.com/recipes/sauerbraten.jpg	\N
+45	Швабский картофельный салат	Картофель, заправленный тёплым бульоном с уксусом и маслом. Никакого майонеза — южная Германия его здесь не признаёт.	4	25	f	t	f	https://theunitools.com/recipes/schwaebischer-kartoffelsalat.jpg	\N
+46	Аматричана	Гуанчале, помидоры и пекорино. Ни лука, ни чеснока, ни оливкового масла — жир даёт само мясо.	4	20	f	t	f	https://theunitools.com/recipes/bucatini-all-amatriciana.jpg	\N
+47	Шакшука	Яйца, припущенные в густом соусе из помидоров и перца с тмином и паприкой.	4	30	f	t	f	https://theunitools.com/recipes/shakshuka.jpg	\N
+48	Хумус	Нут, взбитый с тахини, лимоном и ледяной водой до состояния крема. Кожицу с нута снимают.	6	90	f	t	f	https://theunitools.com/recipes/hummus.jpg	\N
+49	Фейжоада	Чёрная фасоль, томлённая с несколькими видами копчёной и солёной свинины, с апельсином и капустой на гарнир.	8	180	f	t	f	https://theunitools.com/recipes/feijoada.jpg	\N
+50	Пан-ди-кейжу	Сырные шарики из тапиоковой муки — снаружи корочка, внутри тягучая пустота. Без пшеницы и без дрожжей.	6	25	f	f	t	https://theunitools.com/recipes/pao-de-queijo.jpg	\N
+51	Пад кра пао	Свиной фарш, обжаренный с чили, чесноком и священным базиликом. Пять минут от начала до тарелки.	2	8	f	t	f	https://theunitools.com/recipes/pad-krapow-moo.jpg	\N
+52	Гюдон	Тонко нарезанная говядина, припущенная с луком в даси с соевым соусом и мирином, поверх риса.	2	15	f	t	f	https://theunitools.com/recipes/gyudon.jpg	\N
+53	Солянка мясная сборная	Суп на крепком бульоне с несколькими видами мяса, солёными огурцами, оливками и лимоном.	6	120	f	t	f	https://theunitools.com/recipes/solyanka.jpg	\N
+54	Тажин с курицей и лимоном	Курица, томлённая с солёными лимонами и оливками. Кислота идёт от кожуры лимона, а не от мякоти.	4	70	f	t	f	https://theunitools.com/recipes/tagine-de-poulet.jpg	\N
+55	Харира	Густой суп из чечевицы, нута и помидоров, загущённый мучной болтушкой и заправленный лимоном.	6	90	f	t	f	https://theunitools.com/recipes/harira.jpg	\N
+56	Гуляш	Говядина, томлённая с луком и паприкой. Лука по весу столько же, сколько мяса, и он растворяется в соус.	6	150	f	t	f	https://theunitools.com/recipes/goulash.jpg	\N
+57	Лангош	Дрожжевая лепёшка, жаренная во фритюре, натёртая чесноком и засыпанная сметаной с сыром.	4	20	f	t	f	https://theunitools.com/recipes/langos.jpg	\N
+58	Фиш-энд-чипс	Треска в пивном кляре и картофель, жаренный дважды. Кляр держится на холоде и на газе в пиве.	4	35	f	t	f	https://theunitools.com/recipes/fish-and-chips.jpg	\N
+59	Пастуший пирог	Баранина в густом соусе под картофельным пюре, запечённая до румяной корочки.	6	60	f	t	t	https://theunitools.com/recipes/shepherds-pie.jpg	\N
+60	Венский шницель	Телятина, отбитая до трёх миллиметров, в сухарях, обжаренная в большом количестве жира до вздутой корочки.	4	15	f	t	f	https://theunitools.com/recipes/wiener-schnitzel.jpg	\N
+61	Яблочный штрудель	Яблоки с корицей и изюмом в тесте, растянутом до прозрачности. Тесто тянут руками, а не раскатывают.	8	45	f	t	t	https://theunitools.com/recipes/apfelstrudel.jpg	\N
+62	Бакаляу а браш	Солёная треска с тонкой соломкой картофеля и яйцом, которое связывает всё, не превращаясь в омлет.	4	25	f	t	f	https://theunitools.com/recipes/bacalhau-a-bras.jpg	\N
+63	Паштел де ната	Слоёные корзиночки с заварным кремом, запечённые при экстремальном жаре до чёрных пятен на поверхности.	12	15	f	t	t	https://theunitools.com/recipes/pastel-de-nata.jpg	\N
+64	Аргентинские эмпанадас	Пирожки с рубленой говядиной, луком и яйцом. Начинку остужают до холода, иначе тесто не защипнётся.	6	25	f	t	t	https://theunitools.com/recipes/empanadas-argentinas.jpg	\N
+65	Чимичурри	Соус из петрушки, орегано, чеснока и уксуса. Не блендер, а нож: текстура здесь важнее гладкости.	8	0	f	f	f	https://theunitools.com/recipes/chimichurri.jpg	\N
+66	Наси горенг	Жареный рис с пастой из чили и креветочной пасты, сладким соевым соусом и яйцом сверху.	4	15	f	t	f	https://theunitools.com/recipes/nasi-goreng.jpg	\N
+67	Ренданг	Говядина, которую варят в кокосовом молоке четыре часа, пока молоко не превратится в масло и не начнёт жарить мясо.	6	240	f	t	f	https://theunitools.com/recipes/rendang.jpg	\N
+68	Адобо	Курица, тушённая в соевом соусе с уксусом, чесноком и лавровым листом. Уксус не мешают первые десять минут.	4	45	f	t	f	https://theunitools.com/recipes/adobo.jpg	\N
+69	Синиганг	Кислый суп на тамаринде со свининой и овощами. Кислота здесь основной вкус, а не оттенок.	6	75	f	t	f	https://theunitools.com/recipes/sinigang.jpg	\N
+70	Украинский борщ с пампушками	Борщ на свиных рёбрышках со старым салом, растёртым с чесноком, и чесночными пампушками.	6	120	f	t	f	https://theunitools.com/recipes/borshch-ukrainskyi.jpg	\N
+71	Вареники с вишней	Вареники с целой вишней и сахаром. Сок остаётся внутри, если ягоду обвалять в крахмале.	4	15	f	t	f	https://theunitools.com/recipes/varenyky-z-vyshnyamy.jpg	\N
+72	Свичкова	Говядина в соусе из протёртых кореньев со сливками, с кнедликами, брусникой и лимоном.	6	150	f	t	f	https://theunitools.com/recipes/svickova.jpg	\N
+73	Трдельник	Дрожжевая полоска теста, намотанная на валик, запечённая и обвалянная в сахаре с орехами.	6	20	f	f	t	https://theunitools.com/recipes/trdelnik.jpg	\N
+74	Шведские фрикадельки	Мясные шарики на панаде из хлеба и сливок, в сливочном соусе, с брусникой и картофельным пюре.	4	30	f	t	f	https://theunitools.com/recipes/koettbullar.jpg	\N
+75	Кулебяка с корицей	Булочки с корицей и кардамоном, свёрнутые узлом. Кардамон в тесте важнее корицы в начинке.	12	15	f	f	t	https://theunitools.com/recipes/kanelbullar.jpg	\N
+76	Кушари	Рис, чечевица и макароны в одной тарелке под томатным соусом с уксусом и жареным луком.	6	60	f	t	f	https://theunitools.com/recipes/koshari.jpg	\N
+77	Фуль медамес	Бобы фава, томлённые до кремовой мягкости, с оливковым маслом, лимоном и зирой.	4	240	f	t	f	https://theunitools.com/recipes/ful-medames.jpg	\N
+78	Табуле	Салат из петрушки с небольшим количеством булгура, а не наоборот. Зелени здесь в десять раз больше крупы.	4	0	f	f	f	https://theunitools.com/recipes/tabbouleh.jpg	\N
+79	Киббе нейе	Сырое киббе: свежайшая баранина, растёртая с булгуром и специями, под оливковым маслом.	4	0	f	t	f	https://theunitools.com/recipes/kibbeh-nayyeh.jpg	\N
+80	Гормэ сабзи	Тушёная баранина с горой зелени, фасолью и сушёным лаймом. Зелень жарят до почти чёрного цвета.	6	150	f	t	f	https://theunitools.com/recipes/ghormeh-sabzi.jpg	\N
+81	Тахдиг	Рис с золотой хрустящей коркой на дне кастрюли. Корку делают из риса, картофеля или лаваша.	6	60	f	t	f	https://theunitools.com/recipes/tahdig.jpg	\N
+82	Узбекский плов	Рис, доведённый паром над зирваком из баранины, моркови и лука. Рис не мешают с момента закладки.	6	100	f	t	f	https://theunitools.com/recipes/plov-uzbekskiy.jpg	\N
+83	Самса	Слоёные треугольники с рубленой бараниной и луком, запечённые до хрустящей корки.	6	35	f	f	t	https://theunitools.com/recipes/samsa.jpg	\N
+84	Новоанглийский клэм-чаудер	Густой суп на моллюсках со сливками, картофелем и беконом. Без помидоров — это принципиально.	4	35	f	t	f	https://theunitools.com/recipes/clam-chowder.jpg	\N
+85	Куриные крылья баффало	Крылья без панировки в соусе из острого перечного соуса и сливочного масла. Соль вытягивает влагу перед запеканием.	4	50	f	f	t	https://theunitools.com/recipes/buffalo-wings.jpg	\N
+86	Пицца маргарита	Тесто долгого брожения, помидоры без варки, моцарелла и базилик. Всё решает время, а не количество ингредиентов.	4	10	f	f	t	https://theunitools.com/recipes/pizza-margherita.jpg	\N
+88	Палак панир	Шпинат, бланшированный и пробитый в пюре, с кубиками панира. Шпинат нельзя тушить — он побуреет.	4	25	f	t	f	https://theunitools.com/recipes/palak-paneer.jpg	\N
+89	Самоса	Треугольники с картофелем и горошком в тесте на гхи. Жарят на среднем огне, а не на сильном.	6	30	f	t	f	https://theunitools.com/recipes/samosa.jpg	\N
+90	Цзяоцзы	Пельмени со свининой и капустой, обжаренные и допаренные в одной сковороде под крышкой.	4	15	f	t	f	https://theunitools.com/recipes/jiaozi.jpg	\N
+91	Янчжоуский жареный рис	Рис с креветками, ветчиной и яйцом, где каждое зерно отдельно и покрыто тонкой яичной плёнкой.	4	10	f	t	f	https://theunitools.com/recipes/yangzhou-fried-rice.jpg	\N
+92	Чиле рельено	Перец поблано, фаршированный сыром, в воздушном яичном кляре, обжаренный и залитый томатным соусом.	4	30	f	t	f	https://theunitools.com/recipes/chiles-en-nogada.jpg	\N
+93	Посоле рохо	Суп из свинины и кукурузы посоле в соусе из сушёных чили, с горой свежих добавок на столе.	8	180	f	t	f	https://theunitools.com/recipes/pozole-rojo.jpg	\N
+94	Нихари	Говяжья голяшка, томлённая всю ночь, в густом соусе с костным мозгом. Загущается пшеничной болтушкой.	6	300	f	t	f	https://theunitools.com/recipes/nihari.jpg	\N
+95	Чапли кебаб	Плоские котлеты из говядины с кукурузной мукой, помидорами и целыми семенами кориандра.	4	20	f	t	f	https://theunitools.com/recipes/chapli-kebab.jpg	\N
+96	Лакса лемак	Лапша в кокосовом бульоне на пасте ремпах с креветками и тофу. Пасту обжаривают до отделения масла.	4	30	f	t	f	https://theunitools.com/recipes/laksa-lemak.jpg	\N
+97	Роти чанай	Слоёная лепёшка, растянутая до прозрачности и скомканная перед жаркой. Слои получаются из воздуха, а не из масла.	6	20	f	t	f	https://theunitools.com/recipes/roti-canai.jpg	\N
+98	Стамппот	Картофельное пюре, размятое вместе с кудрявой капустой, с копчёной колбасой и ямкой подливы.	4	35	f	t	f	https://theunitools.com/recipes/stamppot.jpg	\N
+99	Поффертьес	Крошечные дрожжевые оладьи из гречневой и пшеничной муки, подаются с маслом и сахарной пудрой.	4	20	f	t	f	https://theunitools.com/recipes/poffertjes.jpg	\N
+100	Доро уот	Курица в густом соусе из бербере, где килограмм лука томят всухую до полного распада.	6	120	f	t	f	https://theunitools.com/recipes/doro-wat.jpg	\N
+102	Ропа вьеха	Говядина, разобранная на волокна и тушённая в софрито с перцем и оливками. Мясо варят целым куском заранее.	6	150	f	t	f	https://theunitools.com/recipes/ropa-vieja.jpg	\N
+103	Морос и кристианос	Рис, сваренный в отваре из-под чёрной фасоли, отчего становится тёмным и вбирает весь её вкус.	6	90	f	t	f	https://theunitools.com/recipes/moros-y-cristianos.jpg	\N
+361	Гата	Слоёная сдоба с сухой сладкой начинкой хориз из муки, масла и сахара.	10	40	f	f	f	https://theunitools.com/recipes/gata.jpg	\N
+104	Курица джерк	Курица в маринаде на скотч-боннете и душистом перце, копчёная на дровах пименто.	6	120	f	t	t	https://theunitools.com/recipes/jerk-chicken.jpg	\N
+105	Аки с солёной рыбой	Национальное блюдо Ямайки: плод аки, по виду и текстуре напоминающий яичницу, с вымоченной солёной треской.	4	25	f	t	f	https://theunitools.com/recipes/ackee-and-saltfish.jpg	\N
+106	Джоллоф рис	Рис, сваренный в густом соусе из помидоров, перца и лука. Соус уваривают до тёмного цвета до закладки риса.	6	60	f	t	f	https://theunitools.com/recipes/jollof-rice.jpg	\N
+107	Суйя	Говядина на шпажках в обсыпке из молотого арахиса со специями. Обсыпку наносят дважды — до и после жарки.	4	15	f	t	f	https://theunitools.com/recipes/suya.jpg	\N
+108	Арепас	Лепёшки из предварённой кукурузной муки, обжаренные и разрезанные, чтобы набить начинкой.	4	25	f	t	t	https://theunitools.com/recipes/arepas.jpg	\N
+109	Ахиако	Куриный суп на трёх сортах картофеля с травой гуаскас, каперсами и сливками.	6	75	f	t	f	https://theunitools.com/recipes/ajiaco-bogotano.jpg	\N
+110	Киш лорен	Песочная основа с беконом и заливкой из сливок с яйцами. Ни сыра, ни лука — в классическом рецепте их нет.	6	60	f	f	t	https://theunitools.com/recipes/quiche-lorraine.jpg	\N
+111	Круассан	Слоёное дрожжевое тесто с двадцатью семью слоями масла. Всё решает температура: тесто и масло должны быть одинаково холодными.	8	20	f	f	t	https://theunitools.com/recipes/croissant.jpg	\N
+112	Темпура	Овощи и креветки в ледяном кляре с комками. Мешать до гладкости нельзя — от этого зависит хрусткость.	4	20	f	t	f	https://theunitools.com/recipes/tempura.jpg	\N
+113	Окономияки	Толстый блин с капустой, где тесто только связывает. Ямс в тесте даёт ту воздушную текстуру.	4	25	f	t	f	https://theunitools.com/recipes/okonomiyaki.jpg	\N
+114	Лахмаджун	Тончайшая лепёшка с бараньим фаршем и перечной пастой, запечённая три минуты в раскалённой духовке.	6	20	f	f	t	https://theunitools.com/recipes/lahmacun.jpg	\N
+115	Пахлава	Сорок слоёв юфки с фисташками, залитые сиропом. Горячая пахлава заливается холодным сиропом, и только так.	12	60	f	t	t	https://theunitools.com/recipes/baklava.jpg	\N
+116	Спанакопита	Пирог из фило со шпинатом и фетой. Шпинат отжимают досуха — иначе низ останется сырым.	8	50	f	t	t	https://theunitools.com/recipes/spanakopita.jpg	\N
+117	Пататас бравас	Картофель, обжаренный дважды, под острым соусом на паприке. Соус без помидоров — в мадридском варианте их нет.	4	30	f	t	f	https://theunitools.com/recipes/patatas-bravas.jpg	\N
+118	Момо	Непальские пельмени на пару с буйволятиной или курицей и соусом ачар из обжаренных помидоров.	4	20	f	t	f	https://theunitools.com/recipes/momo.jpg	\N
+119	Дал бхат	Чечевичный суп с рисом и овощной таркари. Ежедневная еда Непала, которую едят дважды в день всю жизнь.	4	45	f	t	f	https://theunitools.com/recipes/dal-bhat.jpg	\N
+120	Котту роти	Рубленая лепёшка годамба, обжаренная с овощами, яйцом и карри прямо на плите двумя тесаками.	4	15	f	t	f	https://theunitools.com/recipes/kottu-roti.jpg	\N
+121	Пол самбол	Кокосовая стружка, растёртая с чили, луком и лаймом. Готовится за пять минут и подаётся ко всему.	6	0	f	f	f	https://theunitools.com/recipes/pol-sambol.jpg	\N
+122	Чевапи	Колбаски из рубленого мяса без оболочки, на углях, с луком и лепёшкой сомун.	4	15	f	t	f	https://theunitools.com/recipes/cevapi.jpg	\N
+123	Айвар	Икра из печёного красного перца и баклажана, уваренная в масле до густоты пасты.	10	90	f	t	t	https://theunitools.com/recipes/ajvar.jpg	\N
+124	Фрикаделлер	Датские мясные биточки, плоские, а не круглые, жаренные на сливочном масле до тёмной корочки.	4	25	f	t	f	https://theunitools.com/recipes/frikadeller.jpg	\N
+125	Смёрребрёд	Открытый бутерброд на ржаном хлебе с маслом. Порядок слоёв и толщина масла имеют значение.	4	0	f	t	f	https://theunitools.com/recipes/smorrebrod.jpg	\N
+126	Сармале	Голубцы в квашеных капустных листьях с фаршем и рисом, томлённые три часа под слоем капусты.	8	180	f	t	t	https://theunitools.com/recipes/sarmale.jpg	\N
+127	Мамалыга	Кукурузная каша плотной консистенции, которую режут ниткой, а не ножом.	6	40	f	t	f	https://theunitools.com/recipes/mamaliga.jpg	\N
+128	Шопский салат	Помидоры, огурцы и перец под шапкой тёртой брынзы. Овощи режут крупно, брынзу натирают мелко.	4	10	f	f	f	https://theunitools.com/recipes/shopska-salata.jpg	\N
+129	Баница	Спираль из фило с брынзой и яйцами, залитая йогуртом с содой перед выпечкой.	8	45	f	f	t	https://theunitools.com/recipes/banitsa.jpg	\N
+130	Лохикейтто	Финский суп с лососем, картофелем и сливками, с горой укропа и кусочком масла в тарелке.	4	40	f	t	f	https://theunitools.com/recipes/lohikeitto.jpg	\N
+131	Карельские пирожки	Ржаная корзиночка с рисовой кашей, смазанная маслом после выпечки и поданная с яичным маслом.	8	25	f	t	t	https://theunitools.com/recipes/karjalanpiirakka.jpg	\N
+132	Ирландское рагу	Баранина с картофелем и луком, томлённая без обжарки. Мясо не подрумянивают — в этом весь смысл.	6	150	f	t	f	https://theunitools.com/recipes/irish-stew.jpg	\N
+133	Содовый хлеб	Хлеб на соде и пахте без дрожжей и без расстойки. От замеса до духовки — три минуты.	8	45	f	f	t	https://theunitools.com/recipes/soda-bread.jpg	\N
+134	Чёрный ризотто	Ризотто с каракатицей и её чернилами. Чернила вливают в конце, иначе они дадут горечь.	4	50	f	t	f	https://theunitools.com/recipes/crni-rizot.jpg	\N
+135	Загорски штрукли	Тонкое тесто с творожной начинкой, отваренное и запечённое под сливками.	6	45	f	t	t	https://theunitools.com/recipes/zagorski-strukli.jpg	\N
+137	Форикол	Баранина с капустой, слоями, с целым перцем горошком. Всего четыре ингредиента и два часа времени.	6	130	f	t	f	https://theunitools.com/recipes/farikal.jpg	\N
+138	Мидии по-мариньерски	Мидии, приготовленные на пару в белом вине с сельдереем и луком. Пять минут под крышкой и не дольше.	4	15	f	t	f	https://theunitools.com/recipes/moules-marinieres.jpg	\N
+139	Фламандская карбонада	Говядина, томлённая в тёмном пиве с луком и ломтем хлеба с горчицей, который загущает соус.	6	180	f	t	t	https://theunitools.com/recipes/carbonade-flamande.jpg	\N
+140	Сырное фондю	Грюйер и вашрен, растопленные в белом вине с крахмалом. Кислота вина не даёт сыру свернуться.	4	20	f	f	f	https://theunitools.com/recipes/fondue-moitie-moitie.jpg	\N
+141	Рёшти	Картофельный блин из крупной тёрки, обжаренный до корочки с двух сторон. Картофель отваривают накануне.	4	30	f	t	t	https://theunitools.com/recipes/roesti.jpg	\N
+142	Гапама	Тыква, запечённая целиком с рисом, сухофруктами и орехами. Праздничное блюдо, которое режут за столом.	6	90	f	t	t	https://theunitools.com/recipes/ghapama.jpg	\N
+143	Спас	Суп на мацуне с пшеничной крупой. Главная сложность — не дать кисломолочной основе свернуться.	4	40	f	t	f	https://theunitools.com/recipes/spas.jpg	\N
+144	Шах-плов	Плов, запечённый в «короне» из лаваша. Корочка держит форму и режется на куски, как пирог.	6	70	f	t	t	https://theunitools.com/recipes/shah-plov.jpg	\N
+145	Кюфта-бозбаш	Прозрачный суп с одной большой мясной кюфтой на порцию, внутри которой спрятаны слива и курага.	4	80	f	t	f	https://theunitools.com/recipes/kufta-bozbash.jpg	\N
+146	Бешбармак	Отварное мясо на листах теста с луковой подливой сорпой. Главное блюдо казахского застолья.	6	180	f	t	f	https://theunitools.com/recipes/beshbarmak.jpg	\N
+147	Баурсаки	Кусочки дрожжевого теста, жаренные во фритюре до полых внутри шариков. Хлеб к чаю и к столу.	8	25	f	t	f	https://theunitools.com/recipes/baursaki.jpg	\N
+148	Брынзове галушки	Картофельные клёцки с овечьей брынзой и шкварками. Национальное блюдо Словакии.	4	20	f	t	f	https://theunitools.com/recipes/bryndzove-halusky.jpg	\N
+149	Капустница	Суп из квашеной капусты с копчёностями, колбасой и сушёными грибами. Рождественский стол Словакии.	6	90	f	t	f	https://theunitools.com/recipes/kapustnica.jpg	\N
+150	Пастель-де-чокло	Запеканка из мясной начинки под шапкой из молотой кукурузы, с оливкой и яйцом внутри.	6	60	f	t	t	https://theunitools.com/recipes/pastel-de-choclo.jpg	\N
+151	Эмпанадас-де-пино	Печёные пирожки с мясной начинкой, оливкой и яйцом. Чилийская еда 18 сентября и любого воскресенья.	6	30	f	t	f	https://theunitools.com/recipes/empanadas-de-pino.jpg	\N
+152	Пабельон-криольо	Тарелка из четырёх частей: тушёная говядина волокнами, чёрная фасоль, белый рис и жареный банан.	4	150	f	t	f	https://theunitools.com/recipes/pabellon-criollo.jpg	\N
+153	Качапас	Толстые оладьи из молотой свежей кукурузы, сложенные пополам вокруг мягкого сыра.	4	25	f	t	f	https://theunitools.com/recipes/cachapas.jpg	\N
+154	Сальтеньяс	Печёные пирожки с начинкой, которая внутри остаётся жидкой. Боливийский завтрак на ходу.	6	30	f	t	f	https://theunitools.com/recipes/saltenas.jpg	\N
+155	Сильпанчо	Отбивная в панировке размером с тарелку, поверх риса и картофеля, с яйцом и сырым салатом.	4	30	f	t	f	https://theunitools.com/recipes/silpancho.jpg	\N
+156	Энсебольядо	Суп из тунца с юккой и маринованным луком. В Эквадоре его едят на завтрак и считают средством от похмелья.	4	40	f	t	f	https://theunitools.com/recipes/encebollado.jpg	\N
+157	Льяпингачос	Картофельные лепёшки с сыром внутри, жаренные на ачиоте, с арахисовым соусом.	4	30	f	t	f	https://theunitools.com/recipes/llapingachos.jpg	\N
+158	Масгуф	Речная рыба, распластанная и запечённая стоя у открытого огня. Багдадское блюдо с берегов Тигра.	4	75	f	f	f	https://theunitools.com/recipes/masgouf.jpg	\N
+159	Иракская долма	Виноградные листья и овощи, фаршированные рисом с мясом, уложенные слоями и сваренные под гнётом.	6	75	f	t	f	https://theunitools.com/recipes/dolma-iraqi.jpg	\N
+160	Мансаф	Баранина в соусе из ферментированного сушёного йогурта джамид, на рисе и лепёшке. Национальное блюдо Иордании.	8	150	f	t	f	https://theunitools.com/recipes/mansaf.jpg	\N
+161	Маклюба	Рис с мясом и жареными овощами, сваренный в одной кастрюле и перевёрнутый на блюдо целиком.	6	90	f	t	f	https://theunitools.com/recipes/maqluba.jpg	\N
+162	Брик	Тонкий лист теста с яйцом внутри, обжаренный так, чтобы желток остался жидким.	4	10	f	t	f	https://theunitools.com/recipes/brik.jpg	\N
+163	Тунисский лаблаби	Нут в чесночном бульоне, вылитый на кусочки чёрствого хлеба, с яйцом, тмином и хариссой.	4	90	f	t	f	https://theunitools.com/recipes/shakshuka-tunisienne.jpg	\N
+164	Алжирский кускус	Крупа, трижды пропаренная над кастрюлей с мясом и овощами, с бульоном отдельно.	6	120	f	t	f	https://theunitools.com/recipes/couscous-algerien.jpg	\N
+165	Чорба-фрик	Суп с зелёной подкопчённой пшеницей фрик, бараниной и мятой. Первое блюдо на столе в Рамадан.	6	70	f	t	f	https://theunitools.com/recipes/chorba-frik.jpg	\N
+166	Цеппелинай	Крупные картофельные клёцки с мясной начинкой, названные в честь дирижаблей. Со шкварками и сметаной.	4	40	f	t	f	https://theunitools.com/recipes/cepelinai.jpg	\N
+167	Шалтибарщяй	Холодный свекольный суп на кефире, ярко-розовый, с огурцом, укропом и варёной картошкой отдельно.	4	40	f	t	f	https://theunitools.com/recipes/saltibarsciai.jpg	\N
+170	Мульгипудер	Картофельно-перловая каша со шкварками. Эстонское блюдо, признанное национальным символом.	4	80	f	t	f	https://theunitools.com/recipes/mulgipuder.jpg	\N
+171	Кама	Десерт из смеси обжаренных зерновых мук на кефире. Эстонский завтрак и летний десерт разом.	4	0	f	f	f	https://theunitools.com/recipes/kama.jpg	\N
+172	Драники	Картофельные оладьи из тёртого сырого картофеля, жаренные до хрустящей корки, со сметаной.	4	25	f	t	f	https://theunitools.com/recipes/draniki.jpg	\N
+174	Мохинга	Рисовая лапша в густом рыбном бульоне на банановом стволе. Завтрак и неофициальное национальное блюдо Мьянмы.	6	80	f	t	f	https://theunitools.com/recipes/mohinga.jpg	\N
+175	Лапет-тхоке	Салат из ферментированных чайных листьев с жареными бобами, орехами и чесноком.	4	15	f	t	f	https://theunitools.com/recipes/lahpet-thoke.jpg	\N
+176	Фиш-амок	Рыба в кокосовом карри, приготовленная на пару в чашке из бананового листа.	4	25	f	t	f	https://theunitools.com/recipes/fish-amok.jpg	\N
+177	Лок-лак	Кубики говядины, обжаренные на сильном огне, на салате, с соусом из лайма и чёрного перца.	4	15	f	t	f	https://theunitools.com/recipes/lok-lak.jpg	\N
+178	Хайнаньский рис с курицей	Курица, сваренная целиком при температуре ниже кипения, и рис на её бульоне, с тремя соусами.	4	60	f	t	f	https://theunitools.com/recipes/hainanese-chicken-rice.jpg	\N
+179	Краб в соусе чили	Краб в густом томатно-чилийском соусе с яйцом, который вычерпывают жареными булочками мантоу.	4	25	f	t	f	https://theunitools.com/recipes/chilli-crab.jpg	\N
+180	Лу-жоу-фань	Рубленая свиная грудинка, тушённая в соевом соусе со специями, поверх белого риса.	4	100	f	t	f	https://theunitools.com/recipes/lu-rou-fan.jpg	\N
+181	Тайваньский суп с говядиной	Пшеничная лапша в тёмном бульоне из говяжьей голяшки с бобовой пастой и специями.	4	150	f	t	f	https://theunitools.com/recipes/beef-noodle-soup-taiwan.jpg	\N
+182	Ньяма-чома	Козлятина, медленно зажаренная над углями крупными кусками, с кача́мбари и угали.	6	90	f	t	f	https://theunitools.com/recipes/nyama-choma.jpg	\N
+183	Сукума-вики	Тушёная листовая капуста с луком и помидорами. Ежедневный гарнир к угали по всей Восточной Африке.	4	20	f	t	f	https://theunitools.com/recipes/sukuma-wiki.jpg	\N
+184	Ваакье	Рис с чёрными бобами, сваренный с листьями сорго, которые красят его в бордовый цвет.	6	80	f	t	f	https://theunitools.com/recipes/waakye.jpg	\N
+185	Банку с тиляпией	Ферментированное кукурузно-маниоковое тесто, вымешанное до гладкости, с жареной рыбой и острым перечным соусом.	4	45	f	t	f	https://theunitools.com/recipes/banku-with-tilapia.jpg	\N
+186	Тьебуджен	Рис, сваренный в томатном бульоне от рыбы, с фаршированной зеленью рыбой и овощами. Национальное блюдо Сенегала.	6	90	f	t	f	https://theunitools.com/recipes/thieboudienne.jpg	\N
+187	Ясса с курицей	Курица, маринованная в лимоне, под горой карамелизованного лука с горчицей.	4	75	f	t	f	https://theunitools.com/recipes/yassa-poulet.jpg	\N
+188	Бобóти	Запеканка из пряного фарша с сухофруктами под яично-молочной заливкой. Национальное блюдо ЮАР.	6	60	f	t	t	https://theunitools.com/recipes/bobotie.jpg	\N
+189	Чакалака	Острая овощная закуска из моркови, перца и фасоли с карри. К брааю, к пап или сама по себе.	6	20	f	t	f	https://theunitools.com/recipes/chakalaka.jpg	\N
+191	Кьётсупа	Прозрачный суп из баранины с корнеплодами и перловкой. Один горшок, четыре продукта, три часа.	6	150	f	t	f	https://theunitools.com/recipes/kjotsupa.jpg	\N
+192	Потица	Дрожжевой рулет с ореховой начинкой, свёрнутый в кольцо. Словенская выпечка к каждому празднику.	12	60	f	f	f	https://theunitools.com/recipes/potica.jpg	\N
+193	Йота	Густой суп из квашеной репы или капусты с фасолью, картофелем и копчёностями.	6	90	f	t	f	https://theunitools.com/recipes/jota.jpg	\N
+194	Босански лонац	Мясо и овощи, уложенные слоями в глиняный горшок и томившиеся четыре часа без помешивания.	6	240	f	f	t	https://theunitools.com/recipes/bosanski-lonac.jpg	\N
+195	Боснийский бурек	Спираль из тончайшего вытянутого теста с мясной начинкой. В Боснии буреком называют только мясной.	6	45	f	f	f	https://theunitools.com/recipes/burek-bosanski.jpg	\N
+196	Тавче-гравче	Белая фасоль, запечённая в глиняной сковороде с луком, паприкой и перцем. Национальное блюдо Северной Македонии.	6	120	f	t	t	https://theunitools.com/recipes/tavce-gravce.jpg	\N
+197	Селско месо	Свинина, тушённая с грибами, луком и вином в глиняном горшочке, под сыром.	4	70	f	t	t	https://theunitools.com/recipes/selsko-meso.jpg	\N
+198	Ламингтоны	Кубики бисквита, обмакнутые в шоколадную глазурь и обвалянные в кокосовой стружке.	12	30	f	f	f	https://theunitools.com/recipes/lamingtons.jpg	\N
+199	Австралийский мясной пирог	Порционный пирог с густой говяжьей начинкой: песочное дно, слоёная крышка, кетчуп сверху.	6	90	f	t	f	https://theunitools.com/recipes/meat-pie-australian.jpg	\N
+200	Павлова	Меренга с хрустящей корочкой и мягкой серединой, под взбитыми сливками и киви.	8	90	f	f	t	https://theunitools.com/recipes/pavlova.jpg	\N
+201	Курица в стиле ханги	Курица и корнеплоды, завёрнутые и запечённые с копчёной солью — домашняя версия земляной печи маори.	6	150	f	f	t	https://theunitools.com/recipes/hangi-style-chicken.jpg	\N
+202	Путин	Картофель фри с сырными зёрнами под горячей мясной подливой. Квебекская уличная классика.	4	40	f	t	f	https://theunitools.com/recipes/poutine.jpg	\N
+203	Туртьер	Закрытый пирог с пряным свиным фаршем и картофелем. Квебекский рождественский стол.	8	70	f	t	f	https://theunitools.com/recipes/tourtiere.jpg	\N
+204	Гальо-пинто	Вчерашний рис, обжаренный с чёрной фасолью и соусом Лисано. Костариканский завтрак каждый день.	4	20	f	t	f	https://theunitools.com/recipes/gallo-pinto.jpg	\N
+205	Касадо	Обеденная тарелка из риса, фасоли, салата, подорожника и мяса — всё разложено по секторам.	4	40	f	t	f	https://theunitools.com/recipes/casado.jpg	\N
+206	Буузы	Крупные пельмени на пару с рубленой бараниной. Главная еда монгольского Цагаан сара.	6	25	f	t	f	https://theunitools.com/recipes/buuz.jpg	\N
+207	Цуйван	Домашняя лапша, приготовленная на пару прямо над мясом, а потом перемешанная с ним.	4	45	f	t	f	https://theunitools.com/recipes/tsuivan.jpg	\N
+208	Кыргызский бешбармак	Баранина с домашней лапшой в луковом соусе чык. Кыргызский вариант — с бараниной и без картофеля.	6	165	f	t	f	https://theunitools.com/recipes/beshbarmak-kyrgyz.jpg	\N
+209	Лагман	Тянутая вручную лапша с мясо-овощной подливой ваджа. Дунганское блюдо, ставшее общим для Центральной Азии.	4	40	f	t	f	https://theunitools.com/recipes/lagman.jpg	\N
+210	Курутоб	Слоёная лепёшка фатир, размоченная в разведённом сушёном курте, под жареным луком и овощами.	4	20	f	t	f	https://theunitools.com/recipes/kurutob.jpg	\N
+211	Таджикский оши палав	Плов с бараниной, жёлтой морковью и целой головкой чеснока, признанный ЮНЕСКО наследием.	6	90	f	t	f	https://theunitools.com/recipes/oshi-plov-tajik.jpg	\N
+212	Кабули палав	Рис с бараниной под слоем карамелизованной моркови, изюма и миндаля. Национальное блюдо Афганистана.	6	110	f	t	f	https://theunitools.com/recipes/kabuli-pulao.jpg	\N
+213	Афганское манту	Пельмени на пару с говядиной и луком, под чесночным йогуртом и соусом из жёлтого гороха.	5	45	f	t	f	https://theunitools.com/recipes/mantu-afghan.jpg	\N
+214	Фаттуш	Салат из овощей и зелени с обжаренными кусочками лепёшки и сумахом.	4	10	f	t	f	https://theunitools.com/recipes/fattoush.jpg	\N
+215	Киббе в противне	Два слоя булгура с мясом и прослойка из фарша с орехами, запечённые в противне.	8	45	f	t	t	https://theunitools.com/recipes/kibbeh-bil-sanieh.jpg	\N
+220	Занзибарский пилау	Рис с говядиной на пряностях острова: гвоздика, кардамон, корица и чёрный перец без всякой куркумы.	6	75	f	t	f	https://theunitools.com/recipes/zanzibar-pilau.jpg	\N
+222	Шорше илиш	Хилса в соусе из молотой горчицы, приготовленная на пару. Главная рыба Бенгалии.	4	25	f	f	f	https://theunitools.com/recipes/shorshe-ilish.jpg	\N
+223	Бхуна кхичури	Рис с чечевицей, обжаренные до закладки воды. Бенгальская еда дождливого дня.	5	45	f	t	f	https://theunitools.com/recipes/bhuna-khichuri.jpg	\N
+224	Лаап	Рубленое мясо с обжаренной рисовой мукой, травами и лаймом. Национальное блюдо Лаоса.	4	20	f	t	f	https://theunitools.com/recipes/larb-lao.jpg	\N
+225	Там мак хунг	Салат из зелёной папайи, растёртый в ступке. Лаосская версия — с ферментированной рыбой падэк.	4	0	f	f	f	https://theunitools.com/recipes/tam-mak-hoong.jpg	\N
+226	Сувла	Крупные куски свинины или ягнёнка на вертеле, медленно вращающиеся над углями два часа.	6	130	f	t	f	https://theunitools.com/recipes/souvla.jpg	\N
+228	Кролик по-мальтийски	Кролик, тушённый в красном вине с чесноком и лавром. Национальное блюдо Мальты.	4	105	f	t	f	https://theunitools.com/recipes/maltese-rabbit-stew.jpg	\N
+229	Пастицци	Слоёные пирожки с рикоттой или гороховой начинкой. Мальтийская уличная еда на каждом углу.	8	35	f	t	f	https://theunitools.com/recipes/pastizzi.jpg	\N
+230	Чивито	Сэндвич с тонким стейком, ветчиной, беконом, сыром и яйцом. Национальное блюдо Уругвая.	4	20	f	t	f	https://theunitools.com/recipes/chivito.jpg	\N
+232	Пепиан	Курица в густом соусе из обжаренных семян и перцев. Одно из старейших блюд Гватемалы.	6	70	f	t	f	https://theunitools.com/recipes/pepian.jpg	\N
+233	Гватемальские тамалес	Кукурузное тесто с мясом и соусом рекадо, завёрнутое в банановый лист и сваренное на пару.	8	90	f	t	f	https://theunitools.com/recipes/tamales-guatemaltecos.jpg	\N
+234	Доминиканский санкочо	Густой суп из нескольких видов мяса и корнеплодов. Праздничная еда, которую готовят на большую компанию.	8	120	f	t	f	https://theunitools.com/recipes/sancocho-dominicano.jpg	\N
+235	Мангу	Пюре из варёного зелёного подорожника с маринованным луком, яйцом, сыром и салями.	4	30	f	t	f	https://theunitools.com/recipes/mangu.jpg	\N
+237	Каллалу	Густой суп-пюре из листьев таро с окрой и кокосовым молоком. Воскресный стол Тринидада.	6	55	f	t	f	https://theunitools.com/recipes/callaloo.jpg	\N
+238	Таве коси	Ягнёнок, запечённый под густым йогуртовым соусом с яйцом и рисом. Национальное блюдо Албании.	6	90	f	t	t	https://theunitools.com/recipes/tave-kosi.jpg	\N
+239	Бюрек со шпинатом	Пирог из тонкого теста со шпинатом и брынзой, слоями, залитыми маслом.	8	45	f	t	f	https://theunitools.com/recipes/byrek-me-spinaq.jpg	\N
+240	Плацинда	Плоский пирог из вытянутого теста с брынзой, тыквой или яблоками, жаренный на сухой сковороде.	6	30	f	t	f	https://theunitools.com/recipes/placinta.jpg	\N
+242	Копчёная шейка с бобами	Копчёная свиная шейка, вымоченная и отваренная, с бобами в сливочном соусе. Национальное блюдо Люксембурга.	4	100	f	t	f	https://theunitools.com/recipes/judd-mat-gaardebounen.jpg	\N
+246	Кабса	Рис с курицей на пряном бульоне с сушёным лаймом и томатом. Главное блюдо саудовского стола.	6	75	f	t	f	https://theunitools.com/recipes/kabsa.jpg	\N
+248	Сальта	Мясное рагу, поданное кипящим в каменном горшке, под взбитой пеной из пажитника хульба.	4	90	f	t	f	https://theunitools.com/recipes/saltah.jpg	\N
+249	Бинт ас-сахн	Многослойный сдобный хлеб, промазанный топлёным маслом, залитый мёдом и чернушкой.	8	35	f	f	f	https://theunitools.com/recipes/bint-al-sahn.jpg	\N
+254	Ндоле	Горькие листья с арахисовой пастой, мясом и креветками. Национальное блюдо Камеруна.	6	75	f	t	f	https://theunitools.com/recipes/ndole.jpg	\N
+255	Пуле DG	Жареная курица с обжаренным подорожником и овощами. Блюдо, названное «курица директора».	5	45	f	t	f	https://theunitools.com/recipes/poulet-dg.jpg	\N
+256	Атьеке с рыбой	Ферментированная маниоковая крупа на пару с жареной рыбой и острым луковым салатом.	4	30	f	t	f	https://theunitools.com/recipes/attieke-poisson.jpg	\N
+257	Кеджену	Курица, томлённая в закрытом глиняном горшке без воды. Ивуарийское блюдо медленного огня.	4	80	f	f	t	https://theunitools.com/recipes/kedjenou.jpg	\N
+259	Курица пири-пири	Курица, распластанная и зажаренная на углях под соусом из перца пири-пири, чеснока и лимона.	4	45	f	t	f	https://theunitools.com/recipes/frango-piri-piri.jpg	\N
+260	Ромазава	Мясо в бульоне с горькой зеленью брэд-мафана, вызывающей лёгкое покалывание во рту.	5	75	f	t	f	https://theunitools.com/recipes/romazava.jpg	\N
+261	Равитуту	Толчёные листья маниока, тушённые со свининой и кокосовым молоком.	5	85	f	t	f	https://theunitools.com/recipes/ravitoto.jpg	\N
+262	Балеадас	Пшеничная лепёшка, сложенная пополам, с фасолевым пюре, сметаной и сыром.	4	30	f	t	f	https://theunitools.com/recipes/baleadas.jpg	\N
+263	Суп из ракушек	Суп из моллюска конх в кокосовом молоке с юккой и подорожником. Кухня карибского побережья гарифуна.	5	60	f	t	f	https://theunitools.com/recipes/sopa-de-caracol.jpg	\N
+264	Никарагуанский гальо-пинто	Рис с красной фасолью, обжаренный вместе. Никарагуанская версия — на красной фасоли и без соуса Лисано.	4	20	f	t	f	https://theunitools.com/recipes/gallo-pinto-nicaraguense.jpg	\N
+265	Накатамаль	Большой тамаль из кукурузного теста со свининой, рисом и картофелем, сваренный в банановом листе.	8	180	f	t	f	https://theunitools.com/recipes/nacatamal.jpg	\N
+266	Панамский санкочо	Куриный суп с корнем ньяме и травой кулантро. Панамское средство от похмелья и от простуды.	6	90	f	t	f	https://theunitools.com/recipes/sancocho-panameno.jpg	\N
+267	Панамская ропа вьеха	Говядина волокнами в томатном соусе с оливками и каперсами, панамской школы — суше кубинской.	5	120	f	t	f	https://theunitools.com/recipes/ropa-vieja-panamena.jpg	\N
+268	Парагвайский суп	Плотная кукурузная запеканка с сыром и луком, которую вопреки названию едят вилкой.	8	50	f	f	f	https://theunitools.com/recipes/sopa-paraguaya.jpg	\N
+269	Чипа	Хлебные колечки из маниоковой муки с сыром, без пшеницы и без дрожжей.	8	25	f	f	t	https://theunitools.com/recipes/chipa.jpg	\N
+270	Флия	Слоёный пирог из жидкого теста, наливаемого по одному слою под раскалённой крышкой саче.	8	90	f	f	f	https://theunitools.com/recipes/flia.jpg	\N
+271	Таве Эльбасани	Ягнёнок с рисом под йогуртовым соусом, запечённый в глиняной форме до румяной корки.	6	95	f	t	t	https://theunitools.com/recipes/tave-elbasani.jpg	\N
+273	Качамак	Кукурузная каша с картофелем, вымешанная с сыром и каймаком до тягучести.	4	45	f	t	f	https://theunitools.com/recipes/kacamak.jpg	\N
+274	Эма датши	Зелёный перец чили, тушённый в сыре. Национальное блюдо Бутана, где чили — овощ, а не приправа.	4	20	f	t	f	https://theunitools.com/recipes/ema-datshi.jpg	\N
+276	Мас хуни	Тунец, растёртый с кокосом, луком и лаймом, к горячей лепёшке роши. Мальдивский завтрак.	4	15	f	t	f	https://theunitools.com/recipes/mas-huni.jpg	\N
+279	Ролекс	Омлет с овощами, завёрнутый в лепёшку чапати. Уличная еда Кампалы, названная от «rolled eggs».	4	30	f	t	f	https://theunitools.com/recipes/rolex-uganda.jpg	\N
+282	Курица моамбе	Курица в соусе из мякоти пальмовых плодов. Национальное блюдо Конго.	5	70	f	t	f	https://theunitools.com/recipes/poulet-moambe.jpg	\N
+283	Либоке с рыбой	Рыба со специями, завёрнутая в банановый лист и запечённая в углях.	4	35	f	t	t	https://theunitools.com/recipes/liboke-de-poisson.jpg	\N
+284	Тигадегена	Мясо в густом арахисовом соусе с овощами. Малийское блюдо воскресного обеда.	6	90	f	t	f	https://theunitools.com/recipes/tigadegena.jpg	\N
+286	Оссобуко по-милански	Телячья голяшка, тушённая два часа в вине и бульоне, с гремолатой из цедры и чеснока.	4	130	f	t	f	https://theunitools.com/recipes/osso-buco-alla-milanese.jpg	\N
+290	Роган джош	Кашмирская баранина в йогуртовом соусе с перцем кашмири, красная от него, а не от остроты.	5	100	f	t	f	https://theunitools.com/recipes/rogan-josh.jpg	\N
+291	Масала доса	Тонкий хрустящий блин из сброженного рисово-чечевичного теста с картофельной начинкой.	6	45	f	t	f	https://theunitools.com/recipes/masala-dosa.jpg	\N
+292	Буйабес	Марсельская рыбная похлёбка из нескольких сортов рыбы, с шафраном и соусом руй.	6	70	f	t	f	https://theunitools.com/recipes/bouillabaisse.jpg	\N
+294	Никудзяга	Говядина с картофелем, тушённые в даси с соевым соусом и мирином. Домашняя японская классика.	4	35	f	t	f	https://theunitools.com/recipes/nikujaga.jpg	\N
+296	Моле поблано	Курица в тёмном соусе из нескольких видов перца, орехов, специй и шоколада.	8	120	f	t	f	https://theunitools.com/recipes/mole-poblano.jpg	\N
+298	Искендер-кебаб	Ломтики донера на кусочках питы, под томатным соусом, растопленным маслом и йогуртом.	4	30	f	t	t	https://theunitools.com/recipes/iskender-kebab.jpg	\N
+299	Турецкие манты	Крошечные пельмени с бараниной, отваренные и поданные под чесночным йогуртом и маслом с паприкой.	5	25	f	t	f	https://theunitools.com/recipes/manti-turkish.jpg	\N
+300	Фабада астурийская	Крупная белая фасоль фабес, тушённая с чорисо, морсильей и копчёной свининой.	6	180	f	t	f	https://theunitools.com/recipes/fabada-asturiana.jpg	\N
+301	Осьминог по-галисийски	Отварной осьминог на деревянной доске с паприкой, крупной солью и оливковым маслом.	4	60	f	t	f	https://theunitools.com/recipes/pulpo-a-feira.jpg	\N
+302	Кхао сой	Северотайская лапша в кокосовом карри, с варёной лапшой в бульоне и жареной сверху.	4	45	f	t	f	https://theunitools.com/recipes/khao-soi.jpg	\N
+303	Массаман карри	Мягкое карри с говядиной, картофелем и арахисом, на специях мусульманской традиции.	5	90	f	t	f	https://theunitools.com/recipes/massaman-curry.jpg	\N
+304	Гемиста	Помидоры и перцы, фаршированные рисом с зеленью и запечённые с картофелем в оливковом масле.	6	80	f	t	t	https://theunitools.com/recipes/gemista.jpg	\N
+305	Авголемоно	Куриный суп с рисом, загущённый яйцом, взбитым с лимонным соком.	5	65	f	t	f	https://theunitools.com/recipes/avgolemono.jpg	\N
+306	Пельмени	Мелкие пельмени из пресного теста с рубленым мясом и луком, сваренные в бульоне.	6	15	f	t	f	https://theunitools.com/recipes/pelmeni.jpg	\N
+307	Бефстроганов	Говядина, нарезанная соломкой и обжаренная на сильном огне, в сметанном соусе с луком.	4	25	f	t	f	https://theunitools.com/recipes/beef-stroganoff.jpg	\N
+308	Швайнсхаксе	Свиная рулька, запечённая до стеклянной хрустящей корки, с тёмным пивом и квашеной капустой.	4	180	f	t	t	https://theunitools.com/recipes/schweinshaxe.jpg	\N
+309	Шварцвальдский торт	Шоколадный бисквит, пропитанный вишнёвым киршем, со взбитыми сливками и вишней.	12	35	f	f	f	https://theunitools.com/recipes/schwarzwaelder-kirschtorte.jpg	\N
+310	Раздёрганная свинина	Свиная лопатка, копчёная десять часов при низкой температуре и разобранная на волокна.	10	600	f	t	t	https://theunitools.com/recipes/pulled-pork.jpg	\N
+311	Пирог с лаймом	Начинка из сгущённого молока с соком лайма на основе из крошки крекера, без запекания начинки.	8	20	f	f	t	https://theunitools.com/recipes/key-lime-pie.jpg	\N
+312	Бун ча	Жареная на углях свинина в тёплом кисло-сладком бульоне, с рисовой вермишелью и травами.	4	30	f	t	f	https://theunitools.com/recipes/bun-cha.jpg	\N
+313	Гой куон	Свежие рулетики из рисовой бумаги с креветкой, свининой, лапшой и травами, без обжарки.	4	20	f	t	f	https://theunitools.com/recipes/goi-cuon.jpg	\N
+314	Кальбиччим	Говяжьи рёбра, тушённые в соевом соусе с грушей, до состояния, когда мясо сходит с кости.	5	120	f	t	f	https://theunitools.com/recipes/galbijjim.jpg	\N
+315	Самгетан	Целый цыплёнок, фаршированный клейким рисом и женьшенем, сваренный в собственном бульоне.	4	75	f	t	f	https://theunitools.com/recipes/samgyetang.jpg	\N
+316	Ростбиф с йоркширским пудингом	Говядина, запечённая куском, с воздушным пудингом из жидкого теста на говяжьем жире.	6	90	f	t	t	https://theunitools.com/recipes/roast-beef-yorkshire.jpg	\N
+317	Финиковый пудинг с ирисочным соусом	Влажный финиковый кекс, политый горячим соусом из сливок и тёмного сахара.	8	40	f	t	f	https://theunitools.com/recipes/sticky-toffee-pudding.jpg	\N
+318	Бигос	Квашеная и свежая капуста, тушённые с несколькими видами мяса и сухофруктами трое суток.	10	240	f	t	f	https://theunitools.com/recipes/bigos.jpg	\N
+319	Сырник польский	Плотный творожный пирог на песочной основе, из твёрдого творога, а не из сливочного сыра.	12	70	f	f	t	https://theunitools.com/recipes/sernik.jpg	\N
+320	Мокека баиана	Рыба, тушённая в кокосовом молоке с пальмовым маслом денде, в глиняном горшке.	5	35	f	t	f	https://theunitools.com/recipes/moqueca-baiana.jpg	\N
+321	Кошинья	Обжаренные во фритюре капельки из заварного теста с куриной начинкой, в форме куриной ножки.	8	40	f	t	f	https://theunitools.com/recipes/coxinha.jpg	\N
+322	Ахи де гальина	Курица волокнами в кремовом соусе из жёлтого перца ахи амарильо, орехов и хлеба.	5	50	f	t	f	https://theunitools.com/recipes/aji-de-gallina.jpg	\N
+323	Кауса лименья	Слои жёлтого картофельного пюре с лаймом и перцем ахи, с начинкой из курицы или тунца.	6	30	f	t	f	https://theunitools.com/recipes/causa-limena.jpg	\N
+324	Фесенджан	Утка или курица в густом соусе из молотых грецких орехов и гранатовой патоки.	6	150	f	t	f	https://theunitools.com/recipes/fesenjan.jpg	\N
+326	Калду верде	Картофельный крем-суп с тонко нашинкованной капустой и ломтиками копчёной колбасы шоурису.	5	35	f	t	f	https://theunitools.com/recipes/caldo-verde.jpg	\N
+327	Сардины на углях	Целые сардины, посоленные крупной солью и зажаренные на углях, на ломте хлеба.	4	15	f	t	t	https://theunitools.com/recipes/sardinhas-assadas.jpg	\N
+328	Сатэ аям	Куриные шпажки на углях с густым арахисовым соусом и сладким соевым кечапом манисом.	5	25	f	t	f	https://theunitools.com/recipes/sate-ayam.jpg	\N
+332	Чахохбили	Курица, тушённая без воды в собственном соку с помидорами и горой свежей зелени.	5	50	f	t	f	https://theunitools.com/recipes/chakhokhbili.jpg	\N
+333	Сациви	Индейка или курица в холодном ореховом соусе с чесноком и специями. Новогодний стол Грузии.	8	90	f	t	t	https://theunitools.com/recipes/satsivi.jpg	\N
+336	Фатте с нутом	Слои жареной питы, горячего нута и чесночного йогурта с топлёным маслом и кедровыми орехами.	5	90	f	t	f	https://theunitools.com/recipes/fattet-hummus.jpg	\N
+337	Сфиха	Открытые лепёшки с бараньим фаршем, помидором и гранатовым соусом, из Баальбека.	6	25	f	f	f	https://theunitools.com/recipes/sfiha.jpg	\N
+338	Пастилья	Слоёный пирог с голубем или курицей, миндалём и корицей, посыпанный сахарной пудрой.	8	90	f	t	f	https://theunitools.com/recipes/pastilla.jpg	\N
+339	Марокканский чебакия	Печенье в форме цветка, обжаренное во фритюре и вымоченное в мёде с кунжутом.	10	60	f	t	f	https://theunitools.com/recipes/chebakia.jpg	\N
+340	Молохия	Суп из листьев джута, тягучий по текстуре, с чесночной зажаркой и кориандром.	5	70	f	t	f	https://theunitools.com/recipes/molokhia.jpg	\N
+342	Асадо	Говядина на решётке над дровяными углями, часами, с одной только крупной солью.	8	210	f	t	f	https://theunitools.com/recipes/asado-argentino.jpg	\N
+343	Альфахорес	Два рассыпчатых коржика из кукурузного крахмала, склеенных дульсе де лече, в кокосе.	10	15	f	f	f	https://theunitools.com/recipes/alfajores.jpg	\N
+344	Тафельшпиц	Говяжий огузок, сваренный в прозрачном бульоне, с яблочным хреном и жареным картофелем.	6	180	f	t	f	https://theunitools.com/recipes/tafelspitz.jpg	\N
+346	Халасле	Огненно-красная рыбацкая уха на паприке, из речной рыбы, сваренная в котелке.	6	75	f	t	f	https://theunitools.com/recipes/halaszle.jpg	\N
+347	Торт Добош	Пять тонких бисквитных коржей с шоколадным кремом под карамельной крышкой.	12	45	f	f	f	https://theunitools.com/recipes/dobos-torta.jpg	\N
+348	Вепрево колено с кнедликами	Тушёная свинина с хлебными кнедликами и кислой капустой. Неофициальное национальное блюдо Чехии.	6	120	f	t	f	https://theunitools.com/recipes/vepro-knedlo-zelo.jpg	\N
+349	Кулайда	Сливочный грибной суп с укропом, картофелем и яйцом-пашот, подкислённый уксусом.	5	35	f	t	f	https://theunitools.com/recipes/kulajda.jpg	\N
+351	Шведский яблочный пирог	Яблочный пирог с корицей под хрустящей масляной крошкой, к ванильному соусу.	8	45	f	t	f	https://theunitools.com/recipes/appelkaka.jpg	\N
+352	Стегт флеск	Ломти свиной грудинки, жаренные до хруста, с картофелем и петрушечным соусом.	4	45	f	t	f	https://theunitools.com/recipes/stegt-flaesk.jpg	\N
+353	Рисаламанде	Холодный рисовый пудинг со взбитыми сливками и миндалём, под горячим вишнёвым соусом.	8	60	f	t	f	https://theunitools.com/recipes/risalamande.jpg	\N
+354	Эртенсуп	Густой гороховый суп с копчёной колбасой, такой плотный, что ложка в нём стоит.	6	150	f	t	f	https://theunitools.com/recipes/erwtensoep.jpg	\N
+355	Биттербаллен	Шарики из густого мясного рагу в панировке, жаренные во фритюре, с горчицей.	8	40	f	t	f	https://theunitools.com/recipes/bitterballen.jpg	\N
+356	Колканнон	Картофельное пюре с капустой и зелёным луком, с озером растопленного масла в центре.	6	35	f	t	f	https://theunitools.com/recipes/colcannon.jpg	\N
+362	Наси лемак	Рис на кокосовом молоке с пандановым листом, к нему самбал, анчоусы, яйцо и арахис.	5	50	f	t	f	https://theunitools.com/recipes/nasi-lemak.jpg	\N
+363	Чар квай теу	Широкая рисовая лапша, обжаренная на очень сильном огне с креветками, яйцом и ростками.	2	10	f	t	f	https://theunitools.com/recipes/char-kway-teow.jpg	\N
+364	Каре-каре	Говяжий хвост в густом арахисовом соусе с овощами, к креветочной пасте багоонг.	6	210	f	t	f	https://theunitools.com/recipes/kare-kare.jpg	\N
+365	Лече флан	Плотный карамельный флан на одних желтках, приготовленный на пару в металлической форме.	8	45	f	f	f	https://theunitools.com/recipes/leche-flan.jpg	\N
+366	Ынджера	Кислая пористая лепёшка из теффа на трёхдневной закваске, служащая и хлебом, и тарелкой.	8	40	f	t	f	https://theunitools.com/recipes/injera.jpg	\N
+367	Кытфо	Рубленая сырая говядина, вымешанная с пряным маслом нитер киббе и смесью мытмыта.	4	30	f	t	f	https://theunitools.com/recipes/kitfo.jpg	\N
+369	Паф-паф	Дрожжевые шарики из жидкого теста, обжаренные во фритюре, снаружи хрустящие, внутри воздушные.	8	30	f	t	f	https://theunitools.com/recipes/puff-puff.jpg	\N
+370	Аррос кон польо	Курица с рисом на пиве и шафране, с горошком, перцем и оливками.	6	60	f	t	f	https://theunitools.com/recipes/arroz-con-pollo-cubano.jpg	\N
+371	Тостонес	Зелёный подорожник, обжаренный дважды с расплющиванием между заходами, с чесночным соусом.	4	25	f	t	f	https://theunitools.com/recipes/tostones.jpg	\N
+373	Райс энд пис	Рис, сваренный с красной фасолью в кокосовом молоке, с тимьяном и целым скотч-боннетом.	6	95	f	t	f	https://theunitools.com/recipes/rice-and-peas.jpg	\N
+375	Поронкяристюс	Строганина из оленины, обжаренная в масле и потушенная в пиве, с пюре и брусникой.	4	45	f	t	f	https://theunitools.com/recipes/poronkaristys.jpg	\N
+376	Чёттакакер	Крупные мясные котлеты в коричневом соусе, с брусникой и тушёным горошком.	5	45	f	t	f	https://theunitools.com/recipes/kjottkaker.jpg	\N
+377	Школьная булочка	Сдобная булочка с кардамоном, заварным кремом в центре, глазурью и кокосовой стружкой.	12	20	f	t	t	https://theunitools.com/recipes/skolebrod.jpg	\N
+378	Ватерзой	Гентское рагу из курицы или рыбы в сливочном бульоне с соломкой корнеплодов.	5	60	f	t	f	https://theunitools.com/recipes/waterzooi.jpg	\N
+379	Льежские вафли	Плотные дрожжевые вафли из густого теста с жемчужным сахаром, карамелизующимся снаружи.	10	25	f	f	t	https://theunitools.com/recipes/belgian-waffles.jpg	\N
+383	Фритуле	Маленькие пончики с изюмом, цитрусовой цедрой и ракией, обжаренные во фритюре.	8	25	f	t	f	https://theunitools.com/recipes/fritule.jpg	\N
+384	Сарма	Голубцы из квашеных капустных листьев со свининой и рисом, тушённые с копчёностями.	8	150	f	t	f	https://theunitools.com/recipes/sarma-serbian.jpg	\N
+386	Чорба де бурта	Кислый суп из говяжьего рубца в сливочно-чесночном бульоне, загущённый желтками.	6	240	f	t	f	https://theunitools.com/recipes/ciorba-de-burta.jpg	\N
+387	Папанаши	Творожные пончики в форме бублика с шариком сверху, со сметаной и вареньем.	6	25	f	t	f	https://theunitools.com/recipes/papanasi.jpg	\N
+388	Таратор	Холодный суп из йогурта с огурцом, чесноком, укропом и грецкими орехами.	4	0	f	f	f	https://theunitools.com/recipes/tarator.jpg	\N
+390	Хопперы	Тонкие чашеобразные блины из сброженного рисового теста с кокосовым молоком, часто с яйцом.	6	40	f	t	f	https://theunitools.com/recipes/hoppers.jpg	\N
+392	Сель роти	Кольцо из сброженного рисового теста, обжаренное во фритюре, хрустящее снаружи и мягкое внутри.	8	40	f	t	f	https://theunitools.com/recipes/sel-roti.jpg	\N
+394	Халим	Мясо, пшеница и бобовые, вываренные и взбитые в однородную густую массу за шесть часов.	10	360	f	t	f	https://theunitools.com/recipes/haleem.jpg	\N
+395	Сикх-кебаб	Фарш с луком и специями, налепленный на шампур и зажаренный на углях.	5	20	f	t	f	https://theunitools.com/recipes/seekh-kebab.jpg	\N
+396	Кенийская чапати	Слоёная мягкая лепёшка из пшеничного теста, свёрнутого спиралью перед раскаткой.	8	30	f	t	f	https://theunitools.com/recipes/chapati-kenyan.jpg	\N
+397	Мандази	Треугольные пончики на кокосовом молоке с кардамоном, слегка сладкие, к чаю.	8	25	f	t	f	https://theunitools.com/recipes/mandazi.jpg	\N
+398	Банни чау	Половина буханки белого хлеба с вынутым мякишем, наполненная бараньим карри.	4	90	f	t	f	https://theunitools.com/recipes/bunny-chow.jpg	\N
+399	Мелктерт	Молочный тарт с корицей: заварная начинка почти без яиц в песочной основе.	10	40	f	t	t	https://theunitools.com/recipes/melktert.jpg	\N
+400	Бандеха пайса	Поднос из фасоли, риса, мяса, шкварок, яйца, арепы, авокадо и жареного банана.	4	150	f	t	f	https://theunitools.com/recipes/bandeja-paisa.jpg	\N
+401	Колумбийский санкочо	Куриный суп с юккой, подорожником и кукурузой, сваренный на открытом огне.	8	110	f	t	f	https://theunitools.com/recipes/sancocho-colombiano.jpg	\N
+402	Куранто в кастрюле	Моллюски, мясо и картофельные лепёшки, сваренные слоями в одной кастрюле без воды.	6	60	f	t	f	https://theunitools.com/recipes/curanto-en-olla.jpg	\N
+403	Комплето	Хот-дог с горой размятого авокадо, помидоров и майонеза, цветами повторяющий флаг Италии.	4	10	f	t	t	https://theunitools.com/recipes/completo-italiano.jpg	\N
+406	Азербайджанская долма	Виноградные листья с бараниной, рисом и мятой, сваренные под гнётом, к чесночному мацони.	6	60	f	t	f	https://theunitools.com/recipes/dolma-azerbaijani.jpg	\N
+407	Бакинская пахлава	Ромбы из восьми слоёв теста с ореховой начинкой, под шафранным сиропом.	16	45	f	f	f	https://theunitools.com/recipes/pakhlava-baku.jpg	\N
+408	Иракский бирьяни	Рис с курицей, вермишелью, орехами и изюмом, где все части готовятся отдельно.	6	75	f	t	f	https://theunitools.com/recipes/iraqi-biryani.jpg	\N
+412	Мухаммара	Паста из печёного красного перца, грецких орехов и гранатового соуса, из Алеппо.	6	25	f	t	f	https://theunitools.com/recipes/muhammara.jpg	\N
+413	Шиш барак	Мелкие пельмени с бараниной, запечённые и сваренные в йогуртовом соусе с чесноком и мятой.	5	45	f	t	t	https://theunitools.com/recipes/shish-barak.jpg	\N
+414	Печенье АНЗАК	Овсяное печенье на золотом сиропе и соде, без яиц, хранящееся неделями.	20	18	f	t	t	https://theunitools.com/recipes/anzac-biscuits.jpg	\N
+418	Масляные тарталетки	Песочные корзиночки с начинкой из масла, сахара и сиропа, текучей или схватившейся.	12	22	f	f	f	https://theunitools.com/recipes/butter-tarts.jpg	\N
+420	Скир с ягодами	Домашний скир — исландский кисломолочный продукт, отцеженный до плотности, с черникой.	6	20	f	t	f	https://theunitools.com/recipes/skyr-with-berries.jpg	\N
+421	Исландский чёрный хлеб	Сладковатый ржаной хлеб, запечённый в закрытой форме двенадцать часов при низкой температуре.	12	720	f	f	t	https://theunitools.com/recipes/rugbraud.jpg	\N
+422	Катонг лакса	Рисовая лапша в кокосовом бульоне с креветками, нарезанная коротко и подаваемая с ложкой.	4	60	f	t	f	https://theunitools.com/recipes/laksa-singapore.jpg	\N
+423	Тост с кайей	Подсушенный хлеб с кокосово-яичным джемом кайя и холодным маслом, к яйцам всмятку.	4	50	f	t	f	https://theunitools.com/recipes/kaya-toast.jpg	\N
+424	Гуа бао	Паровая булочка, сложенная пополам, с тушёной грудинкой, маринованной зеленью и арахисом.	8	100	f	t	f	https://theunitools.com/recipes/gua-bao.jpg	\N
+425	Тайваньское ананасовое печенье	Квадратики песочного теста с плотной начинкой из уваренного ананаса и зимней дыни.	16	90	f	t	f	https://theunitools.com/recipes/pineapple-cake.jpg	\N
+426	Шанская лапша	Рисовая лапша с томатно-куриным соусом, маринованной зеленью и молотым арахисом.	4	45	f	t	f	https://theunitools.com/recipes/shan-noodles.jpg	\N
+427	Он но кхао свэ	Пшеничная лапша в густом кокосовом бульоне с курицей и нутовой мукой.	5	50	f	t	f	https://theunitools.com/recipes/ohn-no-khao-swe.jpg	\N
+428	Ном банчок	Холодная рисовая лапша с рыбно-кокосовым карри и горой сырых овощей и трав.	5	40	f	t	f	https://theunitools.com/recipes/num-banh-chok.jpg	\N
+429	Самло корко	Густой овощной суп с молотым обжаренным рисом, свининой и прахоком, из десятка овощей.	6	50	f	t	f	https://theunitools.com/recipes/samlor-korko.jpg	\N
+430	Торта фрита	Плоские лепёшки на топлёном жире, обжаренные во фритюре, которые в Уругвае пекут в дождь.	8	25	f	t	f	https://theunitools.com/recipes/torta-frita.jpg	\N
+431	Бусека	Густой суп из рубца с белой фасолью, чорисо и овощами, уругвайская зимняя еда.	6	210	f	t	f	https://theunitools.com/recipes/buseca.jpg	\N
+432	Как-ик	Красный суп из индейки с обожжёнными перцами и специями, блюдо майя кекчи.	6	120	f	t	f	https://theunitools.com/recipes/kak-ik.jpg	\N
+433	Рельенитос	Шарики из пюре спелого подорожника с начинкой из чёрной фасоли и шоколада.	6	45	f	t	f	https://theunitools.com/recipes/rellenitos.jpg	\N
+435	Сладкая фасоль	Сладкий десертный крем из красной фасоли с кокосовым молоком, бататом и печеньем.	8	90	f	t	f	https://theunitools.com/recipes/habichuelas-con-dulce.jpg	\N
+436	Тринидадская роти	Слоёная лепёшка, разбитая в лохмотья прямо на сковороде, к карри из курицы или козлятины.	6	40	f	t	f	https://theunitools.com/recipes/trinidad-roti.jpg	\N
+437	Пелау	Рис с курицей, голубиным горохом и кокосовым молоком, обжаренный в пережжённом сахаре.	6	60	f	t	f	https://theunitools.com/recipes/pelau.jpg	\N
+438	Айяка	Кукурузное тесто с мясным гисо, оливками и изюмом, завёрнутое в банановый лист.	10	90	f	t	f	https://theunitools.com/recipes/hallaca.jpg	\N
+439	Асадо негро	Говядина, обжаренная в пережжённом сахаре до чёрного и тушённая четыре часа.	8	260	f	t	f	https://theunitools.com/recipes/asado-negro.jpg	\N
+440	Пике мачо	Гора жареного картофеля с кусками говядины, сосисками, яйцом и острым перцем локото.	4	40	f	t	f	https://theunitools.com/recipes/pique-macho.jpg	\N
+442	Эквадорский севиче	Креветки в томатно-лаймовом бульоне, поданные холодными с попкорном и чипсами из подорожника.	5	20	f	t	f	https://theunitools.com/recipes/ceviche-ecuatoriano.jpg	\N
+444	Кариманьола	Продолговатые крокеты из юкки с мясной начинкой, обжаренные во фритюре.	6	45	f	t	f	https://theunitools.com/recipes/carimanola.jpg	\N
+445	Рис с кокосом	Рис на кокосовом молоке с карамелизованными шкварками кокоса, тёмный и слегка сладкий.	6	45	f	t	f	https://theunitools.com/recipes/arroz-con-coco.jpg	\N
+446	Кугелис	Картофельная запеканка из тёртого сырого картофеля с беконом и луком, со сметаной.	8	95	f	t	t	https://theunitools.com/recipes/kugelis.jpg	\N
+447	Шакотис	Ветвистый торт, испечённый слой за слоем на вращающемся вертеле над огнём.	16	90	f	f	t	https://theunitools.com/recipes/sakotis.jpg	\N
+448	Складраусис	Ржаная корзиночка с двумя слоями пюре — картофельным и морковным, с корицей.	10	30	f	t	f	https://theunitools.com/recipes/sklandrausis.jpg	\N
+450	Веривёрст	Кровяная колбаса с перловкой и майораном, запечённая с брусничным вареньем.	8	60	f	t	t	https://theunitools.com/recipes/verivorst.jpg	\N
+451	Кохуке	Творожный батончик в шоколадной глазури, эстонский десерт из холодильника.	12	10	f	f	f	https://theunitools.com/recipes/kohuke.jpg	\N
+455	Бухты	Дрожжевые булочки с повидлом или творогом, испечённые вплотную и слипшиеся боками.	12	35	f	f	f	https://theunitools.com/recipes/sladke-buchty.jpg	\N
+456	Штрукли	Рулет из тонкого теста с творожной начинкой, сваренный в ткани и нарезанный кружками.	8	45	f	t	f	https://theunitools.com/recipes/struklji.jpg	\N
+457	Краньская колбаса	Варёная свиная колбаса с чесноком, поданная с хреном и горчицей, защищённая по происхождению.	6	30	f	f	f	https://theunitools.com/recipes/kranjska-klobasa.jpg	\N
+458	Бегова чорба	Густой куриный суп с бамией, загущённый желтками со сметаной, боснийская классика.	6	75	f	t	f	https://theunitools.com/recipes/begova-corba.jpg	\N
+460	Охридская форель	Форель, запечённая целиком с лимоном и травами, из Охридского озера.	4	30	f	f	t	https://theunitools.com/recipes/ohridska-pastrmka.jpg	\N
+461	Пастрмалия	Лодочка из дрожжевого теста с солёной свининой и яйцом, из Штипа.	4	25	f	f	f	https://theunitools.com/recipes/pastrmajlija.jpg	\N
+462	Олья де карне	Костариканский мясной котёл с юккой, тыквой, кукурузой и бананом плантайн.	6	180	f	t	f	https://theunitools.com/recipes/olla-de-carne.jpg	\N
+463	Чорреадас	Оладьи из перемолотой свежей кукурузы, поданные со сметаной натилья.	4	20	f	t	f	https://theunitools.com/recipes/chorreadas.jpg	\N
+466	Вигорон	Варёная юкка со шкварками и капустным салатом, поданная на банановом листе.	5	90	f	t	f	https://theunitools.com/recipes/vigoron.jpg	\N
+467	Индио вьехо	Густое рагу из разобранной говядины, загущённое кукурузной масой и мятой.	5	120	f	t	f	https://theunitools.com/recipes/indio-viejo.jpg	\N
+468	Вори вори	Куриный суп с шариками из кукурузной муки и сыра, парагвайская зимняя еда.	6	70	f	t	f	https://theunitools.com/recipes/vori-vori.jpg	\N
+469	Мбеху	Крахмальная лепёшка с сыром, схваченная на сухой сковороде без единой капли воды.	6	25	f	t	f	https://theunitools.com/recipes/mbeju.jpg	\N
+470	Мусахан	Курица с луком и сумахом на лепёшке таббун, пропитанной оливковым маслом.	6	90	f	t	t	https://theunitools.com/recipes/musakhan.jpg	\N
+472	Оманская халва	Тягучая халва из крахмала, розовой воды и шафрана, вымешанная два часа в котле.	16	130	f	t	f	https://theunitools.com/recipes/omani-halwa.jpg	\N
+474	Зурбиан	Йеменский рис с бараниной и картофелем, окрашенный шафраном и запечённый под крышкой.	6	110	f	t	t	https://theunitools.com/recipes/zurbian.jpg	\N
+475	Фахса	Кипящее рагу из баранины в каменной миске, поданное с пенистым соусом хульба.	5	120	f	t	f	https://theunitools.com/recipes/fahsa.jpg	\N
+478	Решта	Алжирская домашняя лапша, пропаренная над бульоном и залитая белым соусом с курицей.	6	80	f	t	f	https://theunitools.com/recipes/rechta.jpg	\N
+479	Макруд	Ромбы из манной крупы с финиковой начинкой, обжаренные и вымоченные в мёде.	14	35	f	t	f	https://theunitools.com/recipes/makroud.jpg	\N
+480	Гураса	Толстая суданская лепёшка на сковороде, поданная с мясным рагу или соусом.	6	30	f	t	f	https://theunitools.com/recipes/gurasa.jpg	\N
+483	Витумбуа	Рисовые оладьи на кокосовом молоке, выпеченные в сковороде с полусферическими лунками.	8	30	f	t	f	https://theunitools.com/recipes/vitumbua.jpg	\N
+484	Эру	Камерунское рагу из мелко нарезанной листовой зелени с водяным листом и пальмовым маслом.	6	70	f	t	f	https://theunitools.com/recipes/eru.jpg	\N
+486	Клефтико	Баранина, запечённая пять часов в закрытой глиняной посуде без единой капли воды.	6	300	f	f	t	https://theunitools.com/recipes/kleftiko.jpg	\N
+489	Имарет	Мальтийские ромбы из теста с финиковой начинкой на анисе, обжаренные во фритюре.	12	40	f	t	f	https://theunitools.com/recipes/imqaret.jpg	\N
+490	Фергесе	Албанская запеканка из перца, помидоров и творожного сыра, поданная в глиняной сковороде.	4	35	f	t	t	https://theunitools.com/recipes/fergese.jpg	\N
+491	Баллокуме	Кукурузное печенье из Эльбасана, взбитое вручную в деревянной посуде на весенний праздник.	14	25	f	f	t	https://theunitools.com/recipes/ballokume.jpg	\N
+493	Мученичи	Дрожжевые восьмёрки, смазанные мёдом и посыпанные орехами, на день Сорока мучеников.	12	25	f	f	t	https://theunitools.com/recipes/mucenici.jpg	\N
+494	Куурдак	Баранина, жаренная в собственном курдючном жире с луком и картофелем.	5	55	f	t	f	https://theunitools.com/recipes/kuurdak.jpg	\N
+497	Чакка	Откинутый кисломолочный сыр с зеленью и чесноком, таджикская закуска к лепёшке.	6	0	f	f	f	https://theunitools.com/recipes/chakka.jpg	\N
+498	Хуушуур	Монгольские жареные чебуреки с бараниной, плоские и хрустящие, к Наадаму.	6	35	f	t	f	https://theunitools.com/recipes/khuushuur.jpg	\N
+499	Сутэй цай	Монгольский солёный чай с молоком и маслом, который варят, а не заваривают.	6	25	f	t	f	https://theunitools.com/recipes/suutei-tsai.jpg	\N
+501	Болани	Афганская лепёшка с картофельной или луковой начинкой, обжаренная на сухой сковороде.	6	30	f	t	f	https://theunitools.com/recipes/bolani.jpg	\N
+\.
+
+
+--
+-- Data for Name: user_allergens; Type: TABLE DATA; Schema: public; Owner: koma
+--
+
+COPY public.user_allergens (user_id, allergen_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: user_diets; Type: TABLE DATA; Schema: public; Owner: koma
+--
+
+COPY public.user_diets (user_id, diet_id, diet_kind) FROM stdin;
+\.
+
+
+--
+-- Data for Name: user_pantry; Type: TABLE DATA; Schema: public; Owner: koma
+--
+
+COPY public.user_pantry (user_id, ingredient_id, qty_g) FROM stdin;
+\.
+
+
+--
+-- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: koma
+--
+
+COPY public.users (id, login, password_hash, pevzner_diet_id, pevzner_kind, created_at) FROM stdin;
+\.
+
+
+--
+-- Name: allergens_id_seq; Type: SEQUENCE SET; Schema: public; Owner: koma
+--
+
+SELECT pg_catalog.setval('public.allergens_id_seq', 14, true);
+
+
+--
+-- Name: categories_id_seq; Type: SEQUENCE SET; Schema: public; Owner: koma
+--
+
+SELECT pg_catalog.setval('public.categories_id_seq', 12, true);
+
+
+--
+-- Name: cooking_methods_id_seq; Type: SEQUENCE SET; Schema: public; Owner: koma
+--
+
+SELECT pg_catalog.setval('public.cooking_methods_id_seq', 4, true);
+
+
+--
+-- Name: diets_id_seq; Type: SEQUENCE SET; Schema: public; Owner: koma
+--
+
+SELECT pg_catalog.setval('public.diets_id_seq', 18, true);
+
+
+--
+-- Name: ingredients_id_seq; Type: SEQUENCE SET; Schema: public; Owner: koma
+--
+
+SELECT pg_catalog.setval('public.ingredients_id_seq', 858, true);
+
+
+--
+-- Name: recipes_id_seq; Type: SEQUENCE SET; Schema: public; Owner: koma
+--
+
+SELECT pg_catalog.setval('public.recipes_id_seq', 502, true);
+
+
+--
+-- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: koma
+--
+
+SELECT pg_catalog.setval('public.users_id_seq', 2, true);
+
+
+--
+-- Name: allergens allergens_code_key; Type: CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.allergens
+    ADD CONSTRAINT allergens_code_key UNIQUE (code);
+
+
+--
+-- Name: allergens allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.allergens
+    ADD CONSTRAINT allergens_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: categories categories_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.categories
+    ADD CONSTRAINT categories_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: cooking_methods cooking_methods_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.cooking_methods
+    ADD CONSTRAINT cooking_methods_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: diet_excluded_allergens diet_excluded_allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.diet_excluded_allergens
+    ADD CONSTRAINT diet_excluded_allergens_pkey PRIMARY KEY (diet_id, allergen_id);
+
+
+--
+-- Name: diet_excluded_categories diet_excluded_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.diet_excluded_categories
+    ADD CONSTRAINT diet_excluded_categories_pkey PRIMARY KEY (diet_id, category_id);
+
+
+--
+-- Name: diet_excluded_methods diet_excluded_methods_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.diet_excluded_methods
+    ADD CONSTRAINT diet_excluded_methods_pkey PRIMARY KEY (diet_id, method_id);
+
+
+--
+-- Name: diets diets_id_kind_key; Type: CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.diets
+    ADD CONSTRAINT diets_id_kind_key UNIQUE (id, kind);
+
+
+--
+-- Name: diets diets_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.diets
+    ADD CONSTRAINT diets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: favorite_ingredients favorite_ingredients_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.favorite_ingredients
+    ADD CONSTRAINT favorite_ingredients_pkey PRIMARY KEY (user_id, ingredient_id);
+
+
+--
+-- Name: favorite_recipes favorite_recipes_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.favorite_recipes
+    ADD CONSTRAINT favorite_recipes_pkey PRIMARY KEY (user_id, recipe_id);
+
+
+--
+-- Name: ingredient_aliases ingredient_aliases_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.ingredient_aliases
+    ADD CONSTRAINT ingredient_aliases_pkey PRIMARY KEY (ingredient_id, alias);
+
+
+--
+-- Name: ingredient_allergens ingredient_allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.ingredient_allergens
+    ADD CONSTRAINT ingredient_allergens_pkey PRIMARY KEY (ingredient_id, allergen_id);
+
+
+--
+-- Name: ingredient_categories ingredient_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.ingredient_categories
+    ADD CONSTRAINT ingredient_categories_pkey PRIMARY KEY (ingredient_id, category_id);
+
+
+--
+-- Name: ingredients ingredients_code_key; Type: CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.ingredients
+    ADD CONSTRAINT ingredients_code_key UNIQUE (code);
+
+
+--
+-- Name: ingredients ingredients_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.ingredients
+    ADD CONSTRAINT ingredients_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: recipe_cooking_methods recipe_cooking_methods_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.recipe_cooking_methods
+    ADD CONSTRAINT recipe_cooking_methods_pkey PRIMARY KEY (recipe_id, method_id);
+
+
+--
+-- Name: recipe_ingredients recipe_ingredients_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.recipe_ingredients
+    ADD CONSTRAINT recipe_ingredients_pkey PRIMARY KEY (recipe_id, ingredient_id);
+
+
+--
+-- Name: recipe_steps recipe_steps_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.recipe_steps
+    ADD CONSTRAINT recipe_steps_pkey PRIMARY KEY (recipe_id, step_no);
+
+
+--
+-- Name: recipes recipes_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.recipes
+    ADD CONSTRAINT recipes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: user_allergens user_allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.user_allergens
+    ADD CONSTRAINT user_allergens_pkey PRIMARY KEY (user_id, allergen_id);
+
+
+--
+-- Name: user_diets user_diets_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.user_diets
+    ADD CONSTRAINT user_diets_pkey PRIMARY KEY (user_id, diet_id);
+
+
+--
+-- Name: user_pantry user_pantry_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.user_pantry
+    ADD CONSTRAINT user_pantry_pkey PRIMARY KEY (user_id, ingredient_id);
+
+
+--
+-- Name: users users_login_key; Type: CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_login_key UNIQUE (login);
+
+
+--
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: allergens_name_uq; Type: INDEX; Schema: public; Owner: koma
+--
+
+CREATE UNIQUE INDEX allergens_name_uq ON public.allergens USING btree (lower(name));
+
+
+--
+-- Name: categories_name_uq; Type: INDEX; Schema: public; Owner: koma
+--
+
+CREATE UNIQUE INDEX categories_name_uq ON public.categories USING btree (lower(name));
+
+
+--
+-- Name: cooking_methods_name_uq; Type: INDEX; Schema: public; Owner: koma
+--
+
+CREATE UNIQUE INDEX cooking_methods_name_uq ON public.cooking_methods USING btree (lower(name));
+
+
+--
+-- Name: diets_name_uq; Type: INDEX; Schema: public; Owner: koma
+--
+
+CREATE UNIQUE INDEX diets_name_uq ON public.diets USING btree (lower(name));
+
+
+--
+-- Name: ingredient_aliases_uq; Type: INDEX; Schema: public; Owner: koma
+--
+
+CREATE UNIQUE INDEX ingredient_aliases_uq ON public.ingredient_aliases USING btree (ingredient_id, lower(alias));
+
+
+--
+-- Name: ingredients_name_uq; Type: INDEX; Schema: public; Owner: koma
+--
+
+CREATE UNIQUE INDEX ingredients_name_uq ON public.ingredients USING btree (lower(name));
+
+
+--
+-- Name: recipe_ingredients_ingr_idx; Type: INDEX; Schema: public; Owner: koma
+--
+
+CREATE INDEX recipe_ingredients_ingr_idx ON public.recipe_ingredients USING btree (ingredient_id);
+
+
+--
+-- Name: recipes_author_idx; Type: INDEX; Schema: public; Owner: koma
+--
+
+CREATE INDEX recipes_author_idx ON public.recipes USING btree (author_id);
+
+
+--
+-- Name: recipes_time_idx; Type: INDEX; Schema: public; Owner: koma
+--
+
+CREATE INDEX recipes_time_idx ON public.recipes USING btree (cook_time_min);
+
+
+--
+-- Name: favorite_recipes favorite_recipes_access; Type: TRIGGER; Schema: public; Owner: koma
+--
+
+CREATE TRIGGER favorite_recipes_access BEFORE INSERT OR UPDATE ON public.favorite_recipes FOR EACH ROW EXECUTE FUNCTION public.check_favorite_recipe_access();
+
+
+--
+-- Name: diet_excluded_allergens diet_excluded_allergens_allergen_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.diet_excluded_allergens
+    ADD CONSTRAINT diet_excluded_allergens_allergen_id_fkey FOREIGN KEY (allergen_id) REFERENCES public.allergens(id) ON DELETE CASCADE;
+
+
+--
+-- Name: diet_excluded_allergens diet_excluded_allergens_diet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.diet_excluded_allergens
+    ADD CONSTRAINT diet_excluded_allergens_diet_id_fkey FOREIGN KEY (diet_id) REFERENCES public.diets(id) ON DELETE CASCADE;
+
+
+--
+-- Name: diet_excluded_categories diet_excluded_categories_category_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.diet_excluded_categories
+    ADD CONSTRAINT diet_excluded_categories_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.categories(id) ON DELETE CASCADE;
+
+
+--
+-- Name: diet_excluded_categories diet_excluded_categories_diet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.diet_excluded_categories
+    ADD CONSTRAINT diet_excluded_categories_diet_id_fkey FOREIGN KEY (diet_id) REFERENCES public.diets(id) ON DELETE CASCADE;
+
+
+--
+-- Name: diet_excluded_methods diet_excluded_methods_diet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.diet_excluded_methods
+    ADD CONSTRAINT diet_excluded_methods_diet_id_fkey FOREIGN KEY (diet_id) REFERENCES public.diets(id) ON DELETE CASCADE;
+
+
+--
+-- Name: diet_excluded_methods diet_excluded_methods_method_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.diet_excluded_methods
+    ADD CONSTRAINT diet_excluded_methods_method_id_fkey FOREIGN KEY (method_id) REFERENCES public.cooking_methods(id) ON DELETE CASCADE;
+
+
+--
+-- Name: favorite_ingredients favorite_ingredients_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.favorite_ingredients
+    ADD CONSTRAINT favorite_ingredients_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(id) ON DELETE CASCADE;
+
+
+--
+-- Name: favorite_ingredients favorite_ingredients_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.favorite_ingredients
+    ADD CONSTRAINT favorite_ingredients_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: favorite_recipes favorite_recipes_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.favorite_recipes
+    ADD CONSTRAINT favorite_recipes_recipe_id_fkey FOREIGN KEY (recipe_id) REFERENCES public.recipes(id) ON DELETE CASCADE;
+
+
+--
+-- Name: favorite_recipes favorite_recipes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.favorite_recipes
+    ADD CONSTRAINT favorite_recipes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: ingredient_aliases ingredient_aliases_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.ingredient_aliases
+    ADD CONSTRAINT ingredient_aliases_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(id) ON DELETE CASCADE;
+
+
+--
+-- Name: ingredient_allergens ingredient_allergens_allergen_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.ingredient_allergens
+    ADD CONSTRAINT ingredient_allergens_allergen_id_fkey FOREIGN KEY (allergen_id) REFERENCES public.allergens(id) ON DELETE CASCADE;
+
+
+--
+-- Name: ingredient_allergens ingredient_allergens_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.ingredient_allergens
+    ADD CONSTRAINT ingredient_allergens_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(id) ON DELETE CASCADE;
+
+
+--
+-- Name: ingredient_categories ingredient_categories_category_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.ingredient_categories
+    ADD CONSTRAINT ingredient_categories_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.categories(id) ON DELETE CASCADE;
+
+
+--
+-- Name: ingredient_categories ingredient_categories_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.ingredient_categories
+    ADD CONSTRAINT ingredient_categories_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(id) ON DELETE CASCADE;
+
+
+--
+-- Name: recipe_cooking_methods recipe_cooking_methods_method_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.recipe_cooking_methods
+    ADD CONSTRAINT recipe_cooking_methods_method_id_fkey FOREIGN KEY (method_id) REFERENCES public.cooking_methods(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: recipe_cooking_methods recipe_cooking_methods_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.recipe_cooking_methods
+    ADD CONSTRAINT recipe_cooking_methods_recipe_id_fkey FOREIGN KEY (recipe_id) REFERENCES public.recipes(id) ON DELETE CASCADE;
+
+
+--
+-- Name: recipe_ingredients recipe_ingredients_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.recipe_ingredients
+    ADD CONSTRAINT recipe_ingredients_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: recipe_ingredients recipe_ingredients_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.recipe_ingredients
+    ADD CONSTRAINT recipe_ingredients_recipe_id_fkey FOREIGN KEY (recipe_id) REFERENCES public.recipes(id) ON DELETE CASCADE;
+
+
+--
+-- Name: recipe_steps recipe_steps_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.recipe_steps
+    ADD CONSTRAINT recipe_steps_recipe_id_fkey FOREIGN KEY (recipe_id) REFERENCES public.recipes(id) ON DELETE CASCADE;
+
+
+--
+-- Name: recipes recipes_author_fk; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.recipes
+    ADD CONSTRAINT recipes_author_fk FOREIGN KEY (author_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_allergens user_allergens_allergen_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.user_allergens
+    ADD CONSTRAINT user_allergens_allergen_id_fkey FOREIGN KEY (allergen_id) REFERENCES public.allergens(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_allergens user_allergens_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.user_allergens
+    ADD CONSTRAINT user_allergens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_diets user_diets_diet_id_diet_kind_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.user_diets
+    ADD CONSTRAINT user_diets_diet_id_diet_kind_fkey FOREIGN KEY (diet_id, diet_kind) REFERENCES public.diets(id, kind) ON DELETE CASCADE;
+
+
+--
+-- Name: user_diets user_diets_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.user_diets
+    ADD CONSTRAINT user_diets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_pantry user_pantry_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.user_pantry
+    ADD CONSTRAINT user_pantry_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_pantry user_pantry_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.user_pantry
+    ADD CONSTRAINT user_pantry_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: users users_pevzner_diet_id_pevzner_kind_fkey; Type: FK CONSTRAINT; Schema: public; Owner: koma
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_pevzner_diet_id_pevzner_kind_fkey FOREIGN KEY (pevzner_diet_id, pevzner_kind) REFERENCES public.diets(id, kind) ON DELETE SET NULL (pevzner_diet_id);
+
+
+--
+-- PostgreSQL database dump complete
+--
+
+\unrestrict nAQloNDmyag86nHXDsrkT4j27AUqU33Ebkr0pr4seqPZISkgst1YkEVhiaYQij0
+
