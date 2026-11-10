@@ -35,8 +35,28 @@ bash .github/android/check.sh
 
 ```
 
-Команда выполняет JVM-тесты, Robolectric UI smoke, проверку Roborazzi,
-Android Lint и сборку debug APK. Используются реальные ViewModel и экраны,
+Команда выполняет все проверки. В GitHub Actions они запускаются параллельно
+в пяти независимых jobs: `Unit`, `UI`, `Screenshots`, `Lint`, `Build`.
+Ошибка одной проверки не отменяет остальные; у каждой собственный статус
+и артефакты. Каждая job самостоятельно компилирует нужный код.
+
+Отдельный набор можно запустить из корня:
+
+```bash
+bash .github/android/check.sh unit
+bash .github/android/check.sh ui
+bash .github/android/check.sh screenshots
+bash .github/android/check.sh lint
+bash .github/android/check.sh build
+
+```
+
+`Unit` выполняет обычные JVM-тесты, `UI` — методы с `@Category(UiSmoke::class)`,
+`Screenshots` — методы с `@Category(Screenshot::class)`. Эти группы не пересекаются.
+Новые UI и screenshot-тесты помечайте соответствующей категорией.
+Локальные отчёты тестов сохраняются отдельно для каждой группы.
+
+Используются реальные ViewModel и экраны,
 фиксированный демо-каталог и fake-репозитории. Backend, аккаунты и OAuth
 не нужны. HTTP DTO в текущем каркасе отсутствуют; преобразования локальных
 записей в domain проверяются на фиксированных примерах. Instrumented-тесты
@@ -72,7 +92,7 @@ bash .github/android/check.sh
 
 Workflow запускается на PR и push в `main` при изменениях Android-кода,
 его workflow или скриптов `.github/android/`. Markdown и backend не запускают
-Android-проверки. Не назначайте пропускаемый `Android / checks` обязательным
+Android-проверки. Не назначайте пропускаемые Android-проверки обязательными
 для всех PR: GitHub оставит ожидаемый статус Pending для изменений вне фильтра.
 Настройки защиты веток этим workflow не меняются.
 

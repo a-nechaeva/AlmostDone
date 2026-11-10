@@ -20,13 +20,29 @@ concurrency:
   cancel-in-progress: true
 jobs:
   checks:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: unit
+            name: Unit
+          - suite: ui
+            name: UI
+          - suite: screenshots
+            name: Screenshots
+          - suite: lint
+            name: Lint
+          - suite: build
+            name: Build
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: actions/cache@v4
+      - uses: actions/cache/restore@v4
+        id: gradle-cache
         with:
           path: |
             .local/android-ci/gradle/caches
@@ -34,22 +50,22 @@ jobs:
             .local/android-ci/sdk
           key: android-linux-jdk21-${{ hashFiles('mobile/**/*.gradle.kts', 'mobile/gradle/**', 'mobile/gradle.properties', '.github/android/**') }}
           restore-keys: android-linux-jdk21-
-      - name: Unit, Robolectric, Roborazzi verify, lint and debug APK
-        run: bash .github/android/check.sh
+      - name: Run ${{ matrix.name }}
+        run: bash .github/android/check.sh "${{ matrix.suite }}"
       - name: Reports and screenshot evidence
-        if: always()
+        if: always() && matrix.suite != 'build'
         uses: actions/upload-artifact@v4
         with:
-          name: android-reports
+          name: android-${{ matrix.suite }}-reports
           include-hidden-files: true
           retention-days: 5
           path: |
             .local/android-ci/build/reports/
             .local/android-ci/build/test-results/
             .local/android-ci/build/outputs/roborazzi/
-            mobile/app/src/test/screenshots/
+            ${{ matrix.suite == 'screenshots' && 'mobile/app/src/test/screenshots/' || '' }}
       - name: Debug APK
-        if: success()
+        if: success() && matrix.suite == 'build'
         uses: actions/upload-artifact@v4
         with:
           name: android-debug
@@ -57,3 +73,12 @@ jobs:
           retention-days: 5
           if-no-files-found: error
           path: .local/android-ci/build/outputs/apk/debug/app-debug.apk
+      - name: Save Gradle and SDK cache
+        if: success() && matrix.suite == 'unit' && steps.gradle-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .local/android-ci/gradle/caches
+            .local/android-ci/gradle/wrapper
+            .local/android-ci/sdk
+          key: ${{ steps.gradle-cache.outputs.cache-primary-key }}

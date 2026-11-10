@@ -27,6 +27,7 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
@@ -72,6 +73,7 @@ class AppSmokeTest {
             hasText(value) and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)
         )
 
+    @Category(UiSmoke::class)
     @Test
     fun demoLoginPantryDishesRecipeAndBack() {
         dependencies.session.value.value = false
@@ -96,6 +98,7 @@ class AppSmokeTest {
         assertTrue(dependencies.session.value.value)
     }
 
+    @Category(UiSmoke::class)
     @Test
     fun loadingBecomesContentWhenFakeEmits() {
         dependencies.catalogSource = MutableSharedFlow(replay = 1)
@@ -108,6 +111,7 @@ class AppSmokeTest {
             .assertDoesNotExist()
     }
 
+    @Category(UiSmoke::class)
     @Test
     fun emptyPantryCanOpenEmptySearchAndResetIt() {
         dependencies.household.values.value = Household()
@@ -125,6 +129,7 @@ class AppSmokeTest {
         awaitText("Пока нет продуктов")
     }
 
+    @Category(UiSmoke::class)
     @Test
     fun readErrorRetryAndFailedWriteUseRealViewModels() {
         dependencies.household.failRead = true
@@ -148,9 +153,11 @@ class AppSmokeTest {
         }
     }
 
-    @Test fun dishesScreenshot() = screenshot("dishes.png", 1f)
+    @Category(Screenshot::class) @Test fun dishesScreenshot() = screenshot("dishes.png", 1f)
 
-    @Test fun dishesLargeFontScreenshot() = screenshot("dishes-large-font.png", 1.5f)
+    @Category(Screenshot::class)
+    @Test
+    fun dishesLargeFontScreenshot() = screenshot("dishes-large-font.png", 1.5f)
 
     private fun screenshot(name: String, fontScale: Float) {
         check(
