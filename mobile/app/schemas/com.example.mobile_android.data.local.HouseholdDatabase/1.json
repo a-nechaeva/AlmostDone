@@ -1,0 +1,162 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "78f86ac984281d1c99fe014695605e9f",
+    "entities": [
+      {
+        "tableName": "pantry",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`ingredientId` TEXT NOT NULL, `amount` REAL, `unit` TEXT, PRIMARY KEY(`ingredientId`))",
+        "fields": [
+          {
+            "fieldPath": "ingredientId",
+            "columnName": "ingredientId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "amount",
+            "columnName": "amount",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "unit",
+            "columnName": "unit",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "ingredientId"
+          ]
+        }
+      },
+      {
+        "tableName": "favorites",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`itemId` TEXT NOT NULL, `ingredient` INTEGER NOT NULL, PRIMARY KEY(`itemId`, `ingredient`))",
+        "fields": [
+          {
+            "fieldPath": "itemId",
+            "columnName": "itemId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ingredient",
+            "columnName": "ingredient",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "itemId",
+            "ingredient"
+          ]
+        }
+      },
+      {
+        "tableName": "recipe_plan",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`recipeId` TEXT NOT NULL, `servings` INTEGER NOT NULL, PRIMARY KEY(`recipeId`))",
+        "fields": [
+          {
+            "fieldPath": "recipeId",
+            "columnName": "recipeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "servings",
+            "columnName": "servings",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "recipeId"
+          ]
+        }
+      },
+      {
+        "tableName": "manual_purchases",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`ingredientId` TEXT NOT NULL, `amount` REAL NOT NULL, `unit` TEXT NOT NULL, PRIMARY KEY(`ingredientId`))",
+        "fields": [
+          {
+            "fieldPath": "ingredientId",
+            "columnName": "ingredientId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "amount",
+            "columnName": "amount",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "unit",
+            "columnName": "unit",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "ingredientId"
+          ]
+        }
+      },
+      {
+        "tableName": "checked_purchases",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`ingredientId` TEXT NOT NULL, PRIMARY KEY(`ingredientId`))",
+        "fields": [
+          {
+            "fieldPath": "ingredientId",
+            "columnName": "ingredientId",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "ingredientId"
+          ]
+        }
+      },
+      {
+        "tableName": "metadata",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`key` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY(`key`))",
+        "fields": [
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "key"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '78f86ac984281d1c99fe014695605e9f')"
+    ]
+  }
+}
