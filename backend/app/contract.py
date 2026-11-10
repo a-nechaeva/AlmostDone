@@ -257,3 +257,69 @@ def graph(
         else:
             edges.append({"source": e["from"], "target": e["to"], "kind": "unlocks"})
     return {"scope": "snapshot", "nodes": nodes, "edges": edges, "unrepresented_recipe_ids": []}
+
+
+# --- каталог для текущего Android-клиента (демо, не из контракта) ---------------------------------
+
+ANDROID_ALLERGENS = {"milk": "MILK", "eggs": "EGGS", "gluten": "GLUTEN", "nuts": "NUTS", "peanuts": "NUTS",
+                     "fish": "FISH", "soy": "SOY"}
+ANDROID_METHODS = {"stove": "STOVE", "oven": "OVEN", "microwave": "MICROWAVE", "no_cook": "NO_COOK"}
+ANDROID_MAX_SERVINGS = 12  # Recipe в приложении требует servings в 1..12
+
+
+def android_catalog(catalog: Catalog, demo_pantry: Iterable[str], version: str) -> dict[str, Any]:
+    """Каталог в формате доменных моделей Android (Ingredient, Recipe, PackageOffer).
+
+    Нужен, пока приложение считает подбор само (локальный RecipeEngine). Особенности:
+      * всё в граммах, цены в копейках;
+      * базовые продукты и «по вкусу» в состав не попадают — в приложении нет «есть всегда»;
+      * рецепты больше чем на 12 порций пересчитываются на 12 (граммы пропорционально);
+      * аллергены — только те, что есть в enum приложения; если какой-то не помещается,
+        allergen_data_complete = false.
+    """
+    from dishgraph import dish_metrics
+
+    staples = catalog.staples
+    ingredients = [
+        {
+            "id": code,
+            "name": ing.name,
+            "unit": "GRAM",
+            "grams_per_piece": ing.grams_per_piece,
+            "offer": {"quantity": {"value": ing.package_g, "unit": "GRAM"},
+                      "price_kopecks": int(round(ing.package_price * 100))},
+        }
+        for code, ing in sorted(catalog.ingredients.items(), key=lambda kv: kv[1].name)
+    ]
+    recipes = []
+    for r in catalog.recipes:
+        servings = min(r.servings, ANDROID_MAX_SERVINGS)
+        factor = servings / r.servings
+        items = [i for i in r.required_items if i.code not in staples and i.qty_g]
+        m = dish_metrics(r, {}, catalog)
+        mapped = {ANDROID_ALLERGENS[a] for a in m.allergens if a in ANDROID_ALLERGENS}
+        recipes.append(
+            {
+                "id": r.id,
+                "title": r.title,
+                "ingredients": [{"ingredient_id": i.code, "quantity": {"value": round(i.qty_g * factor, 2), "unit": "GRAM"}}
+                                for i in items],
+                "steps": list(r.steps),
+                "minutes": max(1, r.cook_time_min),
+                "servings": servings,
+                "nutrition": {"kcal": round(m.kcal), "protein": round(m.protein), "fat": round(m.fat),
+                              "carbs": round(m.carbs)},
+                "allergens": sorted(mapped),
+                "allergen_data_complete": all(a in ANDROID_ALLERGENS for a in m.allergens),
+                "dietary": {"vegetarian": None, "vegan": None,
+                            "gluten_free": "gluten" not in m.allergens, "lactose_free": "milk" not in m.allergens},
+                "methods": [ANDROID_METHODS[x] for x in r.methods],
+                "photo": r.image_url or "",
+            }
+        )
+    return {
+        "catalog_version": version,
+        "demo_pantry": [c for c in demo_pantry if c in catalog.ingredients],
+        "ingredients": ingredients,
+        "recipes": [r for r in recipes if r["ingredients"]],
+    }

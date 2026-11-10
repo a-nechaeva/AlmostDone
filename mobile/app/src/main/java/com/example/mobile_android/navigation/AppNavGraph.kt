@@ -33,6 +33,8 @@ import com.example.mobile_android.feature.favorites.*
 import com.example.mobile_android.feature.pantry.*
 import com.example.mobile_android.feature.profile.*
 import com.example.mobile_android.feature.recipe.*
+import com.example.mobile_android.feature.recognition.RecognitionRoute
+import com.example.mobile_android.feature.recognition.RecognitionViewModel
 import com.example.mobile_android.feature.shopping.*
 import com.example.mobile_android.ui.components.*
 
@@ -196,16 +198,7 @@ private fun ApplicationNavigation(
                 }
             }
         }
-        composable("receipt") {
-            FeatureScaffold(null, nav, "Фото чека") {
-                EmptyPanel(
-                    "Распознавание пока недоступно",
-                    "В демонстрационном режиме добавьте нужные позиции вручную.",
-                    "Добавить вручную",
-                    { nav.popBackStack() },
-                )
-            }
-        }
+        composable("receipt") { ReceiptRoute(c, nav) }
     }
 }
 
@@ -330,6 +323,24 @@ private fun FloatingNavigation(selected: AppTab, onSelect: (AppTab) -> Unit) {
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ReceiptRoute(c: AppDependencies, nav: NavHostController) {
+    val server = c.server
+    if (server != null) {
+        val vm: RecognitionViewModel = injectedViewModel { RecognitionViewModel(server, c.household) }
+        FeatureScaffold(null, nav, "Фото чека") { RecognitionRoute(vm) { nav.popBackStack() } }
+    } else {
+        FeatureScaffold(null, nav, "Фото чека") {
+            EmptyPanel(
+                "Распознавание пока недоступно",
+                "В демонстрационном режиме добавьте нужные позиции вручную.",
+                "Добавить вручную",
+                { nav.popBackStack() },
+            )
         }
     }
 }

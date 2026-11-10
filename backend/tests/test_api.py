@@ -254,3 +254,16 @@ def test_import_from_empty_pantry(codes):
         {"line_id": line["line_id"], "ingredient_id": milk, "quantity": line["suggested_quantity"]}]}))
     # 1 л из чека → 1000 мл → у молока в каталоге только граммы → 1000 г
     assert out["pantry"] == [{"ingredient_id": milk, "name": "Молоко", "quantity": {"value": 1000, "unit": "g"}}]
+
+
+def test_android_catalog(client):
+    body = ok(client.get(f"{API}/catalog/android"))
+    assert len(body["recipes"]) == 406 and len(body["ingredients"]) == 857 and len(body["demo_pantry"]) == 20
+    ids = {i["id"] for i in body["ingredients"]}
+    staples = {c for c, i in client.app.state.catalog.ingredients.items() if i.is_staple}
+    for r in body["recipes"]:  # ограничения Recipe в приложении
+        assert 1 <= r["servings"] <= 12 and r["minutes"] > 0 and r["ingredients"]
+        assert all(i["quantity"]["value"] > 0 and i["ingredient_id"] in ids for i in r["ingredients"])
+        assert not staples & {i["ingredient_id"] for i in r["ingredients"]}
+        assert set(r["allergens"]) <= {"MILK", "EGGS", "GLUTEN", "NUTS", "FISH", "SOY"}
+        assert set(r["methods"]) <= {"STOVE", "OVEN", "MICROWAVE", "NO_COOK"}

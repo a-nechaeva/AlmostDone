@@ -272,6 +272,12 @@ def create_app(settings: Settings | None = None, provider_factory: Callable[[], 
         return {"source": catalog_source_name, "catalog_version": catalog_version,
                 "ingredients": len(catalog.ingredients), "recipes": len(catalog.recipes)}
 
+    @api.get("/catalog/android", tags=["service"],
+             summary="Каталог в формате моделей Android-приложения (демо, не из контракта)")
+    def catalog_android() -> dict[str, Any]:
+        demo = [c for c, q in DemoState.with_demo_pantry(catalog).pantry.items()]
+        return contract.android_catalog(catalog, demo, catalog_version)
+
     @api.get("/me/state", tags=["profile"])
     def me_state() -> dict[str, Any]:
         return {"state_version": state.state_version, "catalog_version": catalog_version, "user_id": DEMO_USER_ID}
