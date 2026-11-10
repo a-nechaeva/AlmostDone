@@ -140,7 +140,100 @@ catalog = catalog_from_dict(row["catalog"])
 - **best_purchases** — жадный алгоритм: на каждом шаге докупаем то, что даёт больше всего новых блюд
   на рубль; уже купленные упаковки учитываются для следующих блюд.
 
+## Распознавание чеков и продуктов (`dishgraph.recognition`)
+
+Фото или скриншот чека (`receipt`) либо фото продуктов (`products`) → список строк
+`RecognitionLine` в формате контракта API (`POST /recognitions`). Результат **всегда подтверждает пользователь**.
+
+```python
+from dishgraph.recognition import GigaChatProvider, recognize, InvalidImage, RecognitionError
+
+provider = GigaChatProvider()                    # настройки из GIGACHAT_* (см. ниже), один раз при старте
+try:
+    lines = recognize(image_bytes, "receipt", catalog, provider, index)   # index — тот же SearchIndex
+except InvalidImage:      # не JPEG/PNG или больше 10 MiB → 415 / 413
+    ...
+except RecognitionError:  # провайдер недоступен, ответ не разобрать → status failed / 503
+    ...
+[line.to_dict() for line in lines]
+# {"line_id": "line-1", "raw_name": "ЯЙЦО С1 10ШТ",
+#  "candidates": [{"ingredient_id": "egg", "name": "Яйцо куриное", "confidence": 0.95}],
+#  "suggested_quantity": {"value": 10, "unit": "pcs"}, "status": "matched"}
+```
+
+Как работает:
+
+1. Тип файла определяется по первым байтам (JPEG/PNG), размер — до 10 MiB.
+2. [Промпты](dishgraph/recognition/prompt.py):
+   - **чек — один запрос:** картинка + каталог (`название (синонимы) → код`), модель читает строки чека
+     и сразу выбирает коды. Текст чека не даёт ей выдумывать продукты;
+   - **фото продуктов — два запроса:** сначала картинка **без** каталога — модель перечисляет, что видит,
+     по-русски; затем текст без картинки — найденные названия сопоставляются с каталогом. Если показать
+     модели каталог вместе с фото, она начинает «узнавать» продукты из списка, которых на фото нет.
+3. [Разбор ответа](dishgraph/recognition/parse.py): снимает markdown, отбрасывает неизвестные коды,
+   приводит уверенность к 0–1, оставляет до 3 кандидатов, переводит кг → г и л → мл, не принимает
+   «1,5 штуки» и выдуманные количества; одинаковые строки склеивает и складывает количество
+   («Творог» ×3 по 200 г → 600 г).
+4. **Проверка выбора модели** по названию (`SearchIndex.similarity`): совсем не похоже
+   («колбаса» → сосиски, «болгарский перец» → помидоры) — подсказка убирается; слабо похоже —
+   уверенность не выше 0.7. На фото продуктов уверенность не выше той, с которой модель узнала продукт.
+5. Если подходящего кода нет, кандидатов ищет `SearchIndex` по строке и её первому слову (только начало
+   названия, без базовых продуктов) — с уверенностью не выше 0.6, такая строка всегда `ambiguous`.
+6. Статус: `matched` — лучший кандидат ≥ 0.8 и отрыв от второго ≥ 0.2; `ambiguous` — есть кандидаты,
+   но уверенности мало; `unmatched` — кандидатов нет.
+
+**Что ожидать.** Чеки распознаются хорошо: модель читает текст. Фото холодильника — заметно хуже:
+модель может пропустить продукты или назвать то, чего нет, и результат меняется от запуска к запуску.
+Поэтому экран подтверждения обязателен, а для демо лучше заранее проверить конкретное фото.
+
+**Провайдер сменный** ([providers.py](dishgraph/recognition/providers.py)): объект с методами
+`complete(image, mime, prompt) -> str` и (необязательно) `complete_text(prompt) -> str` для сопоставления;
+без него сопоставление делает наш поиск. В тестах — `FakeProvider`, для работы — `GigaChatProvider`
+(SDK `gigachat` 0.2.x; проверено вживую на GigaChat-2-Pro, 2-Max и 3-Ultra).
+
+### Настройка GigaChat
+
+```bash
+.venv/bin/pip install -e '.[llm]'
+```
+
+Файл `engine/.env` (в git не попадает):
+
+```
+GIGACHAT_CREDENTIALS=<ключ авторизации из личного кабинета>
+GIGACHAT_MODEL=<модель с поддержкой изображений, см. --list-models>
+GIGACHAT_SCOPE=GIGACHAT_API_PERS
+GIGACHAT_CA_BUNDLE_FILE=certs/russian_trusted_root_ca.pem
+```
+
+**Сертификат Минцифры.** Серверы GigaChat подписаны Russian Trusted Root CA, которого нет в стандартном
+наборе Python — без него будет `CERTIFICATE_VERIFY_FAILED: self-signed certificate in certificate chain`.
+Скачать с Госуслуг и перевести в PEM (из папки `engine`):
+
+```bash
+mkdir -p certs && curl -fsSL https://gu-st.ru/content/Other/doc/russian_trusted_root_ca.cer -o certs/russian_trusted_root_ca.cer
+openssl x509 -in certs/russian_trusted_root_ca.cer -inform DER -out certs/russian_trusted_root_ca.pem 2>/dev/null || cp certs/russian_trusted_root_ca.cer certs/russian_trusted_root_ca.pem
+```
+
+Сертификат публичный, его можно хранить в репозитории — тот же файл нужен серверу.
+`GIGACHAT_VERIFY_SSL_CERTS=False` отключает проверку целиком — только для локальной отладки.
+
+### Проверка на своих фото
+
+```bash
+.venv/bin/python -m dishgraph.recognition.cli --list-models
+.venv/bin/python -m dishgraph.recognition.cli photos/check1.jpg photos/check2.jpg --kind receipt
+.venv/bin/python -m dishgraph.recognition.cli photos/*.jpg --kind receipt --expected expected.json --report report.json
+.venv/bin/python -m dishgraph.recognition.cli --show-prompt --kind products
+.venv/bin/python -m dishgraph.recognition.cli photos/fridge/IMG_1.jpg --kind products --raw   # сырые ответы модели
+```
+
+`expected.json` — что на самом деле на фото: `{"check1.jpg": ["egg", "milk", "cheese"]}`. CLI печатает,
+что распознано, и считает точность (сколько найденного верно) и полноту (сколько нужного найдено).
+Без сети: `--fake answer.json` подставляет готовый ответ модели.
+
 ## Дальше
 
-- [ ] День 3: распознавание чека через LLM → `recognize_products(image, source) -> [{raw_name, code, confidence}]`.
+- [x] Распознавание чека и фото продуктов через LLM (`dishgraph.recognition`).
+- [ ] Прогнать 5–10 реальных чеков и фото холодильника, подобрать модель и поправить промпт.
 - [ ] День 4: подобрать демо-кладовку, при которой граф выглядит лучше всего.
