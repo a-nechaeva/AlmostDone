@@ -12,6 +12,9 @@
     graph = build_graph(options, catalog)
     singles = best_single_purchases(options, catalog)
     plan = best_purchases(options, catalog, budget=500)
+
+    index = SearchIndex(catalog)            # один раз при старте
+    index.search("малако")                  # автодополнение → [SearchHit(code="milk", ...)]
 """
 
 from .core import (
@@ -29,6 +32,7 @@ from .graph import build_graph
 from .loader import CatalogError, catalog_from_dict, load_catalog
 from .models import EQUIPMENT, Catalog, Ingredient, Recipe, RecipeItem
 from .purchases import BudgetPlan, PlanStep, SinglePurchase, best_purchases, best_single_purchases
+from .search import SearchHit, SearchIndex, search_ingredients
 
 __all__ = [
     "EQUIPMENT",
@@ -42,6 +46,8 @@ __all__ = [
     "PlanStep",
     "Recipe",
     "RecipeItem",
+    "SearchHit",
+    "SearchIndex",
     "SinglePurchase",
     "best_purchases",
     "best_single_purchases",
@@ -54,4 +60,5 @@ __all__ = [
     "missing_grams",
     "normalize_pantry",
     "reachable_dishes",
+    "search_ingredients",
 ]
