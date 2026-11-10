@@ -1,0 +1,77 @@
+"""The server delegates computations instead of implementing alternative rules."""
+from uuid import uuid4
+
+import pytest
+from fastapi.testclient import TestClient
+
+from ..support.catalog import make_catalog
+from almostdone_server.errors import APIError
+from almostdone_server.main import create_app
+from almostdone_server.services.models import default_user
+from ..support.http import FILTERS, auth, check
+from ..support.catalog import custom_catalog
+
+
+def test_recommendation_order_and_options_come_from_reachable_dishes(monkeypatch):
+    catalog, user = make_catalog(custom_catalog()), default_user()
+    original, calls = catalog.gateway.engine.reachable_dishes, []
+
+    def calculate(*args, **kwargs):
+        result = original(*args, **kwargs)
+        calls.append(result)
+        return result
+
+    monkeypatch.setattr(catalog.gateway.engine, "reachable_dishes", calculate)
+    result = catalog.matches(user, FILTERS, 2)
+    assert len(calls) == 1
+    assert [option for _, option in result] == calls[0]
+    assert [detail["recipe"]["id"] for detail, _ in result] == [option.recipe.id for option in calls[0]]
+
+
+def test_graph_calls_ready_engine_with_original_snapshot_options(monkeypatch):
+    app = create_app()
+    engine = app.state.service.catalog.gateway.engine
+    original, calls = engine.build_graph, []
+
+    def calculate(options, catalog):
+        calls.append([option.recipe.id for option in options])
+        return original(options, catalog)
+
+    monkeypatch.setattr(engine, "build_graph", calculate)
+    with TestClient(app) as client:
+        headers = auth(app)
+        body = {"request_id": str(uuid4()), "servings": 2, "filters": FILTERS, "visibility": "visible", "limit": 1}
+        page = check(app, client.post("/api/v1/recommendations", json=body, headers=headers), "RecommendationPage", 201)
+        graph = check(app, client.get("/api/v1/recommendations/" + page["snapshot_id"] + "/graph", headers=headers), "RecommendationGraph")["graph"]
+        assert len(calls) == 1
+        assert {node["recipe_id"] for node in graph["nodes"] if node["kind"] == "recipe"} == set(calls[0])
+        assert "engine_options" not in page
+
+
+@pytest.mark.parametrize("field,value,capability", [
+    ("q", "Рис", "recipe_title_search"),
+])
+def test_missing_engine_filter_is_rejected(field, value, capability):
+    catalog = make_catalog(custom_catalog())
+    with pytest.raises(APIError) as error:
+        catalog.matches(default_user(), {**FILTERS, field: value}, 2)
+    assert error.value.status == 503
+    assert error.value.details[0]["field"] == capability
+
+
+def test_unconvertible_stock_is_not_sent_to_engine_as_unlimited_presence():
+    data = custom_catalog()
+    data["ingredients"][0]["allowed_units"] = ["g", "ml"]
+    user = default_user()
+    user["pantry"]["rice"] = {"value": 100, "unit": "ml"}
+    with pytest.raises(APIError) as error:
+        make_catalog(data).detail("rice_tomato", user, 2)
+    assert error.value.details[0]["field"] == "pantry_unit_conversion:rice"
+
+
+def test_incomplete_allergen_data_is_not_evaluated_by_server_rules():
+    catalog, user = make_catalog(custom_catalog()), default_user()
+    user["preferences"]["excluded_allergens"] = ["milk"]
+    with pytest.raises(APIError) as error:
+        catalog.detail("tomato_cheese", user, 2)
+    assert error.value.details[0]["field"] == "incomplete_allergen_data"

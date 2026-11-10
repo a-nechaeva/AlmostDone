@@ -207,6 +207,7 @@ tempCodeRunnerFile.py
 
 # Local development files
 /.local/
+/server/.local/
 /.agents/
 /AGENTS.md
 /docs/agent-workflow.md
