@@ -22,6 +22,8 @@ import com.example.mobile_android.navigation.AppRoot
 import com.example.mobile_android.ui.theme.AlmostReadyTheme
 import com.github.takahirom.roborazzi.RoborazziOptions
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.yandex.authsdk.YandexAuthOptions
+import com.yandex.authsdk.YandexAuthSdk
 import java.io.File
 import kotlinx.coroutines.flow.*
 import org.junit.Assert.*
@@ -31,6 +33,7 @@ import org.junit.Test
 import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
@@ -144,19 +147,36 @@ class AppSmokeTest {
         dependencies.household.failRead = false
         text("Повторить").assertHasClickAction().performClick()
         awaitText("Мои продукты")
+        val original =
+            dependencies.household.values.value.pantry.single { it.ingredientId == "eggs" }
         dependencies.household.failWrite = true
-        compose.onNodeWithContentDescription("Удалить Яйца").performScrollTo().performClick()
+        compose
+            .onNodeWithContentDescription("Изменить количество: Яйца")
+            .performScrollTo()
+            .performClick()
+        text("Удалить яйца").performScrollTo().assertHasClickAction().performClick()
         awaitText("Не удалось сохранить изменения. Повторите действие.")
-        assertTrue(dependencies.household.values.value.pantry.any { it.ingredientId == "eggs" })
+        assertEquals(
+            original,
+            dependencies.household.values.value.pantry.single { it.ingredientId == "eggs" },
+        )
+        text("Удалить яйца").assertIsEnabled()
         dependencies.household.failWrite = false
-        compose.onNodeWithContentDescription("Удалить Яйца").performScrollTo().performClick()
+        text("Удалить яйца").performScrollTo().performClick()
         compose.waitUntil(10_000) {
             dependencies.household.values.value.pantry.none { it.ingredientId == "eggs" }
         }
-        text("Отменить удаление").performScrollTo().performClick()
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithText("Количество, шт.").fetchSemanticsNodes().isEmpty()
+        }
+        text("Отменить удаление").performScrollTo().assertIsDisplayed().performClick()
         compose.waitUntil(10_000) {
             dependencies.household.values.value.pantry.any { it.ingredientId == "eggs" }
         }
+        assertEquals(
+            original,
+            dependencies.household.values.value.pantry.single { it.ingredientId == "eggs" },
+        )
     }
 
     private fun openGraph(fontScale: Float = 1f) {
@@ -221,8 +241,11 @@ class AppSmokeTest {
         dishText("Добавить в покупки").performClick()
         compose.waitUntil(10_000) { dependencies.household.values.value.manualPurchases.size == 1 }
         tab("Покупки").performClick()
-        awaitText("Из рецептов и выбранных предложений")
-        text("Твёрдый сыр").performScrollTo().assertIsDisplayed()
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithTag("shopping-ui-list").fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithTag("shopping-ui-list").performScrollToNode(hasText("Твёрдый сыр"))
+        text("Твёрдый сыр").assertIsDisplayed()
         assertEquals(
             23000L,
             shoppingQuote(DemoCatalog.catalog, dependencies.household.values.value).totalKopecks,
@@ -377,6 +400,10 @@ private class SmokeSession : SessionRepository {
         value.value = true
     }
 
+    override suspend fun signInWithToken(token: String) {
+        value.value = true
+    }
+
     override suspend fun signOut() {
         value.value = false
     }
@@ -393,4 +420,7 @@ private class SmokeDependencies : AppDependencies {
     override val household = FakeHousehold()
     override val preferences = FakePreferences()
     override val session = SmokeSession()
+    override val yandexAuth by lazy {
+        YandexAuthSdk.create(YandexAuthOptions(RuntimeEnvironment.getApplication()))
+    }
 }

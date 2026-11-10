@@ -21,6 +21,7 @@ class ShoppingViewModel(
     private val household: HouseholdRepository,
     private val preferences: PreferencesRepository,
     private val savedState: SavedStateHandle,
+    private val suggestions: ShoppingSuggestionSource = FakeShoppingSuggestionSource(),
 ) : ViewModel() {
     private val refresh = MutableStateFlow(0)
     val actions = ScreenActions(viewModelScope)
@@ -47,7 +48,7 @@ class ShoppingViewModel(
                         h,
                         shoppingQuote(c, h),
                         budget,
-                        suggestSinglePurchase(c, h, p, budget),
+                        suggestions.suggestion(c, budget),
                         warnings,
                     )
                 }

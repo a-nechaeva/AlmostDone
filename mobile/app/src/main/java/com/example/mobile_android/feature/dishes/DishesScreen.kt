@@ -41,6 +41,7 @@ fun DishesScreen(
     view: DishesView,
     changeView: (DishesView) -> Unit,
     addPurchase: () -> Unit,
+    queryText: String = state.filters.query,
 ) {
     var filtersOpen by rememberSaveable { mutableStateOf(false) }
     if (filtersOpen)
@@ -142,7 +143,7 @@ fun DishesScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                SearchField(state.filters.query, query, "Найти блюдо", Modifier.weight(1f))
+                SearchField(queryText, query, "Найти блюдо", Modifier.weight(1f))
                 IconButton(
                     { filtersOpen = true },
                     colors =

@@ -41,5 +41,7 @@ interface SessionRepository {
 
     suspend fun signIn(login: String, password: String)
 
+    suspend fun signInWithToken(token: String)
+
     suspend fun signOut()
 }

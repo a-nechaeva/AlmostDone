@@ -1,22 +1,31 @@
 package com.example.mobile_android.feature.shopping
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.createSavedStateHandle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.mobile_android.feature.common.ActionState
 import com.example.mobile_android.ui.*
 import com.example.mobile_android.ui.components.*
@@ -33,51 +42,91 @@ fun ShoppingScreen(
     addSuggestion: () -> Unit,
     dishes: () -> Unit,
     dismiss: () -> Unit,
+    openRecipe: ((String) -> Unit)? = null,
+    addBudgetExample: ((ShoppingBudgetExample) -> Unit)? = null,
 ) {
+    val factory = remember {
+        viewModelFactory { initializer { ShoppingBudgetViewModel(createSavedStateHandle()) } }
+    }
+    val budgetVm: ShoppingBudgetViewModel = viewModel(key = "shopping-budget", factory = factory)
+    val form by budgetVm.form.collectAsStateWithLifecycle()
     var budgetOpen by rememberSaveable { mutableStateOf(false) }
-    var budgetText by
-        rememberSaveable(state.budgetKopecks) {
-            mutableStateOf(money(state.budgetKopecks).removeSuffix(" ₽"))
+    if (budgetOpen) {
+        val back = {
+            if (form.result != ShoppingBudgetResult.Idle) budgetVm.clearResult()
+            else budgetOpen = false
         }
-    if (budgetOpen)
-        AlertDialog(
-            onDismissRequest = { budgetOpen = false },
-            title = { Text("Бюджет покупок") },
-            text = {
-                OutlinedTextField(
-                    budgetText,
-                    { budgetText = it.take(16) },
-                    label = { Text("Бюджет, ₽") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    isError = parseMoney(budgetText) == null,
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    {
-                        parseMoney(budgetText)?.let(budget)
-                        budgetOpen = false
-                    },
-                    enabled = parseMoney(budgetText) != null,
-                ) {
-                    Text("Сохранить")
+        Dialog(
+            onDismissRequest = back,
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            BackHandler(onBack = back)
+            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                Scaffold(topBar = { BrandTopBar("План покупок", onBack = back) }) { padding ->
+                    ShoppingBudgetContent(
+                        form = form,
+                        catalog = state.catalog,
+                        modifier = Modifier.padding(padding).consumeWindowInsets(padding),
+                        change = budgetVm::textChanged,
+                        submit = {
+                            parseMoney(form.text)?.let(budget)
+                            budgetVm.submit()
+                        },
+                        retry = budgetVm::retry,
+                        edit = budgetVm::clearResult,
+                        openRecipe = openRecipe,
+                        addExample = addBudgetExample,
+                        action = action,
+                        dismissAction = dismiss,
+                    )
                 }
-            },
-            dismissButton = { TextButton({ budgetOpen = false }) { Text("Отмена") } },
-        )
-    LazyColumn(
-        contentPadding = PaddingValues(20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item { PageHeading("Покупки", "Из рецептов и выбранных предложений") }
-        item { DemoNotice() }
-        item {
-            OutlinedButton({ budgetOpen = true }, Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                Text("Бюджет: ${money(state.budgetKopecks)} · изменить")
             }
         }
+    }
+    ShoppingContent(
+        state,
+        action,
+        toggle,
+        removeRecipe,
+        removeManual,
+        checkout,
+        addSuggestion,
+        dishes,
+        dismiss,
+        { budgetOpen = true },
+        openRecipe,
+    )
+}
+
+@Composable
+internal fun ShoppingContent(
+    state: ShoppingState,
+    action: ActionState,
+    toggle: (String) -> Unit,
+    removeRecipe: (String) -> Unit,
+    removeManual: (String) -> Unit,
+    checkout: () -> Unit,
+    addSuggestion: () -> Unit,
+    dishes: () -> Unit,
+    dismiss: () -> Unit,
+    openBudget: () -> Unit,
+    openRecipe: ((String) -> Unit)? = null,
+) {
+    val allChecked = state.quote.lines.isNotEmpty() && state.quote.lines.all { it.checked }
+    LazyColumn(
+        modifier = Modifier.testTag("shopping-ui-list"),
+        contentPadding = PaddingValues(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        item {
+            PageHeading(
+                if (allChecked) "Покупка отмечена" else "Что докупить",
+                "Из выбранных рецептов",
+            )
+        }
+        item { DemoNotice() }
         item { ActionMessage(action, dismiss) }
+        if (action.pending) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
         if (state.planWarnings.isNotEmpty())
             item {
                 Text(
@@ -87,145 +136,239 @@ fun ShoppingScreen(
             }
         if (state.quote.lines.isEmpty())
             item {
-                EmptyPanel(
-                    "Список пуст",
-                    if (state.household.plan.isEmpty()) "Добавьте рецепт или предложенную покупку."
-                    else "Для выбранных рецептов продукты уже есть дома.",
-                    "Выбрать блюда",
-                    dishes,
+                ShoppingEmpty(
+                    "Список пока пуст",
+                    "Добавьте недостающие продукты из рецепта или посмотрите пример покупок на свой бюджет.",
+                    "Подобрать покупки",
+                    openBudget,
                 )
+                TextButton(dishes, Modifier.fillMaxWidth()) { Text("Выбрать блюда") }
             }
         items(state.quote.lines, key = { it.ingredientId }) { line ->
             Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                colors =
+                    CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(24.dp),
             ) {
                 Row(
                     Modifier.fillMaxWidth()
-                        .heightIn(min = 64.dp)
+                        .heightIn(min = 112.dp)
                         .toggleable(
                             line.checked,
                             enabled = !action.pending && line.buyQuantity != null,
                             role = Role.Checkbox,
                             onValueChange = { toggle(line.ingredientId) },
                         )
-                        .semantics(mergeDescendants = true) {}
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.Top,
                 ) {
                     Checkbox(
                         line.checked,
                         onCheckedChange = null,
+                        modifier = Modifier.padding(top = 2.dp),
                         enabled = !action.pending && line.buyQuantity != null,
                     )
-                    Column(Modifier.weight(1f).padding(start = 8.dp)) {
+                    Column(
+                        Modifier.weight(1f).padding(start = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
                         Text(
                             state.catalog.ingredient(line.ingredientId)?.name
-                                ?: "Неизвестный продукт"
+                                ?: "Неизвестный продукт",
+                            textDecoration = if (line.checked) TextDecoration.LineThrough else null,
+                        )
+                        Text(
+                            if (line.buyQuantity == null) "Нет сведений об упаковке"
+                            else "Купить упаковками: ${quantityLabel(line.buyQuantity)}",
+                            style = MaterialTheme.typography.bodySmall,
                         )
                         Text(
                             "Нужно: ${quantityLabel(line.required)}",
                             style = MaterialTheme.typography.bodySmall,
-                        )
-                        Text(
-                            if (line.buyQuantity == null) "Нет сведений об упаковке"
-                            else "Купить: ${quantityLabel(line.buyQuantity)}",
-                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        Text(
+                            if (line.priceKopecks == null) "Нет оценки"
+                            else "≈${money(line.priceKopecks)}",
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        if (line.checked)
+                            Text("Куплено", style = MaterialTheme.typography.labelLarge)
                     }
-                    Text(money(line.priceKopecks), Modifier.padding(start = 8.dp))
                 }
             }
         }
         if (state.quote.lines.isNotEmpty()) {
             item {
-                val total = state.quote.totalKopecks
-                Text(
-                    "Итого по демо-ценам: ${money(total)}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    if (total == null) "Остаток бюджета неизвестен"
-                    else if (total <= state.budgetKopecks)
-                        "Остаток: ${money(state.budgetKopecks - total)}"
-                    else "Выше бюджета на ${money(total - state.budgetKopecks)}"
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Итого примерно", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        money(state.quote.totalKopecks),
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        "Демо-цены за докупаемые упаковки, ₽. В магазине могут отличаться.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    if (state.quote.totalKopecks == null)
+                        Text(
+                            "Стоимость и остаток бюджета неизвестны",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                }
             }
             item {
-                Text(
-                    "Отметка покупки не меняет продукты дома. Добавьте купленное отдельной кнопкой.",
-                    style = MaterialTheme.typography.bodySmall,
+                ShoppingNotice(
+                    if (allChecked) "Готово" else "Отметка не меняет продукты дома",
+                    "Покупки отмечаются только в списке. Перенос домой — отдельное действие.",
                 )
             }
+            if (allChecked)
+                item {
+                    OutlinedButton(
+                        { state.quote.lines.firstOrNull()?.let { toggle(it.ingredientId) } },
+                        Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                        enabled = !action.pending,
+                    ) {
+                        Text(
+                            if (state.quote.lines.size == 1) "Вернуть в список"
+                            else "Снять первую отметку",
+                        )
+                    }
+                }
             item {
                 PrimaryButton(
                     checkout,
-                    Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    Modifier.fillMaxWidth(),
                     enabled = !action.pending && state.quote.lines.any { it.checked },
                 ) {
                     Text("Добавить купленное домой")
                 }
             }
+            item {
+                PrimaryButton(openBudget, Modifier.fillMaxWidth()) {
+                    Text("Подобрать покупки под бюджет")
+                }
+            }
         }
+        if (state.quote.lines.isNotEmpty() || state.suggestion != null)
+            item {
+                val suggestion = state.suggestion
+                Card(
+                    Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(18.dp),
+                    colors =
+                        CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                ) {
+                    Column(
+                        Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text("Лучшая одиночная покупка", fontWeight = FontWeight.Bold)
+                        Text(
+                            "Фиксированный демо-пример, без учёта запасов и профиля.",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        if (suggestion == null)
+                            Text(
+                                "Подходящей покупки нет. Проверьте бюджет, продукты и ограничения.",
+                            )
+                        else {
+                            Text(
+                                "${suggestion.ingredient.name} · ${quantityLabel(suggestion.quantity)} · ≈${money(suggestion.priceKopecks)}",
+                            )
+                            Text(
+                                "Вариантов блюд: ${suggestion.recipeIds.size}. Это альтернативы, а не общий план приготовления.",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            suggestion.recipeIds.forEach { id ->
+                                val title = state.catalog.recipe(id)?.title ?: "Рецепт недоступен"
+                                if (openRecipe != null)
+                                    TextButton({ openRecipe(id) }) { Text(title) }
+                                else Text(title)
+                            }
+                            PrimaryButton(
+                                addSuggestion,
+                                Modifier.fillMaxWidth(),
+                                enabled = !action.pending,
+                            ) {
+                                Text("Добавить предложенную покупку")
+                            }
+                        }
+                    }
+                }
+            }
         if (state.household.plan.isNotEmpty())
             item { Text("Выбранные рецепты", style = MaterialTheme.typography.titleMedium) }
         items(state.household.plan, key = { "plan-${it.recipeId}" }) { planned ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            TextButton({ removeRecipe(planned.recipeId) }, enabled = !action.pending) {
                 Text(
-                    "${state.catalog.recipe(planned.recipeId)?.title ?: "Рецепт недоступен"} · ${planned.servings} порц.",
-                    Modifier.weight(1f),
+                    "Убрать рецепт: ${state.catalog.recipe(planned.recipeId)?.title ?: "Рецепт недоступен"} · ${planned.servings} порц.",
                 )
-                IconButton({ removeRecipe(planned.recipeId) }, enabled = !action.pending) {
-                    Icon(
-                        Icons.Default.Close,
-                        "Убрать рецепт из покупок: ${state.catalog.recipe(planned.recipeId)?.title.orEmpty()}",
-                    )
-                }
             }
         }
         items(state.household.manualPurchases, key = { "manual-${it.ingredientId}" }) { manual ->
             TextButton({ removeManual(manual.ingredientId) }, enabled = !action.pending) {
                 Text(
-                    "Убрать предложение: ${state.catalog.ingredient(manual.ingredientId)?.name.orEmpty()}"
+                    "Убрать предложение: ${state.catalog.ingredient(manual.ingredientId)?.name.orEmpty()}",
                 )
             }
         }
-        item { HorizontalDivider() }
-        item {
+    }
+}
+
+@Composable
+internal fun ShoppingNotice(title: String, body: String, positive: Boolean = true) {
+    val background =
+        if (positive) MaterialTheme.colorScheme.tertiaryContainer
+        else MaterialTheme.colorScheme.primaryContainer
+    val foreground =
+        if (positive) MaterialTheme.colorScheme.onTertiaryContainer
+        else MaterialTheme.colorScheme.onPrimaryContainer
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = background,
+    ) {
+        Column(
+            Modifier.fillMaxWidth().padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             Text(
-                "Лучшая одиночная покупка",
-                style = MaterialTheme.typography.titleLarge,
+                title,
                 fontWeight = FontWeight.Bold,
+                color = foreground,
+            )
+            Text(
+                body,
+                style = MaterialTheme.typography.bodySmall,
+                color = foreground,
             )
         }
-        val suggestion = state.suggestion
-        if (suggestion == null)
-            item {
-                Text(
-                    "В пределах бюджета подходящего предложения нет. Проверьте бюджет, продукты и ограничения профиля."
-                )
-            }
-        else {
-            item {
-                Text(
-                    "${suggestion.ingredient.name} · ${quantityLabel(suggestion.quantity)} · ≈${money(suggestion.priceKopecks)}"
-                )
-            }
-            item {
-                Text(
-                    "Откроет вариантов блюд: ${suggestion.recipeIds.size}. Это альтернативы, а не общий план приготовления."
-                )
-            }
-            item {
-                PrimaryButton(
-                    addSuggestion,
-                    Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                    enabled = !action.pending,
-                ) {
-                    Text("Добавить предложенную покупку")
-                }
-            }
+    }
+}
+
+@Composable
+internal fun ShoppingEmpty(title: String, body: String, button: String, click: () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().padding(top = 64.dp, bottom = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(24.dp),
+    ) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.primaryContainer,
+        ) {
+            Icon(
+                Icons.Outlined.ShoppingBag,
+                null,
+                Modifier.padding(26.dp).size(36.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
         }
+        Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text(body, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        PrimaryButton(click, Modifier.fillMaxWidth()) { Text(button) }
     }
 }

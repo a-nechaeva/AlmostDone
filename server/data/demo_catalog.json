@@ -1,0 +1,110 @@
+{
+  "demo": true,
+  "source_name": "Синтетический каталог для локальной разработки",
+  "ingredients": [
+    {
+      "code": "rice",
+      "name": "Рис",
+      "package_g": 500,
+      "package_price": 100,
+      "kcal": 350,
+      "protein": 7,
+      "fat": 1,
+      "carbs": 78,
+      "display_unit": "g",
+      "allergens": [],
+      "allergen_data_complete": false,
+      "aliases": [
+        "рисовая крупа"
+      ]
+    },
+    {
+      "code": "tomato",
+      "name": "Томаты",
+      "package_g": 500,
+      "package_price": 150,
+      "kcal": 20,
+      "protein": 1,
+      "fat": 0.2,
+      "carbs": 4,
+      "display_unit": "g",
+      "allergens": [],
+      "allergen_data_complete": false,
+      "aliases": [
+        "помидор",
+        "помидоры"
+      ]
+    },
+    {
+      "code": "cheese",
+      "name": "Сыр",
+      "package_g": 200,
+      "package_price": 230,
+      "kcal": 350,
+      "protein": 25,
+      "fat": 27,
+      "carbs": 1,
+      "display_unit": "g",
+      "allergens": [
+        "milk"
+      ],
+      "allergen_data_complete": false,
+      "aliases": []
+    }
+  ],
+  "recipes": [
+    {
+      "id": "rice_tomato",
+      "title": "Рис с томатами",
+      "servings": 2,
+      "cook_time_min": 25,
+      "needs_stove": true,
+      "items": [
+        {
+          "code": "rice",
+          "qty_g": 200
+        },
+        {
+          "code": "tomato",
+          "qty_g": 100
+        }
+      ],
+      "steps": [
+        "Отварите рис.",
+        "Добавьте нарезанные томаты."
+      ],
+      "dietary_facts": {
+        "vegan": true,
+        "vegetarian": true,
+        "gluten_free": true,
+        "lactose_free": true
+      }
+    },
+    {
+      "id": "tomato_cheese",
+      "title": "Томаты с сыром",
+      "servings": 2,
+      "cook_time_min": 5,
+      "items": [
+        {
+          "code": "tomato",
+          "qty_g": 200
+        },
+        {
+          "code": "cheese",
+          "qty_g": 100
+        }
+      ],
+      "steps": [
+        "Нарежьте томаты и сыр."
+      ],
+      "dietary_facts": {
+        "vegan": false,
+        "vegetarian": null,
+        "gluten_free": null,
+        "lactose_free": false
+      },
+      "no_cook": true
+    }
+  ]
+}

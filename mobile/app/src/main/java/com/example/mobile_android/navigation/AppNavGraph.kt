@@ -1,6 +1,7 @@
 package com.example.mobile_android.navigation
 
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,6 +38,8 @@ import com.example.mobile_android.feature.recognition.RecognitionRoute
 import com.example.mobile_android.feature.recognition.RecognitionViewModel
 import com.example.mobile_android.feature.shopping.*
 import com.example.mobile_android.ui.components.*
+import com.yandex.authsdk.YandexAuthLoginOptions
+import com.yandex.authsdk.YandexAuthResult
 
 enum class AppTab(val route: String, val label: String, val icon: ImageVector) {
     PANTRY("pantry", "Продукты", Icons.Outlined.Kitchen),
@@ -59,6 +62,14 @@ fun AppRoot(container: AppDependencies) {
     val state by session.state.collectAsStateWithLifecycle()
     val form by session.form.collectAsStateWithLifecycle()
     val action by session.actions.state.collectAsStateWithLifecycle()
+    val yandexLauncher =
+        rememberLauncherForActivityResult(container.yandexAuth.contract) { result ->
+            when (result) {
+                is YandexAuthResult.Success -> session.signInWithYandex(result.token.value)
+                is YandexAuthResult.Failure -> session.yandexAuthFailed()
+                YandexAuthResult.Cancelled -> Unit
+            }
+        }
     LoadContent(state, session::retry) { signedIn ->
         if (!signedIn)
             LoginScreen(
@@ -67,6 +78,7 @@ fun AppRoot(container: AppDependencies) {
                 session::loginChanged,
                 session::passwordChanged,
                 session::signIn,
+                { yandexLauncher.launch(YandexAuthLoginOptions()) },
                 session.actions::dismiss,
             )
         else ApplicationNavigation(container, session::signOut, action, session.actions::dismiss)
@@ -209,6 +221,7 @@ private fun DishesRoute(c: AppDependencies, nav: NavHostController, hidden: Bool
     }
     val state by vm.state.collectAsStateWithLifecycle()
     val action by vm.actions.state.collectAsStateWithLifecycle()
+    val queryText by vm.query.collectAsStateWithLifecycle()
     FeatureScaffold(if (hidden) null else AppTab.DISHES, nav, "Скрытые блюда") {
         val selectedView by vm.view.collectAsStateWithLifecycle()
         val view = DishesView.valueOf(selectedView)
@@ -235,6 +248,7 @@ private fun DishesRoute(c: AppDependencies, nav: NavHostController, hidden: Bool
                         view,
                         vm::viewChanged,
                         vm::addPurchase,
+                        queryText = queryText,
                     )
                 }
             }

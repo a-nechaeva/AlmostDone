@@ -13,7 +13,12 @@ data class RecipeState(
     val favorite: Boolean,
     val planned: Boolean,
     val requirements: List<Shortage>,
-)
+) {
+    val canAddToShopping: Boolean
+        get() = match?.let {
+            it.dietary.status == Suitability.ALLOWED && it.uncertainQuantityIds.isEmpty()
+        } ?: false
+}
 
 class RecipeViewModel(
     private val catalog: CatalogRepository,
@@ -64,11 +69,16 @@ class RecipeViewModel(
         savedState["servings"] = value.coerceIn(1, 12)
     }
 
-    fun favorite() = actions.run { household.toggleFavorite(id, false) }
+    fun favorite() {
+        val data = (state.value as? ScreenState.Ready)?.data ?: return
+        if (data.match == null) return
+        actions.run { household.toggleFavorite(id, false) }
+    }
 
     fun addToShopping() {
         val data = (state.value as? ScreenState.Ready)?.data ?: return
         val match = data.match ?: return
+        if (!data.canAddToShopping) return
         actions.run("Рецепт добавлен в список покупок") { household.planRecipe(id, match.servings) }
     }
 }

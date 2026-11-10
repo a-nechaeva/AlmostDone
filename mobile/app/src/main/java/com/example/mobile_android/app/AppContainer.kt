@@ -12,6 +12,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
+import com.yandex.authsdk.YandexAuthOptions
+import com.yandex.authsdk.YandexAuthSdk
 
 class AlmostReadyApplication : Application() {
     val container: AppContainer by lazy { AppContainer(this) }
@@ -26,6 +28,7 @@ interface AppDependencies {
     /** Сервер «Почти готово»; null — работа только на встроенном демо-каталоге (тесты, превью). */
     val server: ServerConnection?
         get() = null
+    val yandexAuth: YandexAuthSdk
 }
 
 class AppContainer(context: Context) : AppDependencies {
@@ -46,6 +49,8 @@ class AppContainer(context: Context) : AppDependencies {
     private val localPreferences = LocalPreferences(context.applicationContext.householdPreferences)
     override val preferences: PreferencesRepository = localPreferences
     override val session: SessionRepository = localPreferences
+    override val yandexAuth: YandexAuthSdk =
+        YandexAuthSdk.create(YandexAuthOptions(context.applicationContext))
 
     init {
         network.onConnected = { catalog, demoPantry -> seedDemoPantry(catalog, demoPantry) }
