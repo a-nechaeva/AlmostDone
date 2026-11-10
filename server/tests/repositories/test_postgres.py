@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 
 from almostdone_server.main import create_app
 from almostdone_server.repositories.postgres import PostgresStore
+from almostdone_server.errors import StorageUnavailable
 from ..support.http import check, mutation, png
 
 DSN = os.environ.get("ALMOSTDONE_TEST_DATABASE_URL")
@@ -191,3 +192,11 @@ def test_preferences_are_saved_in_existing_relations_and_loaded_after_restart(da
         assert preferences["gluten_free"] is True
         assert preferences["excluded_allergens"] == ["milk"]
         assert preferences["diet_table_id"] == "pevzner_15"
+
+
+def test_statement_timeout_is_reported_as_temporary_storage_failure(database):
+    store = PostgresStore(database)
+    with pytest.raises(StorageUnavailable):
+        with store.transaction() as db:
+            db.execute("SET LOCAL statement_timeout = '1ms'")
+            db.execute("SELECT pg_sleep(0.05)")

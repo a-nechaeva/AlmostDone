@@ -28,6 +28,11 @@ def test_repeated_allergen_query_preserves_hidden_recipe_context():
         body = {'request_id': str(uuid4()), 'servings': 2, 'filters': {**FILTERS, 'exclude_allergens': ['milk', 'eggs']}, 'visibility': 'hidden', 'limit': 20}
         page = check(app, client.post('/api/v1/recommendations', json=body, headers=headers), 'RecommendationPage', 201)
         card = page['items'][0]
+        assert card['suitability']['status'] == 'hidden'
+        reason, = card['suitability']['reasons']
+        assert reason['code'] == 'excluded_allergen'
+        assert reason['ingredient_ids'] == ['cheese']
+        assert reason['restriction_ids'] == ['milk']
         detail = check(app, client.get('/api/v1/recipes/' + card['id'], params=[('servings', 2), ('exclude_allergens', 'milk'), ('exclude_allergens', 'eggs')], headers=headers), 'RecipeDetail')
         assert detail['recipe'] == card
         assert client.get('/api/v1/recipes/' + card['id'], params={'exclude_allergens': 'unknown'}, headers=headers).status_code == 422

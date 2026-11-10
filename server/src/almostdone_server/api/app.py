@@ -9,21 +9,20 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 
-from ..errors import APIError, invalid
+from ..errors import (APIError, invalid, StorageError, StorageUnavailable,
+                      StorageSchemaError, StorageConflict, StorageValueError)
 from .rate_limit import RateLimiter
 from .routes import create_router
 
 
 def create_http_app(contract, service, rate_limiter=None):
-    store = service.store
-
     @asynccontextmanager
     async def lifespan(app):
         async def cleanup():
             while True:
                 try:
-                    await run_in_threadpool(store.purge)
-                except APIError:
+                    await run_in_threadpool(service.purge)
+                except (APIError, StorageError):
                     logging.getLogger(__name__).warning("Storage cleanup deferred; retrying in 60 seconds")
                 await asyncio.sleep(60)
 
@@ -63,6 +62,18 @@ def create_http_app(contract, service, rate_limiter=None):
     @app.exception_handler(RequestValidationError)
     async def request_error(request, error):
         return await api_error(request, invalid("Некорректный запрос"))
+
+    @app.exception_handler(StorageError)
+    async def storage_error(request, error):
+        if isinstance(error, StorageValueError):
+            presented = invalid(str(error), error.field)
+        elif isinstance(error, StorageConflict):
+            presented = APIError(409, "context_changed", str(error))
+        elif isinstance(error, (StorageUnavailable, StorageSchemaError)):
+            presented = APIError(503, "service_unavailable", str(error))
+        else:
+            presented = APIError(500, "internal_error", "Ошибка хранилища")
+        return await api_error(request, presented)
 
     @app.exception_handler(HTTPException)
     async def http_error(request, error):

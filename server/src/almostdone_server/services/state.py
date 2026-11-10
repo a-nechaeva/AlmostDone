@@ -54,6 +54,8 @@ class UserStateService:
         stored = copy.deepcopy(state)
         stored.pop("version")
         if self.store.persistent:
+            # The current schema has no diabetes field. Retain it only in the
+            # process-local state record; do not add columns or infer a DB value.
             stored["preferences"].pop("diabetes", None)
             stored["pantry"] = {code: None if quantity is None else
                                 {"value": self.grams(code, quantity), "unit": "g"}

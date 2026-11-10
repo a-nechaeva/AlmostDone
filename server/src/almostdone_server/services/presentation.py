@@ -36,6 +36,8 @@ def graph(catalog, details, options):
         for item in edge.get("add", []):
             counts[item["code"]] = counts.get(item["code"], 0) + item["packs"]
         if counts != {item["code"]: item["packs"] for item in target["items"]}:
+            # The engine edge cannot satisfy the API's exact package-addition
+            # contract. Return 503 until graph transitions are fixed in engine/.
             raise unsupported("graph_package_transitions")
         edges.append({**base, "kind": "extends", "add_cost": money(kopecks(edge["add_cost"])),
                       "add": [catalog.shopping_item(item["code"], item["packs"], item["cost"]) for item in edge["add"]]})

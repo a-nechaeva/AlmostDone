@@ -20,6 +20,8 @@ class PostgresStore:
         from psycopg.rows import dict_row
 
         self.psycopg, self.row_factory, self.dsn = psycopg, dict_row, dsn
+        # The existing schema has no session, replay or state-version tables.
+        # Keep those records process-local until a separate schema change is agreed.
         self.runtime = MemoryRecords()
 
     @contextmanager
@@ -31,7 +33,9 @@ class PostgresStore:
                     connection.execute("SET LOCAL lock_timeout = '5s'")
                     connection.execute("SET LOCAL statement_timeout = '15s'")
                     yield Transaction(records, connection)
-        except (self.psycopg.OperationalError, self.psycopg.errors.DeadlockDetected):
+        except self.psycopg.OperationalError:
+            # This includes deadlocks, lock timeouts and statement timeouts.
+            # They are temporary storage failures, mapped to HTTP 503 by the API.
             raise StorageUnavailable("База данных временно недоступна") from None
         except (self.psycopg.errors.UndefinedTable, self.psycopg.errors.UndefinedColumn):
             raise StorageSchemaError("Схема БД не соответствует db/schema.sql") from None

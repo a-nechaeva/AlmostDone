@@ -137,3 +137,28 @@ def test_runtime_state_is_not_published_when_sql_commit_fails(monkeypatch):
             repository.runtime.put(db.runtime, "sessions", "test", {"user_id": "1"})
     assert str(error.value) == "База данных временно недоступна"
     assert repository.runtime._data == before
+
+
+@pytest.mark.parametrize("failure_name", ["DeadlockDetected", "LockNotAvailable", "QueryCanceled"])
+def test_temporary_sql_failure_rolls_back_runtime_and_maps_to_unavailable(monkeypatch, failure_name):
+    psycopg = pytest.importorskip("psycopg")
+    repository = store()
+    repository.psycopg, repository.row_factory, repository.dsn = psycopg, None, "unused"
+    before = copy.deepcopy(repository.runtime._data)
+
+    class Connection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def execute(self, *args):
+            return Rows()
+
+    monkeypatch.setattr(psycopg, "connect", lambda *args, **kwargs: Connection())
+    with pytest.raises(StorageUnavailable):
+        with repository.transaction() as db:
+            repository.runtime.put(db.runtime, "replays", "key", {"result": "uncommitted"})
+            raise getattr(psycopg.errors, failure_name)("temporary SQL failure")
+    assert repository.runtime._data == before

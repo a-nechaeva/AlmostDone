@@ -23,7 +23,8 @@ def test_storage_exception_is_mapped_at_http_boundary(monkeypatch, failure, stat
 
     monkeypatch.setattr(app.state.service.store, "user", fail)
     with TestClient(app) as client:
-        check(app, client.get("/api/v1/me", headers=headers), "Error", status)
+        body = check(app, client.get("/api/v1/me", headers=headers), "Error", status)
+        assert body["error"]["retryable"] is (status == 503)
 
 
 def test_refresh_response_validation_failure_does_not_revoke_client_session(monkeypatch):

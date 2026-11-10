@@ -51,6 +51,8 @@ class DishgraphGateway:
         self.require_engine()
         from dishgraph.search import MAX_QUERY_LEN
         if len(query.strip()) > MAX_QUERY_LEN:
+            # The API accepts longer queries than the engine's search limit;
+            # 503 reports that capability gap without truncating the query.
             raise unsupported("ingredient_search_query_length")
         return [hit.code for hit in self.search_index.search(query, limit=len(self.ingredients))]
 

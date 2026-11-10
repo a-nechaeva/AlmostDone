@@ -18,6 +18,8 @@ def kopecks(rubles):
 
 
 def unsupported(capability):
+    # Use 503 for a missing engine capability: the request may be valid, but
+    # this server cannot calculate it. Do not replace engine rules with estimates.
     return APIError(503, "service_unavailable", "Готовое ядро не поддерживает этот расчёт",
                     details=[{"field": capability, "code": "engine_capability_missing",
                               "message": "Расчёт не реализован в engine; сервер не подменяет его своим алгоритмом"}])
@@ -99,25 +101,39 @@ class Catalog:
         self.require_engine()
         prefs = user["preferences"]
         if prefs["food_type"] != "any" or any(prefs[key] for key in ("gluten_free", "lactose_free", "diabetes", "diet_table_id")):
+            # The engine cannot verify these restrictions; 503 avoids claiming
+            # that an unverified recipe satisfies the user's dietary profile.
             raise unsupported("dietary_restrictions")
         banned = set(prefs["excluded_allergens"]) | set(extra_allergens)
         for recipe_id in recipe_ids:
             if recipe_id in self.gateway.unsupported_recipes:
+                # The engine rejected this recipe's data. Return 503 rather
+                # than inventing missing values or changing its validation rules.
                 raise unsupported("recipe_data:" + recipe_id)
             raw = self.recipes[recipe_id]
             if servings is not None and servings != raw["servings"]:
+                # The engine calculates only the recipe's original servings.
+                # Return 503 until scaling is implemented in engine/.
                 raise unsupported("serving_scaling")
             if any(self.quantity(item["code"], self.ingredients[item["code"]]["package_g"]) is None for item in raw["items"]):
+                # Required unit conversions are unavailable; 503 prevents
+                # presenting guessed ingredient or package quantities.
                 raise unsupported("recipe_unit_conversion:" + recipe_id)
             if banned and any(not self.ingredients[item["code"]].get("allergen_data_complete", False) for item in raw["items"]):
+                # The engine cannot assess incomplete allergen data. Return
+                # 503 instead of treating unknown allergens as safe.
                 raise unsupported("incomplete_allergen_data")
             if banned and any(item.get("is_optional") and banned.intersection(self.ingredients[item["code"]].get("allergens", []))
                               for item in raw["items"]):
+                # Optional-allergen warnings are not supported by the engine;
+                # 503 avoids silently dropping the warning or hiding the dish.
                 raise unsupported("optional_allergen_warnings")
         stock = {}
         for code, quantity in user["pantry"].items():
             stock[code] = self.grams(code, quantity)
             if quantity is not None and stock[code] is None:
+                # A known amount without a conversion factor is not unlimited
+                # stock. Return 503 instead of passing it to the engine as None.
                 raise unsupported("pantry_unit_conversion:" + code)
         return stock, banned
 
@@ -127,11 +143,17 @@ class Catalog:
         servings = 2 if servings is None else servings
         stock, banned = self.prepare(user, [recipe_id], servings, extra_allergens)
         option, visible = self.gateway.detail(recipe_id, stock, banned)
-        return self.present(option, user, visible), option
+        return self.present(option, user, visible, banned), option
 
-    def present(self, option, user, visible=True):
+    def present(self, option, user, visible=True, banned=()):
         recipe, metrics, missing = option.recipe, option.metrics, option.missing_g
         raw = self.recipes[recipe.id]
+        # The engine already decided visibility. Only format its allergen
+        # sources for the REST response; do not introduce new filtering rules.
+        excluded = sorted(set(metrics.allergens).intersection(banned))
+        reasons = [{"code": "excluded_allergen", "message": "Содержит исключённый аллерген",
+                    "ingredient_ids": sorted({code for allergen in excluded for code in metrics.allergens[allergen]}),
+                    "restriction_ids": excluded}] if not visible and excluded else []
         ingredients = [{"ingredient_id": item.code, "name": self.ingredients[item.code]["name"],
                         "required": self.quantity(item.code, item.qty_g), "available": user["pantry"].get(item.code),
                         "shortage": self.quantity(item.code, missing.get(item.code, 0)),
@@ -146,7 +168,7 @@ class Catalog:
                 "availability": {"status": "missing" if option.level else "ready", "missing_count": option.level,
                                  "unknown_quantity_ids": sorted(item.code for item in recipe.required_items
                                                                 if item.code in user["pantry"] and user["pantry"][item.code] is None)},
-                "suitability": {"status": "allowed" if visible else "hidden", "reasons": []},
+                "suitability": {"status": "allowed" if visible else "hidden", "reasons": reasons},
                 "allergens": self.allergen_assessment([item.code for item in recipe.required_items]),
                 "is_favorite": recipe.id in user["favorites"]["recipes"],
                 "methods": ["no_cook"] if raw.get("no_cook") else sorted(recipe.equipment)}
@@ -162,13 +184,15 @@ class Catalog:
 
     def matches(self, user, filters, servings=2):
         if filters["q"].strip():
+            # The engine has ingredient search, but no recipe-title filter.
+            # Return 503 rather than ignoring a valid search constraint.
             raise unsupported("recipe_title_search")
         stock, banned = self.prepare(user, self.recipes, servings, filters["exclude_allergens"])
         arguments = {"max_missing": 0 if filters["mode"] == "now" else 3 if filters["mode"] == "buy_1_3" else len(self.ingredients),
                      "max_minutes": filters["max_minutes"], "max_kcal": filters["max_kcal_per_serving"],
                      "equipment": set(filters["equipment"]) - {"no_cook"}}
         options, visible_ids = self.gateway.reachable(stock, banned, arguments)
-        return [(self.present(option, user, option.recipe.id in visible_ids), option) for option in options
+        return [(self.present(option, user, option.recipe.id in visible_ids, banned), option) for option in options
                 if filters["mode"] != "buy_1_3" or option.level > 0]
 
     def graph(self, details, options):
@@ -178,13 +202,16 @@ class Catalog:
 
     def purchases(self, user, body, single):
         if not single:
-            # The ready engine exposes a greedy plan, not the API's exact maximum.
+            # The engine exposes a greedy plan, while the API promises an exact
+            # maximum. Return 503 until the engine implements that guarantee.
             raise unsupported("exact_budget_optimization")
         matches = self.matches(user, body["filters"], body["servings"])
         options = [option for detail, option in matches if detail["recipe"]["suitability"]["status"] == "allowed"]
         suggestions = self.gateway.single_purchases(options)
         budget = body["budget"]["minor_units"]
         if any(kopecks(suggestion.price) > budget for suggestion in suggestions):
+            # The engine does not optimize single purchases under a budget.
+            # Return 503 rather than claiming its unconstrained result is valid.
             raise unsupported("budget_constrained_single_purchase")
         return {"request_id": body["request_id"], "state_version": user["version"], "catalog_version": self.version,
                 "servings": body["servings"], "unpriced_recipe_ids": [], "semantics": "alternatives",
