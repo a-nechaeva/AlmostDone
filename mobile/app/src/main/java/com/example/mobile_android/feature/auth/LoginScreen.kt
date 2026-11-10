@@ -20,6 +20,7 @@ fun LoginScreen(
     loginChanged: (String) -> Unit,
     passwordChanged: (String) -> Unit,
     signIn: () -> Unit,
+    yandexSignIn: () -> Unit,
     dismiss: () -> Unit,
 ) {
     Column(
@@ -65,6 +66,13 @@ fun LoginScreen(
             enabled = !action.pending,
         ) {
             Text(if (action.pending) "Входим…" else "Войти в демо")
+        }
+        OutlinedButton(
+            onClick = yandexSignIn,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            enabled = !action.pending,
+        ) {
+            Text("Войти через Яндекс")
         }
         DemoNotice()
     }

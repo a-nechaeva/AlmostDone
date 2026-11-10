@@ -36,6 +36,14 @@ class SessionViewModel(private val repository: SessionRepository) : ViewModel() 
         actions.run { repository.signIn(input.login, input.password) }
     }
 
+    fun signInWithYandex(token: String) {
+        actions.run { repository.signInWithToken(token) }
+    }
+
+    fun yandexAuthFailed() {
+        actions.showError("Не удалось войти через Яндекс. Попробуйте ещё раз.")
+    }
+
     fun signOut() {
         mutableForm.value = LoginForm()
         actions.run { repository.signOut() }

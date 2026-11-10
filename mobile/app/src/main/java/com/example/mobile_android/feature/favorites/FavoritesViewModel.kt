@@ -38,5 +38,10 @@ class FavoritesViewModel(
     }
 
     fun favorite(id: String, ingredient: Boolean) =
-        actions.run { household.toggleFavorite(id, ingredient) }
+        actions.run {
+            // This screen removes favorites. A repeated click on a stale card must not add it back.
+            val current = household.household.first()
+            val ids = if (ingredient) current.favoriteIngredients else current.favoriteRecipes
+            if (id in ids) household.toggleFavorite(id, ingredient)
+        }
 }
