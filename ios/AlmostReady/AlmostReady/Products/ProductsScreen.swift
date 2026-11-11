@@ -13,31 +13,31 @@ struct ProductsScreen: View {
     }
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 8) {
-                if isSearching {
-                    searchResults
-                } else {
-                    productsAtHome
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-        }
-        .scrollDismissesKeyboard(.never)
-        // Search results and pantry rows share IDs but have different actions.
-        .id(isSearching)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            dishesLink
-        }
-        .floatingTabBarInset {
-            if !isSearchFocused { tabBar }
-        }
-        .safeAreaInset(edge: .top, spacing: 0) {
+        VStack(spacing: 0) {
             searchBar
                 .padding(.horizontal, 20)
                 .padding(.vertical, 8)
-                .background(Color(.demoBackground), ignoresSafeAreaEdges: [])
+
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 8) {
+                    if isSearching {
+                        searchResults
+                    } else {
+                        productsAtHome
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+            }
+            .scrollDismissesKeyboard(.never)
+            // Search results and pantry rows share IDs but have different actions.
+            .id(isSearching)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                dishesLink
+            }
+            .floatingTabBarInset {
+                if !isSearchFocused { tabBar }
+            }
         }
         .background(Color(.demoBackground).ignoresSafeArea())
         .navigationTitle("Мои продукты")

@@ -90,8 +90,10 @@ final class NavigationTests: XCTestCase {
         XCTAssertTrue(cheese.isHittable)
         cheese.tap()
         XCTAssertTrue(app.staticTexts["Покупка отмечена"].waitForExistence(timeout: 10))
-        XCTAssertTrue(shoppingTab.isSelected)
-        profileTab.tap()
+        let purchasedShoppingTab = app.buttons["purchased.tabs.shopping"]
+        XCTAssertTrue(purchasedShoppingTab.isHittable)
+        XCTAssertTrue(purchasedShoppingTab.isSelected)
+        app.buttons["purchased.tabs.profile"].tap()
 
         let profile = app.navigationBars["Профиль"]
         XCTAssertTrue(profile.waitForExistence(timeout: 10))

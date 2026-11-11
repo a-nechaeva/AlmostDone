@@ -200,7 +200,7 @@ struct ShoppingScreen: View {
             }
             .floatingTabBarInset {
                 if onOpenTab != nil {
-                    FloatingTabBar(selection: .shopping) { tab in
+                    FloatingTabBar(selection: .shopping, accessibilityNamespace: "purchased.tabs") { tab in
                         guard tab != .shopping else { return }
                         tabAfterDismissal = tab
                         presentation = nil

@@ -28,6 +28,7 @@ enum AppTab: String, CaseIterable {
 struct FloatingTabBar: View {
     @Environment(\.colorScheme) private var colorScheme
     let selection: AppTab
+    var accessibilityNamespace = "tabs"
     let onSelect: (AppTab) -> Void
 
     var body: some View {
@@ -82,7 +83,7 @@ struct FloatingTabBar: View {
         .buttonStyle(.plain)
         .accessibilityLabel(Text(tab.title))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
-        .accessibilityIdentifier("tabs.\(tab.rawValue)")
+        .accessibilityIdentifier("\(accessibilityNamespace).\(tab.rawValue)")
     }
 
     private var selectedColor: Color {
