@@ -38,6 +38,7 @@ fun BrandTopBar(
     title: String = "почти готово",
     onBack: (() -> Unit)? = null,
     onFavorites: (() -> Unit)? = null,
+    topBarActions: @Composable RowScope.() -> Unit = {},
 ) {
     TopAppBar(
         title = { Text(title, fontWeight = FontWeight.Bold) },
@@ -53,6 +54,7 @@ fun BrandTopBar(
                 )
         },
         actions = {
+            topBarActions()
             if (onFavorites != null)
                 IconButton(onClick = onFavorites) {
                     Icon(Icons.Default.FavoriteBorder, "Избранное")
@@ -148,7 +150,13 @@ fun RecipePhoto(
 }
 
 @Composable
-fun RecipeCard(match: RecipeMatch, favorite: Boolean, onClick: () -> Unit, onFavorite: () -> Unit) {
+fun RecipeCard(
+    match: RecipeMatch,
+    favorite: Boolean,
+    onClick: () -> Unit,
+    onFavorite: () -> Unit,
+    favoriteEnabled: Boolean = true,
+) {
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -194,13 +202,14 @@ fun RecipeCard(match: RecipeMatch, favorite: Boolean, onClick: () -> Unit, onFav
             }
             IconButton(
                 onClick = onFavorite,
+                enabled = favoriteEnabled,
+                colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.primary),
                 modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp),
             ) {
                 Icon(
                     if (favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                     if (favorite) "Убрать ${match.recipe.title} из избранного"
                     else "В избранное: ${match.recipe.title}",
-                    tint = MaterialTheme.colorScheme.primary,
                 )
             }
         }

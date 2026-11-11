@@ -147,7 +147,7 @@ class ShoppingLocalWiringTest {
         compose.onNodeWithTag(recipeButton).performClick()
         await("Рецепт cheese")
         systemBack()
-        await("В пределах бюджета")
+        compose.onNodeWithTag(recipeButton).assertIsDisplayed()
         scrollTo("Изменить бюджет", budget = true).performClick()
         text("Бюджет, ₽").assertTextContains("500,25")
         assertTrue(writer.submissions.isEmpty())

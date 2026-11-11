@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -46,6 +47,7 @@ fun ShoppingScreen(
     openPantry: (() -> Unit)? = null,
     budgetPlanWriter: ShoppingBudgetPlanWriter? = null,
     budgetSource: ShoppingBudgetSource? = null,
+    isRouteActive: Boolean = true,
 ) {
     val factory =
         remember(budgetSource, budgetPlanWriter) {
@@ -64,7 +66,8 @@ fun ShoppingScreen(
     val write by budgetVm.write.collectAsStateWithLifecycle()
     val undoPlan = budgetVm::undoPlan
     var budgetOpen by rememberSaveable { mutableStateOf(false) }
-    if (budgetOpen) {
+    val budgetListState = key(budgetOpen) { rememberLazyListState() }
+    if (budgetOpen && isRouteActive) {
         val back = {
             if (!write.pending) {
                 if (form.result != ShoppingBudgetResult.Idle) budgetVm.clearResult()
@@ -100,6 +103,7 @@ fun ShoppingScreen(
                         undoPlan = undoPlan,
                         write = write,
                         shoppingBusy = action.pending,
+                        listState = budgetListState,
                     )
                 }
             }
@@ -337,10 +341,14 @@ internal fun ShoppingContent(
         if (state.household.plan.isNotEmpty())
             item { Text("Выбранные рецепты", style = MaterialTheme.typography.titleMedium) }
         items(state.household.plan, key = { "plan-${it.recipeId}" }) { planned ->
-            TextButton({ removeRecipe(planned.recipeId) }, enabled = !busy) {
-                Text(
-                    "Убрать рецепт: ${state.catalog.recipe(planned.recipeId)?.title ?: "Рецепт недоступен"} · ${planned.servings} порц."
-                )
+            val recipe = state.catalog.recipe(planned.recipeId)
+            Column {
+                if (recipe != null && openRecipe != null) {
+                    TextButton({ openRecipe(planned.recipeId) }) { Text("Открыть рецепт: ${recipe.title}") }
+                }
+                TextButton({ removeRecipe(planned.recipeId) }, enabled = !busy) {
+                    Text("Убрать рецепт: ${recipe?.title ?: "Рецепт недоступен"} · ${planned.servings} порц.")
+                }
             }
         }
         items(state.household.manualPurchases, key = { "manual-${it.ingredientId}" }) { manual ->

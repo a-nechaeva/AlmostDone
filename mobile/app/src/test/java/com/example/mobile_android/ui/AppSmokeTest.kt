@@ -263,7 +263,7 @@ class AppSmokeTest {
         awaitText("Мои продукты")
         dependencies.household.failRead = true
         tab("Блюда").performClick()
-        awaitText("Данные недоступны")
+        awaitText("Блюда не загрузились")
         text("Граф").performClick().assertIsSelected()
         dependencies.household.failRead = false
         dependencies.catalogSource = MutableSharedFlow(replay = 1)
@@ -332,7 +332,7 @@ class AppSmokeTest {
         awaitText("Мои продукты")
         dependencies.household.failRead = true
         tab("Блюда").performClick()
-        awaitText("Данные недоступны")
+        awaitText("Блюда не загрузились")
         text("Граф").performClick().assertIsSelected()
         capture("dishes-graph-error.png")
     }
