@@ -35,7 +35,7 @@ struct ProductsScreen: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             dishesLink
         }
-        .background(Color(.demoBackground))
+        .background(Color(.demoBackground).ignoresSafeArea())
         .navigationTitle("Мои продукты")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {

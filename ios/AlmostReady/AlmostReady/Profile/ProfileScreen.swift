@@ -45,7 +45,7 @@ struct ProfileScreen: View {
             }
             .padding(20)
         }
-        .background(Color(.demoBackground))
+        .background(Color(.demoBackground).ignoresSafeArea())
         .navigationTitle("Профиль")
         .navigationDestination(isPresented: nutritionPresentation) {
             ProfileNutritionScreen(

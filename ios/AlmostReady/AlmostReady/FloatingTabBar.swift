@@ -31,19 +31,30 @@ struct FloatingTabBar: View {
     let onSelect: (AppTab) -> Void
 
     var body: some View {
+        surface
+            .padding(.horizontal, 20)
+            .padding(.bottom, 4)
+    }
+
+    @ViewBuilder
+    private var surface: some View {
+        let shape = RoundedRectangle(cornerRadius: 28)
+        if #available(iOS 26.0, *) {
+            tabButtons
+                .glassEffect(.regular, in: shape)
+        } else {
+            tabButtons
+                .background(Color(uiColor: .secondarySystemGroupedBackground), in: shape)
+                .shadow(color: .black.opacity(0.09), radius: 24, y: 6)
+        }
+    }
+
+    private var tabButtons: some View {
         HStack(spacing: 0) {
             ForEach(AppTab.allCases, id: \.self) { tab in
                 tabButton(tab)
             }
         }
-        .background(
-            Color(uiColor: .secondarySystemGroupedBackground),
-            in: .rect(cornerRadius: 28)
-        )
-        .shadow(color: .black.opacity(0.09), radius: 24, y: 6)
-        .padding(.horizontal, 20)
-        .padding(.bottom, 4)
-        .background(Color(.demoBackground).ignoresSafeArea(edges: .bottom))
     }
 
     private func tabButton(_ tab: AppTab) -> some View {
