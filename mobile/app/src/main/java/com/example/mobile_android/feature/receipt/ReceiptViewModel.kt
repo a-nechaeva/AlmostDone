@@ -52,7 +52,10 @@ internal class UnknownReceiptPantryQuantity(val ingredientId: String) : IllegalS
 
 internal enum class ReceiptPhotoRequest { CAMERA, PICKER }
 
-internal enum class ReceiptPhotoIssue { NO_CAMERA, NO_PICKER, ACCESS, UNREADABLE, EMPTY }
+internal enum class ReceiptPhotoIssue { NO_CAMERA, NO_PICKER, ACCESS, UNREADABLE, EMPTY, SERVER }
+
+/** Сбой сервера распознавания (сеть, GigaChat) — в отличие от нечитаемого фото. */
+internal class ReceiptServerException(message: String?, cause: Throwable? = null) : Exception(message, cause)
 
 internal sealed interface ReceiptState {
     data class Capture(val issue: ReceiptPhotoIssue? = null) : ReceiptState
@@ -74,6 +77,8 @@ internal class ReceiptViewModel(
     private val savedState: SavedStateHandle,
     private val discardCapture: (String) -> Unit,
     private val recognizer: ReceiptRecognizer = DemoReceiptRecognizer,
+    /** Распознавание по самому фото (сервер). null — прежняя демо-заглушка [recognizer]. */
+    private val photoRecognizer: (suspend (ByteArray) -> List<ReceiptLine>)? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow<ReceiptState>(ReceiptState.Capture())
     val state = mutableState.asStateFlow()
@@ -102,14 +107,21 @@ internal class ReceiptViewModel(
         if (state.value is ReceiptState.Capture) mutableState.value = ReceiptState.Capture(issue)
     }
 
-    fun readPhoto(validate: suspend () -> Unit) {
+    fun readPhoto(validate: suspend () -> Unit) = readImage {
+        validate()
+        null
+    }
+
+    /** [read] возвращает JPEG для распознавания (или null — тогда демо-распознавание). */
+    fun readImage(read: suspend () -> ByteArray?) {
         if (state.value !is ReceiptState.Capture) return
         mutableState.value = ReceiptState.Reading
         reading = viewModelScope.launch {
             val result = try {
-                validate()
+                val photo = read()
                 val ingredients = catalog.catalog.first().ingredients.sortedBy { it.name }
-                val lines = recognizer.recognize().map { line ->
+                val recognized = photoRecognizer?.let { recognize -> photo?.let { recognize(it) } }
+                val lines = (recognized ?: recognizer.recognize()).map { line ->
                     val ingredient = ingredients.find { it.id == line.ingredientId }
                     if (ingredient == null) line.copy(
                         ingredientId = null, amount = "", unit = null, selected = false,
@@ -121,6 +133,8 @@ internal class ReceiptViewModel(
                 throw cancelled
             } catch (_: SecurityException) {
                 ReceiptState.Capture(ReceiptPhotoIssue.ACCESS)
+            } catch (_: ReceiptServerException) {
+                ReceiptState.Capture(ReceiptPhotoIssue.SERVER)
             } catch (_: Exception) {
                 ReceiptState.Capture(ReceiptPhotoIssue.UNREADABLE)
             }

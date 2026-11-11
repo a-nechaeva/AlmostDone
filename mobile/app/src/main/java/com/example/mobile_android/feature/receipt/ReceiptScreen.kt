@@ -47,6 +47,7 @@ internal fun ReceiptRoute(dependencies: AppDependencies, close: () -> Unit) {
                     dependencies.receiptImporter,
                     createSavedStateHandle(),
                     photos::discard,
+                    photoRecognizer = dependencies.server?.receiptRecognizer(),
                 )
             }
         }
@@ -55,7 +56,7 @@ internal fun ReceiptRoute(dependencies: AppDependencies, close: () -> Unit) {
     val photoRequest by model.photoRequest.collectAsStateWithLifecycle()
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (model.finishPhotoRequest(ReceiptPhotoRequest.PICKER) && uri != null) {
-            model.readPhoto { photos.validate(uri) }
+            model.readImage { photos.jpeg(uri) }
         }
     }
     val camera = rememberLauncherForActivityResult(TakeReceiptPhoto()) { success ->
@@ -63,7 +64,7 @@ internal fun ReceiptRoute(dependencies: AppDependencies, close: () -> Unit) {
             val name = model.cameraFinished()
             if (name != null) {
                 if (success && model.state.value is ReceiptState.Capture)
-                    model.readPhoto { photos.consumeCapture(name) }
+                    model.readImage { photos.consumeCaptureJpeg(name) }
                 else photos.discard(name)
             }
         }
@@ -211,6 +212,7 @@ private fun ReceiptCapture(
             ReceiptPhotoIssue.ACCESS -> "Нет доступа к фото" to "Проверьте доступ или выберите другое фото."
             ReceiptPhotoIssue.UNREADABLE -> "Чек не удалось прочитать" to "Попробуйте снять ближе и без бликов."
             ReceiptPhotoIssue.EMPTY -> "В чеке не нашлось продуктов" to "Попробуйте другое фото."
+            ReceiptPhotoIssue.SERVER -> "Сервер распознавания недоступен" to "Проверьте подключение к серверу и повторите."
         }
         PageHeading(title, details)
     }

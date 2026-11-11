@@ -93,7 +93,7 @@ class ApiClient(private val baseUrl: String) {
     }
 
     companion object {
-        const val DEFAULT_URL = "http://10.0.2.2:8000/api/v1/" // эмулятор → localhost компьютера
+        const val DEFAULT_URL = "http://127.0.0.1:8000/api/v1/" // ноутбук через `adb reverse tcp:8000 tcp:8000`
 
         fun normalize(url: String): String {
             var u = url.trim()
