@@ -22,6 +22,8 @@ data class ReceiptLine(
     val amount: String = "",
     val unit: QuantityUnit? = null,
     val selected: Boolean = false,
+    /** ID строки в серверном результате распознавания; null — локальные демо-строки. */
+    val serverLineId: String? = null,
 ) {
     fun quantity(ingredient: Ingredient?): Quantity? {
         if (ingredient == null || ingredient.unit != unit) return null
@@ -46,6 +48,21 @@ internal object DemoReceiptRecognizer : ReceiptRecognizer {
 
 fun interface ReceiptImporter {
     suspend fun add(quantities: Map<String, Quantity>)
+}
+
+/** Результат серверного распознавания фото: ID задачи и строки с их серверными line_id. */
+class RecognizedReceipt(val recognitionId: String, val lines: List<ReceiptLine>)
+
+/** Одна подтверждённая пользователем строка для `POST /recognition-imports`. */
+data class ReceiptImportLine(val lineId: String, val ingredientId: String, val quantity: Quantity?)
+
+/**
+ * Подтверждение импорта распознанного чека на сервере (`POST /recognition-imports`
+ * с `If-Match` и `Idempotency-Key`). После успеха запасы зеркалируются в локальное
+ * хранилище внутри реализации.
+ */
+interface ServerReceiptImporter {
+    suspend fun importReceipt(recognitionId: String, kind: String, lines: List<ReceiptImportLine>)
 }
 
 internal class UnknownReceiptPantryQuantity(val ingredientId: String) : IllegalStateException()
@@ -77,6 +94,8 @@ internal sealed interface ReceiptState {
         val error: String? = null,
         /** Строки из демо-заглушки, а не с сервера. */
         val demo: Boolean = true,
+        /** ID серверной задачи распознавания; null — локальные демо-строки. */
+        val recognitionId: String? = null,
     ) : ReceiptState {
         fun ingredient(line: ReceiptLine) = ingredients.find { it.id == line.ingredientId }
     }
@@ -90,7 +109,9 @@ internal class ReceiptViewModel(
     private val discardCapture: (String) -> Unit,
     private val recognizer: ReceiptRecognizer = DemoReceiptRecognizer,
     /** Распознавание по самому фото (сервер). null — прежняя демо-заглушка [recognizer]. */
-    private val photoRecognizer: (suspend (ByteArray, ReceiptPhotoKind) -> List<ReceiptLine>)? = null,
+    private val photoRecognizer: (suspend (ByteArray, ReceiptPhotoKind) -> RecognizedReceipt)? = null,
+    /** Подтверждение импорта на сервере; null — только локальная запись через [importer]. */
+    private val serverImporter: ServerReceiptImporter? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow<ReceiptState>(ReceiptState.Capture())
     val state = mutableState.asStateFlow()
@@ -141,14 +162,19 @@ internal class ReceiptViewModel(
                 val photo = read()
                 val ingredients = catalog.catalog.first().ingredients.sortedBy { it.name }
                 val recognized = photoRecognizer?.let { recognize -> photo?.let { recognize(it, kind.value) } }
-                val lines = (recognized ?: recognizer.recognize()).map { line ->
+                val lines = (recognized?.lines ?: recognizer.recognize()).map { line ->
                     val ingredient = ingredients.find { it.id == line.ingredientId }
                     if (ingredient == null) line.copy(
                         ingredientId = null, amount = "", unit = null, selected = false,
                     ) else line.copy(selected = line.selected && line.quantity(ingredient) != null)
                 }
                 if (lines.isEmpty()) ReceiptState.Capture(ReceiptPhotoIssue.EMPTY)
-                else ReceiptState.Review(lines, ingredients, demo = recognized == null)
+                else ReceiptState.Review(
+                    lines,
+                    ingredients,
+                    demo = recognized == null,
+                    recognitionId = recognized?.recognitionId,
+                )
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: SecurityException) {
@@ -192,6 +218,11 @@ internal class ReceiptViewModel(
         val review = state.value as? ReceiptState.Review ?: return
         val selected = review.lines.filter { it.selected }
         if (review.saving || selected.isEmpty()) return
+        val recognition = review.recognitionId
+        if (recognition != null && serverImporter != null) {
+            confirmOnServer(review, recognition, selected)
+            return
+        }
         val totals = linkedMapOf<String, Quantity>()
         for (line in selected) {
             val ingredient = review.ingredient(line) ?: return
@@ -224,6 +255,42 @@ internal class ReceiptViewModel(
                 )
             } catch (_: Exception) {
                 mutableState.value = review.copy(error = "Не удалось добавить продукты. Проверьте количество и повторите.")
+            }
+        }
+    }
+
+    /**
+     * Подтверждение через `POST /recognition-imports`: на сервер уходят только выбранные строки
+     * с canonical ID, положительным количеством и серверным line_id. Двойное нажатие блокируется
+     * флагом saving, повтор той же операции защищён Idempotency-Key в реализации импортёра.
+     * При отказе выбор строк сохраняется и ошибку можно повторить.
+     */
+    private fun confirmOnServer(
+        review: ReceiptState.Review,
+        recognitionId: String,
+        selected: List<ReceiptLine>,
+    ) {
+        val items = mutableListOf<ReceiptImportLine>()
+        for (line in selected) {
+            val ingredient = review.ingredient(line) ?: return
+            val lineId = line.serverLineId ?: return
+            // Выбрать строку можно только с корректным положительным количеством (см. toggle/edit).
+            val quantity = line.quantity(ingredient) ?: return
+            items += ReceiptImportLine(lineId, ingredient.id, quantity)
+        }
+        mutableState.value = review.copy(saving = true, error = null)
+        viewModelScope.launch {
+            try {
+                serverImporter!!.importReceipt(recognitionId, kind.value.apiKind, items)
+                mutableState.value = ReceiptState.Added(items.map { line ->
+                    review.ingredients.first { it.id == line.ingredientId }.name
+                }.distinct())
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                mutableState.value = review.copy(
+                    error = "Не удалось добавить продукты. Проверьте количество и повторите."
+                )
             }
         }
     }
