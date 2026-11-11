@@ -4,7 +4,7 @@ from pathlib import Path
 
 from .adapters.engine import DishgraphGateway
 from .services.catalog import Catalog
-from .repositories.catalog import JsonCatalogRepository, MemoryCatalogRepository, PostgresCatalogRepository
+from .repositories.catalog import JsonCatalogRepository, SeedCatalogRepository, MemoryCatalogRepository, PostgresCatalogRepository
 from .integrations.yandex import YandexProvider
 from .integrations.vk import VkProvider
 from .api.contract import Contract, PROJECT_ROOT
@@ -27,6 +27,9 @@ def create_app(*, store=None, catalog_data=None, contract_path=None,
     if catalog_data is None:
         if store.mode == "postgresql" and "ALMOSTDONE_CATALOG" not in os.environ:
             catalog_repository = PostgresCatalogRepository(store)
+        elif catalog_path.suffix == ".sql":
+            # pg_dump of the database (db/seed.sql): the real catalogue without PostgreSQL
+            catalog_repository = SeedCatalogRepository(catalog_path)
         else:
             catalog_repository = JsonCatalogRepository(catalog_path)
     else:

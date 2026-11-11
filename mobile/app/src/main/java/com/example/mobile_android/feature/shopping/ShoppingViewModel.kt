@@ -48,7 +48,7 @@ class ShoppingViewModel(
                         h,
                         shoppingQuote(c, h),
                         budget,
-                        suggestions.suggestion(c, budget),
+                        suggestions.suggestion(c, budget, h, p),
                         warnings,
                     )
                 }

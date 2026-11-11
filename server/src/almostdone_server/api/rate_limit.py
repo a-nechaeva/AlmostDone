@@ -8,14 +8,15 @@ from ..errors import APIError
 
 class RateLimiter:
     def __init__(self, *, default_limit=120, auth_limit=10, recognition_limit=10,
-                 recommendation_limit=30, window=60, max_clients=10000, clock=time.monotonic):
-        values = (default_limit, auth_limit, recognition_limit, recommendation_limit, max_clients)
+                 recommendation_limit=30, photo_limit=1200, window=60, max_clients=10000, clock=time.monotonic):
+        values = (default_limit, auth_limit, recognition_limit, recommendation_limit, photo_limit, max_clients)
         if any(isinstance(value, bool) or not isinstance(value, int) or value <= 0 for value in values):
             raise ValueError("Request limits must be positive integers")
         if not math.isfinite(window) or window <= 0:
             raise ValueError("Rate limit window must be positive")
         self.limits = {"default": default_limit, "auth": auth_limit,
-                       "recognition": recognition_limit, "recommendation": recommendation_limit}
+                       "recognition": recognition_limit, "recommendation": recommendation_limit,
+                       "photo": photo_limit}
         self.window, self.max_clients, self.clock = window, max_clients, clock
         self._buckets = {}
         self._lock = threading.Lock()
@@ -28,6 +29,9 @@ class RateLimiter:
             group = "recognition"
         elif path == "/api/v1/recommendations":
             group = "recommendation"
+        elif path.startswith("/api/v1/recipes/") and path.endswith("/photo"):
+            # A recipe list shows dozens of photos at once; they are cached on the server.
+            group = "photo"
         else:
             group = "default"
         key = (client, group)

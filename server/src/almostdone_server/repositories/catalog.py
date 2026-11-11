@@ -1,6 +1,7 @@
 """Catalogue repositories: PostgreSQL, JSON files, and supplied in-memory records."""
 import copy
 import json
+import re
 from pathlib import Path
 
 
@@ -19,6 +20,71 @@ class JsonCatalogRepository:
 
     def load(self):
         return json.loads(self.path.read_text(encoding="utf-8"))
+
+
+class SeedCatalogRepository:
+    """The same records as PostgresCatalogRepository, read from a pg_dump file (db/seed.sql).
+
+    For a laptop demo without PostgreSQL: the dump is the database, so the catalogue matches.
+    """
+    def __init__(self, path):
+        self.path = Path(path)
+
+    def load(self):
+        return load_catalog(SeedDump(self.path))
+
+
+class SeedDump:
+    """Answer the SELECTs of load_catalog() from the COPY blocks of a pg_dump file."""
+    COPY = re.compile(r"COPY public\.(\w+) \(([^)]*)\) FROM stdin;")
+    ESCAPES = {"\\n": "\n", "\\t": "\t", "\\r": "\r", "\\\\": "\\"}
+    INTEGERS = {"id", "servings", "cook_time_min", "recipe_id", "ingredient_id", "allergen_id", "step_no",
+                "duration_min", "author_id"}
+    BOOLEANS = {"is_staple", "needs_microwave", "needs_stove", "needs_oven", "no_cook", "is_optional"}
+
+    def __init__(self, path):
+        self.tables, current, columns = {}, None, []
+        for line in Path(path).read_text(encoding="utf-8").split("\n"):
+            if current is None:
+                match = self.COPY.match(line)
+                if match:
+                    current, columns = match[1], [c.strip() for c in match[2].split(",")]
+                    self.tables[current] = []
+            elif line == "\\.":
+                current = None
+            else:
+                self.tables[current].append({c: self.value(c, v) for c, v in zip(columns, line.split("\t"))})
+
+    def value(self, column, text):
+        if text == "\\N":
+            return None
+        text = re.sub(r"\\[ntr\\]", lambda m: self.ESCAPES[m[0]], text)
+        if column in self.INTEGERS:
+            return int(text)
+        if column in self.BOOLEANS:
+            return text == "t"
+        return text
+
+    def execute(self, sql):
+        if sql.startswith("SET "):
+            return []
+        t = self.tables
+        if sql.startswith("SELECT * FROM ingredients"):
+            return sorted(t["ingredients"], key=lambda r: r["id"])
+        if sql.startswith("SELECT ingredient_id,alias"):
+            return sorted(t.get("ingredient_aliases", []), key=lambda r: (r["ingredient_id"], r["alias"]))
+        if sql.startswith("SELECT ia.ingredient_id,a.code"):
+            codes = {r["id"]: r["code"] for r in t.get("allergens", [])}
+            rows = [{"ingredient_id": r["ingredient_id"], "code": codes[r["allergen_id"]]}
+                    for r in t.get("ingredient_allergens", [])]
+            return sorted(rows, key=lambda r: (r["ingredient_id"], r["code"]))
+        if sql.startswith("SELECT * FROM recipes WHERE author_id IS NULL"):
+            return sorted((r for r in t["recipes"] if r.get("author_id") is None), key=lambda r: r["id"])
+        if sql.startswith("SELECT * FROM recipe_ingredients"):
+            return sorted(t["recipe_ingredients"], key=lambda r: (r["recipe_id"], r["ingredient_id"]))
+        if sql.startswith("SELECT * FROM recipe_steps"):
+            return sorted(t.get("recipe_steps", []), key=lambda r: (r["recipe_id"], r["step_no"]))
+        raise ValueError("Unsupported catalogue query: " + sql)
 
 
 class MemoryCatalogRepository:

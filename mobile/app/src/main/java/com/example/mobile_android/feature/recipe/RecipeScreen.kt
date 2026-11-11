@@ -37,7 +37,7 @@ fun RecipeScreen(
 ) {
     val match = state.match
     if (match == null) {
-        EmptyPanel("Рецепт не найден", "В демонстрационном каталоге такого рецепта нет.")
+        EmptyPanel("Рецепт не найден", "В каталоге такого рецепта нет.")
         return
     }
     val recipe = match.recipe
@@ -53,7 +53,7 @@ fun RecipeScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 item(key = "photo") {
-                    if (recipe.photo in setOf("pasta", "omelette")) {
+                    if (recipe.photo in setOf("pasta", "omelette") || RemoteImages.isRemote(recipe.photo)) {
                         RecipePhoto(
                             recipe.photo,
                             Modifier.fillMaxWidth().height(206.dp),

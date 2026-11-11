@@ -5,7 +5,7 @@ import android.content.Context
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.room.Room
 import com.example.mobile_android.BuildConfig
-import com.example.mobile_android.data.DemoCatalogRepository
+import com.example.mobile_android.data.DemoCatalog
 import com.example.mobile_android.data.local.DataStoreSessionStore
 import com.example.mobile_android.data.local.HouseholdDatabase
 import com.example.mobile_android.data.local.RoomHouseholdRepository
@@ -16,6 +16,7 @@ import com.example.mobile_android.data.remote.HttpTransport
 import com.example.mobile_android.data.remote.OkHttpTransport
 import com.example.mobile_android.data.remote.RecognitionApi
 import com.example.mobile_android.data.remote.RecognitionResult
+import com.example.mobile_android.data.remote.ServerCatalogRepository
 import com.example.mobile_android.data.remote.ServerPreferencesRepository
 import com.example.mobile_android.data.remote.ServerSessionRepository
 import com.example.mobile_android.domain.CatalogRepository
@@ -28,9 +29,17 @@ import com.example.mobile_android.feature.receipt.ReceiptImporter
 import com.example.mobile_android.feature.receipt.ReceiptLine
 import com.example.mobile_android.feature.receipt.ReceiptPhotoKind
 import com.example.mobile_android.feature.receipt.ReceiptServerException
+import com.example.mobile_android.feature.shopping.EngineShoppingBudgetSource
+import com.example.mobile_android.feature.shopping.EngineShoppingSuggestionSource
 import com.example.mobile_android.feature.shopping.ShoppingBudgetPlanWriter
+import com.example.mobile_android.feature.shopping.ShoppingBudgetSource
+import com.example.mobile_android.feature.shopping.ShoppingSuggestionSource
 import java.util.Locale
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 
 class AlmostReadyApplication : Application() {
     val container: AppContainer by lazy { AppContainer(this) }
@@ -48,6 +57,10 @@ interface LocalFeatureDependencies : AppDependencies {
     val preferences: PreferencesRepository
     val receiptImporter: ReceiptImporter? get() = null
     val budgetPlanWriter: ShoppingBudgetPlanWriter? get() = null
+
+    /** Подбор покупок на бюджет и подсказка «что докупить»; null — фиксированные UI-примеры. */
+    val budgetSource: ShoppingBudgetSource? get() = null
+    val suggestionSource: ShoppingSuggestionSource? get() = null
 
     /**
      * Серверное распознавание фото чека/продуктов. null — экран использует демо-заглушку
@@ -100,9 +113,8 @@ class AppContainer internal constructor(
  *
  * Продукты, план, покупки и отметки хранятся в Room-файле этой сессии и восстанавливаются
  * после перезапуска; профиль читается и сохраняется через `GET/PATCH /me`; распознавание чека
- * идёт через `POST /recognitions`. Каталог пока демонстрационный: контракт не даёт перечислить
- * серверный каталог (поиск требует непустого `q`), поэтому серверные синонимы догоняются
- * отдельным согласованием контракта (#17/#34).
+ * идёт через `POST /recognitions`. Каталог загружается с сервера (`GET /catalog`); пока он
+ * грузится или если сервер недоступен, экраны работают на встроенном демо-каталоге.
  */
 private class SessionFeatures(
     context: Context,
@@ -119,7 +131,9 @@ private class SessionFeatures(
             )
             .build()
 
-    override val catalog: CatalogRepository = DemoCatalogRepository()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    override val catalog: CatalogRepository = ServerCatalogRepository(api, DemoCatalog.catalog, scope)
 
     private val room = RoomHouseholdRepository(database, catalog, emptyList())
 
@@ -127,6 +141,9 @@ private class SessionFeatures(
     override val preferences: PreferencesRepository = ServerPreferencesRepository(api)
     override val receiptImporter: ReceiptImporter = room
     override val budgetPlanWriter: ShoppingBudgetPlanWriter = room
+    override val budgetSource: ShoppingBudgetSource =
+        EngineShoppingBudgetSource(catalog, household, preferences)
+    override val suggestionSource: ShoppingSuggestionSource = EngineShoppingSuggestionSource()
 
     override val receiptPhotoRecognizer: suspend (ByteArray, ReceiptPhotoKind) -> List<ReceiptLine> =
         { jpeg, kind ->
@@ -140,6 +157,7 @@ private class SessionFeatures(
         }
 
     fun close() {
+        scope.cancel()
         database.close()
     }
 }
