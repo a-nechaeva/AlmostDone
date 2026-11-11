@@ -1,186 +1,45 @@
-CREATE EXTENSION IF NOT EXISTS citext;    -- регистронезависимый логин
+--
+-- PostgreSQL database dump
+--
 
--- 1. Справочники
--- Аллергены
-CREATE TABLE allergens (
-    id   SERIAL PRIMARY KEY,
-    code TEXT UNIQUE NOT NULL CHECK (code ~ '^[a-z][a-z0-9_]*$'), 
-    name TEXT NOT NULL CHECK (name <> '' AND name = btrim(name))  
-);
-CREATE UNIQUE INDEX allergens_name_uq ON allergens (lower(name));
- 
--- Категории продуктов
-CREATE TABLE categories (
-    id   SERIAL PRIMARY KEY,
-    name TEXT NOT NULL CHECK (name <> '' AND name = btrim(name))
-);
-CREATE UNIQUE INDEX categories_name_uq ON categories (lower(name));
- 
--- Способы приготовления
-CREATE TABLE cooking_methods (
-    id   SERIAL PRIMARY KEY,
-    name TEXT NOT NULL CHECK (name <> '' AND name = btrim(name))
-);
-CREATE UNIQUE INDEX cooking_methods_name_uq ON cooking_methods (lower(name));
- 
--- Диеты
-CREATE TABLE diets (
-    id          SERIAL PRIMARY KEY,
-    kind        TEXT NOT NULL CHECK (kind IN ('diet', 'pevzner')),
-    name        TEXT NOT NULL CHECK (name <> '' AND name = btrim(name)),
-    description TEXT,
-    UNIQUE (id, kind)                        
-);
-CREATE UNIQUE INDEX diets_name_uq ON diets (lower(name));
- 
--- Ограничения диеты
-CREATE TABLE diet_excluded_categories (
-    diet_id     INT REFERENCES diets(id)      ON DELETE CASCADE,
-    category_id INT REFERENCES categories(id) ON DELETE CASCADE,
-    PRIMARY KEY (diet_id, category_id)
-);
- 
--- Запрещённые способы приготовления
-CREATE TABLE diet_excluded_methods (
-    diet_id   INT REFERENCES diets(id)           ON DELETE CASCADE,
-    method_id INT REFERENCES cooking_methods(id) ON DELETE CASCADE,
-    PRIMARY KEY (diet_id, method_id)
-);
+\restrict ayXTx04zUpRH81jCpST8BZQgOVkXQ719cZ6LDOu1XoiPc3fULHtYUp97AvPKRtC
 
--- Запрещённые аллергены: диета без глютена запрещает аллерген глютен
-CREATE TABLE diet_excluded_allergens (
-    diet_id     INT REFERENCES diets(id)     ON DELETE CASCADE,
-    allergen_id INT REFERENCES allergens(id) ON DELETE CASCADE,
-    PRIMARY KEY (diet_id, allergen_id)
-);
- 
--- 2. Ингредиенты
-CREATE TABLE ingredients (
-    id              SERIAL PRIMARY KEY,
-    code            TEXT UNIQUE NOT NULL CHECK (code ~ '^[a-z][a-z0-9_]*$'), 
-    name            TEXT NOT NULL CHECK (name <> '' AND name = btrim(name)), 
-    is_staple       BOOLEAN NOT NULL DEFAULT false,  -- соль, вода, масло есть всегда
-    display_unit    TEXT NOT NULL DEFAULT 'g' CHECK (display_unit IN ('g', 'ml', 'pcs')),
-    grams_per_piece NUMERIC(8,2) CHECK (grams_per_piece > 0),  -- для штучных
-    -- КБЖУ на 100 г
-    kcal            NUMERIC(7,2) NOT NULL CHECK (kcal    BETWEEN 0 AND 900), 
-    protein         NUMERIC(6,2) NOT NULL CHECK (protein BETWEEN 0 AND 100),
-    fat             NUMERIC(6,2) NOT NULL CHECK (fat     BETWEEN 0 AND 100),
-    carbs           NUMERIC(6,2) NOT NULL CHECK (carbs   BETWEEN 0 AND 100),
-    -- средняя цена упаковки в магазине
-    package_g       NUMERIC(8,2)  NOT NULL CHECK (package_g > 0),
-    package_price   NUMERIC(10,2) NOT NULL CHECK (package_price >= 0),
-    CHECK (protein + fat + carbs <= 100),                          
-    CHECK (display_unit <> 'pcs' OR grams_per_piece IS NOT NULL)    -- штучному нужна масса штуки
-);
-CREATE UNIQUE INDEX ingredients_name_uq ON ingredients (lower(name));  
- 
--- Синонимы 
-CREATE TABLE ingredient_aliases (
-    ingredient_id INT REFERENCES ingredients(id) ON DELETE CASCADE,
-    alias         TEXT NOT NULL CHECK (alias <> '' AND alias = btrim(alias)),
-    PRIMARY KEY (ingredient_id, alias)
-);
-CREATE UNIQUE INDEX ingredient_aliases_uq ON ingredient_aliases (ingredient_id, lower(alias));
- 
-CREATE TABLE ingredient_allergens (
-    ingredient_id INT REFERENCES ingredients(id) ON DELETE CASCADE,
-    allergen_id   INT REFERENCES allergens(id)   ON DELETE CASCADE,
-    PRIMARY KEY (ingredient_id, allergen_id)
-);
- 
-CREATE TABLE ingredient_categories (
-    ingredient_id INT REFERENCES ingredients(id) ON DELETE CASCADE,
-    category_id   INT REFERENCES categories(id)  ON DELETE CASCADE,
-    PRIMARY KEY (ingredient_id, category_id)
-);
- 
--- 3. Рецепты
-CREATE TABLE recipes (
-    id              SERIAL PRIMARY KEY,
-    title           TEXT NOT NULL CHECK (title <> '' AND title = btrim(title)),
-    description     TEXT,
-    servings        INT  NOT NULL CHECK (servings > 0),
-    cook_time_min   INT  NOT NULL CHECK (cook_time_min >= 0),
-    needs_microwave BOOLEAN NOT NULL DEFAULT false,
-    needs_stove     BOOLEAN NOT NULL DEFAULT false,
-    needs_oven      BOOLEAN NOT NULL DEFAULT false,
-    no_cook         BOOLEAN NOT NULL DEFAULT false,
-    image_url       TEXT,
-    author_id       INT,             -- NULL = базовый рецепт (видят все), иначе личный рецепт автора
-    CONSTRAINT recipes_no_cook_no_equipment
-        CHECK (NOT no_cook OR (NOT needs_stove AND NOT needs_oven AND NOT needs_microwave))  -- холодное блюдо не требует техники
-);
-CREATE INDEX recipes_time_idx   ON recipes (cook_time_min);
-CREATE INDEX recipes_author_idx ON recipes (author_id);
- 
-CREATE TABLE recipe_cooking_methods (
-    recipe_id INT REFERENCES recipes(id)         ON DELETE CASCADE,
-    method_id INT REFERENCES cooking_methods(id) ON DELETE RESTRICT,
-    PRIMARY KEY (recipe_id, method_id)
-);
- 
-CREATE TABLE recipe_ingredients (
-    recipe_id     INT REFERENCES recipes(id)     ON DELETE CASCADE,
-    ingredient_id INT REFERENCES ingredients(id) ON DELETE RESTRICT,
-    qty_g         NUMERIC(8,2) CHECK (qty_g > 0),
-    is_optional   BOOLEAN NOT NULL DEFAULT false,   -- по вкусу: не докупаем, не скрываем из-за него блюдо, не считаем в КБЖУ
-    PRIMARY KEY (recipe_id, ingredient_id)
-);
-CREATE INDEX recipe_ingredients_ingr_idx ON recipe_ingredients (ingredient_id);
- 
-CREATE TABLE recipe_steps (
-    recipe_id    INT REFERENCES recipes(id) ON DELETE CASCADE,
-    step_no      INT NOT NULL CHECK (step_no > 0),
-    instruction  TEXT NOT NULL CHECK (btrim(instruction) <> ''),
-    duration_min INT CHECK (duration_min > 0),
-    PRIMARY KEY (recipe_id, step_no)
-);
- 
--- 4. Пользователь
-CREATE TABLE users (
-    id              SERIAL PRIMARY KEY,
-    login           CITEXT UNIQUE NOT NULL CHECK (login ~ '^[A-Za-z0-9_.-]{3,32}$'), 
-    password_hash   TEXT NOT NULL,      
-    pevzner_diet_id INT,
-    pevzner_kind    TEXT NOT NULL DEFAULT 'pevzner' CHECK (pevzner_kind = 'pevzner'),
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    FOREIGN KEY (pevzner_diet_id, pevzner_kind) REFERENCES diets(id, kind)
-        ON DELETE SET NULL (pevzner_diet_id)
-);
- 
-ALTER TABLE recipes ADD CONSTRAINT recipes_author_fk
-    FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE;
- 
-CREATE TABLE user_allergens (
-    user_id     INT REFERENCES users(id)     ON DELETE CASCADE,
-    allergen_id INT REFERENCES allergens(id) ON DELETE CASCADE,
-    PRIMARY KEY (user_id, allergen_id)
-);
- 
-CREATE TABLE user_diets (
-    user_id   INT REFERENCES users(id) ON DELETE CASCADE,
-    diet_id   INT NOT NULL,
-    diet_kind TEXT NOT NULL DEFAULT 'diet' CHECK (diet_kind = 'diet'),
-    PRIMARY KEY (user_id, diet_id),
-    FOREIGN KEY (diet_id, diet_kind) REFERENCES diets(id, kind) ON DELETE CASCADE
-);
- 
-CREATE TABLE user_pantry (
-    user_id       INT REFERENCES users(id)       ON DELETE CASCADE,
-    ingredient_id INT REFERENCES ingredients(id) ON DELETE CASCADE,
-    qty_g         NUMERIC(8,2) CHECK (qty_g >= 0),
-    PRIMARY KEY (user_id, ingredient_id)
-);
- 
-CREATE TABLE favorite_recipes (
-    user_id   INT REFERENCES users(id)   ON DELETE CASCADE,
-    recipe_id INT REFERENCES recipes(id) ON DELETE CASCADE,
-    added_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (user_id, recipe_id)
-);
+-- Dumped from database version 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1)
+-- Dumped by pg_dump version 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1)
 
-CREATE FUNCTION check_favorite_recipe_access() RETURNS trigger LANGUAGE plpgsql AS $$
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- Name: citext; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS citext WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION citext; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION citext IS 'data type for case-insensitive character strings';
+
+
+--
+-- Name: check_favorite_recipe_access(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.check_favorite_recipe_access() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
 BEGIN
     IF EXISTS (SELECT 1 FROM recipes
                WHERE id = NEW.recipe_id
@@ -189,91 +48,1161 @@ BEGIN
     END IF;
     RETURN NEW;
 END $$;
-CREATE TRIGGER favorite_recipes_access BEFORE INSERT OR UPDATE ON favorite_recipes
-    FOR EACH ROW EXECUTE FUNCTION check_favorite_recipe_access();
- 
-CREATE TABLE favorite_ingredients (
-    user_id       INT REFERENCES users(id)       ON DELETE CASCADE,
-    ingredient_id INT REFERENCES ingredients(id) ON DELETE CASCADE,
-    added_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (user_id, ingredient_id)
+
+
+--
+-- Name: check_no_cook_methods(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.check_no_cook_methods() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF (SELECT no_cook FROM recipes WHERE id = NEW.recipe_id) THEN
+    IF NEW.method_id <> 4 THEN
+      RAISE EXCEPTION 'no_cook рецепт % не может иметь method_id=%',
+        NEW.recipe_id, NEW.method_id;
+    END IF;
+  END IF;
+  RETURN NEW;
+END $$;
+
+
+--
+-- Name: check_recipe_no_cook_flip(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.check_recipe_no_cook_flip() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF NEW.no_cook AND EXISTS (
+       SELECT 1 FROM recipe_cooking_methods
+       WHERE recipe_id = NEW.id AND method_id <> 4) THEN
+    RAISE EXCEPTION 'нельзя сделать рецепт % no_cook: есть method_id<>4', NEW.id;
+  END IF;
+  RETURN NEW;
+END $$;
+
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: allergens; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.allergens (
+    id integer NOT NULL,
+    code text NOT NULL,
+    name text NOT NULL,
+    CONSTRAINT allergens_code_check CHECK ((code ~ '^[a-z][a-z0-9_]*$'::text)),
+    CONSTRAINT allergens_name_check CHECK (((name <> ''::text) AND (name = btrim(name))))
 );
- 
--- 5. Представления: метрики блюда
-CREATE VIEW recipe_nutrition AS
-SELECT r.id AS recipe_id,
-       ROUND(SUM(i.kcal    * ri.qty_g / 100) / r.servings, 1) AS kcal,
-       ROUND(SUM(i.protein * ri.qty_g / 100) / r.servings, 1) AS protein,
-       ROUND(SUM(i.fat     * ri.qty_g / 100) / r.servings, 1) AS fat,
-       ROUND(SUM(i.carbs   * ri.qty_g / 100) / r.servings, 1) AS carbs,
-       -- false: нет обязательных продуктов или у обязательного qty_g IS NULL (КБЖУ неполное)
-       (COUNT(ri.recipe_id) > 0
-        AND COUNT(*) FILTER (WHERE ri.recipe_id IS NOT NULL AND ri.qty_g IS NULL) = 0) AS complete
-FROM recipes r
-LEFT JOIN recipe_ingredients ri ON ri.recipe_id = r.id AND NOT ri.is_optional
-LEFT JOIN ingredients i         ON i.id = ri.ingredient_id
-GROUP BY r.id, r.servings;
 
-CREATE VIEW recipe_allergens AS
-SELECT DISTINCT ri.recipe_id, ia.allergen_id
-FROM recipe_ingredients ri
-JOIN ingredient_allergens ia USING (ingredient_id)
-WHERE NOT ri.is_optional;
 
-CREATE VIEW recipe_categories AS
-SELECT DISTINCT ri.recipe_id, ic.category_id
-FROM recipe_ingredients ri
-JOIN ingredient_categories ic USING (ingredient_id)
-WHERE NOT ri.is_optional;
- 
-CREATE VIEW user_all_diets AS
-SELECT user_id, diet_id FROM user_diets
+--
+-- Name: allergens_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.allergens_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: allergens_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.allergens_id_seq OWNED BY public.allergens.id;
+
+
+--
+-- Name: categories; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.categories (
+    id integer NOT NULL,
+    name text NOT NULL,
+    CONSTRAINT categories_name_check CHECK (((name <> ''::text) AND (name = btrim(name))))
+);
+
+
+--
+-- Name: categories_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.categories_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: categories_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.categories_id_seq OWNED BY public.categories.id;
+
+
+--
+-- Name: cooking_methods; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.cooking_methods (
+    id integer NOT NULL,
+    name text NOT NULL,
+    CONSTRAINT cooking_methods_name_check CHECK (((name <> ''::text) AND (name = btrim(name))))
+);
+
+
+--
+-- Name: cooking_methods_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.cooking_methods_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: cooking_methods_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.cooking_methods_id_seq OWNED BY public.cooking_methods.id;
+
+
+--
+-- Name: diet_excluded_allergens; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.diet_excluded_allergens (
+    diet_id integer NOT NULL,
+    allergen_id integer NOT NULL
+);
+
+
+--
+-- Name: diet_excluded_categories; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.diet_excluded_categories (
+    diet_id integer NOT NULL,
+    category_id integer NOT NULL
+);
+
+
+--
+-- Name: diet_excluded_methods; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.diet_excluded_methods (
+    diet_id integer NOT NULL,
+    method_id integer NOT NULL
+);
+
+
+--
+-- Name: diets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.diets (
+    id integer NOT NULL,
+    kind text NOT NULL,
+    name text NOT NULL,
+    description text,
+    CONSTRAINT diets_kind_check CHECK ((kind = ANY (ARRAY['diet'::text, 'pevzner'::text]))),
+    CONSTRAINT diets_name_check CHECK (((name <> ''::text) AND (name = btrim(name))))
+);
+
+
+--
+-- Name: diets_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.diets_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: diets_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.diets_id_seq OWNED BY public.diets.id;
+
+
+--
+-- Name: favorite_ingredients; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.favorite_ingredients (
+    user_id integer NOT NULL,
+    ingredient_id integer NOT NULL,
+    added_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: favorite_recipes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.favorite_recipes (
+    user_id integer NOT NULL,
+    recipe_id integer NOT NULL,
+    added_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: ingredient_aliases; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ingredient_aliases (
+    ingredient_id integer NOT NULL,
+    alias text NOT NULL,
+    CONSTRAINT ingredient_aliases_alias_check CHECK (((alias <> ''::text) AND (alias = btrim(alias))))
+);
+
+
+--
+-- Name: ingredient_allergens; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ingredient_allergens (
+    ingredient_id integer NOT NULL,
+    allergen_id integer NOT NULL
+);
+
+
+--
+-- Name: ingredient_categories; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ingredient_categories (
+    ingredient_id integer NOT NULL,
+    category_id integer NOT NULL
+);
+
+
+--
+-- Name: ingredients; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ingredients (
+    id integer NOT NULL,
+    code text NOT NULL,
+    name text NOT NULL,
+    is_staple boolean DEFAULT false NOT NULL,
+    display_unit text DEFAULT 'g'::text NOT NULL,
+    grams_per_piece numeric(8,2),
+    kcal numeric(7,2) NOT NULL,
+    protein numeric(6,2) NOT NULL,
+    fat numeric(6,2) NOT NULL,
+    carbs numeric(6,2) NOT NULL,
+    package_g numeric(8,2) NOT NULL,
+    package_price numeric(10,2) NOT NULL,
+    CONSTRAINT ingredients_carbs_check CHECK (((carbs >= (0)::numeric) AND (carbs <= (100)::numeric))),
+    CONSTRAINT ingredients_check CHECK ((((protein + fat) + carbs) <= (100)::numeric)),
+    CONSTRAINT ingredients_check1 CHECK (((display_unit <> 'pcs'::text) OR (grams_per_piece IS NOT NULL))),
+    CONSTRAINT ingredients_code_check CHECK ((code ~ '^[a-z][a-z0-9_]*$'::text)),
+    CONSTRAINT ingredients_display_unit_check CHECK ((display_unit = ANY (ARRAY['g'::text, 'ml'::text, 'pcs'::text]))),
+    CONSTRAINT ingredients_fat_check CHECK (((fat >= (0)::numeric) AND (fat <= (100)::numeric))),
+    CONSTRAINT ingredients_grams_per_piece_check CHECK ((grams_per_piece > (0)::numeric)),
+    CONSTRAINT ingredients_kcal_check CHECK (((kcal >= (0)::numeric) AND (kcal <= (900)::numeric))),
+    CONSTRAINT ingredients_name_check CHECK (((name <> ''::text) AND (name = btrim(name)))),
+    CONSTRAINT ingredients_package_g_check CHECK ((package_g > (0)::numeric)),
+    CONSTRAINT ingredients_package_price_check CHECK ((package_price >= (0)::numeric)),
+    CONSTRAINT ingredients_protein_check CHECK (((protein >= (0)::numeric) AND (protein <= (100)::numeric)))
+);
+
+
+--
+-- Name: ingredients_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ingredients_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ingredients_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ingredients_id_seq OWNED BY public.ingredients.id;
+
+
+--
+-- Name: recipe_ingredients; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.recipe_ingredients (
+    recipe_id integer NOT NULL,
+    ingredient_id integer NOT NULL,
+    qty_g numeric(8,2),
+    is_optional boolean DEFAULT false NOT NULL,
+    CONSTRAINT recipe_ingredients_qty_g_check CHECK (((qty_g > (0)::numeric) OR (qty_g IS NULL))),
+    CONSTRAINT recipe_ingredients_required_has_qty CHECK ((is_optional OR (qty_g IS NOT NULL)))
+);
+
+
+--
+-- Name: recipe_allergens; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.recipe_allergens AS
+ SELECT DISTINCT ri.recipe_id,
+    ia.allergen_id
+   FROM (public.recipe_ingredients ri
+     JOIN public.ingredient_allergens ia USING (ingredient_id))
+  WHERE (NOT ri.is_optional);
+
+
+--
+-- Name: recipe_categories; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.recipe_categories AS
+ SELECT DISTINCT ri.recipe_id,
+    ic.category_id
+   FROM (public.recipe_ingredients ri
+     JOIN public.ingredient_categories ic USING (ingredient_id))
+  WHERE (NOT ri.is_optional);
+
+
+--
+-- Name: recipe_cooking_methods; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.recipe_cooking_methods (
+    recipe_id integer NOT NULL,
+    method_id integer NOT NULL
+);
+
+
+--
+-- Name: recipes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.recipes (
+    id integer NOT NULL,
+    title text NOT NULL,
+    description text,
+    servings integer NOT NULL,
+    cook_time_min integer NOT NULL,
+    needs_microwave boolean DEFAULT false NOT NULL,
+    needs_stove boolean DEFAULT false NOT NULL,
+    needs_oven boolean DEFAULT false NOT NULL,
+    image_url text,
+    author_id integer,
+    no_cook boolean DEFAULT false NOT NULL,
+    CONSTRAINT recipes_cook_time_min_check CHECK ((cook_time_min >= 0)),
+    CONSTRAINT recipes_no_cook_no_equipment CHECK (((NOT no_cook) OR ((NOT needs_stove) AND (NOT needs_oven) AND (NOT needs_microwave)))),
+    CONSTRAINT recipes_servings_check CHECK ((servings > 0)),
+    CONSTRAINT recipes_title_check CHECK (((title <> ''::text) AND (title = btrim(title))))
+);
+
+
+--
+-- Name: recipe_nutrition; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.recipe_nutrition AS
+ SELECT r.id AS recipe_id,
+    round((sum(((i.kcal * ri.qty_g) / (100)::numeric)) / (r.servings)::numeric), 1) AS kcal,
+    round((sum(((i.protein * ri.qty_g) / (100)::numeric)) / (r.servings)::numeric), 1) AS protein,
+    round((sum(((i.fat * ri.qty_g) / (100)::numeric)) / (r.servings)::numeric), 1) AS fat,
+    round((sum(((i.carbs * ri.qty_g) / (100)::numeric)) / (r.servings)::numeric), 1) AS carbs,
+    ((count(ri.recipe_id) > 0) AND (count(*) FILTER (WHERE ((ri.recipe_id IS NOT NULL) AND (ri.qty_g IS NULL))) = 0)) AS complete
+   FROM ((public.recipes r
+     LEFT JOIN public.recipe_ingredients ri ON (((ri.recipe_id = r.id) AND (NOT ri.is_optional))))
+     LEFT JOIN public.ingredients i ON ((i.id = ri.ingredient_id)))
+  GROUP BY r.id, r.servings;
+
+
+--
+-- Name: recipe_steps; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.recipe_steps (
+    recipe_id integer NOT NULL,
+    step_no integer NOT NULL,
+    instruction text NOT NULL,
+    duration_min integer,
+    CONSTRAINT recipe_steps_duration_min_check CHECK ((duration_min > 0)),
+    CONSTRAINT recipe_steps_instruction_check CHECK ((btrim(instruction) <> ''::text)),
+    CONSTRAINT recipe_steps_step_no_check CHECK ((step_no > 0))
+);
+
+
+--
+-- Name: recipes_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.recipes_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: recipes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.recipes_id_seq OWNED BY public.recipes.id;
+
+
+--
+-- Name: user_diets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_diets (
+    user_id integer NOT NULL,
+    diet_id integer NOT NULL,
+    diet_kind text DEFAULT 'diet'::text NOT NULL,
+    CONSTRAINT user_diets_diet_kind_check CHECK ((diet_kind = 'diet'::text))
+);
+
+
+--
+-- Name: users; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.users (
+    id integer NOT NULL,
+    login public.citext NOT NULL,
+    password_hash text NOT NULL,
+    pevzner_diet_id integer,
+    pevzner_kind text DEFAULT 'pevzner'::text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT users_login_check CHECK ((login OPERATOR(public.~) '^[A-Za-z0-9_.-]{3,32}$'::public.citext)),
+    CONSTRAINT users_pevzner_kind_check CHECK ((pevzner_kind = 'pevzner'::text))
+);
+
+
+--
+-- Name: user_all_diets; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.user_all_diets AS
+ SELECT user_diets.user_id,
+    user_diets.diet_id
+   FROM public.user_diets
 UNION
-SELECT id, pevzner_diet_id FROM users WHERE pevzner_diet_id IS NOT NULL;
- 
-CREATE VIEW user_recipe_visibility AS
-WITH flags AS (
-    SELECT u.id AS user_id, r.id AS recipe_id,
-           COALESCE((SELECT array_agg(DISTINCT a.name ORDER BY a.name)
-                     FROM recipe_allergens ra
-                     JOIN user_allergens ua ON ua.allergen_id = ra.allergen_id
-                     JOIN allergens a       ON a.id = ra.allergen_id
-                     WHERE ra.recipe_id = r.id AND ua.user_id = u.id),
-                    '{}') AS user_allergens_in_dish,
-           COALESCE((SELECT array_agg(DISTINCT d.name ORDER BY d.name)
-                     FROM user_all_diets ud
-                     JOIN diets d ON d.id = ud.diet_id
-                     WHERE ud.user_id = u.id
-                       AND (EXISTS (SELECT 1 FROM recipe_categories rc
-                                    JOIN diet_excluded_categories x ON x.category_id = rc.category_id
-                                    WHERE rc.recipe_id = r.id AND x.diet_id = d.id)
-                         OR EXISTS (SELECT 1 FROM recipe_allergens ra
-                                    JOIN diet_excluded_allergens x ON x.allergen_id = ra.allergen_id
-                                    WHERE ra.recipe_id = r.id AND x.diet_id = d.id)
-                         OR EXISTS (SELECT 1 FROM recipe_cooking_methods rm
-                                    JOIN diet_excluded_methods x ON x.method_id = rm.method_id
-                                    WHERE rm.recipe_id = r.id AND x.diet_id = d.id))),
-                    '{}') AS violated_diets,
-           COALESCE((SELECT array_agg(DISTINCT i.name ORDER BY i.name)
-                     FROM recipe_ingredients ri
-                     JOIN ingredients i ON i.id = ri.ingredient_id
-                     WHERE ri.recipe_id = r.id AND ri.is_optional
-                       AND (EXISTS (SELECT 1 FROM ingredient_allergens ia
-                                    JOIN user_allergens ua ON ua.allergen_id = ia.allergen_id
-                                    WHERE ia.ingredient_id = i.id AND ua.user_id = u.id)
-                         OR EXISTS (SELECT 1 FROM ingredient_categories ic
-                                    JOIN diet_excluded_categories x ON x.category_id = ic.category_id
-                                    JOIN user_all_diets ud ON ud.diet_id = x.diet_id
-                                    WHERE ic.ingredient_id = i.id AND ud.user_id = u.id)
-                         OR EXISTS (SELECT 1 FROM ingredient_allergens ia
-                                    JOIN diet_excluded_allergens x ON x.allergen_id = ia.allergen_id
-                                    JOIN user_all_diets ud ON ud.diet_id = x.diet_id
-                                    WHERE ia.ingredient_id = i.id AND ud.user_id = u.id))),
-                    '{}') AS skip_optional
-    FROM users u CROSS JOIN recipes r
-    WHERE r.author_id IS NULL OR r.author_id = u.id
-)
-SELECT f.*,
-       (cardinality(user_allergens_in_dish) > 0
-        OR cardinality(violated_diets) > 0) AS is_hidden
-FROM flags f;
+ SELECT users.id AS user_id,
+    users.pevzner_diet_id AS diet_id
+   FROM public.users
+  WHERE (users.pevzner_diet_id IS NOT NULL);
+
+
+--
+-- Name: user_allergens; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_allergens (
+    user_id integer NOT NULL,
+    allergen_id integer NOT NULL
+);
+
+
+--
+-- Name: user_pantry; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_pantry (
+    user_id integer NOT NULL,
+    ingredient_id integer NOT NULL,
+    qty_g numeric(8,2),
+    CONSTRAINT user_pantry_qty_g_check CHECK ((qty_g >= (0)::numeric))
+);
+
+
+--
+-- Name: user_recipe_visibility; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.user_recipe_visibility AS
+ WITH flags AS (
+         SELECT u.id AS user_id,
+            r.id AS recipe_id,
+            COALESCE(( SELECT array_agg(DISTINCT a.name ORDER BY a.name) AS array_agg
+                   FROM ((public.recipe_allergens ra
+                     JOIN public.user_allergens ua ON ((ua.allergen_id = ra.allergen_id)))
+                     JOIN public.allergens a ON ((a.id = ra.allergen_id)))
+                  WHERE ((ra.recipe_id = r.id) AND (ua.user_id = u.id))), '{}'::text[]) AS user_allergens_in_dish,
+            COALESCE(( SELECT array_agg(DISTINCT d.name ORDER BY d.name) AS array_agg
+                   FROM (public.user_all_diets ud
+                     JOIN public.diets d ON ((d.id = ud.diet_id)))
+                  WHERE ((ud.user_id = u.id) AND ((EXISTS ( SELECT 1
+                           FROM (public.recipe_categories rc
+                             JOIN public.diet_excluded_categories x ON ((x.category_id = rc.category_id)))
+                          WHERE ((rc.recipe_id = r.id) AND (x.diet_id = d.id)))) OR (EXISTS ( SELECT 1
+                           FROM (public.recipe_allergens ra
+                             JOIN public.diet_excluded_allergens x ON ((x.allergen_id = ra.allergen_id)))
+                          WHERE ((ra.recipe_id = r.id) AND (x.diet_id = d.id)))) OR (EXISTS ( SELECT 1
+                           FROM (public.recipe_cooking_methods rm
+                             JOIN public.diet_excluded_methods x ON ((x.method_id = rm.method_id)))
+                          WHERE ((rm.recipe_id = r.id) AND (x.diet_id = d.id))))))), '{}'::text[]) AS violated_diets,
+            COALESCE(( SELECT array_agg(DISTINCT i.name ORDER BY i.name) AS array_agg
+                   FROM (public.recipe_ingredients ri
+                     JOIN public.ingredients i ON ((i.id = ri.ingredient_id)))
+                  WHERE ((ri.recipe_id = r.id) AND ri.is_optional AND ((EXISTS ( SELECT 1
+                           FROM (public.ingredient_allergens ia
+                             JOIN public.user_allergens ua ON ((ua.allergen_id = ia.allergen_id)))
+                          WHERE ((ia.ingredient_id = i.id) AND (ua.user_id = u.id)))) OR (EXISTS ( SELECT 1
+                           FROM ((public.ingredient_categories ic
+                             JOIN public.diet_excluded_categories x ON ((x.category_id = ic.category_id)))
+                             JOIN public.user_all_diets ud ON ((ud.diet_id = x.diet_id)))
+                          WHERE ((ic.ingredient_id = i.id) AND (ud.user_id = u.id)))) OR (EXISTS ( SELECT 1
+                           FROM ((public.ingredient_allergens ia
+                             JOIN public.diet_excluded_allergens x ON ((x.allergen_id = ia.allergen_id)))
+                             JOIN public.user_all_diets ud ON ((ud.diet_id = x.diet_id)))
+                          WHERE ((ia.ingredient_id = i.id) AND (ud.user_id = u.id))))))), '{}'::text[]) AS skip_optional
+           FROM (public.users u
+             CROSS JOIN public.recipes r)
+          WHERE ((r.author_id IS NULL) OR (r.author_id = u.id))
+        )
+ SELECT user_id,
+    recipe_id,
+    user_allergens_in_dish,
+    violated_diets,
+    skip_optional,
+    ((cardinality(user_allergens_in_dish) > 0) OR (cardinality(violated_diets) > 0)) AS is_hidden
+   FROM flags f;
+
+
+--
+-- Name: users_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.users_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: users_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
+
+
+--
+-- Name: allergens id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.allergens ALTER COLUMN id SET DEFAULT nextval('public.allergens_id_seq'::regclass);
+
+
+--
+-- Name: categories id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.categories ALTER COLUMN id SET DEFAULT nextval('public.categories_id_seq'::regclass);
+
+
+--
+-- Name: cooking_methods id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cooking_methods ALTER COLUMN id SET DEFAULT nextval('public.cooking_methods_id_seq'::regclass);
+
+
+--
+-- Name: diets id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.diets ALTER COLUMN id SET DEFAULT nextval('public.diets_id_seq'::regclass);
+
+
+--
+-- Name: ingredients id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingredients ALTER COLUMN id SET DEFAULT nextval('public.ingredients_id_seq'::regclass);
+
+
+--
+-- Name: recipes id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipes ALTER COLUMN id SET DEFAULT nextval('public.recipes_id_seq'::regclass);
+
+
+--
+-- Name: users id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
+
+
+--
+-- Name: allergens allergens_code_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.allergens
+    ADD CONSTRAINT allergens_code_key UNIQUE (code);
+
+
+--
+-- Name: allergens allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.allergens
+    ADD CONSTRAINT allergens_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: categories categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.categories
+    ADD CONSTRAINT categories_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: cooking_methods cooking_methods_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cooking_methods
+    ADD CONSTRAINT cooking_methods_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: diet_excluded_allergens diet_excluded_allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.diet_excluded_allergens
+    ADD CONSTRAINT diet_excluded_allergens_pkey PRIMARY KEY (diet_id, allergen_id);
+
+
+--
+-- Name: diet_excluded_categories diet_excluded_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.diet_excluded_categories
+    ADD CONSTRAINT diet_excluded_categories_pkey PRIMARY KEY (diet_id, category_id);
+
+
+--
+-- Name: diet_excluded_methods diet_excluded_methods_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.diet_excluded_methods
+    ADD CONSTRAINT diet_excluded_methods_pkey PRIMARY KEY (diet_id, method_id);
+
+
+--
+-- Name: diets diets_id_kind_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.diets
+    ADD CONSTRAINT diets_id_kind_key UNIQUE (id, kind);
+
+
+--
+-- Name: diets diets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.diets
+    ADD CONSTRAINT diets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: favorite_ingredients favorite_ingredients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.favorite_ingredients
+    ADD CONSTRAINT favorite_ingredients_pkey PRIMARY KEY (user_id, ingredient_id);
+
+
+--
+-- Name: favorite_recipes favorite_recipes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.favorite_recipes
+    ADD CONSTRAINT favorite_recipes_pkey PRIMARY KEY (user_id, recipe_id);
+
+
+--
+-- Name: ingredient_aliases ingredient_aliases_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingredient_aliases
+    ADD CONSTRAINT ingredient_aliases_pkey PRIMARY KEY (ingredient_id, alias);
+
+
+--
+-- Name: ingredient_allergens ingredient_allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingredient_allergens
+    ADD CONSTRAINT ingredient_allergens_pkey PRIMARY KEY (ingredient_id, allergen_id);
+
+
+--
+-- Name: ingredient_categories ingredient_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingredient_categories
+    ADD CONSTRAINT ingredient_categories_pkey PRIMARY KEY (ingredient_id, category_id);
+
+
+--
+-- Name: ingredients ingredients_code_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingredients
+    ADD CONSTRAINT ingredients_code_key UNIQUE (code);
+
+
+--
+-- Name: ingredients ingredients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingredients
+    ADD CONSTRAINT ingredients_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: recipe_cooking_methods recipe_cooking_methods_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_cooking_methods
+    ADD CONSTRAINT recipe_cooking_methods_pkey PRIMARY KEY (recipe_id, method_id);
+
+
+--
+-- Name: recipe_ingredients recipe_ingredients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_ingredients
+    ADD CONSTRAINT recipe_ingredients_pkey PRIMARY KEY (recipe_id, ingredient_id);
+
+
+--
+-- Name: recipe_steps recipe_steps_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_steps
+    ADD CONSTRAINT recipe_steps_pkey PRIMARY KEY (recipe_id, step_no);
+
+
+--
+-- Name: recipes recipes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipes
+    ADD CONSTRAINT recipes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: user_allergens user_allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_allergens
+    ADD CONSTRAINT user_allergens_pkey PRIMARY KEY (user_id, allergen_id);
+
+
+--
+-- Name: user_diets user_diets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_diets
+    ADD CONSTRAINT user_diets_pkey PRIMARY KEY (user_id, diet_id);
+
+
+--
+-- Name: user_pantry user_pantry_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_pantry
+    ADD CONSTRAINT user_pantry_pkey PRIMARY KEY (user_id, ingredient_id);
+
+
+--
+-- Name: users users_login_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_login_key UNIQUE (login);
+
+
+--
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: allergens_name_uq; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX allergens_name_uq ON public.allergens USING btree (lower(name));
+
+
+--
+-- Name: categories_name_uq; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX categories_name_uq ON public.categories USING btree (lower(name));
+
+
+--
+-- Name: cooking_methods_name_uq; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX cooking_methods_name_uq ON public.cooking_methods USING btree (lower(name));
+
+
+--
+-- Name: diets_name_uq; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX diets_name_uq ON public.diets USING btree (lower(name));
+
+
+--
+-- Name: favorite_ingredients_ing_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX favorite_ingredients_ing_idx ON public.favorite_ingredients USING btree (ingredient_id);
+
+
+--
+-- Name: favorite_recipes_recipe_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX favorite_recipes_recipe_idx ON public.favorite_recipes USING btree (recipe_id);
+
+
+--
+-- Name: ingredient_aliases_uq; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ingredient_aliases_uq ON public.ingredient_aliases USING btree (ingredient_id, lower(alias));
+
+
+--
+-- Name: ingredients_name_uq; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ingredients_name_uq ON public.ingredients USING btree (lower(name));
+
+
+--
+-- Name: recipe_cooking_methods_method_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX recipe_cooking_methods_method_idx ON public.recipe_cooking_methods USING btree (method_id);
+
+
+--
+-- Name: recipe_ingredients_ingr_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX recipe_ingredients_ingr_idx ON public.recipe_ingredients USING btree (ingredient_id);
+
+
+--
+-- Name: recipes_author_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX recipes_author_idx ON public.recipes USING btree (author_id);
+
+
+--
+-- Name: recipes_time_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX recipes_time_idx ON public.recipes USING btree (cook_time_min);
+
+
+--
+-- Name: user_allergens_allergen_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX user_allergens_allergen_idx ON public.user_allergens USING btree (allergen_id);
+
+
+--
+-- Name: favorite_recipes favorite_recipes_access; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER favorite_recipes_access BEFORE INSERT OR UPDATE ON public.favorite_recipes FOR EACH ROW EXECUTE FUNCTION public.check_favorite_recipe_access();
+
+
+--
+-- Name: recipe_cooking_methods recipe_cooking_methods_no_cook; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER recipe_cooking_methods_no_cook BEFORE INSERT OR UPDATE ON public.recipe_cooking_methods FOR EACH ROW EXECUTE FUNCTION public.check_no_cook_methods();
+
+
+--
+-- Name: recipes recipes_no_cook_flip; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER recipes_no_cook_flip BEFORE UPDATE OF no_cook ON public.recipes FOR EACH ROW EXECUTE FUNCTION public.check_recipe_no_cook_flip();
+
+
+--
+-- Name: diet_excluded_allergens diet_excluded_allergens_allergen_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.diet_excluded_allergens
+    ADD CONSTRAINT diet_excluded_allergens_allergen_id_fkey FOREIGN KEY (allergen_id) REFERENCES public.allergens(id) ON DELETE CASCADE;
+
+
+--
+-- Name: diet_excluded_allergens diet_excluded_allergens_diet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.diet_excluded_allergens
+    ADD CONSTRAINT diet_excluded_allergens_diet_id_fkey FOREIGN KEY (diet_id) REFERENCES public.diets(id) ON DELETE CASCADE;
+
+
+--
+-- Name: diet_excluded_categories diet_excluded_categories_category_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.diet_excluded_categories
+    ADD CONSTRAINT diet_excluded_categories_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.categories(id) ON DELETE CASCADE;
+
+
+--
+-- Name: diet_excluded_categories diet_excluded_categories_diet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.diet_excluded_categories
+    ADD CONSTRAINT diet_excluded_categories_diet_id_fkey FOREIGN KEY (diet_id) REFERENCES public.diets(id) ON DELETE CASCADE;
+
+
+--
+-- Name: diet_excluded_methods diet_excluded_methods_diet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.diet_excluded_methods
+    ADD CONSTRAINT diet_excluded_methods_diet_id_fkey FOREIGN KEY (diet_id) REFERENCES public.diets(id) ON DELETE CASCADE;
+
+
+--
+-- Name: diet_excluded_methods diet_excluded_methods_method_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.diet_excluded_methods
+    ADD CONSTRAINT diet_excluded_methods_method_id_fkey FOREIGN KEY (method_id) REFERENCES public.cooking_methods(id) ON DELETE CASCADE;
+
+
+--
+-- Name: favorite_ingredients favorite_ingredients_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.favorite_ingredients
+    ADD CONSTRAINT favorite_ingredients_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(id) ON DELETE CASCADE;
+
+
+--
+-- Name: favorite_ingredients favorite_ingredients_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.favorite_ingredients
+    ADD CONSTRAINT favorite_ingredients_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: favorite_recipes favorite_recipes_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.favorite_recipes
+    ADD CONSTRAINT favorite_recipes_recipe_id_fkey FOREIGN KEY (recipe_id) REFERENCES public.recipes(id) ON DELETE CASCADE;
+
+
+--
+-- Name: favorite_recipes favorite_recipes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.favorite_recipes
+    ADD CONSTRAINT favorite_recipes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: ingredient_aliases ingredient_aliases_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingredient_aliases
+    ADD CONSTRAINT ingredient_aliases_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(id) ON DELETE CASCADE;
+
+
+--
+-- Name: ingredient_allergens ingredient_allergens_allergen_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingredient_allergens
+    ADD CONSTRAINT ingredient_allergens_allergen_id_fkey FOREIGN KEY (allergen_id) REFERENCES public.allergens(id) ON DELETE CASCADE;
+
+
+--
+-- Name: ingredient_allergens ingredient_allergens_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingredient_allergens
+    ADD CONSTRAINT ingredient_allergens_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(id) ON DELETE CASCADE;
+
+
+--
+-- Name: ingredient_categories ingredient_categories_category_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingredient_categories
+    ADD CONSTRAINT ingredient_categories_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.categories(id) ON DELETE CASCADE;
+
+
+--
+-- Name: ingredient_categories ingredient_categories_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingredient_categories
+    ADD CONSTRAINT ingredient_categories_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(id) ON DELETE CASCADE;
+
+
+--
+-- Name: recipe_cooking_methods recipe_cooking_methods_method_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_cooking_methods
+    ADD CONSTRAINT recipe_cooking_methods_method_id_fkey FOREIGN KEY (method_id) REFERENCES public.cooking_methods(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: recipe_cooking_methods recipe_cooking_methods_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_cooking_methods
+    ADD CONSTRAINT recipe_cooking_methods_recipe_id_fkey FOREIGN KEY (recipe_id) REFERENCES public.recipes(id) ON DELETE CASCADE;
+
+
+--
+-- Name: recipe_ingredients recipe_ingredients_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_ingredients
+    ADD CONSTRAINT recipe_ingredients_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: recipe_ingredients recipe_ingredients_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_ingredients
+    ADD CONSTRAINT recipe_ingredients_recipe_id_fkey FOREIGN KEY (recipe_id) REFERENCES public.recipes(id) ON DELETE CASCADE;
+
+
+--
+-- Name: recipe_steps recipe_steps_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_steps
+    ADD CONSTRAINT recipe_steps_recipe_id_fkey FOREIGN KEY (recipe_id) REFERENCES public.recipes(id) ON DELETE CASCADE;
+
+
+--
+-- Name: recipes recipes_author_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipes
+    ADD CONSTRAINT recipes_author_fk FOREIGN KEY (author_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_allergens user_allergens_allergen_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_allergens
+    ADD CONSTRAINT user_allergens_allergen_id_fkey FOREIGN KEY (allergen_id) REFERENCES public.allergens(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_allergens user_allergens_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_allergens
+    ADD CONSTRAINT user_allergens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_diets user_diets_diet_id_diet_kind_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_diets
+    ADD CONSTRAINT user_diets_diet_id_diet_kind_fkey FOREIGN KEY (diet_id, diet_kind) REFERENCES public.diets(id, kind) ON DELETE CASCADE;
+
+
+--
+-- Name: user_diets user_diets_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_diets
+    ADD CONSTRAINT user_diets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_pantry user_pantry_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_pantry
+    ADD CONSTRAINT user_pantry_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_pantry user_pantry_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_pantry
+    ADD CONSTRAINT user_pantry_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: users users_pevzner_diet_id_pevzner_kind_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_pevzner_diet_id_pevzner_kind_fkey FOREIGN KEY (pevzner_diet_id, pevzner_kind) REFERENCES public.diets(id, kind) ON DELETE SET NULL (pevzner_diet_id);
+
+
+--
+-- PostgreSQL database dump complete
+--
+
+\unrestrict ayXTx04zUpRH81jCpST8BZQgOVkXQ719cZ6LDOu1XoiPc3fULHtYUp97AvPKRtC
+
