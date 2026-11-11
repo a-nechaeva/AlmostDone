@@ -160,6 +160,9 @@ data class PurchaseSuggestion(
     val recipeIds: Set<String>,
 )
 
+/** ID упаковки ингредиента: у каталога одна упаковка на продукт (как `<id>-default` на сервере). */
+fun defaultPackageId(ingredientId: String) = "$ingredientId-default"
+
 fun quotePackage(shortage: Quantity?, offer: PackageOffer?): Pair<Quantity, Long>? {
     if (shortage == null || offer == null || shortage.unit != offer.quantity.unit) return null
     val packages = ceil(shortage.value / offer.quantity.value).toLong()

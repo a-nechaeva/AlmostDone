@@ -112,6 +112,19 @@ class ReceiptRoomTest {
         }
     }
 
+    @Test
+    fun budgetAcceptsDefaultPackageOfAnyIngredientWithOffer() = runBlocking {
+        withRepository { repo ->
+            val milk = ShoppingPackageSelection("milk", "milk-default", Quantity(1000.0, QuantityUnit.MILLILITER), 1)
+            repo.add(listOf(milk)) as BudgetPlanAddition.Added
+            assertEquals(listOf("milk"), repo.household.first().manualPurchases.map { it.ingredientId })
+            try {
+                repo.add(listOf(ShoppingPackageSelection("rice", "rice-default", grams(1000.0), 1)))
+                fail("rice has no offer")
+            } catch (_: IllegalArgumentException) {}
+        }
+    }
+
     private suspend fun withRepository(block: suspend (RoomHouseholdRepository) -> Unit) {
         val database = Room.inMemoryDatabaseBuilder(
             RuntimeEnvironment.getApplication(),

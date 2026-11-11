@@ -179,14 +179,11 @@ class RoomHouseholdRepository(
             val (originals, alreadyCovered) = shoppingTransaction(receipt.id) { catalog, before, quote ->
                 val desired = packages.groupBy { it.ingredientId }.mapValues { (id, items) ->
                     val offer = requireNotNull(catalog.ingredient(id)?.offer)
-                    // The demo catalog has one offer per ingredient and no package IDs.
-                    val packageId = when (id) {
-                        "hard-cheese" -> "hard-cheese-200g"
-                        "tomatoes" -> "tomatoes-500g"
-                        else -> error("Для этого продукта упаковка недоступна.")
-                    }
+                    // One offer per ingredient: "<id>-default" (как на сервере); старые ID упаковок
+                    // демо-примера тоже принимаются.
+                    val packageIds = setOfNotNull(defaultPackageId(id), LEGACY_DEMO_PACKAGES[id])
                     require(items.all { item ->
-                        item.packageId == packageId && item.packageQuantity == offer.quantity &&
+                        item.packageId in packageIds && item.packageQuantity == offer.quantity &&
                             item.packageCount > 0
                     })
                     Quantity(items.sumOf { it.packageCount * offer.quantity.value }, offer.quantity.unit)
@@ -299,3 +296,5 @@ class RoomHouseholdRepository(
         }
     }
 }
+
+private val LEGACY_DEMO_PACKAGES = mapOf("hard-cheese" to "hard-cheese-200g", "tomatoes" to "tomatoes-500g")

@@ -84,6 +84,12 @@ class DishgraphGateway:
     def shopping_requirement(self, code, grams):
         return self.engine_catalog.packs_needed(code, grams), self.engine_catalog.pack_cost(code, grams)
 
+    def export(self):
+        """Basic products and (recipe, metrics without shortages) for every recipe the engine accepted."""
+        self.require_engine()
+        catalog = self.engine_catalog
+        return catalog.staples, [(recipe, self.engine.dish_metrics(recipe, {}, catalog)) for recipe in catalog.recipes]
+
     def build_graph(self, options):
         self.require_engine()
         return self.engine.build_graph(options, self.engine_catalog)

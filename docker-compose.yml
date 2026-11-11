@@ -1,7 +1,8 @@
 # Сервер + PostgreSQL 18 с данными Карины.
 #   docker compose up -d --build        → http://localhost:8000/api/v1/health, документация — /docs
 #   docker compose down -v              → остановить и удалить базу (при следующем запуске seed.sql загрузится заново)
-# Ключ GigaChat — в backend/.env (в git не попадает), см. backend/README.md.
+# Ключи — в server/.env (в git не попадает), образец — server/.env.example:
+#   GIGACHAT_CREDENTIALS, GIGACHAT_MODEL — распознавание фото; ALMOSTDONE_YANDEX_CLIENT_ID — вход через Яндекс ID.
 services:
   db:
     image: postgres:18  # seed.sql снят pg_dump 18: команду \restrict понимает только psql 17.6+/18
@@ -10,7 +11,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-almostdone}
       POSTGRES_DB: almostdone
     volumes:
-      - ./db/seed.sql:/docker-entrypoint-initdb.d/01-seed.sql:ro  # загружается один раз, при пустой базе
+      - ./server/init-db.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
+      - ./db/schema.sql:/almostdone-init/schema.sql:ro
+      - ./db/seed.sql:/almostdone-init/seed.sql:ro
       - pgdata:/var/lib/postgresql
     ports:
       - "5432:5432"
@@ -23,12 +26,12 @@ services:
   api:
     build:
       context: .
-      dockerfile: backend/Dockerfile
+      dockerfile: server/Dockerfile
     environment:
-      DATABASE_URL: postgresql://koma:${POSTGRES_PASSWORD:-almostdone}@db:5432/almostdone
-      DEMO_PANTRY: "true"
+      ALMOSTDONE_DATABASE_URL: postgresql://koma:${POSTGRES_PASSWORD:-almostdone}@db:5432/almostdone
+      GIGACHAT_CA_BUNDLE_FILE: /app/engine/certs/russian_trusted_root_ca.pem
     env_file:
-      - path: ./backend/.env
+      - path: ./server/.env
         required: false
     ports:
       - "8000:8000"

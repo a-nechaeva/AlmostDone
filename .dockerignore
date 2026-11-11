@@ -9,4 +9,4 @@
 mobile
 engine/photos
 engine/tests
-backend/tests
+server/tests

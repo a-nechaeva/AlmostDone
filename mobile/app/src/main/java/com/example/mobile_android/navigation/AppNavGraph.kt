@@ -217,7 +217,13 @@ private fun ApplicationNavigation(
                 return@composable
             }
             val vm: ShoppingViewModel = injectedViewModel {
-                ShoppingViewModel(c.catalog, c.household, c.preferences, createSavedStateHandle())
+                ShoppingViewModel(
+                    c.catalog,
+                    c.household,
+                    c.preferences,
+                    createSavedStateHandle(),
+                    c.suggestionSource ?: FakeShoppingSuggestionSource(),
+                )
             }
             val state by vm.state.collectAsStateWithLifecycle()
             val action by vm.actions.state.collectAsStateWithLifecycle()
@@ -238,6 +244,7 @@ private fun ApplicationNavigation(
                         openRecipe = { id -> nav.navigate("recipe/${Uri.encode(id)}") },
                         openPantry = { nav.navigateTab(AppTab.PANTRY) },
                         budgetPlanWriter = c.budgetPlanWriter,
+                        budgetSource = c.budgetSource,
                         isRouteActive = currentEntry == entry,
                     )
                 }

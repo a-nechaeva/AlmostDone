@@ -26,6 +26,29 @@ psql --dbname "postgresql://USER:PASSWORD@HOST:5432/DATABASE" -v ON_ERROR_STOP=1
 Без `ALMOSTDONE_DATABASE_URL` используются память
 и демонстрационный каталог. Остальные настройки — в [.env.example](.env.example).
 
+### Демо без PostgreSQL
+
+Каталог читается прямо из дампа базы `db/seed.sql` (`ALMOSTDONE_CATALOG=../db/seed.sql`), ключ GigaChat — из `engine/.env` (в git не попадает):
+
+```bash
+cd server
+set -a; . ../engine/.env; set +a
+export GIGACHAT_CA_BUNDLE_FILE=../engine/certs/russian_trusted_root_ca.pem
+export ALMOSTDONE_CATALOG=../db/seed.sql ALMOSTDONE_YANDEX_CLIENT_ID=de795e46d251424297db41a56379f2d3
+.venv/bin/python -m uvicorn almostdone_server.main:create_app --factory --host 127.0.0.1 --port 8000
+```
+
+Телефон по USB: `adb reverse tcp:8000 tcp:8000`, приложение собирается с `-PalmostReadyApiBaseUrl=http://127.0.0.1:8000`. Пользователи и сессии в этом режиме хранятся в памяти и сбрасываются при перезапуске.
+
+Каталог доступен через `GET /api/v1/catalog`, фото — через
+`GET /api/v1/recipes/{id}/photo`. Сервер скачивает и кэширует фото;
+ссылки в карточках указывают на сервер.
+
+Docker: `docker compose up -d --build` из корня (сервер + PostgreSQL с `db/seed.sql`), ключи — в `server/.env`.
+Новая БД получает схему и данные автоматически; для существующей применяется миграция выше.
+
+После запуска:
+
 - Swagger UI: <http://127.0.0.1:8000/docs>.
 - OpenAPI: <http://127.0.0.1:8000/openapi.json>.
 - Проверка процесса: <http://127.0.0.1:8000/api/v1/health>.
