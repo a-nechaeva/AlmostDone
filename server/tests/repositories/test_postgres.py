@@ -42,6 +42,20 @@ def login(client, subject=None):
     return {"Authorization": "Bearer " + session["access_token"]}, session
 
 
+def test_catalog_exports_ingredient_nutrition_from_postgres(database):
+    app = application(database)
+    with app.state.service.store.transaction() as db:
+        rows = list(db.execute('SELECT code, kcal, protein, fat, carbs FROM ingredients'))
+    expected = {row['code']: {'kcal': float(row['kcal']), 'protein_g': float(row['protein']),
+                             'fat_g': float(row['fat']), 'carbs_g': float(row['carbs'])} for row in rows}
+    with TestClient(app) as client:
+        headers, _ = login(client)
+        response = client.get('/api/v1/catalog', headers=headers)
+        assert response.status_code == 200, response.text
+        actual = {item['id']: item['nutrition_per_100g'] for item in response.json()['ingredients']}
+        assert actual == expected
+
+
 def test_readiness_checks_real_postgres_schema_and_migrations(database):
     with TestClient(application(database)) as client:
         response = client.get('/api/v1/health/ready')
