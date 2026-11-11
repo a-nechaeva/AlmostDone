@@ -28,6 +28,11 @@ FALLBACK_MIN_SCORE = 0.9  # наш поиск берём, только если 
 SUPPORT_MIN = 0.5  # если выбор модели слабо похож на строку...
 UNSUPPORTED_CAP = 0.7  # ...её уверенность не выше 0.7: строка уходит на подтверждение
 DROP_BELOW = 0.3  # совсем не похож («перец болгарский» → помидоры, «колбаса» → сосиски) — убираем
+SHORTLIST_PER_QUERY = 5  # короткий список для сопоставления: столько лучших совпадений на запрос...
+SHORTLIST_MAX = 300  # ...но не больше стольких продуктов на всё фото
+SHORTLIST_MIN_SCORE = 0.7  # ниже — совпадения уровня опечатки («майка» → мука): в список не берём
+MAX_ALTS = 2
+MIN_CANDIDATE = 0.05  # кандидат с уверенностью около нуля — модель имела в виду «не он»
 
 # единица -> (наша единица, множитель)
 _UNITS = {
@@ -93,7 +98,7 @@ def _status(candidates: list[Candidate]) -> str:
 _WORD_RE = re.compile(r"[а-яёa-z]{3,}", re.IGNORECASE)
 
 
-def _fallback_candidates(raw_name: str, index: SearchIndex, catalog: Catalog) -> dict[str, float]:
+def _fallback_candidates(raw_name: str | tuple[str, ...], index: SearchIndex, catalog: Catalog) -> dict[str, float]:
     """Кандидаты из нашего поиска, если модель не дала подходящий код.
 
     Ищем всю строку и её первое слово: на чеке сначала идёт сам продукт, потом уточнения
@@ -104,8 +109,8 @@ def _fallback_candidates(raw_name: str, index: SearchIndex, catalog: Catalog) ->
     молотый, «оливковое масло» — не подсолнечное, а дома они «есть всегда».
     Уверенность не выше FALLBACK_WEIGHT, такая строка всегда требует подтверждения.
     """
-    words = _WORD_RE.findall(raw_name)
-    queries = [raw_name, *words[:1]]
+    texts = (raw_name,) if isinstance(raw_name, str) else raw_name
+    queries = [q for text in texts for q in (text, *_WORD_RE.findall(text)[:1])]
     best: dict[str, float] = {}
     for query in queries:
         for hit in index.search(query, limit=MAX_CANDIDATES):
@@ -160,7 +165,7 @@ def _candidate_scores(raw: Any, catalog: Catalog) -> dict[str, float]:
             continue
         code = str(cand.get("code") or "").strip()
         conf = _confidence(cand.get("confidence"))
-        if code in catalog.ingredients and conf is not None:
+        if code in catalog.ingredients and conf is not None and conf >= MIN_CANDIDATE:  # 0 — «не он»
             best[code] = max(conf, best.get(code, 0.0))
     return best
 
@@ -172,20 +177,24 @@ def _build_line(
     catalog: Catalog,
     index: SearchIndex | None,
     visual_confidence: float | None = None,
+    names: tuple[str, ...] = (),
 ) -> RecognitionLine | None:
+    """names — расшифровка строки моделью («МОЛ.ПАСТ.» → «молоко») и её простые варианты:
+    по ним, как и по самой строке, сверяем выбор модели и ищем запасных кандидатов."""
     best = dict(scores)
+    terms = tuple(t for t in (*names, raw_name) if t)
     # Модель бывает уверена там, где не должна («колбаса» → сосиски на 1.00, болгарский перец →
     # помидоры). Сверяем её выбор с названием: совсем не похоже — убираем, слабо похоже —
     # уверенность не выше 0.7, строка уходит на подтверждение.
-    if raw_name and index is not None:
+    if terms and index is not None:
         for code in list(best):
-            support = index.similarity(raw_name, code)
+            support = max(index.similarity(t, code) for t in terms)
             if support < DROP_BELOW:
                 del best[code]
             elif support < SUPPORT_MIN:
                 best[code] = min(best[code], UNSUPPORTED_CAP)
-    if not best and raw_name and index is not None:
-        best = _fallback_candidates(raw_name, index, catalog)
+    if not best and terms and index is not None:
+        best = _fallback_candidates(terms, index, catalog)
     # фото продуктов: если модель не уверена, что видит именно этот продукт, сопоставление не надёжнее
     if visual_confidence is not None:
         best = {c: min(v, visual_confidence) for c, v in best.items()}
@@ -236,11 +245,38 @@ def parse_response(text: str, catalog: Catalog, index: SearchIndex | None = None
 
 @dataclass(frozen=True)
 class SeenProduct:
-    """Продукт, который модель увидела на фото (до сопоставления с каталогом)."""
+    """Продукт, который модель увидела на фото или прочитала в чеке (до сопоставления с каталогом).
+
+    name — обычное название продукта, alts — его простые варианты («томаты» → «помидор»),
+    raw_name — строка чека как есть (для фото продуктов None), confidence — насколько модель
+    уверена, что видит этот продукт (для чека None: текст на чеке не «видится», а читается).
+    """
 
     name: str
-    confidence: float
+    confidence: float | None
     quantity: Quantity | None
+    alts: tuple[str, ...] = ()
+    raw_name: str | None = None
+
+    @property
+    def label(self) -> str:
+        """Как позиция выглядит в промпте сопоставления."""
+        if self.raw_name and self.raw_name.lower() != self.name.lower():
+            return f"{self.name} (на чеке: {self.raw_name})"
+        return self.name
+
+    @property
+    def names(self) -> tuple[str, ...]:
+        return (self.name, *self.alts)
+
+
+def _alts(value: Any, name: str) -> tuple[str, ...]:
+    result: list[str] = []
+    for alt in value if isinstance(value, list) else []:
+        alt = _clean_name(alt)
+        if alt and alt.lower() != name.lower() and alt.lower() not in (a.lower() for a in result):
+            result.append(alt)
+    return tuple(result[:MAX_ALTS])
 
 
 def _count(value: Any) -> int | None:
@@ -279,8 +315,69 @@ def parse_products(text: str) -> list[SeenProduct]:
             quantity = Quantity(value=float(count), unit="pcs")
         else:
             quantity = None
-        seen.append(SeenProduct(name=name, confidence=0.5 if confidence is None else confidence, quantity=quantity))
+        seen.append(
+            SeenProduct(
+                name=name,
+                confidence=0.5 if confidence is None else confidence,
+                quantity=quantity,
+                alts=_alts(item.get("alt"), name),
+            )
+        )
     return seen
+
+
+def parse_receipt_lines(text: str) -> list[SeenProduct] | None:
+    """Шаг 1 для чека: строки чека с расшифровкой названий.
+
+    None — модель ответила в старом формате, сразу с кодами каталога (candidates): такой ответ
+    разбирает parse_response, второй запрос не нужен.
+    """
+    items = _items(extract_json(text), "items")
+    if any(isinstance(item, dict) and "candidates" in item for item in items):
+        return None
+    lines = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        raw = _clean_name(item.get("raw_name"))
+        name = _clean_name(item.get("name")) or raw
+        if not name:
+            continue
+        lines.append(
+            SeenProduct(
+                name=name,
+                confidence=None,
+                quantity=_quantity(item.get("quantity")),
+                alts=_alts(item.get("alt"), name),
+                raw_name=raw or None,
+            )
+        )
+    return lines
+
+
+def shortlist(seen: list[SeenProduct], index: SearchIndex) -> list[str]:
+    """Короткий список кандидатов для сопоставления: что наш поиск находит по названиям.
+
+    Ищем каждое название целиком и каждое его слово («сыр голландский» → и «сыр»): у модели
+    должен быть выбор между похожими продуктами. Порядок — по очереди: лучшие совпадения
+    каждого запроса, потом вторые и т. д., чтобы ограничение не съело последние позиции.
+    """
+    queries: list[str] = []
+    for product in seen:
+        for term in (*product.names, *((product.raw_name,) if product.raw_name else ())):
+            for q in (term, *(w for w in _WORD_RE.findall(term) if w.lower() != term.lower())):
+                if q.lower() not in (x.lower() for x in queries):
+                    queries.append(q)
+    results = [
+        [hit.code for hit in index.search(q, limit=SHORTLIST_PER_QUERY) if hit.score >= SHORTLIST_MIN_SCORE]
+        for q in queries
+    ]
+    codes: dict[str, None] = {}
+    for rank in range(SHORTLIST_PER_QUERY):
+        for hits in results:
+            if rank < len(hits):
+                codes.setdefault(hits[rank], None)
+    return list(codes)[:SHORTLIST_MAX]
 
 
 def parse_mapping(text: str, count: int, catalog: Catalog) -> dict[int, dict[str, float]]:
@@ -307,7 +404,15 @@ def build_product_lines(
     """Увиденные продукты + сопоставление с каталогом → строки распознавания."""
     lines = []
     for number, product in enumerate(seen, 1):
-        line = _build_line(product.name, mapping.get(number, {}), product.quantity, catalog, index, product.confidence)
+        line = _build_line(
+            product.raw_name or product.name,
+            mapping.get(number, {}),
+            product.quantity,
+            catalog,
+            index,
+            product.confidence,
+            names=product.names,
+        )
         if line is not None:
             lines.append(line)
     return _merge_duplicates(lines)

@@ -1,0 +1,40 @@
+# Сервер + PostgreSQL 18 с данными Карины.
+#   docker compose up -d --build        → http://localhost:8000/api/v1/health, документация — /docs
+#   docker compose down -v              → остановить и удалить базу (при следующем запуске seed.sql загрузится заново)
+# Ключ GigaChat — в backend/.env (в git не попадает), см. backend/README.md.
+services:
+  db:
+    image: postgres:18  # seed.sql снят pg_dump 18: команду \restrict понимает только psql 17.6+/18
+    environment:
+      POSTGRES_USER: koma  # владелец объектов в дампе — так ALTER ... OWNER TO koma проходит без ошибок
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-almostdone}
+      POSTGRES_DB: almostdone
+    volumes:
+      - ./db/seed.sql:/docker-entrypoint-initdb.d/01-seed.sql:ro  # загружается один раз, при пустой базе
+      - pgdata:/var/lib/postgresql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U koma -d almostdone"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://koma:${POSTGRES_PASSWORD:-almostdone}@db:5432/almostdone
+      DEMO_PANTRY: "true"
+    env_file:
+      - path: ./backend/.env
+        required: false
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

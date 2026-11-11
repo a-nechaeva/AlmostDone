@@ -62,7 +62,11 @@ def _ingredient(raw: dict[str, Any]) -> Ingredient:
 def _recipe(raw: dict[str, Any], ingredients: dict[str, Ingredient]) -> Recipe:
     """Превращает словари в модели"""
     items = tuple(
-        RecipeItem(code=it["code"], qty_g=float(it["qty_g"]), is_optional=bool(it.get("is_optional", False)))
+        RecipeItem(
+            code=it["code"],
+            qty_g=None if it.get("qty_g") is None else float(it["qty_g"]),  # NULL в БД — не указано
+            is_optional=bool(it.get("is_optional", False)),
+        )
         for it in raw["items"]
     )
     recipe = Recipe(
@@ -76,6 +80,8 @@ def _recipe(raw: dict[str, Any], ingredients: dict[str, Ingredient]) -> Recipe:
         needs_oven=bool(raw.get("needs_oven", False)),
         steps=tuple(raw.get("steps", [])),
         description=raw.get("description"),
+        no_cook=bool(raw.get("no_cook", False)),
+        image_url=raw.get("image_url"),
     )
     rid = recipe.id
     if recipe.servings <= 0:
@@ -88,9 +94,11 @@ def _recipe(raw: dict[str, Any], ingredients: dict[str, Ingredient]) -> Recipe:
             raise CatalogError(f"Рецепт {rid!r} ссылается на неизвестный ингредиент {it.code!r}")
         if it.code in seen:
             raise CatalogError(f"В рецепте {rid!r} ингредиент {it.code!r} указан дважды")
-        if it.qty_g <= 0:
-            raise CatalogError(f"В рецепте {rid!r} qty_g должен быть > 0")
+        if it.qty_g is not None and it.qty_g <= 0:
+            raise CatalogError(f"В рецепте {rid!r} qty_g должен быть > 0 или не указан")
         seen.add(it.code)
+    if recipe.no_cook and recipe.equipment:
+        raise CatalogError(f"У рецепта {rid!r} одновременно no_cook и нужна техника")
     if not recipe.required_items:
         raise CatalogError(f"У рецепта {rid!r} нет обязательных ингредиентов")
     return recipe

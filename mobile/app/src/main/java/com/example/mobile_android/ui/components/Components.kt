@@ -1,6 +1,7 @@
 package com.example.mobile_android.ui.components
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,6 +39,7 @@ fun BrandTopBar(
     title: String = "почти готово",
     onBack: (() -> Unit)? = null,
     onFavorites: (() -> Unit)? = null,
+    topBarActions: @Composable RowScope.() -> Unit = {},
 ) {
     TopAppBar(
         title = { Text(title, fontWeight = FontWeight.Bold) },
@@ -53,6 +55,7 @@ fun BrandTopBar(
                 )
         },
         actions = {
+            topBarActions()
             if (onFavorites != null)
                 IconButton(onClick = onFavorites) {
                     Icon(Icons.Default.FavoriteBorder, "Избранное")
@@ -137,18 +140,30 @@ fun RecipePhoto(
     contentDescription: String? = null,
     corner: Dp = 22.dp,
 ) {
-    Image(
-        painterResource(
-            if (photo == "pasta") R.drawable.recipe_pasta else R.drawable.recipe_omelette
-        ),
-        contentDescription,
-        modifier.clip(RoundedCornerShape(corner)),
-        contentScale = ContentScale.Crop,
-    )
+    if (photo == "pasta" || photo == "omelette") {
+        Image(
+            painterResource(if (photo == "pasta") R.drawable.recipe_pasta else R.drawable.recipe_omelette),
+            contentDescription,
+            modifier.clip(RoundedCornerShape(corner)),
+            contentScale = ContentScale.Crop,
+        )
+    } else {
+        Box(
+            modifier.clip(RoundedCornerShape(corner))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .then(if (contentDescription != null) Modifier.semantics { this.contentDescription = contentDescription } else Modifier)
+        )
+    }
 }
 
 @Composable
-fun RecipeCard(match: RecipeMatch, favorite: Boolean, onClick: () -> Unit, onFavorite: () -> Unit) {
+fun RecipeCard(
+    match: RecipeMatch,
+    favorite: Boolean,
+    onClick: () -> Unit,
+    onFavorite: () -> Unit,
+    favoriteEnabled: Boolean = true,
+) {
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -194,13 +209,14 @@ fun RecipeCard(match: RecipeMatch, favorite: Boolean, onClick: () -> Unit, onFav
             }
             IconButton(
                 onClick = onFavorite,
+                enabled = favoriteEnabled,
+                colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.primary),
                 modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp),
             ) {
                 Icon(
                     if (favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                     if (favorite) "Убрать ${match.recipe.title} из избранного"
                     else "В избранное: ${match.recipe.title}",
-                    tint = MaterialTheme.colorScheme.primary,
                 )
             }
         }

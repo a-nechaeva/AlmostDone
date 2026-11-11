@@ -30,11 +30,12 @@ from .core import (
 )
 from .graph import build_graph
 from .loader import CatalogError, catalog_from_dict, load_catalog
-from .models import EQUIPMENT, Catalog, Ingredient, Recipe, RecipeItem
+from .models import COOKING_METHODS, EQUIPMENT, Catalog, Ingredient, Recipe, RecipeItem
 from .purchases import BudgetPlan, PlanStep, SinglePurchase, best_purchases, best_single_purchases
 from .search import SearchHit, SearchIndex, search_ingredients
 
 __all__ = [
+    "COOKING_METHODS",
     "EQUIPMENT",
     "BudgetPlan",
     "Catalog",

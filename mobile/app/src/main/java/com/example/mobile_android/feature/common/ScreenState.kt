@@ -14,13 +14,17 @@ sealed interface ScreenState<out T> {
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
-fun <T> loadingStates(refresh: Flow<Int>, source: () -> Flow<T>): Flow<ScreenState<T>> =
+fun <T> loadingStates(
+    refresh: Flow<Int>,
+    onError: (Throwable) -> ScreenState.Error = { ScreenState.Error() },
+    source: () -> Flow<T>,
+): Flow<ScreenState<T>> =
     refresh.flatMapLatest {
         source()
             .map<T, ScreenState<T>> { ScreenState.Ready(it) }
             .onStart { emit(ScreenState.Loading) }
             .catch { error ->
-                if (error is CancellationException) throw error else emit(ScreenState.Error())
+                if (error is CancellationException) throw error else emit(onError(error))
             }
     }
 
