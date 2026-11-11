@@ -98,7 +98,6 @@ private fun FavoritesBody(
 ) {
     var ingredients by rememberSaveable { mutableStateOf(false) }
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
-    val largeText = LocalDensity.current.fontScale > 1.2f
     val recipeScroll = rememberLazyListState()
     val ingredientScroll = rememberLazyListState()
     val savingPantry = pantryPhase == Phase.Saving
@@ -135,31 +134,7 @@ private fun FavoritesBody(
         ) {
             PageHeading("Избранное")
             DemoNotice()
-            Row(
-                Modifier.fillMaxWidth().selectableGroup()
-                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(24.dp))
-                    .padding(4.dp),
-            ) {
-                listOf("Блюда", "Ингредиенты").forEachIndexed { index, title ->
-                    val active = ingredients == (index == 1)
-                    Tab(
-                        selected = active,
-                        onClick = { ingredients = index == 1 },
-                        modifier = Modifier.weight(if (largeText) { if (index == 0) 0.4f else 0.6f } else 1f)
-                            .heightIn(min = 48.dp).clip(RoundedCornerShape(20.dp))
-                            .background(if (active) MaterialTheme.colorScheme.surface else androidx.compose.ui.graphics.Color.Transparent),
-                        selectedContentColor = MaterialTheme.colorScheme.onSurface,
-                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    ) {
-                        Text(
-                            title,
-                            Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
-                        )
-                    }
-                }
-            }
+            FavoritesTabs(ingredients) { ingredients = it }
             ActionMessage(action, dismiss)
             if (action.pending) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -355,4 +330,37 @@ private fun FavoritesQuantityDialog(
             }
         },
     )
+}
+
+@Composable
+internal fun FavoritesTabs(
+    ingredients: Boolean,
+    selectIngredients: (Boolean) -> Unit,
+) {
+    val largeText = LocalDensity.current.fontScale > 1.2f
+    Row(
+        Modifier.fillMaxWidth().selectableGroup()
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(24.dp))
+            .padding(4.dp),
+    ) {
+        listOf("Блюда", "Ингредиенты").forEachIndexed { index, title ->
+            val active = ingredients == (index == 1)
+            Tab(
+                selected = active,
+                onClick = { selectIngredients(index == 1) },
+                modifier = Modifier.weight(if (largeText) { if (index == 0) 0.4f else 0.6f } else 1f)
+                    .heightIn(min = 48.dp).clip(RoundedCornerShape(20.dp))
+                    .background(if (active) MaterialTheme.colorScheme.surface else androidx.compose.ui.graphics.Color.Transparent),
+                selectedContentColor = MaterialTheme.colorScheme.onSurface,
+                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            ) {
+                Text(
+                    title,
+                    Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                )
+            }
+        }
+    }
 }

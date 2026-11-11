@@ -2,31 +2,28 @@ package com.example.mobile_android.feature.auth
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
 import com.example.mobile_android.feature.common.ActionState
-import com.example.mobile_android.ui.components.*
+import com.example.mobile_android.ui.components.ActionMessage
+import com.example.mobile_android.ui.components.PageHeading
+import com.example.mobile_android.ui.components.PrimaryButton
 
 @Composable
 fun LoginScreen(
-    form: LoginForm,
     action: ActionState,
-    loginChanged: (String) -> Unit,
-    passwordChanged: (String) -> Unit,
-    signIn: () -> Unit,
+    yandexPending: Boolean,
     yandexSignIn: () -> Unit,
     dismiss: () -> Unit,
 ) {
+    val pending = action.pending || yandexPending
     Column(
         Modifier.fillMaxSize()
             .safeDrawingPadding()
-            .imePadding()
             .verticalScroll(rememberScrollState())
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -34,46 +31,14 @@ fun LoginScreen(
         Spacer(Modifier.height(32.dp))
         PageHeading("Почти готово", "Выберите, что приготовить из продуктов дома")
         Spacer(Modifier.height(24.dp))
-        Text("Вход в демонстрационный режим", style = MaterialTheme.typography.titleLarge)
-        Text(
-            "Тестовые логин и пароль: demo / demo. Продукты и настройки сохраняются на этом устройстве."
-        )
-        OutlinedTextField(
-            form.login,
-            loginChanged,
-            Modifier.fillMaxWidth(),
-            label = { Text("Логин") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-            enabled = !action.pending,
-        )
-        OutlinedTextField(
-            form.password,
-            passwordChanged,
-            Modifier.fillMaxWidth(),
-            label = { Text("Пароль") },
-            visualTransformation = PasswordVisualTransformation(),
-            singleLine = true,
-            keyboardOptions =
-                KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { if (!action.pending) signIn() }),
-            enabled = !action.pending,
-        )
+        Text("Вход в приложение", style = MaterialTheme.typography.titleLarge)
         ActionMessage(action, dismiss)
         PrimaryButton(
-            signIn,
+            yandexSignIn,
             Modifier.fillMaxWidth().heightIn(min = 48.dp),
-            enabled = !action.pending,
+            enabled = !pending,
         ) {
-            Text(if (action.pending) "Входим…" else "Войти в демо")
+            Text(if (pending) "Подключаемся…" else "Войти через Яндекс ID")
         }
-        OutlinedButton(
-            onClick = yandexSignIn,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-            enabled = !action.pending,
-        ) {
-            Text("Войти через Яндекс")
-        }
-        DemoNotice()
     }
 }

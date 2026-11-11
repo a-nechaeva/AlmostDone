@@ -265,7 +265,7 @@ private fun DishesHeading(count: Int, pantry: () -> Unit) {
 }
 
 @Composable
-private fun DishesListViewSelector(view: DishesView, change: (DishesView) -> Unit) {
+internal fun DishesListViewSelector(view: DishesView, change: (DishesView) -> Unit) {
     Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceVariant) {
         Row(Modifier.fillMaxWidth().padding(4.dp).selectableGroup()) {
             DishesView.entries.forEach { option ->

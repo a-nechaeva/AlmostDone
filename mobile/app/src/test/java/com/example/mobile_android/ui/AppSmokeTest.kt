@@ -13,7 +13,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.Density
 import com.dropbox.differ.SimpleImageComparator
-import com.example.mobile_android.app.AppDependencies
+import com.example.mobile_android.app.LocalFeatureDependencies
 import com.example.mobile_android.data.DemoCatalog
 import com.example.mobile_android.domain.*
 import com.example.mobile_android.feature.FakeHousehold
@@ -22,8 +22,6 @@ import com.example.mobile_android.navigation.AppRoot
 import com.example.mobile_android.ui.theme.AlmostReadyTheme
 import com.github.takahirom.roborazzi.RoborazziOptions
 import com.github.takahirom.roborazzi.captureRoboImage
-import com.yandex.authsdk.YandexAuthOptions
-import com.yandex.authsdk.YandexAuthSdk
 import java.io.File
 import kotlinx.coroutines.flow.*
 import org.junit.Assert.*
@@ -33,7 +31,6 @@ import org.junit.Test
 import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
@@ -84,13 +81,11 @@ class AppSmokeTest {
 
     @Category(UiSmoke::class)
     @Test
-    fun demoLoginPantryDishesRecipeAndBack() {
+    fun yandexLoginPantryDishesRecipeAndBack() {
         dependencies.session.value.value = false
         launch()
-        awaitText("Войти в демо")
-        text("Логин").assert(hasSetTextAction()).performTextInput("demo")
-        text("Пароль").assert(hasSetTextAction()).performTextInput("demo")
-        text("Войти в демо").assertHasClickAction().performClick()
+        awaitText("Войти через Яндекс ID")
+        text("Войти через Яндекс ID").assertHasClickAction().performClick()
         awaitText("Мои продукты")
         text("Добавить продукт").assert(hasSetTextAction())
         compose.onNodeWithContentDescription("Добавить по фото чека").assertHasClickAction()
@@ -393,12 +388,7 @@ class AppSmokeTest {
 
 private class SmokeSession : SessionRepository {
     val value = MutableStateFlow(true)
-    override val signedIn: Flow<Boolean> = value
-
-    override suspend fun signIn(login: String, password: String) {
-        require(login == "demo" && password == "demo") { "Неверные демо-данные" }
-        value.value = true
-    }
+    override val sessionKey: Flow<String?> = value.map { if (it) "test-session" else null }
 
     override suspend fun signInWithToken(token: String) {
         value.value = true
@@ -409,7 +399,7 @@ private class SmokeSession : SessionRepository {
     }
 }
 
-private class SmokeDependencies : AppDependencies {
+private class SmokeDependencies : LocalFeatureDependencies {
     var catalogSource =
         MutableSharedFlow<Catalog>(replay = 1).apply { tryEmit(DemoCatalog.catalog) }
     override val catalog =
@@ -420,7 +410,5 @@ private class SmokeDependencies : AppDependencies {
     override val household = FakeHousehold()
     override val preferences = FakePreferences()
     override val session = SmokeSession()
-    override val yandexAuth by lazy {
-        YandexAuthSdk.create(YandexAuthOptions(RuntimeEnvironment.getApplication()))
-    }
+    override val yandexLogin = FakeYandexLogin()
 }

@@ -29,16 +29,31 @@ import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.example.mobile_android.app.AppDependencies
-import com.example.mobile_android.data.remote.ServerStatus
+import com.example.mobile_android.app.LocalFeatureDependencies
 import com.example.mobile_android.domain.Ingredient
 import com.example.mobile_android.ui.components.BrandTopBar
 import com.example.mobile_android.ui.components.PageHeading
 import java.io.IOException
-import kotlinx.coroutines.launch
 
 @Composable
-internal fun ReceiptRoute(dependencies: AppDependencies, close: () -> Unit) {
+internal fun ReceiptRoute(dependencies: LocalFeatureDependencies?, close: () -> Unit) {
+    if (dependencies == null) {
+        var kind by rememberSaveable { mutableStateOf(ReceiptPhotoKind.RECEIPT) }
+        ReceiptScreen(
+            state = ReceiptState.Capture(),
+            close = close,
+            takePhoto = {},
+            choosePhoto = {},
+            reset = {},
+            toggle = { _, _ -> },
+            edit = { _, _, _ -> },
+            confirm = {},
+            kind = kind,
+            chooseKind = { kind = it },
+            available = false,
+        )
+        return
+    }
     val context = LocalContext.current.applicationContext
     val photos = remember(context) { ReceiptPhotos(context) }
     val model: ReceiptViewModel = viewModel(factory = remember(dependencies, photos) {
@@ -49,7 +64,6 @@ internal fun ReceiptRoute(dependencies: AppDependencies, close: () -> Unit) {
                     dependencies.receiptImporter,
                     createSavedStateHandle(),
                     photos::discard,
-                    photoRecognizer = dependencies.server?.receiptRecognizer(),
                 )
             }
         }
@@ -57,9 +71,6 @@ internal fun ReceiptRoute(dependencies: AppDependencies, close: () -> Unit) {
     val state by model.state.collectAsStateWithLifecycle()
     val photoRequest by model.photoRequest.collectAsStateWithLifecycle()
     val kind by model.kind.collectAsStateWithLifecycle()
-    val server = dependencies.server
-    val serverStatus = server?.status?.collectAsStateWithLifecycle()?.value
-    val scope = rememberCoroutineScope()
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (model.finishPhotoRequest(ReceiptPhotoRequest.PICKER) && uri != null) {
             model.readImage { photos.jpeg(uri) }
@@ -113,8 +124,6 @@ internal fun ReceiptRoute(dependencies: AppDependencies, close: () -> Unit) {
         photoPending = photoRequest != null,
         kind = kind,
         chooseKind = if (model.canChooseKind) model::chooseKind else null,
-        serverStatus = serverStatus,
-        connectServer = { address -> server?.let { scope.launch { it.connect(address) } } },
     )
 }
 
@@ -133,9 +142,7 @@ internal fun ReceiptScreen(
     kind: ReceiptPhotoKind = ReceiptPhotoKind.RECEIPT,
     /** null — выбора нет (демо-распознавание понимает только чек). */
     chooseKind: ((ReceiptPhotoKind) -> Unit)? = null,
-    /** null — приложение без сервера (демо, тесты): карточки адреса нет. */
-    serverStatus: ServerStatus? = null,
-    connectServer: (String) -> Unit = {},
+    available: Boolean = true,
 ) {
     val products = kind == ReceiptPhotoKind.PRODUCTS
     val review = state as? ReceiptState.Review
@@ -176,8 +183,7 @@ internal fun ReceiptScreen(
         ) {
             when (state) {
                 is ReceiptState.Capture -> {
-                    if (serverStatus != null) ServerAddressCard(serverStatus, connectServer)
-                    ReceiptCapture(state, takePhoto, choosePhoto, close, enabled = !photoPending, kind, chooseKind)
+                    ReceiptCapture(state, takePhoto, choosePhoto, close, available, !photoPending, kind, chooseKind)
                 }
                 ReceiptState.Reading -> {
                     if (products) PageHeading("Смотрим фото", "Ищем продукты — это до 20 секунд")
@@ -202,10 +208,12 @@ private fun ReceiptCapture(
     takePhoto: () -> Unit,
     choosePhoto: () -> Unit,
     close: () -> Unit,
-    enabled: Boolean,
+    available: Boolean,
+    photoReady: Boolean,
     kind: ReceiptPhotoKind = ReceiptPhotoKind.RECEIPT,
     chooseKind: ((ReceiptPhotoKind) -> Unit)? = null,
 ) {
+    val enabled = available && photoReady
     val issue = state.issue
     val products = kind == ReceiptPhotoKind.PRODUCTS
     if (chooseKind != null) {
@@ -214,18 +222,23 @@ private fun ReceiptCapture(
                 selected = !products,
                 onClick = { chooseKind(ReceiptPhotoKind.RECEIPT) },
                 label = { Text("Чек") },
-                enabled = enabled,
+                enabled = photoReady,
             )
             FilterChip(
                 selected = products,
                 onClick = { chooseKind(ReceiptPhotoKind.PRODUCTS) },
                 label = { Text("Продукты") },
-                enabled = enabled,
+                enabled = photoReady,
             )
         }
     }
     if (issue == null) {
-        if (products) PageHeading("Сфотографируйте продукты", "Холодильник, полку или пакет — чтобы были видны упаковки")
+        if (!available) PageHeading(
+            "Пока недоступно",
+            if (products) "Распознавание продуктов по фото ещё подключается."
+            else "Распознавание чека ещё подключается.",
+        )
+        else if (products) PageHeading("Сфотографируйте продукты", "Холодильник, полку или пакет — чтобы были видны упаковки")
         else PageHeading("Сфотографируйте чек", "Целиком, при хорошем освещении")
         Surface(
             Modifier.fillMaxWidth().height(248.dp),
@@ -244,7 +257,7 @@ private fun ReceiptCapture(
                 }
             }
         }
-        Text("Перед добавлением проверьте названия и количество.")
+        if (available) Text("Перед добавлением проверьте названия и количество.")
     } else {
         val (title, details) = when (issue) {
             ReceiptPhotoIssue.NO_CAMERA -> "Камера недоступна" to (if (products) "Выберите готовое фото." else "Выберите готовое фото чека.")

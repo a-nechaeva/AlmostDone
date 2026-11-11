@@ -6,6 +6,11 @@ plugins {
     alias(libs.plugins.roborazzi)
 }
 
+val apiBaseUrl = providers.gradleProperty("almostReadyApiBaseUrl").getOrElse("").trim()
+require(apiBaseUrl.none { it.isWhitespace() || it in "\"\\" }) {
+    "almostReadyApiBaseUrl must be a URL without whitespace, quotes or backslashes"
+}
+
 val robolectricSdk by configurations.creating
 val androidTestSuite = providers.gradleProperty("androidTestSuite").getOrElse("all")
 
@@ -25,6 +30,7 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
         manifestPlaceholders["YANDEX_CLIENT_ID"] = "de795e46d251424297db41a56379f2d3"
     }
 
@@ -46,7 +52,10 @@ android {
         freeCompilerArgs += listOf("-opt-in=androidx.compose.material3.ExperimentalMaterial3Api")
     }
 
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
     testOptions {
         unitTests.isIncludeAndroidResources = true
         unitTests.all {
@@ -107,6 +116,7 @@ tasks
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }
 
 dependencies {
+    implementation(libs.okhttp)
     robolectricSdk("org.robolectric:android-all-instrumented:16-robolectric-13921718-i7") {
         isTransitive = false
     }

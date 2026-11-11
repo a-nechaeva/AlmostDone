@@ -53,7 +53,7 @@ fun RecipeScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 item(key = "photo") {
-                    if (recipe.photo in setOf("pasta", "omelette") || RemoteImages.isRemote(recipe.photo)) {
+                    if (recipe.photo in setOf("pasta", "omelette")) {
                         RecipePhoto(
                             recipe.photo,
                             Modifier.fillMaxWidth().height(206.dp),

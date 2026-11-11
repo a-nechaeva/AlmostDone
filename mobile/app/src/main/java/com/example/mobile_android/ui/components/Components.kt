@@ -140,28 +140,18 @@ fun RecipePhoto(
     contentDescription: String? = null,
     corner: Dp = 22.dp,
 ) {
-    if (RemoteImages.isRemote(photo)) {
-        // фото с сервера: пока грузится или если не загрузилось — нейтральный фон
-        val bitmap by produceState(RemoteImages.cached(photo), photo) { value = RemoteImages.load(photo) }
-        val shaped = modifier.clip(RoundedCornerShape(corner))
-        val image = bitmap
-        if (image != null) {
-            Image(image, contentDescription, shaped, contentScale = ContentScale.Crop)
-        } else {
-            Box(
-                shaped
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .then(if (contentDescription != null) Modifier.semantics { this.contentDescription = contentDescription } else Modifier)
-            )
-        }
-    } else {
+    if (photo == "pasta" || photo == "omelette") {
         Image(
-            painterResource(
-                if (photo == "pasta") R.drawable.recipe_pasta else R.drawable.recipe_omelette
-            ),
+            painterResource(if (photo == "pasta") R.drawable.recipe_pasta else R.drawable.recipe_omelette),
             contentDescription,
             modifier.clip(RoundedCornerShape(corner)),
             contentScale = ContentScale.Crop,
+        )
+    } else {
+        Box(
+            modifier.clip(RoundedCornerShape(corner))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .then(if (contentDescription != null) Modifier.semantics { this.contentDescription = contentDescription } else Modifier)
         )
     }
 }

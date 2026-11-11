@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.Density
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.dropbox.differ.SimpleImageComparator
-import com.example.mobile_android.app.AppDependencies
+import com.example.mobile_android.app.LocalFeatureDependencies
 import com.example.mobile_android.data.DemoCatalog
 import com.example.mobile_android.data.DemoCatalogRepository
 import com.example.mobile_android.domain.*
@@ -29,8 +29,7 @@ import com.example.mobile_android.ui.components.LoadContent
 import com.example.mobile_android.ui.theme.AlmostReadyTheme
 import com.github.takahirom.roborazzi.RoborazziOptions
 import com.github.takahirom.roborazzi.captureRoboImage
-import com.yandex.authsdk.YandexAuthOptions
-import com.yandex.authsdk.YandexAuthSdk
+import com.example.mobile_android.ui.FakeYandexLogin
 import java.io.File
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.cancel
@@ -43,7 +42,6 @@ import org.junit.Test
 import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.robolectric.shadows.ShadowDialog
@@ -443,10 +441,8 @@ class PantryUiScreenTest {
     }
 }
 
-private class PantryUiAppDependencies(override val household: PantryUiHousehold) : AppDependencies {
-    override val yandexAuth by lazy {
-        YandexAuthSdk.create(YandexAuthOptions(RuntimeEnvironment.getApplication()))
-    }
+private class PantryUiAppDependencies(override val household: PantryUiHousehold) : LocalFeatureDependencies {
+    override val yandexLogin = FakeYandexLogin()
     override val catalog = DemoCatalogRepository()
     override val preferences =
         object : PreferencesRepository {
@@ -457,9 +453,8 @@ private class PantryUiAppDependencies(override val household: PantryUiHousehold)
         }
     override val session =
         object : SessionRepository {
-            override val signedIn = flowOf(true)
+            override val sessionKey = flowOf("test-session")
 
-            override suspend fun signIn(login: String, password: String) = error("unused")
 
             override suspend fun signInWithToken(token: String) = error("unused")
 

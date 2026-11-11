@@ -8,7 +8,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import com.dropbox.differ.SimpleImageComparator
-import com.example.mobile_android.app.AppDependencies
+import com.example.mobile_android.app.LocalFeatureDependencies
 import com.example.mobile_android.data.DemoCatalogRepository
 import com.example.mobile_android.domain.SessionRepository
 import com.example.mobile_android.navigation.AppRoot
@@ -17,8 +17,7 @@ import com.example.mobile_android.ui.UiSmoke
 import com.example.mobile_android.ui.theme.AlmostReadyTheme
 import com.github.takahirom.roborazzi.RoborazziOptions
 import com.github.takahirom.roborazzi.captureRoboImage
-import com.yandex.authsdk.YandexAuthOptions
-import com.yandex.authsdk.YandexAuthSdk
+import com.example.mobile_android.ui.FakeYandexLogin
 import java.io.File
 import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertTrue
@@ -28,7 +27,6 @@ import org.junit.Test
 import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
@@ -42,23 +40,19 @@ import org.robolectric.annotation.GraphicsMode
 class ShoppingUiAppHostTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     private val dependencies =
-        object : AppDependencies {
+        object : LocalFeatureDependencies {
             override val catalog = DemoCatalogRepository()
             override val household = ShoppingUiHousehold()
             override val preferences = ShoppingUiPreferences()
             override val session =
                 object : SessionRepository {
-                    override val signedIn = flowOf(true)
-
-                    override suspend fun signIn(login: String, password: String) = Unit
+                    override val sessionKey = flowOf("test-session")
 
                     override suspend fun signInWithToken(token: String) = Unit
 
                     override suspend fun signOut() = Unit
                 }
-            override val yandexAuth by lazy {
-                YandexAuthSdk.create(YandexAuthOptions(RuntimeEnvironment.getApplication()))
-            }
+            override val yandexLogin = FakeYandexLogin()
         }
 
     @Before

@@ -302,37 +302,29 @@ class ViewModelTest {
     }
 
     @Test
-    fun passwordIsClearedOnBothFailedAndSuccessfulSignIn() = runTest {
-        val repository =
-            object : SessionRepository {
-                val value = MutableStateFlow(false)
-                override val signedIn: Flow<Boolean> = value
-
-                override suspend fun signIn(login: String, password: String) {
-                    require(login == "demo" && password == "demo")
-                    value.value = true
-                }
-
-                override suspend fun signInWithToken(token: String) {
-                    value.value = true
-                }
-
-                override suspend fun signOut() {
-                    value.value = false
-                }
+    fun failedYandexExchangeLeavesLoginAvailableForRetry() = runTest {
+        val active = MutableStateFlow(false)
+        val repository = object : SessionRepository {
+            override val sessionKey: Flow<String?> = active.map { if (it) "test-session" else null }
+            override suspend fun signInWithToken(token: String) {
+                if (token == "rejected") throw java.io.IOException()
+                active.value = true
             }
+            override suspend fun signOut() {
+                active.value = false
+            }
+        }
         val vm = SessionViewModel(repository).also { created += it }
-        vm.loginChanged("demo")
-        vm.passwordChanged("wrong")
-        vm.signIn()
+        vm.signInWithYandex("rejected")
         runCurrent()
-        assertEquals("", vm.form.value.password)
         assertTrue(vm.actions.state.value.failed)
-        vm.passwordChanged("demo")
-        vm.signIn()
+        assertFalse(vm.actions.state.value.pending)
+        assertFalse(active.value)
+
+        vm.signInWithYandex("accepted")
         runCurrent()
-        assertEquals("", vm.form.value.password)
-        assertTrue(repository.value.value)
+        assertTrue(active.value)
+        assertFalse(vm.actions.state.value.failed)
     }
 
     @Test
@@ -404,9 +396,7 @@ class ViewModelTest {
     fun failedSignOutRetainsTheSessionAndExposesAnError() = runTest {
         val repo =
             object : SessionRepository {
-                override val signedIn = flowOf(true)
-
-                override suspend fun signIn(login: String, password: String) = Unit
+                override val sessionKey = flowOf("test-session")
 
                 override suspend fun signInWithToken(token: String) = Unit
 
@@ -419,7 +409,7 @@ class ViewModelTest {
         runCurrent()
         vm.signOut()
         runCurrent()
-        assertEquals(true, (vm.state.value as ScreenState.Ready).data)
+        assertEquals("test-session", (vm.state.value as ScreenState.Ready).data)
         assertTrue(vm.actions.state.value.failed)
         assertNotNull(vm.actions.state.value.message)
     }
@@ -429,14 +419,12 @@ class ViewModelTest {
         var subscriptions = 0
         val repo =
             object : SessionRepository {
-                override val signedIn = flow {
+                override val sessionKey = flow {
                     subscriptions++
                     if (subscriptions > 1) delay(100)
-                    emit(true)
+                    emit("test-session")
                     awaitCancellation()
                 }
-
-                override suspend fun signIn(login: String, password: String) = Unit
 
                 override suspend fun signInWithToken(token: String) = Unit
 
@@ -446,11 +434,11 @@ class ViewModelTest {
         val first =
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect() }
         runCurrent()
-        assertEquals(true, (vm.state.value as ScreenState.Ready).data)
+        assertEquals("test-session", (vm.state.value as ScreenState.Ready).data)
         first.cancel()
         advanceTimeBy(6000)
         runCurrent()
-        val resumed = mutableListOf<ScreenState<Boolean>>()
+        val resumed = mutableListOf<ScreenState<String?>>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             vm.state.collect { resumed += it }
         }
@@ -458,6 +446,6 @@ class ViewModelTest {
         advanceTimeBy(200)
         runCurrent()
         assertEquals(1, subscriptions)
-        assertTrue(resumed.all { it is ScreenState.Ready && it.data })
+        assertTrue(resumed.all { it == ScreenState.Ready("test-session") })
     }
 }

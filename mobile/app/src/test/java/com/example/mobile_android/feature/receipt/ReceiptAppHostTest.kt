@@ -11,7 +11,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import com.example.mobile_android.app.AppDependencies
+import com.example.mobile_android.app.LocalFeatureDependencies
 import com.example.mobile_android.data.DemoCatalogRepository
 import com.example.mobile_android.domain.Allergen
 import com.example.mobile_android.domain.FoodPreferences
@@ -28,8 +28,7 @@ import com.example.mobile_android.feature.shopping.ShoppingUiHousehold
 import com.example.mobile_android.navigation.AppRoot
 import com.example.mobile_android.ui.UiSmoke
 import com.example.mobile_android.ui.theme.AlmostReadyTheme
-import com.yandex.authsdk.YandexAuthOptions
-import com.yandex.authsdk.YandexAuthSdk
+import com.example.mobile_android.ui.FakeYandexLogin
 import java.io.File
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.flowOf
@@ -40,7 +39,6 @@ import org.junit.Test
 import org.junit.experimental.categories.Category
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
@@ -257,7 +255,7 @@ class ReceiptAppHostTest {
     }
 
     private fun launch(withShopping: Boolean = false) {
-        val dependencies = object : AppDependencies {
+        val dependencies = object : LocalFeatureDependencies {
             override val catalog = DemoCatalogRepository()
             override val household = if (withShopping) shopping else
                 object : HouseholdRepository by this@ReceiptAppHostTest.household {
@@ -273,14 +271,12 @@ class ReceiptAppHostTest {
                 this@ReceiptAppHostTest.household.addPantry(id, quantity)
             }
             override val session = object : SessionRepository {
-                override val signedIn = flowOf(true)
-                override suspend fun signIn(login: String, password: String) = Unit
+                override val sessionKey = flowOf("test-session")
+
                 override suspend fun signInWithToken(token: String) = Unit
                 override suspend fun signOut() = Unit
             }
-            override val yandexAuth by lazy {
-                YandexAuthSdk.create(YandexAuthOptions(RuntimeEnvironment.getApplication()))
-            }
+            override val yandexLogin = FakeYandexLogin()
         }
         compose.setContent { AlmostReadyTheme { AppRoot(dependencies) } }
         await(if (withShopping) "Пока нет продуктов" else "Мои продукты")

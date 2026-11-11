@@ -138,7 +138,7 @@ private val PreferencesSaver =
 
 @Composable
 fun ProfileContent(
-    preferences: FoodPreferences,
+    preferences: FoodPreferences?,
     action: ActionState,
     logoutAction: ActionState,
     favorites: () -> Unit,
@@ -151,10 +151,12 @@ fun ProfileContent(
     isRouteActive: Boolean = true,
     homeScrollState: ScrollState? = null,
 ) {
+    val profileAvailable = preferences != null
+    val baseline = preferences ?: FoodPreferences()
     var page by rememberSaveable { mutableStateOf(ProfilePage.HOME) }
-    var draft by rememberSaveable(stateSaver = PreferencesSaver) { mutableStateOf(preferences) }
+    var draft by rememberSaveable(stateSaver = PreferencesSaver) { mutableStateOf(baseline) }
     var nestedBaseline by
-        rememberSaveable(stateSaver = PreferencesSaver) { mutableStateOf(preferences) }
+        rememberSaveable(stateSaver = PreferencesSaver) { mutableStateOf(baseline) }
     var submitted by rememberSaveable { mutableStateOf(false) }
     var confirmLogout by rememberSaveable { mutableStateOf(false) }
     val homeScroll = homeScrollState ?: rememberScrollState()
@@ -181,7 +183,7 @@ fun ProfileContent(
                 page = ProfilePage.PREFERENCES
             }
             ProfilePage.PREFERENCES -> {
-                draft = preferences
+                draft = baseline
                 page = ProfilePage.HOME
             }
             ProfilePage.HOME -> confirmLogout = false
@@ -193,8 +195,8 @@ fun ProfileContent(
         if (!isRouteActive) {
             if (page != ProfilePage.HOME) keyboard?.hide()
             page = ProfilePage.HOME
-            draft = preferences
-            nestedBaseline = preferences
+            draft = baseline
+            nestedBaseline = baseline
             submitted = false
             confirmLogout = false
         }
@@ -269,11 +271,11 @@ fun ProfileContent(
                             }
                             Column {
                                 Text(
-                                    "Демо-профиль",
+                                    if (profileAvailable) "Демо-профиль" else "Яндекс ID",
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold,
                                 )
-                                Text(
+                                if (profileAvailable) Text(
                                     "Логин: demo",
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     style =
@@ -283,12 +285,12 @@ fun ProfileContent(
                         }
                         ProfileRow(
                             "Питание и аллергены",
-                            preferenceSummary(preferences),
+                            if (profileAvailable) preferenceSummary(baseline) else "Пока недоступно",
                             Icons.Outlined.Eco,
-                            !busy,
+                            profileAvailable && !busy,
                         ) {
                             dismiss()
-                            draft = preferences
+                            draft = baseline
                             page = ProfilePage.PREFERENCES
                         }
                         ProfileRow(
@@ -309,7 +311,7 @@ fun ProfileContent(
                         }
                         Spacer(Modifier.height(16.dp))
                         ProfileRow(
-                            "Выйти из демо",
+                            if (profileAvailable) "Выйти из демо" else "Выйти",
                             "Завершить текущую сессию",
                             Icons.AutoMirrored.Filled.KeyboardArrowRight,
                             !busy,
@@ -317,7 +319,7 @@ fun ProfileContent(
                             dismissLogout()
                             confirmLogout = true
                         }
-                        Text(
+                        if (profileAvailable) Text(
                             "Демонстрационный режим. Настройки хранятся на этом устройстве.",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall,
@@ -529,12 +531,14 @@ fun ProfileContent(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     Text(
-                        "Выйти из демо?",
+                        if (profileAvailable) "Выйти из демо?" else "Выйти из аккаунта?",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        "Продукты, покупки и настройки останутся на этом устройстве. Для входа используйте demo / demo.",
+                        if (profileAvailable)
+                            "Продукты, покупки и настройки останутся на этом устройстве. Для входа используйте demo / demo."
+                        else "Для следующего входа понадобится Яндекс ID.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
