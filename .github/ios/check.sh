@@ -65,7 +65,7 @@ if [[ "$suite" == screenshots ]]; then
   xcrun simctl ui "$device" content_size large
   xcrun simctl status_bar "$device" override --time '9:41' --dataNetwork wifi \
     --wifiMode active --wifiBars 3 --cellularMode active --cellularBars 4 \
-    --batteryState unplugged --batteryLevel 100
+    --batteryState discharging --batteryLevel 100
 fi
 
 # Parallel UI workers can clone the simulator and lose the display overrides.

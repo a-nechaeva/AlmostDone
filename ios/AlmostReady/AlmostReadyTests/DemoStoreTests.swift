@@ -3,8 +3,9 @@ import XCTest
 @testable import AlmostReady
 
 final class DemoStoreTests: XCTestCase {
+    // A synchronous XCTest can crash in the Swift runtime when DemoStore deinitializes on iOS 26.2.
     @MainActor
-    func testChangingPantryUpdatesMissingIngredients() throws {
+    func testChangingPantryUpdatesMissingIngredients() async throws {
         let store = DemoStore()
         let pasta = try XCTUnwrap(store.recipe(id: "tomato-cheese-pasta"))
 
