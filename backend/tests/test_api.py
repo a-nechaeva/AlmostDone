@@ -21,7 +21,7 @@ def test_health(client):
 def test_real_catalog_loaded(client):
     info = ok(client.get(f"{API}/debug/catalog"))
     assert info["source"] == "seed:seed.sql"
-    assert info["recipes"] == 406 and info["ingredients"] == 857
+    assert info["recipes"] == 406 and info["ingredients"] == 851
 
 
 def test_me_state_and_allergens(client):
@@ -53,7 +53,7 @@ def test_ingredient_search_paging(client):
 def test_demo_pantry_preloaded(client):
     body = ok(client.get(f"{API}/me/pantry"))
     assert_contract(body, "Pantry")
-    assert len(body["items"]) == 20 and all(i["quantity"] is None for i in body["items"])
+    assert len(body["items"]) == 19 and all(i["quantity"] is None for i in body["items"])
 
 
 def test_pantry_crud(codes):
@@ -258,7 +258,7 @@ def test_import_from_empty_pantry(codes):
 
 def test_android_catalog(client):
     body = ok(client.get(f"{API}/catalog/android"))
-    assert len(body["recipes"]) == 406 and len(body["ingredients"]) == 857 and len(body["demo_pantry"]) == 20
+    assert len(body["recipes"]) == 406 and len(body["ingredients"]) == 851 and len(body["demo_pantry"]) == 19
     ids = {i["id"] for i in body["ingredients"]}
     staples = {c for c, i in client.app.state.catalog.ingredients.items() if i.is_staple}
     for r in body["recipes"]:  # ограничения Recipe в приложении
