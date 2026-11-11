@@ -2,8 +2,6 @@
 -- PostgreSQL database dump
 --
 
-\restrict LZWAAwHY9R11wgpYsH9lWfNR3mcYbrMbMjc774V50nDqPiG1EBdZXCQ8lAzhtHm
-
 -- Dumped from database version 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1)
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1)
 
@@ -18,6 +16,653 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
+
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+--
+-- Name: citext; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS citext WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION citext; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION citext IS 'data type for case-insensitive character strings';
+
+
+--
+-- Name: check_favorite_recipe_access(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.check_favorite_recipe_access() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM recipes
+               WHERE id = NEW.recipe_id
+                 AND author_id IS NOT NULL AND author_id <> NEW.user_id) THEN
+        RAISE EXCEPTION 'рецепт % — чужой личный рецепт', NEW.recipe_id;
+    END IF;
+    RETURN NEW;
+END $$;
+
+
+--
+-- Name: check_no_cook_methods(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.check_no_cook_methods() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF (SELECT no_cook FROM recipes WHERE id = NEW.recipe_id) THEN
+    IF NEW.method_id <> 4 THEN
+      RAISE EXCEPTION 'no_cook рецепт % не может иметь method_id=%',
+        NEW.recipe_id, NEW.method_id;
+    END IF;
+  END IF;
+  RETURN NEW;
+END $$;
+
+
+--
+-- Name: check_recipe_no_cook_flip(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.check_recipe_no_cook_flip() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF NEW.no_cook AND EXISTS (
+       SELECT 1 FROM recipe_cooking_methods
+       WHERE recipe_id = NEW.id AND method_id <> 4) THEN
+    RAISE EXCEPTION 'нельзя сделать рецепт % no_cook: есть method_id<>4', NEW.id;
+  END IF;
+  RETURN NEW;
+END $$;
+
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: allergens; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.allergens (
+    id integer NOT NULL,
+    code text NOT NULL,
+    name text NOT NULL,
+    CONSTRAINT allergens_code_check CHECK ((code ~ '^[a-z][a-z0-9_]*$'::text)),
+    CONSTRAINT allergens_name_check CHECK (((name <> ''::text) AND (name = btrim(name))))
+);
+
+
+--
+-- Name: allergens_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.allergens_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: allergens_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.allergens_id_seq OWNED BY public.allergens.id;
+
+
+--
+-- Name: categories; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.categories (
+    id integer NOT NULL,
+    name text NOT NULL,
+    CONSTRAINT categories_name_check CHECK (((name <> ''::text) AND (name = btrim(name))))
+);
+
+
+--
+-- Name: categories_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.categories_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: categories_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.categories_id_seq OWNED BY public.categories.id;
+
+
+--
+-- Name: cooking_methods; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.cooking_methods (
+    id integer NOT NULL,
+    name text NOT NULL,
+    CONSTRAINT cooking_methods_name_check CHECK (((name <> ''::text) AND (name = btrim(name))))
+);
+
+
+--
+-- Name: cooking_methods_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.cooking_methods_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: cooking_methods_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.cooking_methods_id_seq OWNED BY public.cooking_methods.id;
+
+
+--
+-- Name: diet_excluded_allergens; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.diet_excluded_allergens (
+    diet_id integer NOT NULL,
+    allergen_id integer NOT NULL
+);
+
+
+--
+-- Name: diet_excluded_categories; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.diet_excluded_categories (
+    diet_id integer NOT NULL,
+    category_id integer NOT NULL
+);
+
+
+--
+-- Name: diet_excluded_methods; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.diet_excluded_methods (
+    diet_id integer NOT NULL,
+    method_id integer NOT NULL
+);
+
+
+--
+-- Name: diets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.diets (
+    id integer NOT NULL,
+    kind text NOT NULL,
+    name text NOT NULL,
+    description text,
+    CONSTRAINT diets_kind_check CHECK ((kind = ANY (ARRAY['diet'::text, 'pevzner'::text]))),
+    CONSTRAINT diets_name_check CHECK (((name <> ''::text) AND (name = btrim(name))))
+);
+
+
+--
+-- Name: diets_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.diets_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: diets_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.diets_id_seq OWNED BY public.diets.id;
+
+
+--
+-- Name: favorite_ingredients; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.favorite_ingredients (
+    user_id integer NOT NULL,
+    ingredient_id integer NOT NULL,
+    added_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: favorite_recipes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.favorite_recipes (
+    user_id integer NOT NULL,
+    recipe_id integer NOT NULL,
+    added_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: ingredient_aliases; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ingredient_aliases (
+    ingredient_id integer NOT NULL,
+    alias text NOT NULL,
+    CONSTRAINT ingredient_aliases_alias_check CHECK (((alias <> ''::text) AND (alias = btrim(alias))))
+);
+
+
+--
+-- Name: ingredient_allergens; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ingredient_allergens (
+    ingredient_id integer NOT NULL,
+    allergen_id integer NOT NULL
+);
+
+
+--
+-- Name: ingredient_categories; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ingredient_categories (
+    ingredient_id integer NOT NULL,
+    category_id integer NOT NULL
+);
+
+
+--
+-- Name: ingredients; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ingredients (
+    id integer NOT NULL,
+    code text NOT NULL,
+    name text NOT NULL,
+    is_staple boolean DEFAULT false NOT NULL,
+    display_unit text DEFAULT 'g'::text NOT NULL,
+    grams_per_piece numeric(8,2),
+    kcal numeric(7,2) NOT NULL,
+    protein numeric(6,2) NOT NULL,
+    fat numeric(6,2) NOT NULL,
+    carbs numeric(6,2) NOT NULL,
+    package_g numeric(8,2) NOT NULL,
+    package_price numeric(10,2) NOT NULL,
+    CONSTRAINT ingredients_carbs_check CHECK (((carbs >= (0)::numeric) AND (carbs <= (100)::numeric))),
+    CONSTRAINT ingredients_check CHECK ((((protein + fat) + carbs) <= (100)::numeric)),
+    CONSTRAINT ingredients_check1 CHECK (((display_unit <> 'pcs'::text) OR (grams_per_piece IS NOT NULL))),
+    CONSTRAINT ingredients_code_check CHECK ((code ~ '^[a-z][a-z0-9_]*$'::text)),
+    CONSTRAINT ingredients_display_unit_check CHECK ((display_unit = ANY (ARRAY['g'::text, 'ml'::text, 'pcs'::text]))),
+    CONSTRAINT ingredients_fat_check CHECK (((fat >= (0)::numeric) AND (fat <= (100)::numeric))),
+    CONSTRAINT ingredients_grams_per_piece_check CHECK ((grams_per_piece > (0)::numeric)),
+    CONSTRAINT ingredients_kcal_check CHECK (((kcal >= (0)::numeric) AND (kcal <= (900)::numeric))),
+    CONSTRAINT ingredients_name_check CHECK (((name <> ''::text) AND (name = btrim(name)))),
+    CONSTRAINT ingredients_package_g_check CHECK ((package_g > (0)::numeric)),
+    CONSTRAINT ingredients_package_price_check CHECK ((package_price >= (0)::numeric)),
+    CONSTRAINT ingredients_protein_check CHECK (((protein >= (0)::numeric) AND (protein <= (100)::numeric)))
+);
+
+
+--
+-- Name: ingredients_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ingredients_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ingredients_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ingredients_id_seq OWNED BY public.ingredients.id;
+
+
+--
+-- Name: recipe_ingredients; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.recipe_ingredients (
+    recipe_id integer NOT NULL,
+    ingredient_id integer NOT NULL,
+    qty_g numeric(8,2),
+    is_optional boolean DEFAULT false NOT NULL,
+    CONSTRAINT recipe_ingredients_qty_g_check CHECK (((qty_g > (0)::numeric) OR (qty_g IS NULL))),
+    CONSTRAINT recipe_ingredients_required_has_qty CHECK ((is_optional OR (qty_g IS NOT NULL)))
+);
+
+
+--
+-- Name: recipe_allergens; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.recipe_allergens AS
+ SELECT DISTINCT ri.recipe_id,
+    ia.allergen_id
+   FROM (public.recipe_ingredients ri
+     JOIN public.ingredient_allergens ia USING (ingredient_id))
+  WHERE (NOT ri.is_optional);
+
+
+--
+-- Name: recipe_categories; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.recipe_categories AS
+ SELECT DISTINCT ri.recipe_id,
+    ic.category_id
+   FROM (public.recipe_ingredients ri
+     JOIN public.ingredient_categories ic USING (ingredient_id))
+  WHERE (NOT ri.is_optional);
+
+
+--
+-- Name: recipe_cooking_methods; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.recipe_cooking_methods (
+    recipe_id integer NOT NULL,
+    method_id integer NOT NULL
+);
+
+
+--
+-- Name: recipes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.recipes (
+    id integer NOT NULL,
+    title text NOT NULL,
+    description text,
+    servings integer NOT NULL,
+    cook_time_min integer NOT NULL,
+    needs_microwave boolean DEFAULT false NOT NULL,
+    needs_stove boolean DEFAULT false NOT NULL,
+    needs_oven boolean DEFAULT false NOT NULL,
+    image_url text,
+    author_id integer,
+    no_cook boolean DEFAULT false NOT NULL,
+    CONSTRAINT recipes_cook_time_min_check CHECK ((cook_time_min >= 0)),
+    CONSTRAINT recipes_no_cook_no_equipment CHECK (((NOT no_cook) OR ((NOT needs_stove) AND (NOT needs_oven) AND (NOT needs_microwave)))),
+    CONSTRAINT recipes_servings_check CHECK ((servings > 0)),
+    CONSTRAINT recipes_title_check CHECK (((title <> ''::text) AND (title = btrim(title))))
+);
+
+
+--
+-- Name: recipe_nutrition; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.recipe_nutrition AS
+ SELECT r.id AS recipe_id,
+    round((sum(((i.kcal * ri.qty_g) / (100)::numeric)) / (r.servings)::numeric), 1) AS kcal,
+    round((sum(((i.protein * ri.qty_g) / (100)::numeric)) / (r.servings)::numeric), 1) AS protein,
+    round((sum(((i.fat * ri.qty_g) / (100)::numeric)) / (r.servings)::numeric), 1) AS fat,
+    round((sum(((i.carbs * ri.qty_g) / (100)::numeric)) / (r.servings)::numeric), 1) AS carbs,
+    ((count(ri.recipe_id) > 0) AND (count(*) FILTER (WHERE ((ri.recipe_id IS NOT NULL) AND (ri.qty_g IS NULL))) = 0)) AS complete
+   FROM ((public.recipes r
+     LEFT JOIN public.recipe_ingredients ri ON (((ri.recipe_id = r.id) AND (NOT ri.is_optional))))
+     LEFT JOIN public.ingredients i ON ((i.id = ri.ingredient_id)))
+  GROUP BY r.id, r.servings;
+
+
+--
+-- Name: recipe_steps; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.recipe_steps (
+    recipe_id integer NOT NULL,
+    step_no integer NOT NULL,
+    instruction text NOT NULL,
+    duration_min integer,
+    CONSTRAINT recipe_steps_duration_min_check CHECK ((duration_min > 0)),
+    CONSTRAINT recipe_steps_instruction_check CHECK ((btrim(instruction) <> ''::text)),
+    CONSTRAINT recipe_steps_step_no_check CHECK ((step_no > 0))
+);
+
+
+--
+-- Name: recipes_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.recipes_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: recipes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.recipes_id_seq OWNED BY public.recipes.id;
+
+
+--
+-- Name: user_diets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_diets (
+    user_id integer NOT NULL,
+    diet_id integer NOT NULL,
+    diet_kind text DEFAULT 'diet'::text NOT NULL,
+    CONSTRAINT user_diets_diet_kind_check CHECK ((diet_kind = 'diet'::text))
+);
+
+
+--
+-- Name: users; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.users (
+    id integer NOT NULL,
+    login public.citext NOT NULL,
+    password_hash text NOT NULL,
+    pevzner_diet_id integer,
+    pevzner_kind text DEFAULT 'pevzner'::text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT users_login_check CHECK ((login OPERATOR(public.~) '^[A-Za-z0-9_.-]{3,32}$'::public.citext)),
+    CONSTRAINT users_pevzner_kind_check CHECK ((pevzner_kind = 'pevzner'::text))
+);
+
+
+--
+-- Name: user_all_diets; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.user_all_diets AS
+ SELECT user_diets.user_id,
+    user_diets.diet_id
+   FROM public.user_diets
+UNION
+ SELECT users.id AS user_id,
+    users.pevzner_diet_id AS diet_id
+   FROM public.users
+  WHERE (users.pevzner_diet_id IS NOT NULL);
+
+
+--
+-- Name: user_allergens; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_allergens (
+    user_id integer NOT NULL,
+    allergen_id integer NOT NULL
+);
+
+
+--
+-- Name: user_pantry; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_pantry (
+    user_id integer NOT NULL,
+    ingredient_id integer NOT NULL,
+    qty_g numeric(8,2),
+    CONSTRAINT user_pantry_qty_g_check CHECK ((qty_g >= (0)::numeric))
+);
+
+
+--
+-- Name: user_recipe_visibility; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.user_recipe_visibility AS
+ WITH flags AS (
+         SELECT u.id AS user_id,
+            r.id AS recipe_id,
+            COALESCE(( SELECT array_agg(DISTINCT a.name ORDER BY a.name) AS array_agg
+                   FROM ((public.recipe_allergens ra
+                     JOIN public.user_allergens ua ON ((ua.allergen_id = ra.allergen_id)))
+                     JOIN public.allergens a ON ((a.id = ra.allergen_id)))
+                  WHERE ((ra.recipe_id = r.id) AND (ua.user_id = u.id))), '{}'::text[]) AS user_allergens_in_dish,
+            COALESCE(( SELECT array_agg(DISTINCT d.name ORDER BY d.name) AS array_agg
+                   FROM (public.user_all_diets ud
+                     JOIN public.diets d ON ((d.id = ud.diet_id)))
+                  WHERE ((ud.user_id = u.id) AND ((EXISTS ( SELECT 1
+                           FROM (public.recipe_categories rc
+                             JOIN public.diet_excluded_categories x ON ((x.category_id = rc.category_id)))
+                          WHERE ((rc.recipe_id = r.id) AND (x.diet_id = d.id)))) OR (EXISTS ( SELECT 1
+                           FROM (public.recipe_allergens ra
+                             JOIN public.diet_excluded_allergens x ON ((x.allergen_id = ra.allergen_id)))
+                          WHERE ((ra.recipe_id = r.id) AND (x.diet_id = d.id)))) OR (EXISTS ( SELECT 1
+                           FROM (public.recipe_cooking_methods rm
+                             JOIN public.diet_excluded_methods x ON ((x.method_id = rm.method_id)))
+                          WHERE ((rm.recipe_id = r.id) AND (x.diet_id = d.id))))))), '{}'::text[]) AS violated_diets,
+            COALESCE(( SELECT array_agg(DISTINCT i.name ORDER BY i.name) AS array_agg
+                   FROM (public.recipe_ingredients ri
+                     JOIN public.ingredients i ON ((i.id = ri.ingredient_id)))
+                  WHERE ((ri.recipe_id = r.id) AND ri.is_optional AND ((EXISTS ( SELECT 1
+                           FROM (public.ingredient_allergens ia
+                             JOIN public.user_allergens ua ON ((ua.allergen_id = ia.allergen_id)))
+                          WHERE ((ia.ingredient_id = i.id) AND (ua.user_id = u.id)))) OR (EXISTS ( SELECT 1
+                           FROM ((public.ingredient_categories ic
+                             JOIN public.diet_excluded_categories x ON ((x.category_id = ic.category_id)))
+                             JOIN public.user_all_diets ud ON ((ud.diet_id = x.diet_id)))
+                          WHERE ((ic.ingredient_id = i.id) AND (ud.user_id = u.id)))) OR (EXISTS ( SELECT 1
+                           FROM ((public.ingredient_allergens ia
+                             JOIN public.diet_excluded_allergens x ON ((x.allergen_id = ia.allergen_id)))
+                             JOIN public.user_all_diets ud ON ((ud.diet_id = x.diet_id)))
+                          WHERE ((ia.ingredient_id = i.id) AND (ud.user_id = u.id))))))), '{}'::text[]) AS skip_optional
+           FROM (public.users u
+             CROSS JOIN public.recipes r)
+          WHERE ((r.author_id IS NULL) OR (r.author_id = u.id))
+        )
+ SELECT user_id,
+    recipe_id,
+    user_allergens_in_dish,
+    violated_diets,
+    skip_optional,
+    ((cardinality(user_allergens_in_dish) > 0) OR (cardinality(violated_diets) > 0)) AS is_hidden
+   FROM flags f;
+
+
+--
+-- Name: users_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.users_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: users_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
+
+
+--
+-- Name: allergens id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.allergens ALTER COLUMN id SET DEFAULT nextval('public.allergens_id_seq'::regclass);
+
+
+--
+-- Name: categories id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.categories ALTER COLUMN id SET DEFAULT nextval('public.categories_id_seq'::regclass);
+
+
+--
+-- Name: cooking_methods id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cooking_methods ALTER COLUMN id SET DEFAULT nextval('public.cooking_methods_id_seq'::regclass);
+
+
+--
+-- Name: diets id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.diets ALTER COLUMN id SET DEFAULT nextval('public.diets_id_seq'::regclass);
+
+
+--
+-- Name: ingredients id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingredients ALTER COLUMN id SET DEFAULT nextval('public.ingredients_id_seq'::regclass);
+
+
+--
+-- Name: recipes id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipes ALTER COLUMN id SET DEFAULT nextval('public.recipes_id_seq'::regclass);
+
+
+--
+-- Name: users id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
+
 
 --
 -- Data for Name: allergens; Type: TABLE DATA; Schema: public; Owner: -
@@ -36,8 +681,8 @@ COPY public.allergens (id, code, name) FROM stdin;
 10	nuts	Орехи
 11	peanuts	Арахис
 12	sesame	Кунжут
-13	soya	Соя
-14	sulfites	Диоксид серы и сульфиты
+13	soy	Соя
+14	sulphites	Диоксид серы и сульфиты
 \.
 
 
@@ -149,857 +794,857 @@ COPY public.diet_excluded_methods (diet_id, method_id) FROM stdin;
 --
 
 COPY public.ingredients (id, code, name, is_staple, display_unit, grams_per_piece, kcal, protein, fat, carbs, package_g, package_price) FROM stdin;
-1	ing_8214cfa2ad659987	Лук репчатый	f	g	110.00	40.00	1.50	0.20	8.00	1000.00	120.00
-3	ing_1c4ab4239538af48	Чеснок	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-4	ing_94735c5d0f98f9bb	Масло растительное	f	g	\N	884.00	0.00	100.00	0.00	500.00	220.00
-5	ing_5080f64e5d37ea5c	Яйцо куриное	f	g	50.00	220.00	20.00	15.00	0.00	1000.00	500.00
-6	ing_9f5aff656efd8171	Мука	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-7	ing_f9488f0bc6429a47	Масло сливочное	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-8	ing_43db869e63682a56	Помидор	f	g	123.00	40.00	1.50	0.20	8.00	1000.00	120.00
-10	ing_6362b9a2160b3580	Картофель	f	g	213.00	40.00	1.50	0.20	8.00	1000.00	120.00
-12	ing_69f91741a4c2027f	Молоко	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-13	ing_6259499207054466	Кинза	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-14	ing_14a4780585e50d6a	Масло оливковое	f	g	\N	884.00	0.00	100.00	0.00	500.00	220.00
-15	ing_e2162431045c69e8	Лимон	f	g	58.00	55.00	0.80	0.30	13.00	1000.00	180.00
-16	ing_1ef43ec41d874f9d	Морковь	f	g	61.00	40.00	1.50	0.20	8.00	1000.00	120.00
-17	ing_cf9ecdd52caba3bc	Имбирь	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-18	ing_8b4391da8b998dbb	Петрушка	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-19	ing_47335d405c9ace59	Рис	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-20	ing_c0a165daf2eb615a	Лук зелёный	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-21	ing_4d24bc61980ba1e8	Курица	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-22	ing_a86a5e83439b536e	Лавровый лист	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-23	ing_1105c1e59552ebf8	Перец сладкий	f	g	119.00	40.00	1.50	0.20	8.00	1000.00	120.00
-24	ing_7bb9e91a144d2836	Лайм	f	g	67.00	55.00	0.80	0.30	13.00	1000.00	180.00
-25	ing_80ec6ff28b539412	Томатная паста	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-26	ing_c5a774f804da9082	Масло топлёное	f	g	\N	884.00	0.00	100.00	0.00	500.00	220.00
-27	ing_1f7a9c12bbeeb8b3	Куркума	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-28	ing_65346613fa1947bf	Дрожжи сухие	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-29	ing_5068d17bba1f46dd	Баранина	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-30	ing_6406fef0f3af5aa0	Перец чили	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-31	ing_c1df70961ce75b27	Зира молотая	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-32	ing_b91626a52dbb2f02	Сметана	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-33	ing_3caca706865b1943	Кокосовое молоко	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-34	ing_3d43eae29d5870a1	Ваниль	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-35	ing_541d4ee1e1c87f07	Говядина	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-36	ing_a1734f1ac79885e8	Корица палочка	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-38	ing_ef633f7569b37d4b	Изюм	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-39	ing_459ccb13694bafe1	Укроп	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-40	ing_eb9af19bcc9eb5a6	Корица	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-41	ing_44731879aed2c37b	Лук красный	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-42	ing_3114ece82c6e01a9	Сливки	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-43	ing_806d0f13effa3beb	Соус соевый	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-44	ing_54af9e8fba188b3a	Капуста	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-45	ing_17d4eeeec05e425e	Креветки	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-46	ing_9e1a5d5419b0c948	Фарш говяжий	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-47	ing_d6a8c4d352de0d21	Шафран	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-48	ing_b7f4693039de2bba	Шалот	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-49	ing_c3d66be69bae22f7	Вино белое сухое	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
-50	ing_234a7b19ef28f34c	Рыбный соус	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-51	ing_d0e1c8ded44533e7	Сахарная пудра	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
-52	ing_45f99ebb6d7600b2	Тимьян	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-53	ing_a31ea0c18b385202	Крахмал кукурузный	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-54	ing_309ff11850f5bda5	Огурец	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-55	ing_1cfdd76631100fab	Паприка	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-56	ing_1fbe2b1fe9a43696	Фарш свиной	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-57	ing_86aa9926678e94b6	Баклажан	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-58	ing_63a1c6d93122eee2	Зира	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-59	ing_103956509ce041df	Мёд	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
-60	ing_a8f4b45fb0987bd5	Рис басмати	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-61	ing_d5080a8150c44fc0	Уксус	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-62	ing_f8f3d2c774368db3	Грецкий орех	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
-63	ing_66dcfd865cc753b9	Зелёный чили	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-64	ing_3feced8147f8df46	Нут	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-65	ing_460256bce540e500	Орегано сушёный	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-66	ing_6e2fd4669514e25f	Перец скотч-боннет	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-67	ing_a621a374b35b8b55	Баранина на кости	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-68	ing_02a6366a177076ad	Бульон говяжий	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-69	ing_d549d6eee8612558	Кунжут	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
-70	ing_2a0b1181995f902d	Мята сушёная	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-71	ing_d8b58db9a07f5d3a	Рис варёный	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-72	ing_3a4cb0de7726c658	Свиная грудинка	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-73	ing_b5b73d6eede10d23	Сода пищевая	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-74	ing_9ad2df8f9153d3dc	Цедра лимона	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-75	ing_5e3d8980c5685bfd	Горчица	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-76	ing_95a89b6820bca228	Йогурт	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-77	ing_a01d24c8cf22fdb4	Йогурт густой	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-78	ing_f5ccba8460fac8cf	Кардамон	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-79	ing_e4c941f7372091a0	Копчёная грудинка	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-80	ing_14e4a94dda01973f	Кориандр молотый	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-81	ing_c2451537e0a091ea	Панировочные сухари	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-82	ing_3e149c6afc6c13a2	Паприка сладкая	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-83	ing_ed2957de9364a499	Перец чили сушёный	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-84	ing_7c423dbb2cdd89e4	Порошок карри	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-85	ing_fbfbeef2dd1eef71	Сливки 33%	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-86	ing_c19c9b7a867aa614	Кардамон молотый	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-87	ing_ecbb1c68c19cf5b0	Миндаль	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
-88	ing_946c15022315b9c8	Мука кукурузная	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-89	ing_1c7fc1eda2101cdc	Мускатный орех	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
-90	ing_8c8eb419f8e14ed2	Мята	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-91	ing_cae44b44d14b6e8d	Оливки	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-92	ing_b169b99e95b61886	Перец чили хлопьями	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-93	ing_f52e09ee7d721bae	Арахисовая паста	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
-94	ing_cbcde7fdc81d9996	Банановый лист	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-95	ing_41360252fe44aaf0	Брынза	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-96	ing_10164541aec1f5f4	Бульон куриный	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-97	ing_79577bd16af801bf	Жир свиной топлёный	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-98	ing_e5c38b408f872cad	Зелёный горошек	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-99	ing_cb30d709f9085585	Каперсы	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-100	ing_57012d692bf4ebae	Курдючный жир	f	g	\N	884.00	0.00	100.00	0.00	500.00	220.00
-101	ing_81865768107f72b9	Лемонграсс	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-102	ing_5f74838d6b52d438	Маниок	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-103	ing_1a27b5d34b3e25a7	Перец чёрный	t	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-104	ing_1503494edf0a15be	Разрыхлитель	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-105	ing_cc445fd69f68843a	Рис длиннозёрный	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-106	ing_7d8f6c5c340a3f1e	Сахар пальмовый	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
-107	ing_61ee45f853d1b440	Свинина	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-108	ing_44cbb5fb53012aa7	Тыква	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-109	ing_1501282cfef1c9ab	Арахис жареный	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
-110	ing_966fa72f442283a4	Белый хлеб	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-111	ing_10f40654579eda70	Кедровые орехи	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
-112	ing_f76b62d7371964a9	Корень сельдерея	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-113	ing_2ac2d3eb375aa2ce	Кукуруза	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-114	ing_99e570176da5f011	Перец чёрный горошком	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-115	ing_6ca73d503ca3dcca	Подорожник	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-116	ing_a7634c5219ef7424	Рис круглозёрный	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-117	ing_4bcdecb2e6ca4d8c	Рёбрышки копчёные	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-118	ing_0e0ce360bffc5c76	Сельдерей стеблевой	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-119	ing_b0c904e07064f8b5	Соль крупная	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-120	ing_68124f2a664d1de6	Тамариндовая паста	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-121	ing_2a2e972da7c5a34b	Шпинат	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-122	ing_a04c4b9b4e595433	Авокадо	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-123	ing_41e683c6f21c8720	Арахис	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
-124	ing_67150e22f888859a	Бахарат	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-125	ing_384d9b040efc72c4	Винный уксус	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-126	ing_9757e97197b85db7	Галангал	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-127	ing_50ea3a471feaff34	Говяжья вырезка	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-128	ing_58a686c981ca848e	Кефир	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-129	ing_3cf8bf54ac9a4a80	Красная фасоль	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-130	ing_dd786d8ed9d32aff	Кунжутное масло	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
-131	ing_9ae35647a02a4e69	Лук-порей	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-132	ing_f49d3ee4e597f8d9	Майонез	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-133	ing_650b663caaf9bccc	Мирин	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-134	ing_04a86c8257638a88	Орегано	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-135	ing_9c698250db94f6f0	Свиная лопатка	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-136	ing_4af9c0a00b4aed63	Свиная шея	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-137	ing_d13ec2bae7806ca5	Сушёный лайм луми	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-138	ing_14e2f4a3b901e6c8	Вино красное сухое	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
-139	ing_1ca7630ef99fedc1	Вино шаосинское	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
-140	ing_00ab96be0b628922	Восковой картофель	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-141	ing_5fb4779dcbf1de94	Гарам масала	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-142	ing_ae0fa4e105e7005f	Гвоздика	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-143	ing_51ed7c37c730a2b3	Даси	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-144	ing_ff4ab2c378956d4c	Кокосовая стружка	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-145	ing_7216ee25c3fa17df	Куркума свежая	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-146	ing_1938963dbc6825a1	Пармезан	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-147	ing_b3eb6508f04ab2c5	Перец душистый молотый	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-148	ing_d08e59585dfc92e1	Плантайн зелёный	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-149	ing_3e3ef60232ffd750	Помидоры консервированные в собственном соку	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-150	ing_2707c87f197ecffa	Сахар коричневый	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
-151	ing_3ee581016ec93a5e	Тмин	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-152	ing_0a7d9d11e8664161	Тёмный шоколад	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
-153	ing_82d4bccb257db17c	Харисса	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-154	ing_be16d6e1b8135af1	Чёрная фасоль	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-155	ing_6cbfeb27e435a104	Шампиньоны	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-156	ing_a9514a752b499e7e	Ачиоте	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-157	ing_29d8800d347ac81d	Бадьян	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-158	ing_0f5a8a31ca38b427	Базилик	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-159	ing_230dd02fa49a5a03	Белый уксус	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-160	ing_620c157641150703	Бульонный кубик	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-161	ing_f7e2e3ef19bb78d7	Говядина на кости	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-162	ing_a85c3182ba57ac45	Зелёные оливки	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-163	ing_7a2ca3cbe75c9226	Имбирь молотый	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-164	ing_9d437ad02b674581	Какао-порошок	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
-165	ing_f0addc1a458e7ce0	Квашеная капуста	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-166	ing_eb79763086e38818	Копчёная колбаса	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-167	ing_ea5efcf06f7a0e90	Куриное филе	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-168	ing_792e561905213c0d	Лист пандана	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-169	ing_0921e650341534d8	Листья карри	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-170	ing_938a79630299f031	Листья кафрского лайма	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-171	ing_01594a54f269a8fb	Майоран	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-172	ing_8f8341b4ec2c26d3	Моцарелла	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-173	ing_e34efbe35f19b8a9	Овсяные хлопья	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-174	ing_fe48929000e63062	Перловая крупа	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-175	ing_4c851ed4c2ae3163	Пита	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-176	ing_3978c5a43600c5dd	Ростки маша	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-177	ing_59c7ea3a3e526a80	Свёкла	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-178	ing_e856c55070fd163b	Соус соевый тёмный	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-179	ing_30b94c6b1df6b7ec	Творог	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-180	ing_ff76bee750f4e0f9	Уксус винный красный	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-181	ing_15b2eaa431b71b9d	Фасоль стручковая	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-182	ing_1d1262b32771233f	Аннато	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-183	ing_90f660487ae6557b	Багет	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-184	ing_777ff6f7cfd8ebe0	Базилик фиолетовый	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-185	ing_d4e97b213189b9be	Батат	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-186	ing_6124124d0db607e1	Белая рыба	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-187	ing_fc9f18a697287723	Белая фасоль	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-188	ing_45f61f3ca34cb2bf	Бульон мясной	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-189	ing_a6fd0e5fe13f0371	Вода флёрдоранж	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
-190	ing_4ae837dc2ffb11ad	Вустерский соус	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-191	ing_9bc1579da393b682	Гвоздика молотая	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-192	ing_5ff15c8c47753f68	Говяжья голяшка	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-193	ing_ca21b9d84c6c8d21	Гранатовый соус	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-194	ing_6aeabae2fc1334dd	Дайкон	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-195	ing_f8696c38fe61190c	Копчёное сало	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-196	ing_202677bdc77083f7	Копчёный бекон	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-197	ing_bf4dc76781b90149	Кориандр семена	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-198	ing_b34adbd4f789f8dd	Корица молотая	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-199	ing_74a328cb967ff62a	Крахмал картофельный	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-200	ing_5528813f5db75a89	Кукурузная мука маса	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-201	ing_f7fc80979fe84626	Курага	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-202	ing_93abbdd25c15b9c8	Куриное бедро	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-203	ing_745d725a7775c7c3	Леденцовый сахар	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
-204	ing_e4e8ba6430e3f192	Лепёшки	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-205	ing_ca60b9ac43bee389	Маринованная горчичная зелень	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-206	ing_084371a10e55dcf5	Оливки чёрные	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-207	ing_7503420a8a8c2c58	Орегано мексиканский	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-208	ing_28d367568a9ccbd0	Паприка копчёная	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-209	ing_38748571e07af933	Перец душистый	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-210	ing_20156eec00aebb94	Ржаная мука	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-211	ing_95ea2c1a2dc42cd7	Ржаной хлеб	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-212	ing_78261908262a4d09	Рёбрышки свиные	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-213	ing_9eda68989522c839	Салат листовой	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-214	ing_df3962e6d00b9d59	Сгущённое молоко	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-215	ing_bb1bb96270cfc087	Семена пажитника	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-216	ing_5b8f0dec3d533054	Соус соевый светлый	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-217	ing_692a667c2a48532d	Спаржевая фасоль	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-218	ing_bc2a1aee8b5c174d	Сумах	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-219	ing_23b698d1180bb31d	Тахини	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
-220	ing_331854928dfbda9c	Тесто фило	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-221	ing_4851b1ee2cb0d571	Томатный соус	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-222	ing_848f0aeed1309f0d	Фисташки	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
-223	ing_42321b4fb33f8555	Цедра апельсина	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-224	ing_e7c27281a5bce85f	Чорисо	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-226	ing_3699907ebc7acfb8	Анис	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-227	ing_b8b8474cb00f6e86	Апельсин	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-228	ing_02d8fd09102560a4	Бамия	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-229	ing_31f6d790c55a7d6f	Бок-чой	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-230	ing_35cdf50e01180cc7	Булгур мелкий	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-231	ing_ecbc9d89ac543b78	Ванильный сахар	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
-232	ing_eb5d8c0000cd5260	Ветчина	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-233	ing_0da5d0abb4338103	Виноградные листья	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-234	ing_8b05d5007ce45b43	Вишня	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-235	ing_0103bdf896f339ca	Говяжий огузок	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-236	ing_fbc5a4886b40773b	Говяжий рубец	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-237	ing_769a1056969bdf53	Говяжья пашина	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-238	ing_c7be7888b30b637f	Горчица семена	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-239	ing_c8b206eaefb611e3	Грюйер	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-240	ing_5280f44639edfda8	Зира семена	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-241	ing_cb7a6bcd4b9c8095	Кабачок	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-242	ing_b1e510d5f2768b38	Капуста белокочанная	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-243	ing_23433abab720b674	Капуста кале	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-244	ing_ebac918fd3cdcad7	Капуста квашеная кочаном	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-245	ing_4c4c35f4a125777a	Картофель варёный	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-246	ing_6879076b47167a52	Кашмирский чили молотый	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-247	ing_5ef2fdc00157f31e	Каштаны	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-248	ing_e839f9e5f64c687e	Кетчуп	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-249	ing_6fe30111a7e1e7b7	Красный рис	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-250	ing_022214fb804790b0	Крахмал	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-251	ing_1df23a2bc45c1a15	Креветочная паста белачан	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-252	ing_171bef051f9ba597	Куриное бедро без кости	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-253	ing_353df0d35175ba4a	Лепёшка	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-254	ing_8d4a31368ec0d768	Листовая капуста	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-255	ing_db84ea5b310b4ac9	Масло подсолнечное	t	g	\N	884.00	0.00	100.00	0.00	500.00	220.00
-256	ing_74e38d82c40f131d	Мука высокобелковая	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-257	ing_14fd32dd74115fe5	Мука пшеничная	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-258	ing_2dfd42f380d55f51	Нутовая мука	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-259	ing_ce68fe29bbca8e79	Паприка острая	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-260	ing_b16683d00c63b1e8	Пекорино романо	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-261	ing_f1cbbb3e68e50877	Перец гуахильо	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-262	ing_867ab0cbb96ea32c	Перец чили молотый	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-263	ing_f4e9ed2d02a9c7b0	Песочное тесто	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-264	ing_8d5e6ed57b0ad34f	Рассыпчатый картофель	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-265	ing_460b5185fda3aac2	Рис жасминовый	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-266	ing_f2df9b5018a53706	Рисовая лапша	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-267	ing_4991a645bdf495dd	Розовая вода	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
-268	ing_f14adf22ad3a114f	Саке	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
-269	ing_d1b00abc610cf7aa	Свиное сало	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-270	ing_b4f49c2f3aa354c0	Сливки 20%	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-271	ing_da1c921d4c950665	Слоёное тесто	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-272	ing_27878fd2d8b3bdd2	Солёная треска	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-273	ing_fa1bee800db1725d	Томатильо	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-274	ing_7c7b25a2dac982a2	Тунец консервированный	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-275	ing_71e5d2dfd865c4e6	Фарш бараний	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-276	ing_a6086b1dd5efa7be	Финики	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-277	ing_c0cbec0ef9a935b0	Хлеб	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-278	ing_e29fa02f6b280fa3	Хрен тёртый	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-279	ing_b05b1912afc7ab3a	Чернослив	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-280	ing_d116ff3a75a2bb0c	Чернушка	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-281	ing_7a93833cabcefc88	Чесночный порошок	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-282	ing_ea22d0cea3e60b29	Чечевица красная	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-283	ing_fb84eaf2033ac938	Шиитаке	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-284	ing_15f4b3325810ecab	Аджван	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-285	ing_47b0070b88dec8b0	Ананас	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-286	ing_d0b296df56e9658c	Асафетида	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-287	ing_aa29bf2cd998ac11	Банановый цвет	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-288	ing_a9db9a7469173361	Барбарис	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-289	ing_1c6d79c1acb998da	Белый перец	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-290	ing_9db4cfb5f1355e9b	Бербере	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-291	ing_02c8a9b0ae2054dd	Брусника	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-292	ing_278dbd4bc4e895f2	Брусничное варенье	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
-293	ing_0c76090704763acb	Булочки	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-294	ing_b7d7a56889d14551	Бульон	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-295	ing_af7bd038fab33ff1	Вермишель	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-296	ing_5585374d6652e15c	Вино красное	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
-297	ing_c056ed6b7820c2ab	Говяжьи рёбра	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-298	ing_f473c7de2f94c66e	Говяжья лопатка	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-299	ing_00c5d79fbdbc3ee8	Грибы белые сушёные	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-300	ing_74870df6c071362d	Гуанчале	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-301	ing_1ba376987300aa29	Доубаньцзян	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-302	ing_9000ce51dc7f7bc7	Дроблёная пшеница	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-303	ing_dde1080ce07f36a0	Дрожжи свежие	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-304	ing_1637a4705f3d7f57	Дульсе де лече	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-305	ing_4212cfb9a67e14ce	Желатин	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-306	ing_e659fd3d1acb694d	Жемчужный сахар	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
-307	ing_cb9cbd71c8c6e6e9	Жёлтый горох	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-308	ing_24615efdff956259	Зелёная папайя	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-309	ing_2979e6299d2e3326	Зелёный острый перец	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-310	ing_864b0856e917021b	Кайенский перец	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-311	ing_d37c277ae6a11b80	Карп	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-312	ing_f308130e61e6daf4	Картофель фри	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-313	ing_88bba507f5bc6a24	Кечап манис	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-314	ing_593c9ec912f44e53	Кешью	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
-315	ing_a4998d03c69153fc	Кирш	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-316	ing_156cd42ed6f1feb1	Клейкий рис	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-317	ing_8be7591c46a81a88	Комбу	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-318	ing_6e329e080950f78a	Концентрированное молоко	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-319	ing_4369ae1f923bbbe8	Коньяк	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-320	ing_8de06cb9d8ecf8d0	Корень петрушки	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-321	ing_24afceb147f8d94b	Кочхуджан	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-322	ing_69514df64af9dd15	Красный перец молотый	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-323	ing_2e38757703d24619	Красный сладкий перец	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-324	ing_c86d8d09516f4249	Крахмал маниоковый	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-325	ing_c58c89e93fefd5e8	Кролик	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-326	ing_5f42f9ad789fd9db	Кукурузные тортильи	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-327	ing_a070cf5c1b956cc7	Лимонный сок	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-328	ing_8706d49261d6f72f	Мальдивская рыба	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-329	ing_11dc460621f83d59	Манная крупа	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-330	ing_fb73721c2185836c	Масло в тесто	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-331	ing_172608c215076180	Масло горчичное	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-332	ing_816ad581c21510bf	Масло оливковое extra virgin	f	g	\N	884.00	0.00	100.00	0.00	500.00	220.00
-333	ing_dbaf2b9f0eb63f8a	Масло пальмовое красное	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-334	ing_1d82933af60e33cd	Мидии	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-335	ing_8fb4504c49f5e83a	Мозговые кости	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-336	ing_da95cc542c5b00fc	Молотые сушёные креветки	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-337	ing_0fba70862437a93d	Морсилья	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-338	ing_d3e697b3e8befee9	Мука для начинки	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-339	ing_1b5368190e679af5	Мягкий белый сыр	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-340	ing_8186c10794c8cb6d	Огурец солёный	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-341	ing_2c74004d785f7e43	Паста ахи амарильо	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-342	ing_d055e1e40d3d23b7	Перец пасилья	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-343	ing_3ea5690a8b27fafa	Перец пили-пили	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-344	ing_0ae7bd46beb75292	Перец пири-пири	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-345	ing_78dbeaf1dc54271e	Перец хабанеро	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-346	ing_534b74c53dbdc472	Перец чили свежий	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-347	ing_91ab086130506d34	Перец чёрный молотый	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-348	ing_f801371a8a34c223	Плантайн спелый	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-349	ing_cd466d1fd564b097	Половинки орехов	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
-350	ing_5523ae3eac8cf04e	Помидоры сан-марцано	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-351	ing_af72b628f3fa2f1d	Пшеничная лапша	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-352	ing_6abe6b72ac6cf2fe	Ракушки	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-353	ing_5572f3ae7657a8f0	Репа	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-354	ing_ceb01226b8c4b0eb	Рисовая вермишель	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-355	ing_d17771c677d777e4	Рисовая лапша тонкая	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-356	ing_a37c195d33475d3b	Розмарин	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-357	ing_a3028ac562fb1733	Сахар тростниковый	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
-358	ing_ee46f660f308afed	Свежая кукуруза	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-359	ing_e438611a9c0188c9	Свежий белый сыр	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-360	ing_3ecf5d1b43c0b82e	Свежий солёный сыр	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-361	ing_a50951dec7f5c51a	Светлое пиво	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
-362	ing_114b3f973a8fddae	Свиная корейка	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-363	ing_64031095d091a6fd	Свиные кишки	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-364	ing_cdaebe7e57318742	Семена аннато	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-365	ing_f035cdb3394f88ad	Смесь бизар	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-366	ing_aecd8664480313f1	Смесь хавайдж	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-367	ing_ce720af62e266b3f	Сметана густая	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-368	ing_edbf6a8dc6954bc4	Сосиски	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-369	ing_a0d06fd1f1d8ea6c	Соус Лисано	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-370	ing_856e5cf2184a8b7b	Соус жуг	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-371	ing_cf4195f8edc74529	Сухой творог	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-372	ing_f3cebdd1d2fd2c8b	Сушёные креветки	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-373	ing_0aa6315714461a88	Сыр твёрдый	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-374	ing_900000b38428bb7e	Сычуаньский перец	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-375	ing_a3b73a9e49ac030d	Телятина	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-376	ing_a1c7619cf4b3ea35	Тмин молотый	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-377	ing_a823569bd09124c4	Тофу	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-378	ing_fd543577b076a115	Тыквенные семечки	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-379	ing_de71cdc48a8c6825	Тёмное пиво	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
-380	ing_5966a27180b890ef	Уксус рисовый	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-381	ing_636aceda5c60993f	Уксус хересный	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-382	ing_658f381214e73c12	Уксус яблочный	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-383	ing_b0ffc9ef7e7a3cf0	Устричный соус	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-384	ing_f80d2e19c932eb34	Фенхель	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-385	ing_e45f3b494b0c3646	Фенхель молотый	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-386	ing_0a59629643afbf92	Фета	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-387	ing_5a9d52b952a5e2ef	Финики жужуб	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-388	ing_d01af7481f53f462	Финиковая паста	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-389	ing_7cf94eaacaee97f5	Фундук	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
-390	ing_94b0966a8a096297	Халуми	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-391	ing_34d991174f181cbc	Хлопья пул бибер	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-392	ing_1bd09601b0d318bb	Хмели-сунели	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-393	ing_f0b3e4fe892a2e3f	Цветная капуста	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-394	ing_66e65b21412cc940	Цельная пшеница	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-395	ing_8852cbcaffba0a68	Чабер	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-396	ing_92e1e3dfc5fd0dda	Чечевица	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-397	ing_3dba4063483a66f8	Чёрствый белый хлеб	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-398	ing_bdf1db9b5f817f87	Чёрствый хлеб	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-399	ing_6936534eded2c48a	Эстрагон	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-400	ing_0f62d2ca445a9344	Яблоки	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-401	ing_01b0c71a0f56af76	Ягнёнок	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-402	ing_90c2bcc657e536e9	Ягоды	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-403	ing_b818c63151cb6f49	Абрикосовый конфитюр	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-404	ing_4c3aa38651db209c	Абрикосовый чатни	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-405	ing_8f54a5b080724517	Адыгейский сыр	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-406	ing_3bce8048fbc65a1d	Аки консервированный	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-407	ing_ad6eaf502996bae2	Алыча сушёная	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-408	ing_295f388a20b0e2a9	Амба	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-409	ing_3e144f074bd33a1c	Анисовый ликёр	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
-410	ing_7ba5eb46d9572e93	Апельсиновая корка	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-411	ing_e462818568898d13	Апельсиновый сок	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-412	ing_1976031f91d46d77	Арбуз	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-413	ing_4fe727ef0a509fc2	Арепы	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-414	ing_b342e2bd8e924910	Атьеке	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-415	ing_2fa117b24665ce16	Африканские баклажаны	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-416	ing_39ace7a29c8b2202	Ахи амарильо	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-417	ing_6182fbc92d4f5cb7	Банан	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-418	ing_ba5b5f583f61b4e3	Баранья лопатка	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-419	ing_861273e156474530	Баранья нога	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-420	ing_4e0942121b5f7bce	Бахарат для кабсы	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-421	ing_623323ac87897db4	Бекон	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-422	ing_99eb91dd88c0768d	Белая колбаса	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-423	ing_93344d905e3a6507	Белая рыба для сырого потребления	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-424	ing_9f8f52ea79271af6	Белый рассольный сыр	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-425	ing_b4edac7875082f14	Бобы	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-426	ing_982dd700a896aa52	Бобы вигна (чёрный глазок)	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-427	ing_51dfb292b6474c0b	Бобы садовые	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-428	ing_04cee050794a68e7	Бобы фул (конские)	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-429	ing_25843a4c22415dee	Болгарский йогурт	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-430	ing_7563895ec9dff0ac	Борщ из отрубей	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-431	ing_26c36888d4bd7f28	Брусничный соус	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-432	ing_3e95382591bd4161	Брюква	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-433	ing_f37de3ffb21edcab	Букатини	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-434	ing_18ced12062b87f0b	Булочки для хот-дога	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-435	ing_a4466bc12d1f28b0	Булочки мантоу	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-436	ing_1f416e6e624bfa5c	Бульон бараний	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-437	ing_731e56014e0135dc	Бульон овощной	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-438	ing_f38c5d1ba59fc1f7	Бульон рыбный	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-439	ing_a60459b0b9e32d05	Бульон телячий	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-440	ing_1f2e4d7d3d2354aa	Вакамэ сушёная	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-441	ing_09b515105945f7e3	Варенье из чёрной смородины	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
-442	ing_ca7d3c09f1a076a5	Варёная ветчина	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-443	ing_12420971c9c9c2ba	Варёная колбаса	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-444	ing_7b8803a1a4d95bd3	Вашрен фрибуржуа	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-445	ing_ef72797532783dbb	Водяной лист	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-446	ing_01b7bb9911de349e	Вырезка	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-447	ing_a970c972f498dddd	Вяленая рыба	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-448	ing_fb75c8834dd7cc82	Газированная вода	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
-449	ing_cb2716fd26256c50	Гари (маниоковая крупа)	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-450	ing_1b02a912d21ab715	Говядина тонкими пластами	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-451	ing_49c31cc2ed6c740e	Говяжий жир	f	g	\N	884.00	0.00	100.00	0.00	500.00	220.00
-452	ing_e1e596821f7a4e2b	Говяжий отруб	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-453	ing_1ecd26e28f8bc3f7	Говяжий хвост	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-454	ing_0e409bab76b1a765	Говяжьи кости	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-455	ing_54df5756a29fe4c9	Говяжьи кости с мозгом	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-456	ing_6030f78f00f6b884	Говяжья грудинка	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-457	ing_f876d09154e6d307	Голубиный горох	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-458	ing_742b5138b892ca8e	Горох колотый	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-459	ing_a44c8d3dc2b4e2d0	Горчица английская	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-460	ing_7595b0e77f3e46c9	Горчица дижонская	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-461	ing_935c05715fbe80a3	Горчица для соуса	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-462	ing_a7bb91b82cea1b41	Горчица средней остроты	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-463	ing_ae1e5ff2b568a531	Горчичный порошок	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-464	ing_6bfe32a37639492c	Горячая вода	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
-465	ing_ede79425d0d6c10e	Горячее молоко	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-466	ing_7bbe0e1ba4b69382	Гранатовая патока	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-467	ing_b42a0b9fd6a00c0c	Грейпфрут	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-468	ing_a358007ea0771b46	Гречневая мука	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-469	ing_15a4c39d6ee5fe5e	Грибы сушёные	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-470	ing_955bf5851e1731fc	Грудинка	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-471	ing_ae207c633ee30772	Гуаскас сушёные	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-472	ing_415aaf8cea917a5f	Гундрук	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-473	ing_5fbb19a17a6024b0	Деревенский хлеб	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-474	ing_3ed85f4d02e8a5aa	Джамид	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-475	ing_173ff344a6bced92	Дзавар (пшеничная крупа)	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-476	ing_07fc41b1cf16a86a	Дроблёная пшеница джариш	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-477	ing_3da792d25f1804ff	Дроблёный нут чана дал	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-478	ing_b8bbaa2f154243d9	Дроблёный рис	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-479	ing_a88bb83bda45516a	Дурбанский порошок карри	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-480	ing_eb36d11510e184d5	Жареные бобы	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-481	ing_fa5768202e591a27	Жареный горох	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-482	ing_6e29a1973a3704e8	Жареный тофу	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-483	ing_bbf6b19205aed2d3	Закваска ырша	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-484	ing_6a6d3c0d46404331	Зелёная приправа	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-485	ing_adcc30a4d0380876	Зелёные бананы	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-486	ing_11649ed3f1303cff	Зелёные бананы матоке	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-487	ing_455a214eccc52c9e	Зелёный чай	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
-488	ing_482a26c2f56b46b1	Зимняя дыня	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-489	ing_502c3029ecb1aca3	Золотой сироп	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
-490	ing_a362c481e55ae868	Зёрна граната	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-491	ing_2d0f56367ef6d1bb	Имбирные пряники	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-492	ing_d5361bca7f693e78	Имеретинский шафран	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-493	ing_dda98f442e1426d7	Индейка	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-494	ing_bb16582d90268cf2	Йогурт с чесноком	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-495	ing_c49b84a1423eea48	Каймак	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-496	ing_f2605f24a452bb03	Какао для глазури	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
-497	ing_e7e0333431aaf6ba	Камабоко	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-498	ing_ff455b1a851405a0	Каракатица	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-499	ing_8fd98a68b66c206a	Кардамон стручки	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-500	ing_7f70ed1a28214d33	Картофель жёлтых сортов	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-501	ing_983d5363213a3626	Картофель сырой	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-502	ing_55254c5743c95bfa	Касури мети	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-503	ing_de95d2c9276c050c	Кацуобуси	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-504	ing_92921f33ecd6d266	Кашкавал	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-505	ing_09099282aac695d5	Киви	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-506	ing_342b2cadd629badc	Кипрская пита	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-507	ing_67599c5024edd328	Кислые яблоки	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-508	ing_4fa562edb9e52712	Китайская колбаса лап чонг	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-509	ing_06b77e70f10eed21	Китайский лук-чеснок	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-510	ing_f2613212dd2f039c	Кленовый сироп	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
-511	ing_68cd236e4ce689b7	Клюква	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-512	ing_d69c258885f09f9a	Клюквенное варенье	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
-513	ing_3136309c6a2b3ff8	Козлятина	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-514	ing_a9e4be6b46a4fe44	Кокос тёртый	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-515	ing_029f06b7b686cdea	Кокосовое масло	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-516	ing_6ae716709b482fe2	Кокосовые сливки	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-517	ing_309fb3b47f1f290d	Колбаса копчёная	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-518	ing_fcd7ddd729340c04	Колбаса шоурису	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-519	ing_487ac4dd447dcd9e	Колбаски мергез	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-520	ing_0d385b371e26a239	Копчёная колбаса рокворст	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-521	ing_d69e7b7754c00946	Копчёная колбаса рукворст	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-522	ing_3c98bb627a6cf726	Копчёная рыба	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-523	ing_01ce1c9d45939fda	Копчёная свиная шейка	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-524	ing_52fb837b2b9ccab6	Копчёная соль	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-525	ing_7dd3b84d2af5c0c0	Корейская груша	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-526	ing_9372b2a8f481b7d4	Корень женьшеня	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-527	ing_6d1a3445d51a1bb9	Корнишоны	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-528	ing_08aa1ff62c216836	Кость от хамона	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-529	ing_3aad4c77fa72fe47	Кочхукару	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-530	ing_f3ba1c6b38d0f72e	Краб	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-531	ing_931f9a1c7bf60983	Краситель оранжевый	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-532	ing_aa5859e05f1af12b	Красная капуста	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-533	ing_a2d88c89f819da75	Красная паста карри	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-534	ing_50271d059ebca0f0	Красный мясистый перец	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-535	ing_3a9926874775cbc0	Красный чили	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-536	ing_a1d763ddff83a641	Креветочная паста терази	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-537	ing_ada64fb2f341285f	Крепкий эспрессо	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
-538	ing_c787ddbc69ee975a	Крупная белая рыба	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-539	ing_042df51e254112df	Крупная белая фасоль	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-540	ing_4da61e26e98f345e	Кукуруза посоле	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-541	ing_a0625968e29c22bb	Кукуруза початками	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-542	ing_c5aae93891de83c0	Кукуруза чокло	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-543	ing_cf19b93b84c3bbd5	Кукурузная крупа среднего помола	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-544	ing_3ed69bb5466b1087	Кукурузная мука масарепа	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-545	ing_f238e3a90c05be31	Кукурузные хлопья	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-546	ing_f286f6484691efaa	Кукурузный хлеб	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-547	ing_7c3b74c0d1ddabad	Куриная грудка	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-548	ing_4e25f7d01b328dd0	Куриное карри с соусом	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-549	ing_ec077d1c3be43443	Куриные голени	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-550	ing_1af364595ac6312e	Куриные грудки на кости	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-551	ing_dae7bbf5f964fd71	Куриные каркасы	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-552	ing_d696d4fae9a5fa30	Куриные крылья	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-553	ing_7c06d7f97145f7eb	Куриный паштет	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-554	ing_4b7305d92e1c1538	Курица варёная	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-555	ing_258cb3501e54a7c1	Курица на кости	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-556	ing_39394d63d69b8cd4	Курут	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-557	ing_7e7394f911f56a8a	Кускус	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-558	ing_e736d2cfde73295d	Лапша для рамена	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-559	ing_e3f14b6784c0f128	Лапша ширатаки	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-560	ing_e8716ac094412cec	Лепёшка наан	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-561	ing_71688ec87941115b	Лепёшка пиде	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-562	ing_ff66960938de8f6d	Лепёшки сомун	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-563	ing_6f95d6b852db3bb6	Лепёшки таббун	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-564	ing_e859d724e8e5f309	Лесные грибы	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-565	ing_73fefa2532a853fa	Лесные ягоды	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-566	ing_45495b9209ade1ae	Лимонный мирт	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-567	ing_d1d571bcaa1cae5a	Лист лаксы	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-568	ing_9dc7ca141280f538	Лист эру	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-569	ing_bcb92b31f3089cdf	Листовая горчица	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-570	ing_44174578bd47c24b	Листы для лазаньи	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-571	ing_da1ba7413348ea4a	Листья квашеной капусты	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-572	ing_dfdf6d962133a984	Листья молохии	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-573	ing_386c3d9f6fbee18a	Листья салата	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-574	ing_35b7c49a2ba2a6db	Листья сельдерея	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-575	ing_e9c8bfefc9255c2f	Ломоть хлеба	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-576	ing_2c6ca5dee3ed115d	Лук для подачи	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-577	ing_d6cddef88f900ca1	Любисток	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-578	ing_cc27d209f43886a2	Лёд колотый	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-579	ing_e8b2a00d0e25d291	Майоран сушёный	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-580	ing_8e00bc30986ea8b0	Мак	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-581	ing_d90404d65b3ed726	Мальтозный сироп	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
-582	ing_aad16022c6395e24	Маниоковое тесто	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-583	ing_73a59921fa062ecb	Маракуйя	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-584	ing_22605083f0246082	Маринованная сельдь	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-585	ing_bfd24dea05b07472	Маринованный имбирь бени сёга	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-586	ing_79844ac37df050fc	Марсала	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-587	ing_96b31f47190e8ad8	Маскарпоне	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-588	ing_a14b22f41a66f6d9	Масло для слоения	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-589	ing_4019b2a8e96bed36	Масло пальмовое	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-590	ing_522a31f24aa0b3c5	Махлаб	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-591	ing_84bfceb727ee95e0	Мелкая костистая рыба	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-592	ing_8fbe8cb2e1e8de33	Мелкая речная рыба	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-593	ing_a44e51501488254a	Мелкие макароны	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-594	ing_a2a284bf36b93355	Мелкий жёлтый картофель	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-595	ing_946d363f155e0318	Можжевельник	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-596	ing_fee34177b0906d3a	Моллюски	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-597	ing_064622856e856edb	Молодой солёный сыр	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-598	ing_b3538df2d557c8a3	Молоко в бешамель	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-599	ing_1541e605a59936f9	Молоко для крема	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-600	ing_565de69a603ebf4d	Молоко обезжиренное	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-601	ing_dd8ef1394214b4b9	Молотые сушёные раки	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-602	ing_42d22461707eee5e	Морковный салат	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-603	ing_c60c263baab6cb14	Морковь жёлтая	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-604	ing_ad9c92e577a7b395	Мука для блинов	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-605	ing_25a9ee6f16f660fd	Мука для основы	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-606	ing_3a450de455f5a954	Мука для роши	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-607	ing_8ded051cba77f898	Мука для теста	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-608	ing_e07b9b59d2497d90	Мука кама	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-609	ing_26ef01b95836d58c	Мука обжаренная	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-610	ing_55695d7512a75464	Мука тефф	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-611	ing_a90523acfe8a4f74	Мука типа 00	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-612	ing_80a1c30cebdb96b9	Мускатный цвет	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-613	ing_e1e2308ca61bb684	Мягкий тофу	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-614	ing_0e9f7cb4d92a77fc	Мякоть пальмовых плодов	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-615	ing_9c2573823bc2e14a	Мясная подлива	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-616	ing_5b3fe9546930ea89	Негушский пршут	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-617	ing_650d09c15b90886f	Нитритная соль	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-618	ing_5ddccf0ba57f2385	Нут сухой	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-619	ing_c895e1cb8840e0b1	Ньяме (ямс)	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-620	ing_65f9efc9c1e31eac	Обжаренная кокосовая стружка	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-621	ing_1f091f7f64495ea7	Обжаренный порошок карри	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-622	ing_c38958520e1fd09a	Овечья брынза	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-623	ing_ea91be119f1dd871	Огуречный рассол	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-624	ing_ecdb71f8c94bef08	Оленина	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-625	ing_006aa96a60807319	Оливки каламата	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-626	ing_31c5f236dafed43f	Орехи кемири	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
-627	ing_7449dd8424ca7625	Острый перечный соус	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-628	ing_333071b1d24de184	Осьминог	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-629	ing_a8f458fdabe86256	Пажитник	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-630	ing_1c2cee314d80fed2	Пажитник молотый	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-631	ing_7bdaf26c45d9e31e	Пальмовое масло денде	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-632	ing_bcfca224cd1d076b	Панир	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-633	ing_6dee3c371763550a	Панко	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-634	ing_c688a928d51fcd53	Панчетта	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-635	ing_edfa174d012dac1a	Паста ачиоте	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-636	ing_12447adc3d359407	Паста ачиоте (рекадо рохо)	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-637	ing_2d3c656799fdc865	Паста багоонг	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-638	ing_6cdfe4f5ccff0a03	Паста из зелёной папайи	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-639	ing_233cf8e38fd26251	Паста из красного перца	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-640	ing_d4f5ef5361cfaf52	Паста массаман	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-641	ing_f97d3547abfbf9e3	Паста мисо	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-642	ing_e6dce269f245accb	Паста самбал	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-643	ing_8f04599ddc3270c2	Пастернак	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-644	ing_9453127deb29344b	Пахта	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-645	ing_0d34d3ddb18b9aff	Пекинская капуста	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-646	ing_a37d0e3f127a0694	Перекисшее кимчи	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-647	ing_f9218946ff610ad9	Перец алеппо	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-648	ing_b0314b45e7dcf012	Перец анчо	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-649	ing_d24865d3f2b211bb	Перец белый горошком	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-650	ing_bab8185f9340b269	Перец душистый горошком	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-651	ing_fcc05621ab1756c6	Перец кобанеро	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-652	ing_4b87ccc961ad9fa6	Перец мулато	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-653	ing_9a5a00b8ec8e7701	Перец поблано	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-654	ing_9c652cbdaab3e03a	Перец сладкий зелёный	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-655	ing_40b3982e4d3a7c58	Перец тимур	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-656	ing_2cf6f27fc115d99f	Перечная паста бибер сальчасы	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-657	ing_5156beccf95390f6	Печень	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-658	ing_b1cb056f933d534f	Плантайн	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-659	ing_e7af76c52b5e8df0	Плоская зелёная фасоль	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-660	ing_9207a5941ac2bb21	Плотный тофу	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-661	ing_c65c58034b51e42a	Помидоры черри	f	g	17.00	40.00	1.50	0.20	8.00	1000.00	120.00
-662	ing_2335a2641c355d4d	Попкорн	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-663	ing_73f6ca56947af996	Постная говядина	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-664	ing_02a6b50faeca1a77	Почки	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-665	ing_3e391c1893a11a6f	Прахок	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-666	ing_9f7866940f4d12c0	Предварённая кукурузная мука	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-667	ing_99282d294b4989b1	Пресная лепёшка чурек	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-668	ing_273a5f860cff91e3	Рас-эль-ханут	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-669	ing_387ea3f3f83b8fdf	Растительное масло для соуса	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-670	ing_f8f78a4148c99629	Редис	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-671	ing_1985a02315b9494e	Редька зелёная	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-672	ing_87e5f4befbe47a1b	Ржаная закваска	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-673	ing_a0258632411582e8	Ржаной заквас	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-674	ing_02e8df7666998ba9	Ржаной солод	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-675	ing_3441172b4d72b565	Ржаной хлеб ругбрёд	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-676	ing_1da51658bca4e6d1	Рикотта	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-677	ing_b1d79e27e40b0584	Рис арборио	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-678	ing_0ef8cf9e439ed918	Рис варёный короткозёрный	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-679	ing_8b6ba84466630b5c	Рис карнароли	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-680	ing_3d1f02da535e6426	Рис короткозёрный	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-681	ing_a20ae6b2121a178d	Рис среднезёрный	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-682	ing_a1a134d22eb96ce3	Рисовая бумага	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-683	ing_1e7684ea4bc89df4	Рисовая лапша 5 мм	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-684	ing_c624fd2d005c6bb7	Рисовая лапша толстая	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-685	ing_04827fe9712cd711	Рисовая лапша широкая	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-686	ing_d4928893d891c96c	Рисовая мука	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-687	ing_8fba0a230422614c	Рисовая мука обжаренная	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-688	ing_8810d29635f5d12e	Ром	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-689	ing_68c0d27b7fcd6ab5	Ростки сои	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-690	ing_07cb7472019e0e3e	Руккола	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-691	ing_6ce3a3b8090ed497	Савоярди	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-692	ing_fb8720907815d2b6	Салат из капусты	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-693	ing_4c90fccefc530046	Салат ромэн	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-694	ing_a9bfd5490bfef8ab	Салями	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-695	ing_ccbad22d9d717dab	Самбал	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-696	ing_2493063dacb42d6e	Сардины	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-697	ing_7db959e12f7cd3a7	Сахар в начинку	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
-698	ing_9889f67d451ec4f5	Сахар для глазури	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
-699	ing_43ad36bec83c6b71	Сахар для корочки	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
-700	ing_5479a097ded99471	Сахар для обваливания	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
-701	ing_677a24ed684bb7f5	Сахар для соуса	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
-702	ing_ea42249c35d7e196	Свежий сыр	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-703	ing_a0bce04fce034162	Свежий тунец	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-704	ing_c0f0a832c0797b77	Свиная грудинка со шкурой	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-705	ing_6167d0df49e65060	Свиная кровь	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-706	ing_e63bbc758cb848d4	Свиная рулька	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-707	ing_2a9da4eda68439a9	Свиная шкура с жиром	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-708	ing_74347a9bf2c0ab4d	Свиной жир	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-709	ing_21f8d4048d7951d1	Священный базилик	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-710	ing_f64f07e91aaf51e1	Свёкла маринованная	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-711	ing_30676f157d7f1378	Семена граната сушёные	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-712	ing_ca6028abf36607f0	Семена фенхеля	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-713	ing_1b82559743edad92	Семена эгуси молотые	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-714	ing_5f4bcc57d0fb4393	Сердце	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-715	ing_4d29386b9f33f390	Серый горох	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-716	ing_831a4225e03807d8	Сладкое вино	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
-717	ing_557dc700883ef5f1	Сливки 30%	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-718	ing_87f5c9e97449e508	Сливовое повидло	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-719	ing_be3bc147ac275713	Сливочное масло для теста	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-720	ing_3366e852e3e49cde	Сливочный сыр катупири	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-721	ing_f22fceb6dd681abb	Слоёная лепёшка фатир	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-722	ing_219206fce0fec761	Смесь бахарат	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-723	ing_d9cb1e11b7502d09	Смесь мытмыта	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-724	ing_858a3a014a9e5863	Смесь пяти специй	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-725	ing_28bcf43581fec7d9	Смесь семи специй	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-726	ing_6da91c7f4efc15a6	Смесь специй чар масала	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-727	ing_8264b0edfe7f2115	Соевые бобы	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-728	ing_ba62be6b38b69039	Сок лайма	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-729	ing_8cbbb55b5c7ee73c	Соль в тесто	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-730	ing_93f94d0ffe5fae6c	Солёная свинина	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-731	ing_8959fc65a0a4dca7	Солёные крекеры	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-732	ing_80802967bc55743f	Солёный белый сыр	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-733	ing_59795acab9232369	Солёный лимон	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-734	ing_3946f0b0925263b2	Соус ахи	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-735	ing_22750c03cd1e32f1	Соус из голубого сыра	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-736	ing_ea170c0e9dab86ef	Соус окономи	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-737	ing_69dc1800ade951af	Соус хойсин	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-738	ing_73fabe44ad08c4f9	Соус шито	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-739	ing_42a5fc5651847134	Спагетти	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-740	ing_f6883a543a621493	Старое сало	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-741	ing_3552b12248e9fd6f	Стебли водяной лилии	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-742	ing_e2c795eb7b305be2	Стеклянная лапша	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-743	ing_e02e4fdf0117b387	Стручок ванили	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-744	ing_7c45a05d7304a546	Сулугуни	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-745	ing_58361070846b6f25	Сухие бобы фава	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-746	ing_8c056cebc4b3b28f	Сухие листья сорго	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-747	ing_d6b81fdd8cd43fc5	Сухое молоко	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-748	ing_abdf96df117362e9	Сухое печенье	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-749	ing_5f697e464dc42431	Сухой имбирь молотый	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-750	ing_ca694f450fca01b6	Сушёная бамия молотая	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-751	ing_d21472ca1c2f503c	Сушёная рыба	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-752	ing_117baad5bb7f657e	Сушёные анчоусы икан билис	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-753	ing_0e59cd57d4ed3e85	Сушёные травы	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-754	ing_da1256ec97e4a04f	Сушёный красный перец	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-755	ing_c29673e024a28f25	Сушёный лайм лууми	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-756	ing_07a4b1569dfef0cc	Сушёный пажитник	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-757	ing_2a4b997dcc32980e	Сушёный чили анчо	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-758	ing_a87813461cbb10fa	Сушёный чили гуахильо	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-759	ing_9190ebeae43aba73	Сыр для жарки	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-760	ing_09e490f20328afe8	Сыр для пастель	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-761	ing_907dee82d34c84db	Сыр куахада	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-762	ing_d1c1993a49865623	Сырные зёрна чеддер	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-763	ing_a8fa07fe9d97603c	Сычуаньский перец тимур	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-764	ing_da5a0294cf633cf1	Сычужный фермент	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-765	ing_3a591a83757d24f0	Тайские баклажаны	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-766	ing_7067668a20b1b920	Тайский чили	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-767	ing_72356328a691047f	Тамалито из кукурузы	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-768	ing_cd7f12309559f48c	Тамаринд	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-769	ing_4322822bc92815df	Тамариндовый соус	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-770	ing_5cddca7aea3107ae	Тапиоковый крахмал	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-771	ing_646a495745b3fbf3	Творог 5–9 %	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-772	ing_bce1230be14d6ea8	Творог твёрдый	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-773	ing_ffbeb3d2d6588370	Творожный сыр джиза	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
-774	ing_6d26fad00c8cb333	Телячий эскалоп	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-775	ing_e1ead83b815b2790	Телячья голяшка	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-776	ing_5a7489c12aa4f080	Тесто для эмпанадас	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-777	ing_70c4afe419650faa	Тесто катаифи	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-778	ing_88863e17e4353b9c	Тиляпия	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-779	ing_03e27e213de5e880	Тимьян сушёный	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-780	ing_39829149f1609fa9	Толчёные листья маниока	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-781	ing_6a2ff88bba6be77b	Томатное пюре	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-782	ing_3477b62e74f3e078	Томатный кетчуп	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-783	ing_3068c3c1b89942f9	Томатный сок	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-784	ing_7cf9f87a547fa4ba	Тонкая лепёшка	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-785	ing_0090b21710c0eba0	Тонкий лаваш	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-786	ing_de024bbc09030cbb	Топлёное масло нитер киббе	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-787	ing_3571046b08604c2e	Тостады	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-788	ing_3e5b0677719c99f0	Треска	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-789	ing_2503548b0a13a2b9	Тунец	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-790	ing_8a20d4f0fd8457f0	Тушёная зелень	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-791	ing_2ef2854dde1d3bf7	Тэнкасу — крошка от темпуры	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-792	ing_801caaaf7bf2ee30	Тёмное бельгийское пиво	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
-793	ing_6e76ad51d3e2a244	Тёмное пиво стаут	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
-794	ing_fb2cc623646e8331	Тёмный тростниковый сахар	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
-795	ing_c60f734ca6f6fe41	Тёртый кокос	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-796	ing_e91229953ab1cff0	Укроп сушёный	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-797	ing_c01137e05284d07e	Уксус 9%	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-798	ing_0806c1978bbf37ea	Уксус для соуса	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-799	ing_89aed53d19cc1102	Уксус солодовый	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-800	ing_d643695c27663b3c	Фарш куриный	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-801	ing_ae53aefd7b908de4	Фарш телячий	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-802	ing_cc4801660632b15a	Фасоль	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-803	ing_469a970ce2905a03	Фасоль в томате	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-804	ing_20431b58f958d937	Фасоль фабес	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-805	ing_d78ebc629c6cf9fa	Ферментированные бобы иру	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-806	ing_d8068bb9fd225904	Ферментированные чайные листья	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
-807	ing_c672c00ff072004d	Ферментированные чёрные бобы	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-808	ing_6c649ffcbeca5d78	Филе лосося	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-809	ing_a6a680919c59e0cb	Филе лосося с кожей	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-810	ing_31193f8756698326	Филе трески	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-811	ing_c67bc041961fa6f7	Финиковый сироп дибс	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-812	ing_fdaef25a1110c4b4	Фиолетовая кукуруза	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-813	ing_37a59b531263036b	Форель	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-814	ing_a233ecc1b7e0c9df	Фрик (зелёная пшеница)	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-815	ing_965245994d4d6208	Халапеньо	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-816	ing_b6e7d60d9381dedb	Хамон серрано	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-817	ing_30a11c0b7b37f5eb	Херес	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-818	ing_a7d6c01eb3f853d0	Хлеб с плотным мякишем	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-819	ing_2cc656fb814bee1f	Хлопья жареного чили	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-820	ing_774b010a43c80ff1	Холодный бульон	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-821	ing_a9d73a4c878e53ed	Хрен	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-822	ing_50a57673e2e72d91	Цельнозерновая мука	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-823	ing_88efbe03077a9045	Цыплёнок	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-824	ing_04fc791a2cb4288f	Черника	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-825	ing_3bcb551d1dc20b74	Чернила каракатицы	f	g	\N	150.00	20.00	5.00	0.00	500.00	450.00
-826	ing_fef1502b60834d77	Чеснок головками	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
-827	ing_1db8dbfdf912ba3c	Чечевица жёлтая	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-828	ing_d0327636513a818f	Чечевица зелёная	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-829	ing_5aefd18bf8a56222	Чечевица коричневая	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-830	ing_dc85795af49a7067	Чечевица мунг	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-831	ing_bf9a3bf5bd0a7738	Чечевица тур дал	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-832	ing_e2e72a8a14acaf17	Чечевица урад	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-833	ing_e5e7012550810901	Чили анчо	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-834	ing_1d100490feaa291f	Чили гуахильо	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-835	ing_d5e8b6c27e865bbf	Чипсы из подорожника	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-836	ing_afea33f8210fc889	Чочо (люпин)	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-837	ing_b0f9d6d7c0ffe06f	Чёрноглазая фасоль	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-838	ing_1b504827ddbf9e81	Чёрные оливки	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-839	ing_79bc010a2be4353a	Чёрный кардамон	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-840	ing_835a14b17015bc8b	Чёрный уксус для соуса	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-841	ing_a8cc57929454281a	Чёрный уксус чжэньцзян	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-842	ing_98951c5d8de78ca7	Шиитаке сушёные	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-843	ing_668d670e80f7a441	Шоколад для глазури	f	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
-844	ing_8c2811222429cb0c	Щавель	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-845	ing_6659e75de6036034	Ынджера	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-846	ing_baa12ddf52abb45b	Яблоки кислых сортов	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-847	ing_5d9eddc858d1ddb0	Яблоки плотных кислых сортов	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-848	ing_976872ebec3742bf	Яблоки плотных сортов	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
-849	ing_5c11d7e4bd90a671	Яблочное пюре	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-850	ing_0d5cf395040623a7	Яблочный сок	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
-851	ing_aab752b6265a2093	Яичная лапша	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-856	ing_83f87dc03dc4970c	Ямс нагаимо	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-857	ing_c4a1003022f208ff	Японский майонез	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+1	ing_8214cfa2ad659987	Лук репчатый	f	g	110.00	41.00	1.40	0.00	10.40	1000.00	120.00
+3	ing_1c4ab4239538af48	Чеснок	f	g	\N	143.00	6.50	0.50	29.90	1000.00	120.00
+4	ing_94735c5d0f98f9bb	Масло растительное	f	g	\N	899.00	0.00	99.90	0.00	500.00	220.00
+5	ing_5080f64e5d37ea5c	Яйцо куриное	f	g	50.00	157.00	12.70	11.50	0.70	1000.00	500.00
+6	ing_9f5aff656efd8171	Мука	f	g	\N	334.00	10.30	1.10	70.00	1000.00	100.00
+7	ing_f9488f0bc6429a47	Масло сливочное	f	g	\N	748.00	0.50	82.50	0.80	500.00	200.00
+8	ing_43db869e63682a56	Помидор	f	g	123.00	20.00	0.60	0.20	4.20	1000.00	120.00
+10	ing_6362b9a2160b3580	Картофель	f	g	213.00	77.00	2.00	0.40	16.30	1000.00	120.00
+12	ing_69f91741a4c2027f	Молоко	f	g	\N	60.00	2.90	3.20	4.70	500.00	200.00
+13	ing_6259499207054466	Кинза	f	g	\N	21.00	2.10	0.50	2.00	100.00	80.00
+14	ing_14a4780585e50d6a	Масло оливковое	f	g	\N	898.00	0.00	99.80	0.00	500.00	220.00
+15	ing_e2162431045c69e8	Лимон	f	g	58.00	34.00	0.90	0.10	3.00	1000.00	180.00
+16	ing_1ef43ec41d874f9d	Морковь	f	g	61.00	35.00	1.30	0.10	6.90	1000.00	120.00
+17	ing_cf9ecdd52caba3bc	Имбирь	f	g	\N	78.00	1.80	0.80	15.80	100.00	80.00
+18	ing_8b4391da8b998dbb	Петрушка	f	g	\N	49.00	3.70	0.40	7.60	100.00	80.00
+19	ing_47335d405c9ace59	Рис	f	g	\N	344.00	6.70	0.70	78.90	1000.00	100.00
+20	ing_c0a165daf2eb615a	Лук зелёный	f	g	\N	19.00	1.30	0.10	3.20	1000.00	120.00
+21	ing_4d24bc61980ba1e8	Курица	f	g	\N	147.00	13.00	10.60	0.00	1000.00	500.00
+22	ing_a86a5e83439b536e	Лавровый лист	f	g	\N	301.00	7.60	8.40	48.70	100.00	80.00
+23	ing_1105c1e59552ebf8	Перец сладкий	f	g	119.00	27.00	1.30	0.10	5.30	1000.00	120.00
+24	ing_7bb9e91a144d2836	Лайм	f	g	67.00	31.00	0.70	0.20	6.50	1000.00	180.00
+25	ing_80ec6ff28b539412	Томатная паста	f	g	\N	102.00	4.80	0.00	19.00	1000.00	120.00
+26	ing_c5a774f804da9082	Масло топлёное	f	g	\N	892.00	0.20	99.00	0.00	500.00	220.00
+27	ing_1f7a9c12bbeeb8b3	Куркума	f	g	\N	300.00	9.70	3.30	58.00	100.00	80.00
+28	ing_65346613fa1947bf	Дрожжи сухие	f	g	\N	325.00	40.40	7.60	14.30	500.00	120.00
+29	ing_5068d17bba1f46dd	Баранина	f	g	\N	209.00	15.60	16.30	0.00	1000.00	500.00
+30	ing_6406fef0f3af5aa0	Перец чили	f	g	\N	41.00	2.00	0.40	7.30	100.00	80.00
+31	ing_c1df70961ce75b27	Зира молотая	f	g	\N	375.00	17.80	22.30	33.70	100.00	80.00
+32	ing_b91626a52dbb2f02	Сметана	f	g	\N	206.00	2.80	20.00	3.20	500.00	200.00
+33	ing_3caca706865b1943	Кокосовое молоко	f	g	\N	180.00	1.80	18.00	2.70	500.00	200.00
+34	ing_3d43eae29d5870a1	Ваниль	f	g	\N	288.00	1.00	0.10	13.00	100.00	80.00
+35	ing_541d4ee1e1c87f07	Говядина	f	g	\N	187.00	18.90	12.40	0.00	1000.00	500.00
+36	ing_a1734f1ac79885e8	Корица палочка	f	g	\N	247.00	4.00	1.20	27.50	100.00	80.00
+38	ing_ef633f7569b37d4b	Изюм	f	g	\N	281.00	2.90	0.60	66.00	1000.00	180.00
+39	ing_459ccb13694bafe1	Укроп	f	g	\N	40.00	2.50	0.50	6.30	100.00	80.00
+40	ing_eb9af19bcc9eb5a6	Корица	f	g	\N	247.00	4.00	1.20	27.50	100.00	80.00
+41	ing_44731879aed2c37b	Лук красный	f	g	\N	42.00	1.40	0.00	9.10	1000.00	120.00
+42	ing_3114ece82c6e01a9	Сливки	f	g	\N	206.00	2.80	20.00	3.70	500.00	200.00
+43	ing_806d0f13effa3beb	Соус соевый	f	g	\N	53.00	6.00	0.00	5.00	100.00	80.00
+44	ing_54af9e8fba188b3a	Капуста	f	g	\N	27.00	1.80	0.10	4.70	1000.00	120.00
+45	ing_17d4eeeec05e425e	Креветки	f	g	\N	87.00	18.30	1.20	0.80	500.00	450.00
+46	ing_9e1a5d5419b0c948	Фарш говяжий	f	g	\N	249.00	17.20	20.00	0.00	1000.00	500.00
+47	ing_d6a8c4d352de0d21	Шафран	f	g	\N	310.00	11.40	5.90	61.50	100.00	80.00
+48	ing_b7f4693039de2bba	Шалот	f	g	\N	69.00	2.50	0.10	14.50	500.00	120.00
+49	ing_c3d66be69bae22f7	Вино белое сухое	f	g	\N	66.00	0.10	0.00	0.60	1000.00	90.00
+50	ing_234a7b19ef28f34c	Рыбный соус	f	g	\N	35.00	5.10	0.00	3.60	500.00	450.00
+51	ing_d0e1c8ded44533e7	Сахарная пудра	f	g	\N	398.00	0.00	0.00	99.70	500.00	150.00
+52	ing_45f99ebb6d7600b2	Тимьян	f	g	\N	80.00	5.60	1.70	10.50	100.00	80.00
+53	ing_a31ea0c18b385202	Крахмал кукурузный	f	g	\N	337.00	0.50	0.30	83.00	500.00	120.00
+54	ing_309ff11850f5bda5	Огурец	f	g	\N	14.00	0.80	0.10	2.50	1000.00	120.00
+55	ing_1cfdd76631100fab	Паприка	f	g	\N	268.00	14.00	12.90	24.00	100.00	80.00
+56	ing_1fbe2b1fe9a43696	Фарш свиной	f	g	\N	257.00	17.00	21.00	0.00	1000.00	500.00
+57	ing_86aa9926678e94b6	Баклажан	f	g	\N	24.00	1.20	0.10	4.50	1000.00	120.00
+58	ing_63a1c6d93122eee2	Зира	f	g	\N	375.00	17.80	22.30	33.70	100.00	80.00
+59	ing_103956509ce041df	Мёд	f	g	\N	329.00	0.80	0.00	81.50	500.00	150.00
+60	ing_a8f4b45fb0987bd5	Рис басмати	f	g	\N	346.00	7.50	0.90	77.00	1000.00	100.00
+61	ing_d5080a8150c44fc0	Уксус	f	g	\N	18.00	0.00	0.00	0.50	100.00	80.00
+62	ing_f8f3d2c774368db3	Грецкий орех	f	g	\N	656.00	16.20	60.80	11.10	200.00	250.00
+63	ing_66dcfd865cc753b9	Зелёный чили	f	g	\N	41.00	2.00	0.40	7.30	500.00	120.00
+64	ing_3feced8147f8df46	Нут	f	g	\N	318.00	19.00	6.00	47.00	1000.00	100.00
+65	ing_460256bce540e500	Орегано сушёный	f	g	\N	236.00	9.00	4.50	40.00	100.00	80.00
+66	ing_6e2fd4669514e25f	Перец скотч-боннет	f	g	\N	41.00	2.00	0.40	7.30	100.00	80.00
+67	ing_a621a374b35b8b55	Баранина на кости	f	g	\N	157.00	11.70	12.20	0.00	1000.00	500.00
+68	ing_02a6366a177076ad	Бульон говяжий	f	g	\N	12.00	1.50	0.60	0.20	500.00	120.00
+69	ing_d549d6eee8612558	Кунжут	f	g	\N	565.00	19.40	48.70	12.20	200.00	250.00
+70	ing_2a0b1181995f902d	Мята сушёная	f	g	\N	236.00	9.00	4.50	40.00	500.00	120.00
+71	ing_d8b58db9a07f5d3a	Рис варёный	f	g	\N	128.00	2.70	0.30	28.60	1000.00	100.00
+72	ing_3a4cb0de7726c658	Свиная грудинка	f	g	\N	449.00	11.00	45.00	0.00	1000.00	500.00
+73	ing_b5b73d6eede10d23	Сода пищевая	f	g	\N	0.00	0.00	0.00	0.00	100.00	80.00
+74	ing_9ad2df8f9153d3dc	Цедра лимона	f	g	\N	35.00	1.50	0.30	6.50	1000.00	180.00
+75	ing_5e3d8980c5685bfd	Горчица	f	g	\N	108.00	5.50	6.00	8.00	100.00	80.00
+76	ing_95a89b6820bca228	Йогурт	f	g	\N	65.00	4.30	3.20	4.70	500.00	200.00
+77	ing_a01d24c8cf22fdb4	Йогурт густой	f	g	\N	116.00	7.00	8.00	4.00	500.00	200.00
+78	ing_f5ccba8460fac8cf	Кардамон	f	g	\N	266.00	10.80	6.70	40.50	100.00	80.00
+79	ing_e4c941f7372091a0	Копчёная грудинка	f	g	\N	463.00	10.00	47.00	0.00	500.00	120.00
+80	ing_14e4a94dda01973f	Кориандр молотый	f	g	\N	262.00	12.40	17.80	13.10	100.00	80.00
+81	ing_c2451537e0a091ea	Панировочные сухари	f	g	\N	356.00	11.00	3.50	70.00	500.00	200.00
+82	ing_3e149c6afc6c13a2	Паприка сладкая	f	g	\N	268.00	14.00	12.90	24.00	100.00	80.00
+83	ing_ed2957de9364a499	Перец чили сушёный	f	g	\N	273.00	12.00	9.00	36.00	100.00	80.00
+84	ing_7c423dbb2cdd89e4	Порошок карри	f	g	\N	269.00	13.00	13.00	25.00	500.00	120.00
+85	ing_fbfbeef2dd1eef71	Сливки 33%	f	g	\N	319.00	2.30	33.00	3.20	500.00	200.00
+86	ing_c19c9b7a867aa614	Кардамон молотый	f	g	\N	266.00	10.80	6.70	40.50	100.00	80.00
+87	ing_ecbb1c68c19cf5b0	Миндаль	f	g	\N	610.00	18.60	53.70	13.00	200.00	250.00
+88	ing_946c15022315b9c8	Мука кукурузная	f	g	\N	331.00	7.20	1.50	72.10	1000.00	100.00
+89	ing_1c7fc1eda2101cdc	Мускатный орех	f	g	\N	525.00	5.80	36.30	28.50	200.00	250.00
+90	ing_8c8eb419f8e14ed2	Мята	f	g	\N	50.00	3.70	0.40	8.00	500.00	120.00
+91	ing_cae44b44d14b6e8d	Оливки	f	g	\N	127.00	1.00	13.00	1.50	500.00	120.00
+92	ing_b169b99e95b61886	Перец чили хлопьями	f	g	\N	321.00	12.00	17.30	29.40	100.00	80.00
+93	ing_f52e09ee7d721bae	Арахисовая паста	f	g	\N	602.00	24.00	50.00	14.00	200.00	250.00
+94	ing_cbcde7fdc81d9996	Банановый лист	f	g	\N	0.00	0.00	0.00	0.00	1000.00	180.00
+95	ing_41360252fe44aaf0	Брынза	f	g	\N	260.00	17.90	20.10	0.00	500.00	200.00
+96	ing_10164541aec1f5f4	Бульон куриный	f	g	\N	14.00	2.00	0.50	0.30	1000.00	500.00
+97	ing_79577bd16af801bf	Жир свиной топлёный	f	g	\N	896.00	0.00	99.60	0.00	1000.00	500.00
+98	ing_e5c38b408f872cad	Зелёный горошек	f	g	\N	67.00	5.00	0.30	11.00	500.00	120.00
+99	ing_cb30d709f9085585	Каперсы	f	g	\N	24.00	2.40	0.90	1.70	500.00	120.00
+100	ing_57012d692bf4ebae	Курдючный жир	f	g	\N	834.00	1.50	92.00	0.00	500.00	220.00
+101	ing_81865768107f72b9	Лемонграсс	f	g	\N	92.00	1.80	0.50	20.00	500.00	120.00
+102	ing_5f74838d6b52d438	Маниок	f	g	\N	154.00	1.40	0.30	36.30	500.00	120.00
+103	ing_1a27b5d34b3e25a7	Перец чёрный	t	g	\N	251.00	10.40	3.30	38.70	100.00	80.00
+104	ing_1503494edf0a15be	Разрыхлитель	f	g	\N	79.00	0.10	0.00	19.60	100.00	80.00
+105	ing_cc445fd69f68843a	Рис длиннозёрный	f	g	\N	343.00	7.00	0.60	77.30	1000.00	100.00
+106	ing_7d8f6c5c340a3f1e	Сахар пальмовый	f	g	\N	374.00	0.40	0.10	93.00	500.00	150.00
+107	ing_61ee45f853d1b440	Свинина	f	g	\N	258.00	16.00	21.60	0.00	1000.00	500.00
+108	ing_44cbb5fb53012aa7	Тыква	f	g	\N	22.00	1.00	0.10	4.40	1000.00	120.00
+109	ing_1501282cfef1c9ab	Арахис жареный	f	g	\N	626.00	26.00	52.00	13.40	200.00	250.00
+110	ing_966fa72f442283a4	Белый хлеб	f	g	\N	242.00	8.10	1.00	48.80	1000.00	100.00
+111	ing_10f40654579eda70	Кедровые орехи	f	g	\N	673.00	13.70	68.40	9.40	200.00	250.00
+112	ing_f76b62d7371964a9	Корень сельдерея	f	g	\N	34.00	1.30	0.30	6.50	500.00	120.00
+113	ing_2ac2d3eb375aa2ce	Кукуруза	f	g	\N	93.00	3.30	1.40	16.70	500.00	120.00
+114	ing_99e570176da5f011	Перец чёрный горошком	f	g	\N	251.00	10.40	3.30	38.70	100.00	80.00
+115	ing_6ca73d503ca3dcca	Подорожник	f	g	\N	80.00	0.80	0.30	18.50	500.00	120.00
+116	ing_a7634c5219ef7424	Рис круглозёрный	f	g	\N	330.00	7.00	1.00	74.00	1000.00	100.00
+117	ing_4bcdecb2e6ca4d8c	Рёбрышки копчёные	f	g	\N	220.00	10.50	19.60	0.30	500.00	120.00
+118	ing_0e0ce360bffc5c76	Сельдерей стеблевой	f	g	\N	13.00	0.90	0.10	2.10	1000.00	120.00
+119	ing_b0c904e07064f8b5	Соль крупная	f	g	\N	0.00	0.00	0.00	0.00	100.00	80.00
+120	ing_68124f2a664d1de6	Тамариндовая паста	f	g	\N	192.00	2.00	0.40	45.00	100.00	80.00
+121	ing_2a2e972da7c5a34b	Шпинат	f	g	\N	22.00	2.90	0.30	2.00	1000.00	120.00
+122	ing_a04c4b9b4e595433	Авокадо	f	g	\N	115.00	1.40	10.60	1.30	1000.00	120.00
+123	ing_41e683c6f21c8720	Арахис	f	g	\N	552.00	26.30	45.20	9.90	200.00	250.00
+124	ing_67150e22f888859a	Бахарат	f	g	\N	269.00	12.00	9.00	35.00	500.00	120.00
+125	ing_384d9b040efc72c4	Винный уксус	f	g	\N	19.00	0.00	0.00	0.30	100.00	80.00
+126	ing_9757e97197b85db7	Галангал	f	g	\N	73.00	1.00	1.00	15.00	500.00	120.00
+127	ing_50ea3a471feaff34	Говяжья вырезка	f	g	\N	154.00	20.50	8.00	0.00	500.00	120.00
+128	ing_58a686c981ca848e	Кефир	f	g	\N	56.00	2.90	3.20	4.00	500.00	200.00
+129	ing_3cf8bf54ac9a4a80	Красная фасоль	f	g	\N	298.00	21.00	2.00	47.00	1000.00	100.00
+130	ing_dd786d8ed9d32aff	Кунжутное масло	f	g	\N	899.00	0.00	99.90	0.00	200.00	250.00
+131	ing_9ae35647a02a4e69	Лук-порей	f	g	\N	35.00	2.00	0.20	6.30	1000.00	120.00
+132	ing_f49d3ee4e597f8d9	Майонез	f	g	\N	629.00	2.40	67.00	3.90	500.00	120.00
+133	ing_650b663caaf9bccc	Мирин	f	g	\N	241.00	0.30	0.00	43.20	500.00	120.00
+134	ing_04a86c8257638a88	Орегано	f	g	\N	236.00	9.00	4.50	40.00	100.00	80.00
+135	ing_9c698250db94f6f0	Свиная лопатка	f	g	\N	237.00	16.50	19.00	0.00	1000.00	500.00
+136	ing_4af9c0a00b4aed63	Свиная шея	f	g	\N	262.00	16.00	22.00	0.00	1000.00	500.00
+137	ing_d13ec2bae7806ca5	Сушёный лайм луми	f	g	\N	198.00	5.00	2.00	40.00	1000.00	180.00
+138	ing_14e2f4a3b901e6c8	Вино красное сухое	f	g	\N	68.00	0.20	0.00	0.30	1000.00	90.00
+139	ing_1ca7630ef99fedc1	Вино шаосинское	f	g	\N	125.00	1.50	0.00	5.00	1000.00	90.00
+140	ing_00ab96be0b628922	Восковой картофель	f	g	\N	77.00	2.00	0.40	16.30	1000.00	120.00
+141	ing_5fb4779dcbf1de94	Гарам масала	f	g	\N	269.00	12.00	9.00	35.00	500.00	120.00
+142	ing_ae0fa4e105e7005f	Гвоздика	f	g	\N	267.00	6.00	13.00	31.60	100.00	80.00
+143	ing_51ed7c37c730a2b3	Даси	f	g	\N	2.00	0.30	0.00	0.20	500.00	120.00
+144	ing_ff4ab2c378956d4c	Кокосовая стружка	f	g	\N	638.00	6.90	64.50	7.40	500.00	120.00
+145	ing_7216ee25c3fa17df	Куркума свежая	f	g	\N	63.00	1.50	1.00	12.00	100.00	80.00
+146	ing_1938963dbc6825a1	Пармезан	f	g	\N	388.00	35.80	25.80	3.20	500.00	200.00
+147	ing_b3eb6508f04ab2c5	Перец душистый молотый	f	g	\N	271.00	6.10	8.70	42.00	100.00	80.00
+148	ing_d08e59585dfc92e1	Плантайн зелёный	f	g	\N	80.00	0.80	0.30	18.50	500.00	120.00
+149	ing_3e3ef60232ffd750	Помидоры консервированные в собственном соку	f	g	\N	21.00	1.10	0.20	3.80	1000.00	120.00
+150	ing_2707c87f197ecffa	Сахар коричневый	f	g	\N	380.00	0.10	0.00	95.00	500.00	150.00
+151	ing_3ee581016ec93a5e	Тмин	f	g	\N	311.00	19.80	14.60	25.00	500.00	120.00
+152	ing_0a7d9d11e8664161	Тёмный шоколад	f	g	\N	536.00	6.20	35.40	48.20	500.00	150.00
+153	ing_82d4bccb257db17c	Харисса	f	g	\N	84.00	3.00	4.00	9.00	1000.00	100.00
+154	ing_be16d6e1b8135af1	Чёрная фасоль	f	g	\N	298.00	21.00	2.00	47.00	1000.00	100.00
+155	ing_6cbfeb27e435a104	Шампиньоны	f	g	\N	27.00	4.30	1.00	0.10	500.00	120.00
+156	ing_a9514a752b499e7e	Ачиоте	f	g	\N	255.00	13.00	7.00	35.00	500.00	120.00
+157	ing_29d8800d347ac81d	Бадьян	f	g	\N	337.00	17.60	15.90	35.40	500.00	120.00
+158	ing_0f5a8a31ca38b427	Базилик	f	g	\N	25.00	3.00	0.60	2.00	100.00	80.00
+159	ing_230dd02fa49a5a03	Белый уксус	f	g	\N	18.00	0.00	0.00	0.50	100.00	80.00
+160	ing_620c157641150703	Бульонный кубик	f	g	\N	230.00	8.00	14.00	18.00	500.00	120.00
+161	ing_f7e2e3ef19bb78d7	Говядина на кости	f	g	\N	140.00	14.20	9.30	0.00	1000.00	500.00
+162	ing_a85c3182ba57ac45	Зелёные оливки	f	g	\N	144.00	1.00	15.30	0.50	500.00	120.00
+163	ing_7a2ca3cbe75c9226	Имбирь молотый	f	g	\N	322.00	9.00	4.20	62.00	100.00	80.00
+164	ing_9d437ad02b674581	Какао-порошок	f	g	\N	289.00	24.30	15.00	10.20	500.00	150.00
+165	ing_f0addc1a458e7ce0	Квашеная капуста	f	g	\N	20.00	1.80	0.10	3.00	1000.00	120.00
+166	ing_eb79763086e38818	Копчёная колбаса	f	g	\N	314.00	14.00	28.00	1.50	1000.00	500.00
+167	ing_ea5efcf06f7a0e90	Куриное филе	f	g	\N	113.00	23.60	1.90	0.40	1000.00	500.00
+168	ing_792e561905213c0d	Лист пандана	f	g	\N	32.00	1.00	0.50	6.00	500.00	120.00
+169	ing_0921e650341534d8	Листья карри	f	g	\N	81.00	6.00	1.00	12.00	500.00	120.00
+170	ing_938a79630299f031	Листья кафрского лайма	f	g	\N	53.00	3.00	1.00	8.00	1000.00	180.00
+171	ing_01594a54f269a8fb	Майоран	f	g	\N	236.00	9.00	4.50	40.00	500.00	120.00
+172	ing_8f8341b4ec2c26d3	Моцарелла	f	g	\N	254.00	18.00	19.50	1.50	500.00	200.00
+173	ing_e34efbe35f19b8a9	Овсяные хлопья	f	g	\N	352.00	12.30	6.20	61.80	1000.00	100.00
+174	ing_fe48929000e63062	Перловая крупа	f	g	\N	315.00	9.30	1.10	67.00	1000.00	100.00
+175	ing_4c851ed4c2ae3163	Пита	f	g	\N	263.00	9.00	1.20	54.00	1000.00	100.00
+176	ing_3978c5a43600c5dd	Ростки маша	f	g	\N	30.00	3.00	0.20	4.10	500.00	120.00
+177	ing_59c7ea3a3e526a80	Свёкла	f	g	\N	42.00	1.50	0.10	8.80	1000.00	120.00
+178	ing_e856c55070fd163b	Соус соевый тёмный	f	g	\N	72.00	6.00	0.00	12.00	100.00	80.00
+179	ing_30b94c6b1df6b7ec	Творог	f	g	\N	159.00	16.70	9.00	2.00	500.00	200.00
+180	ing_ff76bee750f4e0f9	Уксус винный красный	f	g	\N	19.00	0.00	0.00	0.30	100.00	80.00
+181	ing_15b2eaa431b71b9d	Фасоль стручковая	f	g	\N	26.00	2.00	0.20	4.00	1000.00	100.00
+182	ing_1d1262b32771233f	Аннато	f	g	\N	255.00	13.00	7.00	35.00	500.00	120.00
+183	ing_90f660487ae6557b	Багет	f	g	\N	260.00	8.50	1.50	53.00	1000.00	100.00
+184	ing_777ff6f7cfd8ebe0	Базилик фиолетовый	f	g	\N	25.00	3.00	0.60	2.00	100.00	80.00
+185	ing_d4e97b213189b9be	Батат	f	g	\N	81.00	1.60	0.10	18.40	1000.00	120.00
+186	ing_6124124d0db607e1	Белая рыба	f	g	\N	85.00	17.80	1.50	0.00	500.00	450.00
+187	ing_fc9f18a697287723	Белая фасоль	f	g	\N	298.00	21.00	2.00	47.00	1000.00	100.00
+188	ing_45f61f3ca34cb2bf	Бульон мясной	f	g	\N	12.00	1.50	0.60	0.20	500.00	120.00
+189	ing_a6fd0e5fe13f0371	Вода флёрдоранж	f	g	\N	0.00	0.00	0.00	0.00	1000.00	90.00
+190	ing_4ae837dc2ffb11ad	Вустерский соус	f	g	\N	78.00	0.00	0.00	19.50	100.00	80.00
+191	ing_9bc1579da393b682	Гвоздика молотая	f	g	\N	267.00	6.00	13.00	31.60	100.00	80.00
+192	ing_5ff15c8c47753f68	Говяжья голяшка	f	g	\N	145.00	20.50	7.00	0.00	500.00	120.00
+193	ing_ca21b9d84c6c8d21	Гранатовый соус	f	g	\N	273.00	0.30	0.00	68.00	100.00	80.00
+194	ing_6aeabae2fc1334dd	Дайкон	f	g	\N	21.00	1.20	0.00	4.10	1000.00	120.00
+195	ing_f8696c38fe61190c	Копчёное сало	f	g	\N	654.00	6.00	70.00	0.00	1000.00	500.00
+196	ing_202677bdc77083f7	Копчёный бекон	f	g	\N	416.00	13.00	40.00	1.00	1000.00	500.00
+197	ing_bf4dc76781b90149	Кориандр семена	f	g	\N	262.00	12.40	17.80	13.10	100.00	80.00
+198	ing_b34adbd4f789f8dd	Корица молотая	f	g	\N	247.00	4.00	1.20	27.50	100.00	80.00
+199	ing_74a328cb967ff62a	Крахмал картофельный	f	g	\N	313.00	0.10	0.00	78.20	1000.00	120.00
+200	ing_5528813f5db75a89	Кукурузная мука маса	f	g	\N	342.00	9.00	3.80	68.00	1000.00	100.00
+201	ing_f7fc80979fe84626	Курага	f	g	\N	228.00	5.20	0.30	51.00	1000.00	180.00
+202	ing_93abbdd25c15b9c8	Куриное бедро	f	g	\N	157.00	14.00	11.20	0.00	1000.00	500.00
+203	ing_745d725a7775c7c3	Леденцовый сахар	f	g	\N	398.00	0.00	0.00	99.70	500.00	150.00
+204	ing_e4e8ba6430e3f192	Лепёшки	f	g	\N	268.00	8.50	2.50	53.00	1000.00	100.00
+205	ing_ca60b9ac43bee389	Маринованная горчичная зелень	f	g	\N	23.00	1.50	0.30	3.50	500.00	120.00
+206	ing_084371a10e55dcf5	Оливки чёрные	f	g	\N	113.00	0.80	10.90	3.00	500.00	120.00
+207	ing_7503420a8a8c2c58	Орегано мексиканский	f	g	\N	236.00	9.00	4.50	40.00	100.00	80.00
+208	ing_28d367568a9ccbd0	Паприка копчёная	f	g	\N	268.00	14.00	12.90	24.00	100.00	80.00
+209	ing_38748571e07af933	Перец душистый	f	g	\N	271.00	6.10	8.70	42.00	100.00	80.00
+210	ing_20156eec00aebb94	Ржаная мука	f	g	\N	298.00	8.90	1.70	61.80	1000.00	100.00
+211	ing_95ea2c1a2dc42cd7	Ржаной хлеб	f	g	\N	174.00	6.60	1.20	34.20	1000.00	100.00
+212	ing_78261908262a4d09	Рёбрышки свиные	f	g	\N	192.00	10.10	16.90	0.00	1000.00	500.00
+213	ing_9eda68989522c839	Салат листовой	f	g	\N	13.00	1.20	0.30	1.30	500.00	120.00
+214	ing_df3962e6d00b9d59	Сгущённое молоко	f	g	\N	327.00	7.20	8.50	55.50	500.00	200.00
+215	ing_bb1bb96270cfc087	Семена пажитника	f	g	\N	323.00	23.00	6.40	33.80	500.00	120.00
+216	ing_5b8f0dec3d533054	Соус соевый светлый	f	g	\N	53.00	6.00	0.00	5.00	100.00	80.00
+217	ing_692a667c2a48532d	Спаржевая фасоль	f	g	\N	26.00	2.00	0.20	4.00	1000.00	100.00
+218	ing_bc2a1aee8b5c174d	Сумах	f	g	\N	233.00	4.00	13.00	25.00	500.00	120.00
+219	ing_23b698d1180bb31d	Тахини	f	g	\N	600.00	17.00	53.80	11.90	200.00	250.00
+220	ing_331854928dfbda9c	Тесто фило	f	g	\N	287.00	7.50	5.00	53.00	1000.00	100.00
+221	ing_4851b1ee2cb0d571	Томатный соус	f	g	\N	30.00	1.40	0.30	5.50	1000.00	120.00
+222	ing_848f0aeed1309f0d	Фисташки	f	g	\N	558.00	20.00	50.00	7.00	200.00	250.00
+223	ing_42321b4fb33f8555	Цедра апельсина	f	g	\N	72.00	1.50	0.20	16.00	1000.00	180.00
+224	ing_e7c27281a5bce85f	Чорисо	f	g	\N	384.00	22.00	32.00	2.00	1000.00	500.00
+226	ing_3699907ebc7acfb8	Анис	f	g	\N	337.00	17.60	15.90	35.40	500.00	120.00
+227	ing_b8b8474cb00f6e86	Апельсин	f	g	\N	43.00	0.90	0.20	8.10	1000.00	180.00
+228	ing_02d8fd09102560a4	Бамия	f	g	\N	29.00	2.00	0.10	5.00	1000.00	120.00
+229	ing_31f6d790c55a7d6f	Бок-чой	f	g	\N	13.00	1.50	0.20	1.20	1000.00	120.00
+230	ing_35cdf50e01180cc7	Булгур мелкий	f	g	\N	333.00	12.30	1.30	68.00	1000.00	100.00
+231	ing_ecbc9d89ac543b78	Ванильный сахар	f	g	\N	394.00	0.00	0.00	98.50	500.00	150.00
+232	ing_eb5d8c0000cd5260	Ветчина	f	g	\N	155.00	17.00	9.00	1.50	1000.00	500.00
+233	ing_0da5d0abb4338103	Виноградные листья	f	g	\N	60.00	4.50	2.00	6.00	1000.00	180.00
+234	ing_8b05d5007ce45b43	Вишня	f	g	\N	52.00	0.80	0.20	10.60	1000.00	180.00
+235	ing_0103bdf896f339ca	Говяжий огузок	f	g	\N	163.00	20.50	9.00	0.00	500.00	120.00
+236	ing_fbc5a4886b40773b	Говяжий рубец	f	g	\N	92.00	14.00	4.00	0.00	1000.00	500.00
+237	ing_769a1056969bdf53	Говяжья пашина	f	g	\N	160.00	21.00	8.50	0.00	500.00	120.00
+238	ing_c7be7888b30b637f	Горчица семена	f	g	\N	494.00	26.10	36.20	15.90	100.00	80.00
+239	ing_c8b206eaefb611e3	Грюйер	f	g	\N	412.00	29.80	32.30	0.40	500.00	200.00
+240	ing_5280f44639edfda8	Зира семена	f	g	\N	375.00	17.80	22.30	33.70	100.00	80.00
+241	ing_cb7a6bcd4b9c8095	Кабачок	f	g	\N	24.00	0.60	0.30	4.60	1000.00	120.00
+242	ing_b1e510d5f2768b38	Капуста белокочанная	f	g	\N	27.00	1.80	0.10	4.70	1000.00	120.00
+243	ing_23433abab720b674	Капуста кале	f	g	\N	42.00	3.30	0.70	5.50	1000.00	120.00
+244	ing_ebac918fd3cdcad7	Капуста квашеная кочаном	f	g	\N	20.00	1.80	0.10	3.00	1000.00	120.00
+245	ing_4c4c35f4a125777a	Картофель варёный	f	g	\N	82.00	2.00	0.40	16.70	1000.00	120.00
+246	ing_6879076b47167a52	Кашмирский чили молотый	f	g	\N	321.00	12.00	17.30	29.40	500.00	120.00
+247	ing_5ef2fdc00157f31e	Каштаны	f	g	\N	186.00	2.50	1.80	40.00	500.00	120.00
+248	ing_e839f9e5f64c687e	Кетчуп	f	g	\N	102.00	1.20	0.10	24.00	500.00	120.00
+249	ing_6fe30111a7e1e7b7	Красный рис	f	g	\N	334.00	8.00	2.50	70.00	1000.00	100.00
+250	ing_022214fb804790b0	Крахмал	f	g	\N	313.00	0.10	0.00	78.20	500.00	120.00
+251	ing_1df23a2bc45c1a15	Креветочная паста белачан	f	g	\N	180.00	28.00	4.00	8.00	100.00	80.00
+252	ing_171bef051f9ba597	Куриное бедро без кости	f	g	\N	148.00	19.00	8.00	0.00	1000.00	500.00
+253	ing_353df0d35175ba4a	Лепёшка	f	g	\N	268.00	8.50	2.50	53.00	1000.00	100.00
+254	ing_8d4a31368ec0d768	Листовая капуста	f	g	\N	29.00	3.00	0.60	3.00	1000.00	120.00
+255	ing_db84ea5b310b4ac9	Масло подсолнечное	t	g	\N	899.00	0.00	99.90	0.00	500.00	220.00
+256	ing_74e38d82c40f131d	Мука высокобелковая	f	g	\N	338.00	13.00	1.50	68.00	1000.00	100.00
+257	ing_14fd32dd74115fe5	Мука пшеничная	f	g	\N	334.00	10.30	1.10	70.00	1000.00	100.00
+258	ing_2dfd42f380d55f51	Нутовая мука	f	g	\N	338.00	22.40	6.70	47.00	1000.00	100.00
+259	ing_ce68fe29bbca8e79	Паприка острая	f	g	\N	268.00	14.00	12.90	24.00	100.00	80.00
+260	ing_b16683d00c63b1e8	Пекорино романо	f	g	\N	384.00	31.80	26.90	3.60	500.00	120.00
+261	ing_f1cbbb3e68e50877	Перец гуахильо	f	g	\N	273.00	12.00	9.00	36.00	100.00	80.00
+262	ing_867ab0cbb96ea32c	Перец чили молотый	f	g	\N	321.00	12.00	17.30	29.40	100.00	80.00
+263	ing_f4e9ed2d02a9c7b0	Песочное тесто	f	g	\N	434.00	6.00	26.00	44.00	1000.00	100.00
+264	ing_8d5e6ed57b0ad34f	Рассыпчатый картофель	f	g	\N	77.00	2.00	0.40	16.30	1000.00	120.00
+265	ing_460b5185fda3aac2	Рис жасминовый	f	g	\N	345.00	7.00	0.60	78.00	1000.00	100.00
+266	ing_f2df9b5018a53706	Рисовая лапша	f	g	\N	345.00	6.00	0.60	79.00	1000.00	100.00
+267	ing_4991a645bdf495dd	Розовая вода	f	g	\N	0.00	0.00	0.00	0.00	1000.00	90.00
+268	ing_f14adf22ad3a114f	Саке	f	g	\N	134.00	0.50	0.00	5.00	1000.00	90.00
+269	ing_d1b00abc610cf7aa	Свиное сало	f	g	\N	802.00	2.40	88.00	0.00	1000.00	500.00
+270	ing_b4f49c2f3aa354c0	Сливки 20%	f	g	\N	206.00	2.80	20.00	3.70	500.00	200.00
+271	ing_da1c921d4c950665	Слоёное тесто	f	g	\N	394.00	6.50	24.00	38.00	1000.00	100.00
+272	ing_27878fd2d8b3bdd2	Солёная треска	f	g	\N	137.00	32.00	1.00	0.00	500.00	450.00
+273	ing_fa1bee800db1725d	Томатильо	f	g	\N	31.00	1.00	1.00	4.50	1000.00	120.00
+274	ing_7c7b25a2dac982a2	Тунец консервированный	f	g	\N	96.00	21.00	1.00	0.00	500.00	450.00
+275	ing_71e5d2dfd865c4e6	Фарш бараний	f	g	\N	277.00	16.60	23.40	0.00	1000.00	500.00
+276	ing_a6086b1dd5efa7be	Финики	f	g	\N	291.00	2.50	0.50	69.20	1000.00	180.00
+277	ing_c0cbec0ef9a935b0	Хлеб	f	g	\N	242.00	8.10	1.00	48.80	1000.00	100.00
+278	ing_e29fa02f6b280fa3	Хрен тёртый	f	g	\N	58.00	3.20	0.40	10.50	500.00	120.00
+279	ing_b05b1912afc7ab3a	Чернослив	f	g	\N	246.00	2.30	0.70	57.50	1000.00	180.00
+280	ing_d116ff3a75a2bb0c	Чернушка	f	g	\N	375.00	17.80	22.30	33.70	500.00	120.00
+281	ing_7a93833cabcefc88	Чесночный порошок	f	g	\N	328.00	16.60	0.70	63.70	500.00	120.00
+282	ing_ea22d0cea3e60b29	Чечевица красная	f	g	\N	310.00	24.00	1.50	50.00	1000.00	100.00
+283	ing_fb84eaf2033ac938	Шиитаке	f	g	\N	30.00	2.20	0.50	4.30	500.00	120.00
+284	ing_15f4b3325810ecab	Аджван	f	g	\N	362.00	16.00	22.00	25.00	500.00	120.00
+285	ing_47b0070b88dec8b0	Ананас	f	g	\N	49.00	0.40	0.20	11.50	1000.00	180.00
+286	ing_d0b296df56e9658c	Асафетида	f	g	\N	281.00	4.00	1.10	63.70	500.00	120.00
+287	ing_aa29bf2cd998ac11	Банановый цвет	f	g	\N	36.00	1.60	0.60	6.00	1000.00	180.00
+288	ing_a9db9a7469173361	Барбарис	f	g	\N	245.00	4.00	1.00	55.00	1000.00	100.00
+289	ing_1c6d79c1acb998da	Белый перец	f	g	\N	251.00	10.40	3.30	38.70	100.00	80.00
+290	ing_9db4cfb5f1355e9b	Бербере	f	g	\N	269.00	12.00	9.00	35.00	500.00	120.00
+291	ing_02c8a9b0ae2054dd	Брусника	f	g	\N	46.00	0.70	0.50	8.20	1000.00	180.00
+292	ing_278dbd4bc4e895f2	Брусничное варенье	f	g	\N	243.00	0.30	0.20	60.00	500.00	150.00
+293	ing_0c76090704763acb	Булочки	f	g	\N	270.00	8.50	4.00	50.00	500.00	120.00
+294	ing_b7d7a56889d14551	Бульон	f	g	\N	10.00	1.30	0.40	0.30	500.00	120.00
+295	ing_af7bd038fab33ff1	Вермишель	f	g	\N	344.00	11.00	1.30	70.50	500.00	120.00
+296	ing_5585374d6652e15c	Вино красное	f	g	\N	68.00	0.20	0.00	0.30	1000.00	90.00
+297	ing_c056ed6b7820c2ab	Говяжьи рёбра	f	g	\N	209.00	11.20	18.20	0.00	500.00	120.00
+298	ing_f473c7de2f94c66e	Говяжья лопатка	f	g	\N	202.00	19.00	14.00	0.00	500.00	120.00
+299	ing_00c5d79fbdbc3ee8	Грибы белые сушёные	f	g	\N	286.00	30.30	14.30	9.00	500.00	120.00
+300	ing_74870df6c071362d	Гуанчале	f	g	\N	626.00	8.00	66.00	0.00	1000.00	500.00
+301	ing_1ba376987300aa29	Доубаньцзян	f	g	\N	122.00	7.00	6.00	10.00	500.00	120.00
+302	ing_9000ce51dc7f7bc7	Дроблёная пшеница	f	g	\N	320.00	12.50	2.00	63.00	1000.00	100.00
+303	ing_dde1080ce07f36a0	Дрожжи свежие	f	g	\N	109.00	12.70	2.70	8.50	500.00	120.00
+304	ing_1637a4705f3d7f57	Дульсе де лече	f	g	\N	315.00	6.80	7.40	55.40	500.00	120.00
+305	ing_4212cfb9a67e14ce	Желатин	f	g	\N	355.00	87.20	0.40	0.70	500.00	120.00
+306	ing_e659fd3d1acb694d	Жемчужный сахар	f	g	\N	398.00	0.00	0.00	99.70	500.00	150.00
+307	ing_cb9cbd71c8c6e6e9	Жёлтый горох	f	g	\N	299.00	23.00	1.60	48.10	1000.00	100.00
+308	ing_24615efdff956259	Зелёная папайя	f	g	\N	28.00	0.80	0.10	6.00	500.00	120.00
+309	ing_2979e6299d2e3326	Зелёный острый перец	f	g	\N	41.00	2.00	0.40	7.30	100.00	80.00
+310	ing_864b0856e917021b	Кайенский перец	f	g	\N	321.00	12.00	17.30	29.40	100.00	80.00
+311	ing_d37c277ae6a11b80	Карп	f	g	\N	62.00	8.80	2.90	0.00	500.00	450.00
+312	ing_f308130e61e6daf4	Картофель фри	f	g	\N	280.00	3.40	14.00	35.00	1000.00	120.00
+313	ing_88bba507f5bc6a24	Кечап манис	f	g	\N	226.00	1.50	0.00	55.00	500.00	120.00
+314	ing_593c9ec912f44e53	Кешью	f	g	\N	600.00	18.50	48.50	22.50	200.00	250.00
+315	ing_a4998d03c69153fc	Кирш	f	g	\N	235.00	0.00	0.00	0.50	500.00	120.00
+316	ing_156cd42ed6f1feb1	Клейкий рис	f	g	\N	349.00	6.80	0.60	79.00	1000.00	100.00
+317	ing_8be7591c46a81a88	Комбу	f	g	\N	150.00	7.00	1.50	27.00	500.00	120.00
+318	ing_6e329e080950f78a	Концентрированное молоко	f	g	\N	136.00	6.80	7.60	10.00	500.00	200.00
+319	ing_4369ae1f923bbbe8	Коньяк	f	g	\N	239.00	0.00	0.00	1.50	500.00	120.00
+320	ing_8de06cb9d8ecf8d0	Корень петрушки	f	g	\N	52.00	1.50	0.60	10.10	500.00	120.00
+321	ing_24afceb147f8d94b	Кочхуджан	f	g	\N	208.00	4.50	1.50	44.00	500.00	120.00
+322	ing_69514df64af9dd15	Красный перец молотый	f	g	\N	321.00	12.00	17.30	29.40	100.00	80.00
+323	ing_2e38757703d24619	Красный сладкий перец	f	g	\N	27.00	1.30	0.10	5.30	100.00	80.00
+324	ing_c86d8d09516f4249	Крахмал маниоковый	f	g	\N	351.00	0.20	0.00	87.50	500.00	120.00
+325	ing_c58c89e93fefd5e8	Кролик	f	g	\N	143.00	16.50	8.60	0.00	1000.00	500.00
+326	ing_5f42f9ad789fd9db	Кукурузные тортильи	f	g	\N	209.00	5.70	2.90	40.00	1000.00	100.00
+327	ing_a070cf5c1b956cc7	Лимонный сок	f	g	\N	24.00	0.40	0.10	5.40	1000.00	180.00
+328	ing_8706d49261d6f72f	Мальдивская рыба	f	g	\N	316.00	70.00	4.00	0.00	500.00	450.00
+329	ing_11dc460621f83d59	Манная крупа	f	g	\N	333.00	10.30	1.00	70.60	1000.00	100.00
+330	ing_fb73721c2185836c	Масло в тесто	f	g	\N	748.00	0.50	82.50	0.80	1000.00	100.00
+331	ing_172608c215076180	Масло горчичное	f	g	\N	898.00	0.00	99.80	0.00	500.00	120.00
+332	ing_816ad581c21510bf	Масло оливковое extra virgin	f	g	\N	898.00	0.00	99.80	0.00	500.00	220.00
+333	ing_dbaf2b9f0eb63f8a	Масло пальмовое красное	f	g	\N	899.00	0.00	99.90	0.00	500.00	120.00
+334	ing_1d82933af60e33cd	Мидии	f	g	\N	23.00	3.30	0.60	1.00	500.00	450.00
+335	ing_8fb4504c49f5e83a	Мозговые кости	f	g	\N	57.00	3.00	5.00	0.00	500.00	120.00
+336	ing_da95cc542c5b00fc	Молотые сушёные креветки	f	g	\N	265.00	57.00	3.00	2.50	500.00	450.00
+337	ing_0fba70862437a93d	Морсилья	f	g	\N	350.00	14.00	30.00	6.00	500.00	120.00
+338	ing_d3e697b3e8befee9	Мука для начинки	f	g	\N	334.00	10.30	1.10	70.00	1000.00	100.00
+339	ing_1b5368190e679af5	Мягкий белый сыр	f	g	\N	258.00	17.00	20.00	2.50	500.00	200.00
+340	ing_8186c10794c8cb6d	Огурец солёный	f	g	\N	11.00	0.80	0.10	1.70	1000.00	120.00
+341	ing_2c74004d785f7e43	Паста ахи амарильо	f	g	\N	47.00	1.50	1.00	8.00	100.00	80.00
+342	ing_d055e1e40d3d23b7	Перец пасилья	f	g	\N	273.00	12.00	9.00	36.00	100.00	80.00
+343	ing_3ea5690a8b27fafa	Перец пили-пили	f	g	\N	41.00	2.00	0.40	7.30	100.00	80.00
+344	ing_0ae7bd46beb75292	Перец пири-пири	f	g	\N	41.00	2.00	0.40	7.30	100.00	80.00
+345	ing_78dbeaf1dc54271e	Перец хабанеро	f	g	\N	41.00	2.00	0.40	7.30	100.00	80.00
+346	ing_534b74c53dbdc472	Перец чили свежий	f	g	\N	41.00	2.00	0.40	7.30	100.00	80.00
+347	ing_91ab086130506d34	Перец чёрный молотый	f	g	\N	251.00	10.40	3.30	38.70	100.00	80.00
+348	ing_f801371a8a34c223	Плантайн спелый	f	g	\N	83.00	0.80	0.30	19.20	500.00	120.00
+349	ing_cd466d1fd564b097	Половинки орехов	f	g	\N	656.00	16.20	60.80	11.10	200.00	250.00
+350	ing_5523ae3eac8cf04e	Помидоры сан-марцано	f	g	\N	21.00	1.10	0.20	3.80	1000.00	120.00
+351	ing_af72b628f3fa2f1d	Пшеничная лапша	f	g	\N	344.00	11.00	1.30	70.50	1000.00	100.00
+352	ing_6abe6b72ac6cf2fe	Ракушки	f	g	\N	85.00	16.00	1.00	3.00	500.00	120.00
+353	ing_5572f3ae7657a8f0	Репа	f	g	\N	32.00	1.50	0.10	6.20	1000.00	120.00
+354	ing_ceb01226b8c4b0eb	Рисовая вермишель	f	g	\N	345.00	6.00	0.60	79.00	1000.00	100.00
+355	ing_d17771c677d777e4	Рисовая лапша тонкая	f	g	\N	345.00	6.00	0.60	79.00	1000.00	100.00
+356	ing_a37c195d33475d3b	Розмарин	f	g	\N	114.00	3.30	5.90	12.00	500.00	120.00
+357	ing_a3028ac562fb1733	Сахар тростниковый	f	g	\N	380.00	0.10	0.00	95.00	500.00	150.00
+358	ing_ee46f660f308afed	Свежая кукуруза	f	g	\N	93.00	3.30	1.40	16.70	500.00	120.00
+359	ing_e438611a9c0188c9	Свежий белый сыр	f	g	\N	258.00	17.00	20.00	2.50	500.00	200.00
+360	ing_3ecf5d1b43c0b82e	Свежий солёный сыр	f	g	\N	291.00	18.00	23.00	3.00	500.00	200.00
+361	ing_a50951dec7f5c51a	Светлое пиво	f	g	\N	43.00	0.50	0.00	3.60	1000.00	90.00
+362	ing_114b3f973a8fddae	Свиная корейка	f	g	\N	190.00	19.50	12.50	0.00	1000.00	500.00
+363	ing_64031095d091a6fd	Свиные кишки	f	g	\N	75.00	12.00	3.00	0.00	1000.00	500.00
+364	ing_cdaebe7e57318742	Семена аннато	f	g	\N	255.00	13.00	7.00	35.00	500.00	120.00
+365	ing_f035cdb3394f88ad	Смесь бизар	f	g	\N	269.00	12.00	9.00	35.00	500.00	120.00
+366	ing_aecd8664480313f1	Смесь хавайдж	f	g	\N	269.00	12.00	9.00	35.00	500.00	120.00
+367	ing_ce720af62e266b3f	Сметана густая	f	g	\N	292.00	2.40	30.00	3.10	500.00	200.00
+368	ing_edbf6a8dc6954bc4	Сосиски	f	g	\N	266.00	11.00	24.00	1.60	1000.00	500.00
+369	ing_a0d06fd1f1d8ea6c	Соус Лисано	f	g	\N	70.00	0.50	0.00	17.00	100.00	80.00
+370	ing_856e5cf2184a8b7b	Соус жуг	f	g	\N	169.00	2.50	15.00	6.00	100.00	80.00
+371	ing_cf4195f8edc74529	Сухой творог	f	g	\N	154.00	18.00	8.00	2.50	500.00	200.00
+372	ing_f3cebdd1d2fd2c8b	Сушёные креветки	f	g	\N	265.00	57.00	3.00	2.50	500.00	450.00
+373	ing_0aa6315714461a88	Сыр твёрдый	f	g	\N	356.00	26.00	26.50	3.50	500.00	200.00
+374	ing_900000b38428bb7e	Сычуаньский перец	f	g	\N	253.00	6.00	9.00	37.00	100.00	80.00
+375	ing_a3b73a9e49ac030d	Телятина	f	g	\N	115.00	19.70	4.00	0.00	1000.00	500.00
+376	ing_a1c7619cf4b3ea35	Тмин молотый	f	g	\N	311.00	19.80	14.60	25.00	500.00	120.00
+377	ing_a823569bd09124c4	Тофу	f	g	\N	73.00	8.10	4.20	0.60	500.00	120.00
+378	ing_fd543577b076a115	Тыквенные семечки	f	g	\N	554.00	30.00	46.00	5.00	1000.00	120.00
+379	ing_de71cdc48a8c6825	Тёмное пиво	f	g	\N	48.00	0.30	0.00	5.70	1000.00	90.00
+380	ing_5966a27180b890ef	Уксус рисовый	f	g	\N	18.00	0.20	0.00	0.50	1000.00	100.00
+381	ing_636aceda5c60993f	Уксус хересный	f	g	\N	22.00	0.30	0.00	1.00	100.00	80.00
+382	ing_658f381214e73c12	Уксус яблочный	f	g	\N	21.00	0.00	0.00	0.90	100.00	80.00
+383	ing_b0ffc9ef7e7a3cf0	Устричный соус	f	g	\N	98.00	2.00	0.20	22.00	100.00	80.00
+384	ing_f80d2e19c932eb34	Фенхель	f	g	\N	29.00	1.20	0.20	5.50	500.00	120.00
+385	ing_e45f3b494b0c3646	Фенхель молотый	f	g	\N	317.00	15.80	14.90	30.00	500.00	120.00
+386	ing_0a59629643afbf92	Фета	f	g	\N	265.00	14.20	21.30	4.10	500.00	200.00
+387	ing_5a9d52b952a5e2ef	Финики жужуб	f	g	\N	289.00	3.70	1.10	66.00	1000.00	180.00
+388	ing_d01af7481f53f462	Финиковая паста	f	g	\N	284.00	2.20	0.40	68.00	1000.00	180.00
+389	ing_7cf94eaacaee97f5	Фундук	f	g	\N	651.00	15.00	61.50	9.40	200.00	250.00
+390	ing_94b0966a8a096297	Халуми	f	g	\N	321.00	22.00	25.00	2.00	500.00	120.00
+391	ing_34d991174f181cbc	Хлопья пул бибер	f	g	\N	321.00	12.00	17.30	29.40	500.00	120.00
+392	ing_1bd09601b0d318bb	Хмели-сунели	f	g	\N	269.00	12.00	9.00	35.00	100.00	80.00
+393	ing_f0b3e4fe892a2e3f	Цветная капуста	f	g	\N	30.00	2.50	0.30	4.20	1000.00	120.00
+394	ing_66e65b21412cc940	Цельная пшеница	f	g	\N	313.00	13.00	2.30	60.00	1000.00	100.00
+395	ing_8852cbcaffba0a68	Чабер	f	g	\N	236.00	9.00	4.50	40.00	500.00	120.00
+396	ing_92e1e3dfc5fd0dda	Чечевица	f	g	\N	295.00	24.00	1.50	46.30	1000.00	100.00
+397	ing_3dba4063483a66f8	Чёрствый белый хлеб	f	g	\N	256.00	8.50	1.10	53.00	1000.00	100.00
+398	ing_bdf1db9b5f817f87	Чёрствый хлеб	f	g	\N	256.00	8.50	1.10	53.00	1000.00	100.00
+399	ing_6936534eded2c48a	Эстрагон	f	g	\N	49.00	3.40	1.10	6.30	100.00	80.00
+400	ing_0f62d2ca445a9344	Яблоки	f	g	\N	47.00	0.40	0.40	9.80	1000.00	180.00
+401	ing_01b0c71a0f56af76	Ягнёнок	f	g	\N	212.00	17.00	16.00	0.00	1000.00	500.00
+402	ing_90c2bcc657e536e9	Ягоды	f	g	\N	43.00	0.90	0.40	9.00	1000.00	180.00
+403	ing_b818c63151cb6f49	Абрикосовый конфитюр	f	g	\N	251.00	0.50	0.10	62.00	1000.00	180.00
+404	ing_4c3aa38651db209c	Абрикосовый чатни	f	g	\N	185.00	0.70	0.20	45.00	1000.00	180.00
+405	ing_8f54a5b080724517	Адыгейский сыр	f	g	\N	226.00	19.00	16.00	1.50	500.00	200.00
+406	ing_3bce8048fbc65a1d	Аки консервированный	f	g	\N	152.00	2.90	15.20	0.80	500.00	120.00
+407	ing_ad6eaf502996bae2	Алыча сушёная	f	g	\N	246.00	2.50	0.50	58.00	1000.00	180.00
+408	ing_295f388a20b0e2a9	Амба	f	g	\N	74.00	1.00	1.50	14.00	500.00	120.00
+409	ing_3e144f074bd33a1c	Анисовый ликёр	f	g	\N	300.00	0.00	0.00	15.00	1000.00	90.00
+410	ing_7ba5eb46d9572e93	Апельсиновая корка	f	g	\N	72.00	1.50	0.20	16.00	1000.00	180.00
+411	ing_e462818568898d13	Апельсиновый сок	f	g	\N	46.00	0.70	0.20	10.40	1000.00	180.00
+412	ing_1976031f91d46d77	Арбуз	f	g	\N	26.00	0.60	0.10	5.80	1000.00	180.00
+413	ing_4fe727ef0a509fc2	Арепы	f	g	\N	197.00	4.50	3.00	38.00	500.00	120.00
+414	ing_b342e2bd8e924910	Атьеке	f	g	\N	168.00	1.00	0.50	40.00	500.00	120.00
+415	ing_2fa117b24665ce16	Африканские баклажаны	f	g	\N	24.00	1.20	0.10	4.50	1000.00	120.00
+416	ing_39ace7a29c8b2202	Ахи амарильо	f	g	\N	41.00	2.00	0.40	7.30	500.00	120.00
+417	ing_6182fbc92d4f5cb7	Банан	f	g	\N	61.00	1.00	0.10	14.00	1000.00	180.00
+418	ing_ba5b5f583f61b4e3	Баранья лопатка	f	g	\N	184.00	12.40	15.00	0.00	1000.00	500.00
+419	ing_861273e156474530	Баранья нога	f	g	\N	161.00	14.00	11.70	0.00	1000.00	500.00
+420	ing_4e0942121b5f7bce	Бахарат для кабсы	f	g	\N	269.00	12.00	9.00	35.00	500.00	120.00
+421	ing_623323ac87897db4	Бекон	f	g	\N	416.00	13.00	40.00	1.00	1000.00	500.00
+422	ing_99eb91dd88c0768d	Белая колбаса	f	g	\N	277.00	12.00	25.00	1.00	1000.00	500.00
+423	ing_93344d905e3a6507	Белая рыба для сырого потребления	f	g	\N	92.00	18.40	2.00	0.00	500.00	450.00
+424	ing_9f8f52ea79271af6	Белый рассольный сыр	f	g	\N	259.00	15.00	21.00	2.50	500.00	200.00
+425	ing_b4edac7875082f14	Бобы	f	g	\N	278.00	26.00	1.50	40.00	500.00	120.00
+426	ing_982dd700a896aa52	Бобы вигна (чёрный глазок)	f	g	\N	303.00	23.50	1.30	49.40	500.00	120.00
+427	ing_51dfb292b6474c0b	Бобы садовые	f	g	\N	62.00	5.80	0.50	8.50	500.00	120.00
+428	ing_04cee050794a68e7	Бобы фул (конские)	f	g	\N	278.00	26.00	1.50	40.00	500.00	120.00
+429	ing_25843a4c22415dee	Болгарский йогурт	f	g	\N	64.00	3.50	3.60	4.50	500.00	200.00
+430	ing_7563895ec9dff0ac	Борщ из отрубей	f	g	\N	13.00	0.50	0.10	2.50	500.00	120.00
+431	ing_26c36888d4bd7f28	Брусничный соус	f	g	\N	163.00	0.30	0.20	40.00	100.00	80.00
+432	ing_3e95382591bd4161	Брюква	f	g	\N	36.00	1.20	0.10	7.70	500.00	120.00
+433	ing_f37de3ffb21edcab	Букатини	f	g	\N	344.00	11.00	1.30	70.50	500.00	120.00
+434	ing_18ced12062b87f0b	Булочки для хот-дога	f	g	\N	272.00	9.00	4.00	50.00	500.00	120.00
+435	ing_a4466bc12d1f28b0	Булочки мантоу	f	g	\N	221.00	7.00	1.00	46.00	500.00	120.00
+436	ing_1f416e6e624bfa5c	Бульон бараний	f	g	\N	13.00	1.50	0.80	0.00	1000.00	500.00
+437	ing_731e56014e0135dc	Бульон овощной	f	g	\N	5.00	0.20	0.10	0.90	500.00	120.00
+438	ing_f38c5d1ba59fc1f7	Бульон рыбный	f	g	\N	10.00	1.50	0.50	0.00	500.00	450.00
+439	ing_a60459b0b9e32d05	Бульон телячий	f	g	\N	12.00	1.50	0.60	0.20	500.00	120.00
+440	ing_1f2e4d7d3d2354aa	Вакамэ сушёная	f	g	\N	127.00	15.00	3.00	10.00	500.00	120.00
+441	ing_09b515105945f7e3	Варенье из чёрной смородины	f	g	\N	275.00	0.60	0.10	68.00	500.00	150.00
+442	ing_ca7d3c09f1a076a5	Варёная ветчина	f	g	\N	155.00	17.00	9.00	1.50	1000.00	500.00
+443	ing_12420971c9c9c2ba	Варёная колбаса	f	g	\N	257.00	12.80	22.20	1.50	1000.00	500.00
+444	ing_7b8803a1a4d95bd3	Вашрен фрибуржуа	f	g	\N	328.00	22.00	26.50	0.50	500.00	120.00
+445	ing_ef72797532783dbb	Водяной лист	f	g	\N	23.00	2.40	0.40	2.50	500.00	120.00
+446	ing_01b7bb9911de349e	Вырезка	f	g	\N	154.00	20.50	8.00	0.00	500.00	120.00
+447	ing_a970c972f498dddd	Вяленая рыба	f	g	\N	245.00	50.00	5.00	0.00	500.00	450.00
+448	ing_fb75c8834dd7cc82	Газированная вода	f	g	\N	0.00	0.00	0.00	0.00	1000.00	90.00
+449	ing_cb2716fd26256c50	Гари (маниоковая крупа)	f	g	\N	338.00	1.20	0.60	82.00	1000.00	100.00
+450	ing_1b02a912d21ab715	Говядина тонкими пластами	f	g	\N	232.00	17.50	18.00	0.00	1000.00	500.00
+451	ing_49c31cc2ed6c740e	Говяжий жир	f	g	\N	852.00	1.50	94.00	0.00	500.00	220.00
+452	ing_e1e596821f7a4e2b	Говяжий отруб	f	g	\N	188.00	20.00	12.00	0.00	500.00	120.00
+453	ing_1ecd26e28f8bc3f7	Говяжий хвост	f	g	\N	104.00	9.00	7.50	0.00	500.00	120.00
+454	ing_0e409bab76b1a765	Говяжьи кости	f	g	\N	57.00	3.00	5.00	0.00	500.00	120.00
+455	ing_54df5756a29fe4c9	Говяжьи кости с мозгом	f	g	\N	57.00	3.00	5.00	0.00	500.00	120.00
+456	ing_6030f78f00f6b884	Говяжья грудинка	f	g	\N	227.00	18.50	17.00	0.00	500.00	120.00
+457	ing_f876d09154e6d307	Голубиный горох	f	g	\N	103.00	6.80	0.40	18.00	1000.00	100.00
+458	ing_742b5138b892ca8e	Горох колотый	f	g	\N	299.00	23.00	1.60	48.10	1000.00	100.00
+459	ing_a44c8d3dc2b4e2d0	Горчица английская	f	g	\N	108.00	5.50	6.00	8.00	100.00	80.00
+460	ing_7595b0e77f3e46c9	Горчица дижонская	f	g	\N	108.00	5.50	6.00	8.00	100.00	80.00
+461	ing_935c05715fbe80a3	Горчица для соуса	f	g	\N	108.00	5.50	6.00	8.00	100.00	80.00
+462	ing_a7bb91b82cea1b41	Горчица средней остроты	f	g	\N	108.00	5.50	6.00	8.00	100.00	80.00
+463	ing_ae1e5ff2b568a531	Горчичный порошок	f	g	\N	379.00	37.10	11.10	32.60	500.00	120.00
+464	ing_6bfe32a37639492c	Горячая вода	f	g	\N	0.00	0.00	0.00	0.00	1000.00	90.00
+465	ing_ede79425d0d6c10e	Горячее молоко	f	g	\N	60.00	2.90	3.20	4.70	500.00	200.00
+466	ing_7bbe0e1ba4b69382	Гранатовая патока	f	g	\N	273.00	0.30	0.00	68.00	500.00	120.00
+467	ing_b42a0b9fd6a00c0c	Грейпфрут	f	g	\N	35.00	0.70	0.20	6.50	1000.00	180.00
+468	ing_a358007ea0771b46	Гречневая мука	f	g	\N	353.00	13.60	1.20	71.90	1000.00	100.00
+469	ing_15a4c39d6ee5fe5e	Грибы сушёные	f	g	\N	254.00	25.00	6.00	25.00	500.00	120.00
+470	ing_955bf5851e1731fc	Грудинка	f	g	\N	227.00	18.50	17.00	0.00	500.00	120.00
+471	ing_ae207c633ee30772	Гуаскас сушёные	f	g	\N	236.00	9.00	4.50	40.00	500.00	120.00
+472	ing_415aaf8cea917a5f	Гундрук	f	g	\N	219.00	18.00	3.00	30.00	500.00	120.00
+473	ing_5fbb19a17a6024b0	Деревенский хлеб	f	g	\N	242.00	8.10	1.00	48.80	1000.00	100.00
+474	ing_3ed85f4d02e8a5aa	Джамид	f	g	\N	366.00	50.00	14.00	10.00	500.00	120.00
+475	ing_173ff344a6bced92	Дзавар (пшеничная крупа)	f	g	\N	320.00	12.50	2.00	63.00	1000.00	100.00
+476	ing_07fc41b1cf16a86a	Дроблёная пшеница джариш	f	g	\N	320.00	12.50	2.00	63.00	1000.00	100.00
+477	ing_3da792d25f1804ff	Дроблёный нут чана дал	f	g	\N	317.00	20.00	5.00	48.00	1000.00	100.00
+478	ing_b8bbaa2f154243d9	Дроблёный рис	f	g	\N	343.00	7.00	0.60	77.30	1000.00	100.00
+479	ing_a88bb83bda45516a	Дурбанский порошок карри	f	g	\N	269.00	13.00	13.00	25.00	500.00	120.00
+480	ing_eb36d11510e184d5	Жареные бобы	f	g	\N	445.00	20.00	25.00	35.00	500.00	120.00
+481	ing_fa5768202e591a27	Жареный горох	f	g	\N	361.00	20.00	9.00	50.00	1000.00	100.00
+482	ing_6e29a1973a3704e8	Жареный тофу	f	g	\N	268.00	17.00	20.00	5.00	500.00	120.00
+483	ing_bbf6b19205aed2d3	Закваска ырша	f	g	\N	41.00	1.50	0.30	8.00	500.00	120.00
+484	ing_6a6d3c0d46404331	Зелёная приправа	f	g	\N	32.00	2.00	0.50	5.00	100.00	80.00
+485	ing_adcc30a4d0380876	Зелёные бананы	f	g	\N	80.00	0.80	0.30	18.50	1000.00	180.00
+486	ing_11649ed3f1303cff	Зелёные бананы матоке	f	g	\N	80.00	0.80	0.30	18.50	1000.00	180.00
+487	ing_455a214eccc52c9e	Зелёный чай	f	g	\N	0.00	0.00	0.00	0.00	1000.00	90.00
+488	ing_482a26c2f56b46b1	Зимняя дыня	f	g	\N	13.00	0.40	0.20	2.50	500.00	120.00
+489	ing_502c3029ecb1aca3	Золотой сироп	f	g	\N	323.00	0.30	0.00	80.50	500.00	150.00
+490	ing_a362c481e55ae868	Зёрна граната	f	g	\N	70.00	1.20	0.80	14.50	500.00	120.00
+491	ing_2d0f56367ef6d1bb	Имбирные пряники	f	g	\N	372.00	5.50	6.00	74.00	500.00	120.00
+492	ing_d5361bca7f693e78	Имеретинский шафран	f	g	\N	265.00	10.00	5.00	45.00	100.00	80.00
+493	ing_dda98f442e1426d7	Индейка	f	g	\N	114.00	14.80	6.10	0.00	1000.00	500.00
+494	ing_bb16582d90268cf2	Йогурт с чесноком	f	g	\N	66.00	4.30	3.20	5.00	500.00	200.00
+495	ing_c49b84a1423eea48	Каймак	f	g	\N	386.00	4.00	40.00	2.50	500.00	200.00
+496	ing_f2605f24a452bb03	Какао для глазури	f	g	\N	289.00	24.30	15.00	10.20	500.00	150.00
+497	ing_e7e0333431aaf6ba	Камабоко	f	g	\N	95.00	12.00	0.90	9.70	500.00	120.00
+498	ing_ff455b1a851405a0	Каракатица	f	g	\N	74.00	16.20	0.70	0.80	500.00	450.00
+499	ing_8fd98a68b66c206a	Кардамон стручки	f	g	\N	266.00	10.80	6.70	40.50	100.00	80.00
+500	ing_7f70ed1a28214d33	Картофель жёлтых сортов	f	g	\N	77.00	2.00	0.40	16.30	1000.00	120.00
+501	ing_983d5363213a3626	Картофель сырой	f	g	\N	77.00	2.00	0.40	16.30	500.00	200.00
+502	ing_55254c5743c95bfa	Касури мети	f	g	\N	236.00	9.00	4.50	40.00	500.00	120.00
+503	ing_de95d2c9276c050c	Кацуобуси	f	g	\N	329.00	75.00	3.00	0.50	500.00	450.00
+504	ing_92921f33ecd6d266	Кашкавал	f	g	\N	367.00	25.00	29.00	1.50	500.00	120.00
+505	ing_09099282aac695d5	Киви	f	g	\N	48.00	1.00	0.50	10.00	1000.00	180.00
+506	ing_342b2cadd629badc	Кипрская пита	f	g	\N	263.00	9.00	1.20	54.00	1000.00	100.00
+507	ing_67599c5024edd328	Кислые яблоки	f	g	\N	47.00	0.40	0.40	9.80	1000.00	180.00
+508	ing_4fa562edb9e52712	Китайская колбаса лап чонг	f	g	\N	498.00	17.00	42.00	13.00	1000.00	500.00
+509	ing_06b77e70f10eed21	Китайский лук-чеснок	f	g	\N	30.00	3.20	0.70	2.60	1000.00	120.00
+510	ing_f2613212dd2f039c	Кленовый сироп	f	g	\N	261.00	0.00	0.10	65.00	500.00	150.00
+511	ing_68cd236e4ce689b7	Клюква	f	g	\N	28.00	0.50	0.20	3.70	1000.00	180.00
+512	ing_d69c258885f09f9a	Клюквенное варенье	f	g	\N	251.00	0.30	0.20	62.00	500.00	150.00
+513	ing_3136309c6a2b3ff8	Козлятина	f	g	\N	87.00	15.00	3.00	0.00	500.00	120.00
+514	ing_a9e4be6b46a4fe44	Кокос тёртый	f	g	\N	340.00	3.30	33.50	6.20	500.00	120.00
+515	ing_029f06b7b686cdea	Кокосовое масло	f	g	\N	899.00	0.00	99.90	0.00	500.00	120.00
+516	ing_6ae716709b482fe2	Кокосовые сливки	f	g	\N	242.00	2.50	24.00	4.00	500.00	200.00
+517	ing_309fb3b47f1f290d	Колбаса копчёная	f	g	\N	314.00	14.00	28.00	1.50	1000.00	500.00
+518	ing_fcd7ddd729340c04	Колбаса шоурису	f	g	\N	384.00	22.00	32.00	2.00	1000.00	500.00
+519	ing_487ac4dd447dcd9e	Колбаски мергез	f	g	\N	289.00	15.00	25.00	1.00	1000.00	500.00
+520	ing_0d385b371e26a239	Копчёная колбаса рокворст	f	g	\N	312.00	13.00	28.00	2.00	1000.00	500.00
+521	ing_d69e7b7754c00946	Копчёная колбаса рукворст	f	g	\N	312.00	13.00	28.00	2.00	1000.00	500.00
+522	ing_3c98bb627a6cf726	Копчёная рыба	f	g	\N	160.00	22.00	8.00	0.00	500.00	450.00
+523	ing_01ce1c9d45939fda	Копчёная свиная шейка	f	g	\N	266.00	16.00	22.00	1.00	1000.00	500.00
+524	ing_52fb837b2b9ccab6	Копчёная соль	f	g	\N	0.00	0.00	0.00	0.00	100.00	80.00
+525	ing_7dd3b84d2af5c0c0	Корейская груша	f	g	\N	40.00	0.50	0.20	9.00	500.00	120.00
+526	ing_9372b2a8f481b7d4	Корень женьшеня	f	g	\N	42.00	1.00	0.20	9.00	500.00	120.00
+527	ing_6d1a3445d51a1bb9	Корнишоны	f	g	\N	19.00	1.00	0.10	3.50	500.00	120.00
+528	ing_08aa1ff62c216836	Кость от хамона	f	g	\N	57.00	3.00	5.00	0.00	500.00	120.00
+529	ing_3aad4c77fa72fe47	Кочхукару	f	g	\N	321.00	12.00	17.30	29.40	500.00	120.00
+530	ing_f3ba1c6b38d0f72e	Краб	f	g	\N	25.00	5.40	0.30	0.00	500.00	450.00
+531	ing_931f9a1c7bf60983	Краситель оранжевый	f	g	\N	0.00	0.00	0.00	0.00	500.00	120.00
+532	ing_aa5859e05f1af12b	Красная капуста	f	g	\N	27.00	1.20	0.20	5.10	1000.00	120.00
+533	ing_a2d88c89f819da75	Красная паста карри	f	g	\N	107.00	3.50	5.00	12.00	100.00	80.00
+534	ing_50271d059ebca0f0	Красный мясистый перец	f	g	\N	27.00	1.30	0.10	5.30	100.00	80.00
+535	ing_3a9926874775cbc0	Красный чили	f	g	\N	41.00	2.00	0.40	7.30	500.00	120.00
+536	ing_a1d763ddff83a641	Креветочная паста терази	f	g	\N	180.00	28.00	4.00	8.00	100.00	80.00
+537	ing_ada64fb2f341285f	Крепкий эспрессо	f	g	\N	8.00	0.10	0.20	1.50	1000.00	90.00
+538	ing_c787ddbc69ee975a	Крупная белая рыба	f	g	\N	63.00	12.60	1.40	0.00	500.00	450.00
+539	ing_042df51e254112df	Крупная белая фасоль	f	g	\N	99.00	7.80	0.40	16.00	1000.00	100.00
+540	ing_4da61e26e98f345e	Кукуруза посоле	f	g	\N	64.00	1.50	0.90	12.50	500.00	120.00
+541	ing_a0625968e29c22bb	Кукуруза початками	f	g	\N	51.00	1.80	0.80	9.20	500.00	120.00
+542	ing_c5aae93891de83c0	Кукуруза чокло	f	g	\N	113.00	3.30	1.30	22.00	500.00	120.00
+543	ing_cf19b93b84c3bbd5	Кукурузная крупа среднего помола	f	g	\N	328.00	8.30	1.20	71.00	1000.00	100.00
+544	ing_3ed69bb5466b1087	Кукурузная мука масарепа	f	g	\N	354.00	7.20	1.50	78.00	1000.00	120.00
+545	ing_f238e3a90c05be31	Кукурузные хлопья	f	g	\N	367.00	7.50	1.00	82.00	500.00	120.00
+546	ing_f286f6484691efaa	Кукурузный хлеб	f	g	\N	204.00	5.50	1.50	42.00	1000.00	100.00
+547	ing_7c3b74c0d1ddabad	Куриная грудка	f	g	\N	133.00	22.00	5.00	0.00	1000.00	500.00
+548	ing_4e25f7d01b328dd0	Куриное карри с соусом	f	g	\N	130.00	10.00	8.00	4.50	1000.00	500.00
+549	ing_ec077d1c3be43443	Куриные голени	f	g	\N	118.00	12.90	7.30	0.00	1000.00	500.00
+550	ing_1af364595ac6312e	Куриные грудки на кости	f	g	\N	133.00	16.60	7.40	0.00	1000.00	500.00
+551	ing_dae7bbf5f964fd71	Куриные каркасы	f	g	\N	42.00	3.70	3.00	0.00	1000.00	500.00
+552	ing_d696d4fae9a5fa30	Куриные крылья	f	g	\N	127.00	11.30	9.10	0.00	1000.00	500.00
+553	ing_7c06d7f97145f7eb	Куриный паштет	f	g	\N	198.00	13.00	14.00	5.00	1000.00	500.00
+554	ing_4b7305d92e1c1538	Курица варёная	f	g	\N	167.00	25.20	7.40	0.00	1000.00	500.00
+555	ing_258cb3501e54a7c1	Курица на кости	f	g	\N	147.00	13.00	10.60	0.00	1000.00	500.00
+556	ing_39394d63d69b8cd4	Курут	f	g	\N	295.00	35.00	15.00	5.00	500.00	120.00
+557	ing_7e7394f911f56a8a	Кускус	f	g	\N	346.00	12.80	0.60	72.40	1000.00	100.00
+558	ing_e736d2cfde73295d	Лапша для рамена	f	g	\N	270.00	9.00	1.50	55.00	1000.00	100.00
+559	ing_e3f14b6784c0f128	Лапша ширатаки	f	g	\N	9.00	0.20	0.00	2.00	1000.00	100.00
+560	ing_e8716ac094412cec	Лепёшка наан	f	g	\N	290.00	9.00	6.00	50.00	1000.00	100.00
+561	ing_71688ec87941115b	Лепёшка пиде	f	g	\N	268.00	8.50	2.00	54.00	1000.00	100.00
+562	ing_ff66960938de8f6d	Лепёшки сомун	f	g	\N	264.00	8.50	1.50	54.00	1000.00	100.00
+563	ing_6f95d6b852db3bb6	Лепёшки таббун	f	g	\N	264.00	8.50	1.50	54.00	1000.00	100.00
+564	ing_e859d724e8e5f309	Лесные грибы	f	g	\N	31.00	3.50	1.20	1.50	500.00	120.00
+565	ing_73fefa2532a853fa	Лесные ягоды	f	g	\N	43.00	0.90	0.40	9.00	1000.00	180.00
+566	ing_45495b9209ade1ae	Лимонный мирт	f	g	\N	200.00	6.00	4.00	35.00	1000.00	180.00
+567	ing_d1d571bcaa1cae5a	Лист лаксы	f	g	\N	27.00	2.50	0.60	3.00	500.00	120.00
+568	ing_9dc7ca141280f538	Лист эру	f	g	\N	66.00	5.00	1.50	8.00	500.00	120.00
+569	ing_bcb92b31f3089cdf	Листовая горчица	f	g	\N	23.00	2.90	0.40	2.00	100.00	80.00
+570	ing_44174578bd47c24b	Листы для лазаньи	f	g	\N	344.00	11.00	1.30	70.50	500.00	120.00
+571	ing_da1ba7413348ea4a	Листья квашеной капусты	f	g	\N	20.00	1.80	0.10	3.00	1000.00	120.00
+572	ing_dfdf6d962133a984	Листья молохии	f	g	\N	37.00	4.50	0.30	4.00	500.00	120.00
+573	ing_386c3d9f6fbee18a	Листья салата	f	g	\N	13.00	1.20	0.30	1.30	500.00	120.00
+574	ing_35b7c49a2ba2a6db	Листья сельдерея	f	g	\N	16.00	1.00	0.20	2.50	500.00	120.00
+575	ing_e9c8bfefc9255c2f	Ломоть хлеба	f	g	\N	242.00	8.10	1.00	48.80	1000.00	100.00
+576	ing_2c6ca5dee3ed115d	Лук для подачи	f	g	\N	41.00	1.40	0.00	10.40	1000.00	120.00
+577	ing_d6cddef88f900ca1	Любисток	f	g	\N	49.00	3.70	0.40	7.60	500.00	120.00
+578	ing_cc27d209f43886a2	Лёд колотый	f	g	\N	0.00	0.00	0.00	0.00	500.00	120.00
+579	ing_e8b2a00d0e25d291	Майоран сушёный	f	g	\N	236.00	9.00	4.50	40.00	500.00	120.00
+580	ing_8e00bc30986ea8b0	Мак	f	g	\N	506.00	17.50	44.00	10.00	500.00	120.00
+581	ing_d90404d65b3ed726	Мальтозный сироп	f	g	\N	316.00	0.00	0.00	79.00	500.00	150.00
+582	ing_aad16022c6395e24	Маниоковое тесто	f	g	\N	151.00	1.00	0.30	36.00	1000.00	100.00
+583	ing_73a59921fa062ecb	Маракуйя	f	g	\N	67.00	2.20	0.70	13.00	1000.00	180.00
+584	ing_22605083f0246082	Маринованная сельдь	f	g	\N	223.00	14.00	15.00	8.00	500.00	450.00
+585	ing_bfd24dea05b07472	Маринованный имбирь бени сёга	f	g	\N	23.00	0.30	0.20	5.00	100.00	80.00
+586	ing_79844ac37df050fc	Марсала	f	g	\N	155.00	0.20	0.00	12.00	500.00	120.00
+587	ing_96b31f47190e8ad8	Маскарпоне	f	g	\N	412.00	4.80	41.50	4.80	500.00	450.00
+588	ing_a14b22f41a66f6d9	Масло для слоения	f	g	\N	748.00	0.50	82.50	0.80	500.00	120.00
+589	ing_4019b2a8e96bed36	Масло пальмовое	f	g	\N	899.00	0.00	99.90	0.00	500.00	120.00
+590	ing_522a31f24aa0b3c5	Махлаб	f	g	\N	495.00	25.00	35.00	20.00	500.00	120.00
+591	ing_84bfceb727ee95e0	Мелкая костистая рыба	f	g	\N	27.00	5.10	0.80	0.00	500.00	450.00
+592	ing_8fbe8cb2e1e8de33	Мелкая речная рыба	f	g	\N	27.00	5.10	0.80	0.00	500.00	450.00
+593	ing_a44e51501488254a	Мелкие макароны	f	g	\N	344.00	11.00	1.30	70.50	1000.00	100.00
+594	ing_a2a284bf36b93355	Мелкий жёлтый картофель	f	g	\N	77.00	2.00	0.40	16.30	1000.00	120.00
+595	ing_946d363f155e0318	Можжевельник	f	g	\N	256.00	4.00	12.00	33.00	500.00	120.00
+596	ing_fee34177b0906d3a	Моллюски	f	g	\N	14.00	2.50	0.20	0.60	500.00	450.00
+597	ing_064622856e856edb	Молодой солёный сыр	f	g	\N	258.00	18.50	20.00	1.00	500.00	200.00
+598	ing_b3538df2d557c8a3	Молоко в бешамель	f	g	\N	60.00	2.90	3.20	4.70	500.00	200.00
+599	ing_1541e605a59936f9	Молоко для крема	f	g	\N	60.00	2.90	3.20	4.70	500.00	200.00
+600	ing_565de69a603ebf4d	Молоко обезжиренное	f	g	\N	34.00	3.30	0.10	4.90	500.00	200.00
+601	ing_dd8ef1394214b4b9	Молотые сушёные раки	f	g	\N	306.00	60.00	6.00	3.00	500.00	120.00
+602	ing_42d22461707eee5e	Морковный салат	f	g	\N	43.00	1.10	1.00	7.50	1000.00	120.00
+603	ing_c60c263baab6cb14	Морковь жёлтая	f	g	\N	35.00	1.30	0.10	6.90	1000.00	120.00
+604	ing_ad9c92e577a7b395	Мука для блинов	f	g	\N	334.00	10.30	1.10	70.00	1000.00	100.00
+605	ing_25a9ee6f16f660fd	Мука для основы	f	g	\N	334.00	10.30	1.10	70.00	1000.00	100.00
+606	ing_3a450de455f5a954	Мука для роши	f	g	\N	334.00	10.30	1.10	70.00	1000.00	100.00
+607	ing_8ded051cba77f898	Мука для теста	f	g	\N	334.00	10.30	1.10	70.00	1000.00	100.00
+608	ing_e07b9b59d2497d90	Мука кама	f	g	\N	323.00	14.00	3.00	60.00	1000.00	100.00
+609	ing_26ef01b95836d58c	Мука обжаренная	f	g	\N	334.00	10.30	1.10	70.00	1000.00	100.00
+610	ing_55695d7512a75464	Мука тефф	f	g	\N	335.00	13.30	2.40	65.00	1000.00	100.00
+611	ing_a90523acfe8a4f74	Мука типа 00	f	g	\N	334.00	10.30	1.10	70.00	1000.00	100.00
+612	ing_80a1c30cebdb96b9	Мускатный цвет	f	g	\N	440.00	6.70	32.40	30.30	500.00	120.00
+613	ing_e1e2308ca61bb684	Мягкий тофу	f	g	\N	52.00	5.00	2.70	2.00	500.00	120.00
+614	ing_0e9f7cb4d92a77fc	Мякоть пальмовых плодов	f	g	\N	251.00	1.50	25.00	5.00	500.00	120.00
+615	ing_9c2573823bc2e14a	Мясная подлива	f	g	\N	60.00	2.00	3.50	5.00	500.00	120.00
+616	ing_5b3fe9546930ea89	Негушский пршут	f	g	\N	253.00	27.00	16.00	0.30	1000.00	500.00
+617	ing_650d09c15b90886f	Нитритная соль	f	g	\N	0.00	0.00	0.00	0.00	100.00	80.00
+618	ing_5ddccf0ba57f2385	Нут сухой	f	g	\N	318.00	19.00	6.00	47.00	1000.00	100.00
+619	ing_c895e1cb8840e0b1	Ньяме (ямс)	f	g	\N	108.00	1.50	0.20	25.00	500.00	120.00
+620	ing_65f9efc9c1e31eac	Обжаренная кокосовая стружка	f	g	\N	638.00	6.90	64.50	7.40	500.00	120.00
+621	ing_1f091f7f64495ea7	Обжаренный порошок карри	f	g	\N	269.00	13.00	13.00	25.00	500.00	120.00
+622	ing_c38958520e1fd09a	Овечья брынза	f	g	\N	298.00	14.60	25.50	0.00	500.00	200.00
+623	ing_ea91be119f1dd871	Огуречный рассол	f	g	\N	9.00	0.20	0.00	2.00	500.00	120.00
+624	ing_ecdb71f8c94bef08	Оленина	f	g	\N	129.00	21.00	5.00	0.00	500.00	120.00
+625	ing_006aa96a60807319	Оливки каламата	f	g	\N	225.00	1.40	23.00	3.00	500.00	120.00
+626	ing_31c5f236dafed43f	Орехи кемири	f	g	\N	618.00	8.00	62.00	7.00	200.00	250.00
+627	ing_7449dd8424ca7625	Острый перечный соус	f	g	\N	16.00	0.90	0.50	2.00	100.00	80.00
+628	ing_333071b1d24de184	Осьминог	f	g	\N	77.00	14.90	1.00	2.20	500.00	450.00
+629	ing_a8f458fdabe86256	Пажитник	f	g	\N	323.00	23.00	6.40	33.80	500.00	120.00
+630	ing_1c2cee314d80fed2	Пажитник молотый	f	g	\N	323.00	23.00	6.40	33.80	500.00	120.00
+631	ing_7bdaf26c45d9e31e	Пальмовое масло денде	f	g	\N	899.00	0.00	99.90	0.00	500.00	120.00
+632	ing_bcfca224cd1d076b	Панир	f	g	\N	265.00	18.30	20.80	1.20	500.00	200.00
+633	ing_6dee3c371763550a	Панко	f	g	\N	368.00	11.00	4.00	72.00	500.00	120.00
+634	ing_c688a928d51fcd53	Панчетта	f	g	\N	436.00	14.00	42.00	0.50	500.00	120.00
+635	ing_edfa174d012dac1a	Паста ачиоте	f	g	\N	158.00	4.00	6.00	22.00	100.00	80.00
+636	ing_12447adc3d359407	Паста ачиоте (рекадо рохо)	f	g	\N	158.00	4.00	6.00	22.00	100.00	80.00
+637	ing_2d3c656799fdc865	Паста багоонг	f	g	\N	133.00	14.00	5.00	8.00	100.00	80.00
+638	ing_6cdfe4f5ccff0a03	Паста из зелёной папайи	f	g	\N	39.00	0.50	0.10	9.00	100.00	80.00
+639	ing_233cf8e38fd26251	Паста из красного перца	f	g	\N	92.00	4.50	1.50	15.00	100.00	80.00
+640	ing_d4f5ef5361cfaf52	Паста массаман	f	g	\N	161.00	4.00	9.00	16.00	100.00	80.00
+641	ing_f97d3547abfbf9e3	Паста мисо	f	g	\N	185.00	12.80	6.00	20.00	100.00	80.00
+642	ing_e6dce269f245accb	Паста самбал	f	g	\N	56.00	1.50	1.50	9.00	100.00	80.00
+643	ing_8f04599ddc3270c2	Пастернак	f	g	\N	47.00	1.40	0.50	9.20	1000.00	120.00
+644	ing_9453127deb29344b	Пахта	f	g	\N	41.00	3.30	1.00	4.70	500.00	200.00
+645	ing_0d34d3ddb18b9aff	Пекинская капуста	f	g	\N	15.00	1.20	0.20	2.00	1000.00	120.00
+646	ing_a37d0e3f127a0694	Перекисшее кимчи	f	g	\N	22.00	1.80	0.50	2.60	500.00	120.00
+647	ing_f9218946ff610ad9	Перец алеппо	f	g	\N	321.00	12.00	17.30	29.40	100.00	80.00
+648	ing_b0314b45e7dcf012	Перец анчо	f	g	\N	273.00	12.00	9.00	36.00	100.00	80.00
+649	ing_d24865d3f2b211bb	Перец белый горошком	f	g	\N	251.00	10.40	3.30	38.70	100.00	80.00
+650	ing_bab8185f9340b269	Перец душистый горошком	f	g	\N	271.00	6.10	8.70	42.00	100.00	80.00
+651	ing_fcc05621ab1756c6	Перец кобанеро	f	g	\N	41.00	2.00	0.40	7.30	100.00	80.00
+652	ing_4b87ccc961ad9fa6	Перец мулато	f	g	\N	273.00	12.00	9.00	36.00	100.00	80.00
+653	ing_9a5a00b8ec8e7701	Перец поблано	f	g	\N	22.00	1.00	0.20	4.00	100.00	80.00
+654	ing_9c652cbdaab3e03a	Перец сладкий зелёный	f	g	\N	22.00	1.00	0.20	4.00	1000.00	120.00
+655	ing_40b3982e4d3a7c58	Перец тимур	f	g	\N	253.00	6.00	9.00	37.00	100.00	80.00
+656	ing_2cf6f27fc115d99f	Перечная паста бибер сальчасы	f	g	\N	92.00	4.50	1.50	15.00	100.00	80.00
+657	ing_5156beccf95390f6	Печень	f	g	\N	126.00	17.90	3.70	5.30	1000.00	500.00
+658	ing_b1cb056f933d534f	Плантайн	f	g	\N	80.00	0.80	0.30	18.50	500.00	120.00
+659	ing_e7af76c52b5e8df0	Плоская зелёная фасоль	f	g	\N	26.00	2.00	0.20	4.00	1000.00	100.00
+660	ing_9207a5941ac2bb21	Плотный тофу	f	g	\N	114.00	12.00	6.50	2.00	500.00	120.00
+661	ing_c65c58034b51e42a	Помидоры черри	f	g	17.00	17.00	0.80	0.20	3.00	1000.00	120.00
+662	ing_2335a2641c355d4d	Попкорн	f	g	\N	415.00	10.00	15.00	60.00	500.00	120.00
+663	ing_73f6ca56947af996	Постная говядина	f	g	\N	147.00	21.00	7.00	0.00	1000.00	500.00
+664	ing_02a6b50faeca1a77	Почки	f	g	\N	94.00	15.20	2.80	1.90	500.00	120.00
+665	ing_3e391c1893a11a6f	Прахок	f	g	\N	116.00	17.00	4.50	2.00	500.00	120.00
+666	ing_9f7866940f4d12c0	Предварённая кукурузная мука	f	g	\N	354.00	7.20	1.50	78.00	1000.00	100.00
+667	ing_99282d294b4989b1	Пресная лепёшка чурек	f	g	\N	268.00	8.50	2.50	53.00	1000.00	100.00
+668	ing_273a5f860cff91e3	Рас-эль-ханут	f	g	\N	269.00	12.00	9.00	35.00	1000.00	100.00
+669	ing_387ea3f3f83b8fdf	Растительное масло для соуса	f	g	\N	899.00	0.00	99.90	0.00	100.00	80.00
+670	ing_f8f78a4148c99629	Редис	f	g	\N	19.00	1.20	0.10	3.40	1000.00	120.00
+671	ing_1985a02315b9494e	Редька зелёная	f	g	\N	36.00	1.90	0.20	6.70	1000.00	120.00
+672	ing_87e5f4befbe47a1b	Ржаная закваска	f	g	\N	150.00	4.50	0.90	31.00	500.00	120.00
+673	ing_a0258632411582e8	Ржаной заквас	f	g	\N	29.00	0.80	0.20	6.00	500.00	120.00
+674	ing_02e8df7666998ba9	Ржаной солод	f	g	\N	316.00	9.80	1.20	66.40	500.00	120.00
+675	ing_3441172b4d72b565	Ржаной хлеб ругбрёд	f	g	\N	195.00	6.00	3.00	36.00	1000.00	100.00
+676	ing_1da51658bca4e6d1	Рикотта	f	g	\N	174.00	11.30	13.00	3.00	500.00	200.00
+677	ing_b1d79e27e40b0584	Рис арборио	f	g	\N	330.00	7.00	1.00	74.00	1000.00	100.00
+678	ing_0ef8cf9e439ed918	Рис варёный короткозёрный	f	g	\N	126.00	2.50	0.20	28.50	1000.00	100.00
+679	ing_8b6ba84466630b5c	Рис карнароли	f	g	\N	330.00	7.00	1.00	74.00	1000.00	100.00
+680	ing_3d1f02da535e6426	Рис короткозёрный	f	g	\N	330.00	7.00	1.00	74.00	1000.00	100.00
+681	ing_a20ae6b2121a178d	Рис среднезёрный	f	g	\N	330.00	7.00	1.00	74.00	1000.00	100.00
+682	ing_a1a134d22eb96ce3	Рисовая бумага	f	g	\N	333.00	0.50	0.30	82.00	1000.00	100.00
+683	ing_1e7684ea4bc89df4	Рисовая лапша 5 мм	f	g	\N	345.00	6.00	0.60	79.00	1000.00	100.00
+684	ing_c624fd2d005c6bb7	Рисовая лапша толстая	f	g	\N	345.00	6.00	0.60	79.00	1000.00	100.00
+685	ing_04827fe9712cd711	Рисовая лапша широкая	f	g	\N	117.00	2.00	0.60	26.00	1000.00	100.00
+686	ing_d4928893d891c96c	Рисовая мука	f	g	\N	349.00	6.00	1.40	78.00	1000.00	100.00
+687	ing_8fba0a230422614c	Рисовая мука обжаренная	f	g	\N	349.00	6.00	1.40	78.00	1000.00	100.00
+688	ing_8810d29635f5d12e	Ром	f	g	\N	231.00	0.00	0.00	0.00	500.00	120.00
+689	ing_68c0d27b7fcd6ab5	Ростки сои	f	g	\N	96.00	9.00	4.50	5.00	500.00	120.00
+690	ing_07cb7472019e0e3e	Руккола	f	g	\N	25.00	2.60	0.70	2.10	500.00	120.00
+691	ing_6ce3a3b8090ed497	Савоярди	f	g	\N	372.00	9.00	4.50	74.00	500.00	120.00
+692	ing_fb8720907815d2b6	Салат из капусты	f	g	\N	113.00	1.20	8.00	9.00	1000.00	120.00
+693	ing_4c90fccefc530046	Салат ромэн	f	g	\N	15.00	1.20	0.30	1.80	500.00	120.00
+694	ing_a9bfd5490bfef8ab	Салями	f	g	\N	409.00	22.00	35.00	1.50	500.00	120.00
+695	ing_ccbad22d9d717dab	Самбал	f	g	\N	56.00	1.50	1.50	9.00	500.00	120.00
+696	ing_2493063dacb42d6e	Сардины	f	g	\N	94.00	11.40	5.40	0.00	500.00	450.00
+697	ing_7db959e12f7cd3a7	Сахар в начинку	f	g	\N	398.00	0.00	0.00	99.70	500.00	150.00
+698	ing_9889f67d451ec4f5	Сахар для глазури	f	g	\N	398.00	0.00	0.00	99.70	500.00	150.00
+699	ing_43ad36bec83c6b71	Сахар для корочки	f	g	\N	398.00	0.00	0.00	99.70	500.00	150.00
+700	ing_5479a097ded99471	Сахар для обваливания	f	g	\N	398.00	0.00	0.00	99.70	500.00	150.00
+701	ing_677a24ed684bb7f5	Сахар для соуса	f	g	\N	398.00	0.00	0.00	99.70	500.00	150.00
+702	ing_ea42249c35d7e196	Свежий сыр	f	g	\N	258.00	17.00	20.00	2.50	500.00	200.00
+703	ing_a0bce04fce034162	Свежий тунец	f	g	\N	118.00	24.00	2.50	0.00	500.00	450.00
+704	ing_c0f0a832c0797b77	Свиная грудинка со шкурой	f	g	\N	433.00	11.50	43.00	0.00	1000.00	500.00
+705	ing_6167d0df49e65060	Свиная кровь	f	g	\N	71.00	17.00	0.20	0.20	1000.00	500.00
+706	ing_e63bbc758cb848d4	Свиная рулька	f	g	\N	178.00	11.20	14.80	0.00	1000.00	500.00
+707	ing_2a9da4eda68439a9	Свиная шкура с жиром	f	g	\N	543.00	12.00	55.00	0.00	1000.00	500.00
+708	ing_74347a9bf2c0ab4d	Свиной жир	f	g	\N	896.00	0.00	99.60	0.00	1000.00	500.00
+709	ing_21f8d4048d7951d1	Священный базилик	f	g	\N	25.00	3.00	0.60	2.00	100.00	80.00
+710	ing_f64f07e91aaf51e1	Свёкла маринованная	f	g	\N	49.00	1.00	0.10	11.00	1000.00	120.00
+711	ing_30676f157d7f1378	Семена граната сушёные	f	g	\N	261.00	4.00	5.00	50.00	500.00	120.00
+712	ing_ca6028abf36607f0	Семена фенхеля	f	g	\N	317.00	15.80	14.90	30.00	500.00	120.00
+713	ing_1b82559743edad92	Семена эгуси молотые	f	g	\N	571.00	28.00	47.00	9.00	500.00	120.00
+714	ing_5f4bcc57d0fb4393	Сердце	f	g	\N	104.00	16.00	3.50	2.00	500.00	120.00
+715	ing_4d29386b9f33f390	Серый горох	f	g	\N	299.00	23.00	1.60	48.10	1000.00	100.00
+716	ing_831a4225e03807d8	Сладкое вино	f	g	\N	160.00	0.20	0.00	14.00	1000.00	90.00
+717	ing_557dc700883ef5f1	Сливки 30%	f	g	\N	292.00	2.50	30.00	3.10	500.00	200.00
+718	ing_87f5c9e97449e508	Сливовое повидло	f	g	\N	254.00	0.40	0.10	63.00	500.00	120.00
+719	ing_be3bc147ac275713	Сливочное масло для теста	f	g	\N	748.00	0.50	82.50	0.80	500.00	120.00
+720	ing_3366e852e3e49cde	Сливочный сыр катупири	f	g	\N	266.00	9.50	24.00	3.00	500.00	200.00
+721	ing_f22fceb6dd681abb	Слоёная лепёшка фатир	f	g	\N	384.00	7.50	18.00	48.00	1000.00	100.00
+722	ing_219206fce0fec761	Смесь бахарат	f	g	\N	269.00	12.00	9.00	35.00	500.00	120.00
+723	ing_d9cb1e11b7502d09	Смесь мытмыта	f	g	\N	294.00	12.00	14.00	30.00	500.00	120.00
+724	ing_858a3a014a9e5863	Смесь пяти специй	f	g	\N	269.00	12.00	9.00	35.00	100.00	80.00
+725	ing_28bcf43581fec7d9	Смесь семи специй	f	g	\N	269.00	12.00	9.00	35.00	100.00	80.00
+726	ing_6da91c7f4efc15a6	Смесь специй чар масала	f	g	\N	269.00	12.00	9.00	35.00	100.00	80.00
+727	ing_8264b0edfe7f2115	Соевые бобы	f	g	\N	364.00	34.90	17.30	17.30	500.00	120.00
+728	ing_ba62be6b38b69039	Сок лайма	f	g	\N	26.00	0.40	0.10	6.00	1000.00	180.00
+729	ing_8cbbb55b5c7ee73c	Соль в тесто	f	g	\N	0.00	0.00	0.00	0.00	1000.00	100.00
+730	ing_93f94d0ffe5fae6c	Солёная свинина	f	g	\N	249.00	24.00	17.00	0.00	1000.00	500.00
+731	ing_8959fc65a0a4dca7	Солёные крекеры	f	g	\N	414.00	9.50	11.50	68.00	500.00	120.00
+732	ing_80802967bc55743f	Солёный белый сыр	f	g	\N	259.00	15.00	21.00	2.50	500.00	200.00
+733	ing_59795acab9232369	Солёный лимон	f	g	\N	21.00	0.90	0.20	4.00	1000.00	180.00
+734	ing_3946f0b0925263b2	Соус ахи	f	g	\N	60.00	1.20	3.00	7.00	100.00	80.00
+735	ing_22750c03cd1e32f1	Соус из голубого сыра	f	g	\N	344.00	6.00	34.00	3.50	500.00	200.00
+736	ing_ea170c0e9dab86ef	Соус окономи	f	g	\N	136.00	1.50	0.20	32.00	100.00	80.00
+737	ing_69dc1800ade951af	Соус хойсин	f	g	\N	212.00	3.30	3.40	42.00	100.00	80.00
+738	ing_73fabe44ad08c4f9	Соус шито	f	g	\N	450.00	8.00	42.00	10.00	100.00	80.00
+739	ing_42a5fc5651847134	Спагетти	f	g	\N	344.00	11.00	1.30	70.50	1000.00	100.00
+740	ing_f6883a543a621493	Старое сало	f	g	\N	817.00	1.80	90.00	0.00	1000.00	500.00
+741	ing_3552b12248e9fd6f	Стебли водяной лилии	f	g	\N	18.00	0.80	0.10	3.50	500.00	120.00
+742	ing_e2c795eb7b305be2	Стеклянная лапша	f	g	\N	344.00	0.20	0.10	85.50	1000.00	100.00
+743	ing_e02e4fdf0117b387	Стручок ванили	f	g	\N	288.00	1.00	0.10	13.00	500.00	120.00
+744	ing_7c45a05d7304a546	Сулугуни	f	g	\N	280.00	20.00	22.00	0.40	500.00	200.00
+745	ing_58361070846b6f25	Сухие бобы фава	f	g	\N	278.00	26.00	1.50	40.00	500.00	120.00
+746	ing_8c056cebc4b3b28f	Сухие листья сорго	f	g	\N	0.00	0.00	0.00	0.00	500.00	120.00
+747	ing_d6b81fdd8cd43fc5	Сухое молоко	f	g	\N	479.00	26.00	25.00	37.50	500.00	200.00
+748	ing_abdf96df117362e9	Сухое печенье	f	g	\N	408.00	7.50	10.00	72.00	1000.00	500.00
+749	ing_5f697e464dc42431	Сухой имбирь молотый	f	g	\N	322.00	9.00	4.20	62.00	100.00	80.00
+750	ing_ca694f450fca01b6	Сушёная бамия молотая	f	g	\N	258.00	17.00	2.00	43.00	1000.00	120.00
+751	ing_d21472ca1c2f503c	Сушёная рыба	f	g	\N	245.00	50.00	5.00	0.00	500.00	450.00
+752	ing_117baad5bb7f657e	Сушёные анчоусы икан билис	f	g	\N	286.00	58.00	6.00	0.00	500.00	450.00
+753	ing_0e59cd57d4ed3e85	Сушёные травы	f	g	\N	236.00	9.00	4.50	40.00	500.00	120.00
+754	ing_da1256ec97e4a04f	Сушёный красный перец	f	g	\N	273.00	12.00	9.00	36.00	100.00	80.00
+755	ing_c29673e024a28f25	Сушёный лайм лууми	f	g	\N	198.00	5.00	2.00	40.00	1000.00	180.00
+756	ing_07a4b1569dfef0cc	Сушёный пажитник	f	g	\N	236.00	9.00	4.50	40.00	500.00	120.00
+757	ing_2a4b997dcc32980e	Сушёный чили анчо	f	g	\N	273.00	12.00	9.00	36.00	500.00	120.00
+758	ing_a87813461cbb10fa	Сушёный чили гуахильо	f	g	\N	273.00	12.00	9.00	36.00	500.00	120.00
+759	ing_9190ebeae43aba73	Сыр для жарки	f	g	\N	321.00	22.00	25.00	2.00	500.00	200.00
+760	ing_09e490f20328afe8	Сыр для пастель	f	g	\N	260.00	18.00	20.00	2.00	500.00	200.00
+761	ing_907dee82d34c84db	Сыр куахада	f	g	\N	251.00	17.00	19.00	3.00	500.00	200.00
+762	ing_d1c1993a49865623	Сырные зёрна чеддер	f	g	\N	352.00	23.00	28.00	2.00	500.00	200.00
+763	ing_a8fa07fe9d97603c	Сычуаньский перец тимур	f	g	\N	253.00	6.00	9.00	37.00	100.00	80.00
+764	ing_da5a0294cf633cf1	Сычужный фермент	f	g	\N	0.00	0.00	0.00	0.00	500.00	120.00
+765	ing_3a591a83757d24f0	Тайские баклажаны	f	g	\N	24.00	1.20	0.10	4.50	1000.00	120.00
+766	ing_7067668a20b1b920	Тайский чили	f	g	\N	41.00	2.00	0.40	7.30	500.00	120.00
+767	ing_72356328a691047f	Тамалито из кукурузы	f	g	\N	192.00	4.00	8.00	26.00	500.00	120.00
+768	ing_cd7f12309559f48c	Тамаринд	f	g	\N	246.00	2.80	0.60	57.40	500.00	120.00
+769	ing_4322822bc92815df	Тамариндовый соус	f	g	\N	165.00	0.80	0.20	40.00	100.00	80.00
+770	ing_5cddca7aea3107ae	Тапиоковый крахмал	f	g	\N	351.00	0.20	0.00	87.50	500.00	120.00
+771	ing_646a495745b3fbf3	Творог 5–9 %	f	g	\N	139.00	17.00	7.00	1.90	500.00	200.00
+772	ing_bce1230be14d6ea8	Творог твёрдый	f	g	\N	172.00	17.50	10.00	3.00	500.00	200.00
+773	ing_ffbeb3d2d6588370	Творожный сыр джиза	f	g	\N	146.00	11.00	10.00	3.00	500.00	200.00
+774	ing_6d26fad00c8cb333	Телячий эскалоп	f	g	\N	104.00	20.50	2.50	0.00	500.00	120.00
+775	ing_e1ead83b815b2790	Телячья голяшка	f	g	\N	77.00	13.60	2.40	0.00	500.00	120.00
+776	ing_5a7489c12aa4f080	Тесто для эмпанадас	f	g	\N	331.00	7.50	13.00	46.00	1000.00	100.00
+777	ing_70c4afe419650faa	Тесто катаифи	f	g	\N	278.00	8.00	1.50	58.00	1000.00	100.00
+778	ing_88863e17e4353b9c	Тиляпия	f	g	\N	48.00	10.10	0.80	0.00	500.00	450.00
+779	ing_03e27e213de5e880	Тимьян сушёный	f	g	\N	236.00	9.00	4.50	40.00	100.00	80.00
+780	ing_39829149f1609fa9	Толчёные листья маниока	f	g	\N	69.00	6.00	1.00	9.00	500.00	120.00
+781	ing_6a2ff88bba6be77b	Томатное пюре	f	g	\N	38.00	1.70	0.20	7.30	1000.00	120.00
+782	ing_3477b62e74f3e078	Томатный кетчуп	f	g	\N	102.00	1.20	0.10	24.00	1000.00	120.00
+783	ing_3068c3c1b89942f9	Томатный сок	f	g	\N	21.00	1.10	0.20	3.80	1000.00	120.00
+784	ing_7cf9f87a547fa4ba	Тонкая лепёшка	f	g	\N	253.00	8.00	1.00	53.00	1000.00	100.00
+785	ing_0090b21710c0eba0	Тонкий лаваш	f	g	\N	253.00	8.00	1.00	53.00	1000.00	100.00
+786	ing_de024bbc09030cbb	Топлёное масло нитер киббе	f	g	\N	892.00	0.20	99.00	0.00	500.00	120.00
+787	ing_3571046b08604c2e	Тостады	f	g	\N	452.00	6.50	22.00	57.00	500.00	120.00
+788	ing_3e5b0677719c99f0	Треска	f	g	\N	77.00	17.70	0.70	0.00	500.00	450.00
+789	ing_2503548b0a13a2b9	Тунец	f	g	\N	118.00	24.00	2.50	0.00	500.00	450.00
+790	ing_8a20d4f0fd8457f0	Тушёная зелень	f	g	\N	66.00	2.50	4.00	5.00	500.00	120.00
+791	ing_2ef2854dde1d3bf7	Тэнкасу — крошка от темпуры	f	g	\N	570.00	6.00	42.00	42.00	500.00	120.00
+792	ing_801caaaf7bf2ee30	Тёмное бельгийское пиво	f	g	\N	70.00	0.50	0.00	5.00	1000.00	90.00
+793	ing_6e76ad51d3e2a244	Тёмное пиво стаут	f	g	\N	48.00	0.30	0.00	5.70	1000.00	90.00
+794	ing_fb2cc623646e8331	Тёмный тростниковый сахар	f	g	\N	369.00	0.30	0.00	92.00	500.00	150.00
+795	ing_c60f734ca6f6fe41	Тёртый кокос	f	g	\N	340.00	3.30	33.50	6.20	500.00	120.00
+796	ing_e91229953ab1cff0	Укроп сушёный	f	g	\N	236.00	9.00	4.50	40.00	100.00	80.00
+797	ing_c01137e05284d07e	Уксус 9%	f	g	\N	18.00	0.00	0.00	0.50	100.00	80.00
+798	ing_0806c1978bbf37ea	Уксус для соуса	f	g	\N	18.00	0.00	0.00	0.50	100.00	80.00
+799	ing_89aed53d19cc1102	Уксус солодовый	f	g	\N	20.00	0.30	0.00	0.50	100.00	80.00
+800	ing_d643695c27663b3c	Фарш куриный	f	g	\N	142.00	17.40	8.10	0.00	1000.00	500.00
+801	ing_ae53aefd7b908de4	Фарш телячий	f	g	\N	139.00	19.00	7.00	0.00	1000.00	500.00
+802	ing_cc4801660632b15a	Фасоль	f	g	\N	298.00	21.00	2.00	47.00	1000.00	100.00
+803	ing_469a970ce2905a03	Фасоль в томате	f	g	\N	90.00	5.00	0.50	16.50	1000.00	120.00
+804	ing_20431b58f958d937	Фасоль фабес	f	g	\N	298.00	21.00	2.00	47.00	1000.00	100.00
+805	ing_d78ebc629c6cf9fa	Ферментированные бобы иру	f	g	\N	226.00	17.00	14.00	8.00	500.00	120.00
+806	ing_d8068bb9fd225904	Ферментированные чайные листья	f	g	\N	116.00	5.00	8.00	6.00	1000.00	90.00
+807	ing_c672c00ff072004d	Ферментированные чёрные бобы	f	g	\N	209.00	18.00	9.00	14.00	500.00	120.00
+808	ing_6c649ffcbeca5d78	Филе лосося	f	g	\N	188.00	20.00	12.00	0.00	500.00	120.00
+809	ing_a6a680919c59e0cb	Филе лосося с кожей	f	g	\N	197.00	20.00	13.00	0.00	500.00	120.00
+810	ing_31193f8756698326	Филе трески	f	g	\N	77.00	17.70	0.70	0.00	500.00	450.00
+811	ing_c67bc041961fa6f7	Финиковый сироп дибс	f	g	\N	285.00	1.00	0.10	70.00	1000.00	180.00
+812	ing_fdaef25a1110c4b4	Фиолетовая кукуруза	f	g	\N	328.00	8.00	4.00	65.00	500.00	120.00
+813	ing_37a59b531263036b	Форель	f	g	\N	71.00	11.70	2.70	0.00	500.00	450.00
+814	ing_a233ecc1b7e0c9df	Фрик (зелёная пшеница)	f	g	\N	320.00	12.50	2.00	63.00	1000.00	100.00
+815	ing_965245994d4d6208	Халапеньо	f	g	\N	27.00	0.90	0.40	5.00	500.00	120.00
+816	ing_b6e7d60d9381dedb	Хамон серрано	f	g	\N	239.00	30.00	13.00	0.50	500.00	120.00
+817	ing_30a11c0b7b37f5eb	Херес	f	g	\N	116.00	0.10	0.00	1.50	500.00	120.00
+818	ing_a7d6c01eb3f853d0	Хлеб с плотным мякишем	f	g	\N	242.00	8.10	1.00	48.80	1000.00	100.00
+819	ing_2cc656fb814bee1f	Хлопья жареного чили	f	g	\N	321.00	12.00	17.30	29.40	500.00	120.00
+820	ing_774b010a43c80ff1	Холодный бульон	f	g	\N	10.00	1.30	0.40	0.30	500.00	120.00
+821	ing_a9d73a4c878e53ed	Хрен	f	g	\N	58.00	3.20	0.40	10.50	500.00	120.00
+822	ing_50a57673e2e72d91	Цельнозерновая мука	f	g	\N	312.00	11.50	2.20	61.50	1000.00	100.00
+823	ing_88efbe03077a9045	Цыплёнок	f	g	\N	127.00	11.90	8.80	0.00	500.00	120.00
+824	ing_04fc791a2cb4288f	Черника	f	g	\N	42.00	1.10	0.60	8.00	500.00	120.00
+825	ing_3bcb551d1dc20b74	Чернила каракатицы	f	g	\N	70.00	10.00	1.50	4.00	500.00	450.00
+826	ing_fef1502b60834d77	Чеснок головками	f	g	\N	143.00	6.50	0.50	29.90	1000.00	120.00
+827	ing_1db8dbfdf912ba3c	Чечевица жёлтая	f	g	\N	299.00	24.00	1.20	48.00	1000.00	100.00
+828	ing_d0327636513a818f	Чечевица зелёная	f	g	\N	295.00	24.00	1.50	46.30	1000.00	100.00
+829	ing_5aefd18bf8a56222	Чечевица коричневая	f	g	\N	295.00	24.00	1.50	46.30	1000.00	100.00
+830	ing_dc85795af49a7067	Чечевица мунг	f	g	\N	299.00	24.00	1.20	48.00	1000.00	100.00
+831	ing_bf9a3bf5bd0a7738	Чечевица тур дал	f	g	\N	294.00	22.00	1.50	48.00	1000.00	100.00
+832	ing_e2e72a8a14acaf17	Чечевица урад	f	g	\N	286.00	25.00	1.60	43.00	1000.00	100.00
+833	ing_e5e7012550810901	Чили анчо	f	g	\N	273.00	12.00	9.00	36.00	500.00	120.00
+834	ing_1d100490feaa291f	Чили гуахильо	f	g	\N	273.00	12.00	9.00	36.00	500.00	120.00
+835	ing_d5e8b6c27e865bbf	Чипсы из подорожника	f	g	\N	517.00	2.30	29.60	60.30	500.00	120.00
+836	ing_afea33f8210fc889	Чочо (люпин)	f	g	\N	117.00	15.60	2.90	7.10	500.00	120.00
+837	ing_b0f9d6d7c0ffe06f	Чёрноглазая фасоль	f	g	\N	298.00	21.00	2.00	47.00	1000.00	100.00
+838	ing_1b504827ddbf9e81	Чёрные оливки	f	g	\N	113.00	0.80	10.90	3.00	500.00	120.00
+839	ing_79bc010a2be4353a	Чёрный кардамон	f	g	\N	266.00	10.80	6.70	40.50	100.00	80.00
+840	ing_835a14b17015bc8b	Чёрный уксус для соуса	f	g	\N	40.00	1.00	0.00	6.00	100.00	80.00
+841	ing_a8cc57929454281a	Чёрный уксус чжэньцзян	f	g	\N	40.00	1.00	0.00	6.00	100.00	80.00
+842	ing_98951c5d8de78ca7	Шиитаке сушёные	f	g	\N	303.00	9.60	1.00	63.90	500.00	120.00
+843	ing_668d670e80f7a441	Шоколад для глазури	f	g	\N	536.00	6.20	35.40	48.20	500.00	150.00
+844	ing_8c2811222429cb0c	Щавель	f	g	\N	20.00	1.50	0.30	2.90	500.00	120.00
+845	ing_6659e75de6036034	Ынджера	f	g	\N	146.00	4.50	0.90	30.00	500.00	120.00
+846	ing_baa12ddf52abb45b	Яблоки кислых сортов	f	g	\N	47.00	0.40	0.40	9.80	1000.00	180.00
+847	ing_5d9eddc858d1ddb0	Яблоки плотных кислых сортов	f	g	\N	47.00	0.40	0.40	9.80	1000.00	180.00
+848	ing_976872ebec3742bf	Яблоки плотных сортов	f	g	\N	47.00	0.40	0.40	9.80	1000.00	180.00
+849	ing_5c11d7e4bd90a671	Яблочное пюре	f	g	\N	59.00	0.40	0.20	14.00	500.00	120.00
+850	ing_0d5cf395040623a7	Яблочный сок	f	g	\N	46.00	0.20	0.10	11.00	1000.00	90.00
+851	ing_aab752b6265a2093	Яичная лапша	f	g	\N	287.00	11.00	3.00	54.00	1000.00	100.00
+856	ing_83f87dc03dc4970c	Ямс нагаимо	f	g	\N	64.00	2.20	0.30	13.00	500.00	120.00
+857	ing_c4a1003022f208ff	Японский майонез	f	g	\N	677.00	2.50	73.00	2.50	500.00	120.00
 11	ing_0611a1b7ac680b4a	Вода	t	g	\N	0.00	0.00	0.00	0.00	1000.00	90.00
 2	ing_5b67906812f9ce35	Соль	t	g	\N	0.00	0.00	0.00	0.00	100.00	80.00
-9	ing_a64931804dc4ddba	Сахар	t	g	\N	387.00	0.00	0.00	100.00	500.00	150.00
+9	ing_a64931804dc4ddba	Сахар	t	g	\N	398.00	0.00	0.00	99.70	500.00	150.00
 \.
 
 
@@ -1051,7 +1696,7 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 32	Курица гунбао	Кубики курицы с арахисом и сушёным чили в кисло-сладком соусе, где уксус важнее сахара.	4	10	f	t	f	https://theunitools.com/recipes/gong-bao-chicken.jpg	\N	f
 33	Кок-о-вен	Курица, томлённая в красном вине с беконом, грибами и мелким луком. Маринование накануне решает половину дела.	4	90	f	t	t	https://theunitools.com/recipes/coq-au-vin.jpg	\N	f
 34	Крем-брюле	Заварной крем на желтках, запечённый на водяной бане и покрытый коркой из сожжённого сахара.	4	45	f	t	t	https://theunitools.com/recipes/creme-brulee.jpg	\N	f
-35	Кезешпецле	Швабская яичная лапша, слоями пересыпанная сыром и засыпанная жареным луком.	4	30	f	t	t	https://theunitools.com/recipes/kaesespaetzle.jpg	\N	f
+35	Кезешпецле	Швабская яичная лапша, слоями пересыпанная сыром и засыпанная жареным луком.	4	30	f	t	f	https://theunitools.com/recipes/kaesespaetzle.jpg	\N	f
 37	Пибимпап	Рис под отдельно приготовленными овощами, мясом и яйцом, который перемешивают с кочхуджаном прямо перед едой.	4	20	f	t	f	https://theunitools.com/recipes/bibimbap.jpg	\N	f
 38	Кимчхи чиге	Тушёное блюдо из перекисшего кимчи со свининой и тофу. Чем старее кимчи, тем лучше результат.	4	30	f	t	f	https://theunitools.com/recipes/kimchi-jjigae.jpg	\N	f
 39	Сувлаки	Свинина на шпажках в маринаде из лимона, орегано и оливкового масла, приготовленная быстро и на сильном жаре.	4	15	f	t	f	https://theunitools.com/recipes/souvlaki.jpg	\N	f
@@ -1059,7 +1704,7 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 41	Сёю рамен	Бульон, тарэ и масло — три отдельные части, которые собирают в миске, а не варят вместе.	4	180	f	t	f	https://theunitools.com/recipes/shoyu-ramen.jpg	\N	f
 42	Пероги руске	Вареники с картофелем и творожным сыром, поданные с жареным луком и сметаной.	4	20	f	t	f	https://theunitools.com/recipes/pierogi-ruskie.jpg	\N	f
 43	Журек	Кислый суп на ржаной закваске с белой колбасой и яйцом. Кислоту даёт брожение, а не уксус.	4	50	f	t	f	https://theunitools.com/recipes/zurek.jpg	\N	f
-44	Заурбратен	Говядина, вымоченная в уксусном маринаде несколько дней и тушённая в нём же, с соусом на имбирных пряниках.	6	150	f	t	t	https://theunitools.com/recipes/sauerbraten.jpg	\N	f
+44	Заурбратен	Говядина, вымоченная в уксусном маринаде несколько дней и тушённая в нём же, с соусом на имбирных пряниках.	6	150	f	t	f	https://theunitools.com/recipes/sauerbraten.jpg	\N	f
 45	Швабский картофельный салат	Картофель, заправленный тёплым бульоном с уксусом и маслом. Никакого майонеза — южная Германия его здесь не признаёт.	4	25	f	t	f	https://theunitools.com/recipes/schwaebischer-kartoffelsalat.jpg	\N	f
 46	Аматричана	Гуанчале, помидоры и пекорино. Ни лука, ни чеснока, ни оливкового масла — жир даёт само мясо.	4	20	f	t	f	https://theunitools.com/recipes/bucatini-all-amatriciana.jpg	\N	f
 47	Шакшука	Яйца, припущенные в густом соусе из помидоров и перца с тмином и паприкой.	4	30	f	t	f	https://theunitools.com/recipes/shakshuka.jpg	\N	f
@@ -1152,7 +1797,7 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 137	Форикол	Баранина с капустой, слоями, с целым перцем горошком. Всего четыре ингредиента и два часа времени.	6	130	f	t	f	https://theunitools.com/recipes/farikal.jpg	\N	f
 138	Мидии по-мариньерски	Мидии, приготовленные на пару в белом вине с сельдереем и луком. Пять минут под крышкой и не дольше.	4	15	f	t	f	https://theunitools.com/recipes/moules-marinieres.jpg	\N	f
 139	Фламандская карбонада	Говядина, томлённая в тёмном пиве с луком и ломтем хлеба с горчицей, который загущает соус.	6	180	f	t	t	https://theunitools.com/recipes/carbonade-flamande.jpg	\N	f
-141	Рёшти	Картофельный блин из крупной тёрки, обжаренный до корочки с двух сторон. Картофель отваривают накануне.	4	30	f	t	t	https://theunitools.com/recipes/roesti.jpg	\N	f
+141	Рёшти	Картофельный блин из крупной тёрки, обжаренный до корочки с двух сторон. Картофель отваривают накануне.	4	30	f	t	f	https://theunitools.com/recipes/roesti.jpg	\N	f
 142	Гапама	Тыква, запечённая целиком с рисом, сухофруктами и орехами. Праздничное блюдо, которое режут за столом.	6	90	f	t	t	https://theunitools.com/recipes/ghapama.jpg	\N	f
 143	Спас	Суп на мацуне с пшеничной крупой. Главная сложность — не дать кисломолочной основе свернуться.	4	40	f	t	f	https://theunitools.com/recipes/spas.jpg	\N	f
 144	Шах-плов	Плов, запечённый в «короне» из лаваша. Корочка держит форму и режется на куски, как пирог.	6	70	f	t	t	https://theunitools.com/recipes/shah-plov.jpg	\N	f
@@ -1162,10 +1807,10 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 148	Брынзове галушки	Картофельные клёцки с овечьей брынзой и шкварками. Национальное блюдо Словакии.	4	20	f	t	f	https://theunitools.com/recipes/bryndzove-halusky.jpg	\N	f
 149	Капустница	Суп из квашеной капусты с копчёностями, колбасой и сушёными грибами. Рождественский стол Словакии.	6	90	f	t	f	https://theunitools.com/recipes/kapustnica.jpg	\N	f
 150	Пастель-де-чокло	Запеканка из мясной начинки под шапкой из молотой кукурузы, с оливкой и яйцом внутри.	6	60	f	t	t	https://theunitools.com/recipes/pastel-de-choclo.jpg	\N	f
-151	Эмпанадас-де-пино	Печёные пирожки с мясной начинкой, оливкой и яйцом. Чилийская еда 18 сентября и любого воскресенья.	6	30	f	t	f	https://theunitools.com/recipes/empanadas-de-pino.jpg	\N	f
+151	Эмпанадас-де-пино	Печёные пирожки с мясной начинкой, оливкой и яйцом. Чилийская еда 18 сентября и любого воскресенья.	6	30	f	t	t	https://theunitools.com/recipes/empanadas-de-pino.jpg	\N	f
 152	Пабельон-криольо	Тарелка из четырёх частей: тушёная говядина волокнами, чёрная фасоль, белый рис и жареный банан.	4	150	f	t	f	https://theunitools.com/recipes/pabellon-criollo.jpg	\N	f
 153	Качапас	Толстые оладьи из молотой свежей кукурузы, сложенные пополам вокруг мягкого сыра.	4	25	f	t	f	https://theunitools.com/recipes/cachapas.jpg	\N	f
-154	Сальтеньяс	Печёные пирожки с начинкой, которая внутри остаётся жидкой. Боливийский завтрак на ходу.	6	30	f	t	f	https://theunitools.com/recipes/saltenas.jpg	\N	f
+154	Сальтеньяс	Печёные пирожки с начинкой, которая внутри остаётся жидкой. Боливийский завтрак на ходу.	6	30	f	t	t	https://theunitools.com/recipes/saltenas.jpg	\N	f
 155	Сильпанчо	Отбивная в панировке размером с тарелку, поверх риса и картофеля, с яйцом и сырым салатом.	4	30	f	t	f	https://theunitools.com/recipes/silpancho.jpg	\N	f
 156	Энсебольядо	Суп из тунца с юккой и маринованным луком. В Эквадоре его едят на завтрак и считают средством от похмелья.	4	40	f	t	f	https://theunitools.com/recipes/encebollado.jpg	\N	f
 157	Льяпингачос	Картофельные лепёшки с сыром внутри, жаренные на ачиоте, с арахисовым соусом.	4	30	f	t	f	https://theunitools.com/recipes/llapingachos.jpg	\N	f
@@ -1204,11 +1849,11 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 194	Босански лонац	Мясо и овощи, уложенные слоями в глиняный горшок и томившиеся четыре часа без помешивания.	6	240	f	f	t	https://theunitools.com/recipes/bosanski-lonac.jpg	\N	f
 196	Тавче-гравче	Белая фасоль, запечённая в глиняной сковороде с луком, паприкой и перцем. Национальное блюдо Северной Македонии.	6	120	f	t	t	https://theunitools.com/recipes/tavce-gravce.jpg	\N	f
 197	Селско месо	Свинина, тушённая с грибами, луком и вином в глиняном горшочке, под сыром.	4	70	f	t	t	https://theunitools.com/recipes/selsko-meso.jpg	\N	f
-199	Австралийский мясной пирог	Порционный пирог с густой говяжьей начинкой: песочное дно, слоёная крышка, кетчуп сверху.	6	90	f	t	f	https://theunitools.com/recipes/meat-pie-australian.jpg	\N	f
+199	Австралийский мясной пирог	Порционный пирог с густой говяжьей начинкой: песочное дно, слоёная крышка, кетчуп сверху.	6	90	f	t	t	https://theunitools.com/recipes/meat-pie-australian.jpg	\N	f
 200	Павлова	Меренга с хрустящей корочкой и мягкой серединой, под взбитыми сливками и киви.	8	90	f	f	t	https://theunitools.com/recipes/pavlova.jpg	\N	f
 201	Курица в стиле ханги	Курица и корнеплоды, завёрнутые и запечённые с копчёной солью — домашняя версия земляной печи маори.	6	150	f	f	t	https://theunitools.com/recipes/hangi-style-chicken.jpg	\N	f
 202	Путин	Картофель фри с сырными зёрнами под горячей мясной подливой. Квебекская уличная классика.	4	40	f	t	f	https://theunitools.com/recipes/poutine.jpg	\N	f
-203	Туртьер	Закрытый пирог с пряным свиным фаршем и картофелем. Квебекский рождественский стол.	8	70	f	t	f	https://theunitools.com/recipes/tourtiere.jpg	\N	f
+203	Туртьер	Закрытый пирог с пряным свиным фаршем и картофелем. Квебекский рождественский стол.	8	70	f	t	t	https://theunitools.com/recipes/tourtiere.jpg	\N	f
 204	Гальо-пинто	Вчерашний рис, обжаренный с чёрной фасолью и соусом Лисано. Костариканский завтрак каждый день.	4	20	f	t	f	https://theunitools.com/recipes/gallo-pinto.jpg	\N	f
 205	Касадо	Обеденная тарелка из риса, фасоли, салата, подорожника и мяса — всё разложено по секторам.	4	40	f	t	f	https://theunitools.com/recipes/casado.jpg	\N	f
 206	Буузы	Крупные пельмени на пару с рубленой бараниной. Главная еда монгольского Цагаан сара.	6	25	f	t	f	https://theunitools.com/recipes/buuz.jpg	\N	f
@@ -1227,7 +1872,7 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 224	Лаап	Рубленое мясо с обжаренной рисовой мукой, травами и лаймом. Национальное блюдо Лаоса.	4	20	f	t	f	https://theunitools.com/recipes/larb-lao.jpg	\N	f
 226	Сувла	Крупные куски свинины или ягнёнка на вертеле, медленно вращающиеся над углями два часа.	6	130	f	t	f	https://theunitools.com/recipes/souvla.jpg	\N	f
 228	Кролик по-мальтийски	Кролик, тушённый в красном вине с чесноком и лавром. Национальное блюдо Мальты.	4	105	f	t	f	https://theunitools.com/recipes/maltese-rabbit-stew.jpg	\N	f
-229	Пастицци	Слоёные пирожки с рикоттой или гороховой начинкой. Мальтийская уличная еда на каждом углу.	8	35	f	t	f	https://theunitools.com/recipes/pastizzi.jpg	\N	f
+229	Пастицци	Слоёные пирожки с рикоттой или гороховой начинкой. Мальтийская уличная еда на каждом углу.	8	35	f	t	t	https://theunitools.com/recipes/pastizzi.jpg	\N	f
 230	Чивито	Сэндвич с тонким стейком, ветчиной, беконом, сыром и яйцом. Национальное блюдо Уругвая.	4	20	f	t	f	https://theunitools.com/recipes/chivito.jpg	\N	f
 232	Пепиан	Курица в густом соусе из обжаренных семян и перцев. Одно из старейших блюд Гватемалы.	6	70	f	t	f	https://theunitools.com/recipes/pepian.jpg	\N	f
 233	Гватемальские тамалес	Кукурузное тесто с мясом и соусом рекадо, завёрнутое в банановый лист и сваренное на пару.	8	90	f	t	f	https://theunitools.com/recipes/tamales-guatemaltecos.jpg	\N	f
@@ -1235,7 +1880,7 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 235	Мангу	Пюре из варёного зелёного подорожника с маринованным луком, яйцом, сыром и салями.	4	30	f	t	f	https://theunitools.com/recipes/mangu.jpg	\N	f
 237	Каллалу	Густой суп-пюре из листьев таро с окрой и кокосовым молоком. Воскресный стол Тринидада.	6	55	f	t	f	https://theunitools.com/recipes/callaloo.jpg	\N	f
 238	Таве коси	Ягнёнок, запечённый под густым йогуртовым соусом с яйцом и рисом. Национальное блюдо Албании.	6	90	f	t	t	https://theunitools.com/recipes/tave-kosi.jpg	\N	f
-239	Бюрек со шпинатом	Пирог из тонкого теста со шпинатом и брынзой, слоями, залитыми маслом.	8	45	f	t	f	https://theunitools.com/recipes/byrek-me-spinaq.jpg	\N	f
+239	Бюрек со шпинатом	Пирог из тонкого теста со шпинатом и брынзой, слоями, залитыми маслом.	8	45	f	t	t	https://theunitools.com/recipes/byrek-me-spinaq.jpg	\N	f
 240	Плацинда	Плоский пирог из вытянутого теста с брынзой, тыквой или яблоками, жаренный на сухой сковороде.	6	30	f	t	f	https://theunitools.com/recipes/placinta.jpg	\N	f
 225	Там мак хунг	Салат из зелёной папайи, растёртый в ступке. Лаосская версия — с ферментированной рыбой падэк.	4	35	f	f	f	https://theunitools.com/recipes/tam-mak-hoong.jpg	\N	t
 242	Копчёная шейка с бобами	Копчёная свиная шейка, вымоченная и отваренная, с бобами в сливочном соусе. Национальное блюдо Люксембурга.	4	100	f	t	f	https://theunitools.com/recipes/judd-mat-gaardebounen.jpg	\N	f
@@ -1290,7 +1935,7 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 314	Кальбиччим	Говяжьи рёбра, тушённые в соевом соусе с грушей, до состояния, когда мясо сходит с кости.	5	120	f	t	f	https://theunitools.com/recipes/galbijjim.jpg	\N	f
 315	Самгетан	Целый цыплёнок, фаршированный клейким рисом и женьшенем, сваренный в собственном бульоне.	4	75	f	t	f	https://theunitools.com/recipes/samgyetang.jpg	\N	f
 316	Ростбиф с йоркширским пудингом	Говядина, запечённая куском, с воздушным пудингом из жидкого теста на говяжьем жире.	6	90	f	t	t	https://theunitools.com/recipes/roast-beef-yorkshire.jpg	\N	f
-317	Финиковый пудинг с ирисочным соусом	Влажный финиковый кекс, политый горячим соусом из сливок и тёмного сахара.	8	40	f	t	f	https://theunitools.com/recipes/sticky-toffee-pudding.jpg	\N	f
+317	Финиковый пудинг с ирисочным соусом	Влажный финиковый кекс, политый горячим соусом из сливок и тёмного сахара.	8	40	f	t	t	https://theunitools.com/recipes/sticky-toffee-pudding.jpg	\N	f
 318	Бигос	Квашеная и свежая капуста, тушённые с несколькими видами мяса и сухофруктами трое суток.	10	240	f	t	f	https://theunitools.com/recipes/bigos.jpg	\N	f
 319	Сырник польский	Плотный творожный пирог на песочной основе, из твёрдого творога, а не из сливочного сыра.	12	70	f	f	t	https://theunitools.com/recipes/sernik.jpg	\N	f
 320	Мокека баиана	Рыба, тушённая в кокосовом молоке с пальмовым маслом денде, в глиняном горшке.	5	35	f	t	f	https://theunitools.com/recipes/moqueca-baiana.jpg	\N	f
@@ -1308,7 +1953,7 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 333	Сациви	Индейка или курица в холодном ореховом соусе с чесноком и специями. Новогодний стол Грузии.	8	90	f	t	t	https://theunitools.com/recipes/satsivi.jpg	\N	f
 347	Торт Добош	Пять тонких бисквитных коржей с шоколадным кремом под карамельной крышкой.	12	45	f	f	t	https://theunitools.com/recipes/dobos-torta.jpg	\N	f
 336	Фатте с нутом	Слои жареной питы, горячего нута и чесночного йогурта с топлёным маслом и кедровыми орехами.	5	90	f	t	f	https://theunitools.com/recipes/fattet-hummus.jpg	\N	f
-338	Пастилья	Слоёный пирог с голубем или курицей, миндалём и корицей, посыпанный сахарной пудрой.	8	90	f	t	f	https://theunitools.com/recipes/pastilla.jpg	\N	f
+338	Пастилья	Слоёный пирог с голубем или курицей, миндалём и корицей, посыпанный сахарной пудрой.	8	90	f	t	t	https://theunitools.com/recipes/pastilla.jpg	\N	f
 339	Марокканский чебакия	Печенье в форме цветка, обжаренное во фритюре и вымоченное в мёде с кунжутом.	10	60	f	t	f	https://theunitools.com/recipes/chebakia.jpg	\N	f
 340	Молохия	Суп из листьев джута, тягучий по текстуре, с чесночной зажаркой и кориандром.	5	70	f	t	f	https://theunitools.com/recipes/molokhia.jpg	\N	f
 342	Асадо	Говядина на решётке над дровяными углями, часами, с одной только крупной солью.	8	210	f	t	f	https://theunitools.com/recipes/asado-argentino.jpg	\N	f
@@ -1316,7 +1961,7 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 346	Халасле	Огненно-красная рыбацкая уха на паприке, из речной рыбы, сваренная в котелке.	6	75	f	t	f	https://theunitools.com/recipes/halaszle.jpg	\N	f
 348	Вепрево колено с кнедликами	Тушёная свинина с хлебными кнедликами и кислой капустой. Неофициальное национальное блюдо Чехии.	6	120	f	t	f	https://theunitools.com/recipes/vepro-knedlo-zelo.jpg	\N	f
 349	Кулайда	Сливочный грибной суп с укропом, картофелем и яйцом-пашот, подкислённый уксусом.	5	35	f	t	f	https://theunitools.com/recipes/kulajda.jpg	\N	f
-351	Шведский яблочный пирог	Яблочный пирог с корицей под хрустящей масляной крошкой, к ванильному соусу.	8	45	f	t	f	https://theunitools.com/recipes/appelkaka.jpg	\N	f
+351	Шведский яблочный пирог	Яблочный пирог с корицей под хрустящей масляной крошкой, к ванильному соусу.	8	45	f	t	t	https://theunitools.com/recipes/appelkaka.jpg	\N	f
 352	Стегт флеск	Ломти свиной грудинки, жаренные до хруста, с картофелем и петрушечным соусом.	4	45	f	t	f	https://theunitools.com/recipes/stegt-flaesk.jpg	\N	f
 353	Рисаламанде	Холодный рисовый пудинг со взбитыми сливками и миндалём, под горячим вишнёвым соусом.	8	60	f	t	f	https://theunitools.com/recipes/risalamande.jpg	\N	f
 354	Эртенсуп	Густой гороховый суп с копчёной колбасой, такой плотный, что ложка в нём стоит.	6	150	f	t	f	https://theunitools.com/recipes/erwtensoep.jpg	\N	f
@@ -1327,7 +1972,7 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 364	Каре-каре	Говяжий хвост в густом арахисовом соусе с овощами, к креветочной пасте багоонг.	6	210	f	t	f	https://theunitools.com/recipes/kare-kare.jpg	\N	f
 366	Ынджера	Кислая пористая лепёшка из теффа на трёхдневной закваске, служащая и хлебом, и тарелкой.	8	40	f	t	f	https://theunitools.com/recipes/injera.jpg	\N	f
 367	Кытфо	Рубленая сырая говядина, вымешанная с пряным маслом нитер киббе и смесью мытмыта.	4	30	f	t	f	https://theunitools.com/recipes/kitfo.jpg	\N	f
-365	Лече флан	Плотный карамельный флан на одних желтках, приготовленный на пару в металлической форме.	8	45	f	f	t	https://theunitools.com/recipes/leche-flan.jpg	\N	f
+365	Лече флан	Плотный карамельный флан на одних желтках, приготовленный на пару в металлической форме.	8	45	f	t	f	https://theunitools.com/recipes/leche-flan.jpg	\N	f
 369	Паф-паф	Дрожжевые шарики из жидкого теста, обжаренные во фритюре, снаружи хрустящие, внутри воздушные.	8	30	f	t	f	https://theunitools.com/recipes/puff-puff.jpg	\N	f
 370	Аррос кон польо	Курица с рисом на пиве и шафране, с горошком, перцем и оливками.	6	60	f	t	f	https://theunitools.com/recipes/arroz-con-pollo-cubano.jpg	\N	f
 371	Тостонес	Зелёный подорожник, обжаренный дважды с расплющиванием между заходами, с чесночным соусом.	4	25	f	t	f	https://theunitools.com/recipes/tostones.jpg	\N	f
@@ -1366,7 +2011,7 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 422	Катонг лакса	Рисовая лапша в кокосовом бульоне с креветками, нарезанная коротко и подаваемая с ложкой.	4	60	f	t	f	https://theunitools.com/recipes/laksa-singapore.jpg	\N	f
 423	Тост с кайей	Подсушенный хлеб с кокосово-яичным джемом кайя и холодным маслом, к яйцам всмятку.	4	50	f	t	f	https://theunitools.com/recipes/kaya-toast.jpg	\N	f
 424	Гуа бао	Паровая булочка, сложенная пополам, с тушёной грудинкой, маринованной зеленью и арахисом.	8	100	f	t	f	https://theunitools.com/recipes/gua-bao.jpg	\N	f
-425	Тайваньское ананасовое печенье	Квадратики песочного теста с плотной начинкой из уваренного ананаса и зимней дыни.	16	90	f	t	f	https://theunitools.com/recipes/pineapple-cake.jpg	\N	f
+425	Тайваньское ананасовое печенье	Квадратики песочного теста с плотной начинкой из уваренного ананаса и зимней дыни.	16	90	f	t	t	https://theunitools.com/recipes/pineapple-cake.jpg	\N	f
 426	Шанская лапша	Рисовая лапша с томатно-куриным соусом, маринованной зеленью и молотым арахисом.	4	45	f	t	f	https://theunitools.com/recipes/shan-noodles.jpg	\N	f
 427	Он но кхао свэ	Пшеничная лапша в густом кокосовом бульоне с курицей и нутовой мукой.	5	50	f	t	f	https://theunitools.com/recipes/ohn-no-khao-swe.jpg	\N	f
 428	Ном банчок	Холодная рисовая лапша с рыбно-кокосовым карри и горой сырых овощей и трав.	5	40	f	t	f	https://theunitools.com/recipes/num-banh-chok.jpg	\N	f
@@ -1387,7 +2032,7 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 445	Рис с кокосом	Рис на кокосовом молоке с карамелизованными шкварками кокоса, тёмный и слегка сладкий.	6	45	f	t	f	https://theunitools.com/recipes/arroz-con-coco.jpg	\N	f
 446	Кугелис	Картофельная запеканка из тёртого сырого картофеля с беконом и луком, со сметаной.	8	95	f	t	t	https://theunitools.com/recipes/kugelis.jpg	\N	f
 447	Шакотис	Ветвистый торт, испечённый слой за слоем на вращающемся вертеле над огнём.	16	90	f	f	t	https://theunitools.com/recipes/sakotis.jpg	\N	f
-448	Складраусис	Ржаная корзиночка с двумя слоями пюре — картофельным и морковным, с корицей.	10	30	f	t	f	https://theunitools.com/recipes/sklandrausis.jpg	\N	f
+448	Складраусис	Ржаная корзиночка с двумя слоями пюре — картофельным и морковным, с корицей.	10	30	f	t	t	https://theunitools.com/recipes/sklandrausis.jpg	\N	f
 450	Веривёрст	Кровяная колбаса с перловкой и майораном, запечённая с брусничным вареньем.	8	60	f	t	t	https://theunitools.com/recipes/verivorst.jpg	\N	f
 455	Бухты	Дрожжевые булочки с повидлом или творогом, испечённые вплотную и слипшиеся боками.	12	35	f	f	t	https://theunitools.com/recipes/sladke-buchty.jpg	\N	f
 461	Пастрмалия	Лодочка из дрожжевого теста с солёной свининой и яйцом, из Штипа.	4	25	f	f	t	https://theunitools.com/recipes/pastrmajlija.jpg	\N	f
@@ -2689,6 +3334,104 @@ COPY public.ingredient_allergens (ingredient_id, allergen_id) FROM stdin;
 836	6
 851	3
 6	5
+43	5
+43	13
+49	14
+81	5
+110	5
+130	12
+132	3
+138	14
+143	4
+175	5
+178	5
+178	13
+183	5
+190	4
+204	5
+205	9
+216	5
+216	13
+220	5
+253	5
+256	5
+263	5
+271	5
+277	5
+293	5
+295	5
+296	14
+313	13
+321	13
+330	7
+331	9
+338	5
+349	10
+361	5
+377	13
+379	5
+397	5
+398	5
+430	5
+433	5
+434	5
+435	5
+473	5
+482	13
+491	5
+506	5
+558	5
+560	5
+561	5
+562	5
+563	5
+569	9
+570	5
+575	5
+586	14
+588	7
+593	5
+604	5
+605	5
+606	5
+607	5
+608	5
+609	5
+611	5
+613	13
+633	5
+637	2
+641	13
+660	13
+665	4
+667	5
+689	13
+691	3
+691	5
+716	14
+721	5
+727	13
+731	5
+735	7
+737	13
+738	2
+738	4
+739	5
+748	5
+776	5
+777	5
+784	5
+785	5
+791	5
+792	5
+793	5
+799	5
+807	13
+817	14
+818	5
+822	5
+851	5
+857	3
 \.
 
 
@@ -2996,6 +3739,72 @@ COPY public.ingredient_categories (ingredient_id, category_id) FROM stdin;
 257	7
 210	7
 199	6
+26	5
+68	3
+79	3
+100	3
+117	3
+127	3
+132	13
+143	4
+188	3
+190	4
+192	3
+235	3
+237	3
+239	5
+251	4
+260	5
+297	3
+298	3
+304	5
+330	5
+335	3
+337	3
+352	4
+383	4
+386	5
+390	5
+439	3
+444	5
+446	3
+451	3
+452	3
+453	3
+454	3
+455	3
+456	3
+470	3
+474	5
+495	5
+497	4
+504	5
+513	3
+528	3
+536	4
+556	5
+588	5
+601	4
+615	3
+624	3
+632	5
+634	3
+637	4
+644	5
+664	3
+665	4
+691	13
+694	3
+714	3
+738	4
+744	5
+774	3
+775	3
+786	5
+816	3
+823	3
+851	13
+857	13
 \.
 
 
@@ -3590,7 +4399,6 @@ COPY public.recipe_cooking_methods (recipe_id, method_id) FROM stdin;
 337	3
 343	3
 347	3
-365	3
 407	3
 418	3
 455	3
@@ -3604,6 +4412,35 @@ COPY public.recipe_cooking_methods (recipe_id, method_id) FROM stdin;
 195	3
 361	3
 140	1
+54	1
+77	1
+108	3
+151	3
+154	3
+176	1
+194	3
+199	3
+200	3
+203	3
+215	3
+229	3
+239	3
+257	3
+269	3
+317	3
+338	3
+351	3
+365	1
+377	3
+390	2
+414	3
+420	1
+425	3
+448	3
+457	1
+483	2
+491	3
+493	3
 \.
 
 
@@ -5388,17 +6225,17 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 324	40	\N	t
 324	47	\N	t
 2	49	100.00	f
-3	57	150.00	f
-3	241	100.00	f
-3	158	100.00	f
-4	6	120.00	f
+3	57	300.00	f
+3	241	250.00	f
+3	158	20.00	f
+4	6	20.00	f
 4	49	100.00	f
 4	183	100.00	f
-5	177	100.00	f
-5	797	100.00	f
-6	28	100.00	f
+5	177	400.00	f
+5	797	15.00	f
+6	28	7.00	f
 7	641	100.00	f
-7	440	100.00	f
+7	440	8.00	f
 254	30	\N	t
 255	52	\N	t
 256	30	\N	t
@@ -5408,21 +6245,21 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 266	65	\N	t
 267	31	\N	t
 267	134	\N	t
-8	122	100.00	f
+8	122	500.00	f
 8	41	80.00	f
-8	815	100.00	f
+8	815	20.00	f
 10	26	20.00	f
-10	238	100.00	f
-10	286	100.00	f
-11	356	100.00	f
-13	57	150.00	f
+10	238	4.00	f
+10	286	1.00	f
+11	356	3.00	f
+13	57	900.00	f
 13	138	100.00	f
 14	54	100.00	f
 14	41	80.00	f
-15	157	100.00	f
-15	142	100.00	f
+15	157	3.00	f
+15	142	1.00	f
 15	50	30.00	f
-16	183	100.00	f
+16	183	500.00	f
 16	132	100.00	f
 16	380	100.00	f
 254	123	300.00	f
@@ -5457,14 +6294,14 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 257	17	30.00	f
 16	50	30.00	f
 16	54	100.00	f
-17	119	100.00	f
-18	758	100.00	f
-18	757	100.00	f
+17	119	3.00	f
+18	758	30.00	f
+18	757	30.00	f
 18	159	100.00	f
-18	207	100.00	f
-18	326	100.00	f
-19	391	100.00	f
-22	246	100.00	f
+18	207	2.00	f
+18	326	350.00	f
+19	391	3.00	f
+22	246	6.00	f
 259	21	1600.00	f
 259	3	24.00	f
 259	15	174.00	f
@@ -5581,10 +6418,10 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 291	27	\N	t
 291	63	\N	t
 22	717	100.00	f
-22	502	100.00	f
-23	362	100.00	f
-23	143	100.00	f
-23	133	100.00	f
+22	502	2.00	f
+23	362	300.00	f
+23	143	200.00	f
+23	133	50.00	f
 24	6	120.00	f
 276	514	200.00	f
 24	231	10.00	f
@@ -5593,21 +6430,21 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 276	11	160.00	f
 276	4	27.60	f
 276	2	\N	t
-25	120	100.00	f
+25	120	40.00	f
 25	50	30.00	f
-25	106	100.00	f
+25	106	40.00	f
 25	48	30.00	f
-26	537	100.00	f
-26	586	100.00	f
+26	537	300.00	f
+26	586	40.00	f
 27	54	100.00	f
-27	381	100.00	f
+27	381	30.00	f
 29	41	80.00	f
-29	185	100.00	f
+29	185	400.00	f
 30	41	80.00	f
-30	416	100.00	f
-30	180	100.00	f
-31	301	100.00	f
-31	807	100.00	f
+30	416	30.00	f
+30	180	30.00	f
+31	301	40.00	f
+31	807	15.00	f
 279	6	400.00	f
 279	11	240.00	f
 279	5	400.00	f
@@ -5616,18 +6453,18 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 279	1	220.00	f
 279	16	61.00	f
 279	4	110.40	f
-31	374	100.00	f
+31	374	3.00	f
 31	96	250.00	f
-31	250	100.00	f
-32	250	100.00	f
-32	374	100.00	f
-32	841	100.00	f
-33	138	100.00	f
-33	6	120.00	f
+31	250	10.00	f
+32	250	15.00	f
+32	374	3.00	f
+32	841	30.00	f
+33	138	750.00	f
+33	6	30.00	f
 33	96	250.00	f
-34	85	100.00	f
-34	743	100.00	f
-34	699	100.00	f
+34	85	500.00	f
+34	743	4.00	f
+34	699	50.00	f
 37	321	100.00	f
 37	130	20.00	f
 282	21	1500.00	f
@@ -5653,12 +6490,12 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 284	10	400.00	f
 284	4	55.20	f
 284	19	450.00	f
-38	529	100.00	f
-38	321	100.00	f
+38	529	8.00	f
+38	321	20.00	f
 38	130	20.00	f
-39	175	100.00	f
+39	175	350.00	f
 39	54	100.00	f
-40	262	100.00	f
+40	262	5.00	f
 41	133	100.00	f
 41	268	100.00	f
 41	130	20.00	f
@@ -5668,32 +6505,32 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 286	7	60.00	f
 286	3	6.00	f
 286	18	30.00	f
-43	673	100.00	f
-43	579	100.00	f
+43	673	500.00	f
+43	579	2.00	f
 43	270	100.00	f
-44	180	100.00	f
-44	138	100.00	f
+44	180	250.00	f
+44	138	500.00	f
 45	437	250.00	f
-45	125	100.00	f
-45	75	100.00	f
+45	125	50.00	f
+45	75	15.00	f
 46	49	100.00	f
-47	208	100.00	f
-47	153	100.00	f
-48	73	100.00	f
-49	227	100.00	f
-51	766	100.00	f
+47	208	3.00	f
+47	153	20.00	f
+48	73	5.00	f
+49	227	350.00	f
+51	766	10.00	f
 51	383	30.00	f
 51	50	30.00	f
-52	143	100.00	f
-52	133	100.00	f
-52	268	100.00	f
-53	340	100.00	f
+52	143	200.00	f
+52	133	50.00	f
+52	268	30.00	f
+53	340	300.00	f
 53	623	100.00	f
 54	733	100.00	f
-54	163	100.00	f
+54	163	3.00	f
 55	118	100.00	f
-55	163	100.00	f
-55	6	120.00	f
+55	163	3.00	f
+55	6	50.00	f
 290	67	1000.00	f
 290	26	100.00	f
 290	60	400.00	f
@@ -5736,9 +6573,9 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 303	22	\N	t
 306	22	\N	t
 308	22	\N	t
-56	151	100.00	f
-58	361	100.00	f
-58	104	100.00	f
+56	151	3.00	f
+58	361	330.00	f
+58	104	5.00	f
 296	21	2000.00	f
 296	87	80.00	f
 296	123	60.00	f
@@ -5753,16 +6590,16 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 296	2	\N	t
 59	190	30.00	f
 59	188	250.00	f
-59	6	120.00	f
-60	774	100.00	f
-62	18	100.00	f
+59	6	20.00	f
+60	774	600.00	f
+62	18	20.00	f
 63	85	100.00	f
-64	776	100.00	f
+64	776	600.00	f
 65	180	100.00	f
-65	119	100.00	f
-66	48	30.00	f
-66	535	100.00	f
-66	536	100.00	f
+65	119	10.00	f
+66	48	80.00	f
+66	535	40.00	f
+66	536	5.00	f
 298	29	700.00	f
 298	561	400.00	f
 298	7	120.00	f
@@ -5995,29 +6832,29 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 342	65	\N	t
 342	92	\N	t
 66	313	100.00	f
-67	33	200.00	f
-67	48	30.00	f
-67	101	100.00	f
-67	170	100.00	f
-68	357	100.00	f
+67	33	800.00	f
+67	48	150.00	f
+67	101	40.00	f
+67	170	3.00	f
+68	357	15.00	f
 69	120	100.00	f
 69	57	150.00	f
 69	50	30.00	f
-70	177	100.00	f
-70	61	100.00	f
-71	128	100.00	f
-71	73	100.00	f
-71	250	100.00	f
-71	2	100.00	f
-72	85	100.00	f
-72	125	100.00	f
-74	42	100.00	f
-74	147	100.00	f
+70	177	400.00	f
+70	61	15.00	f
+71	128	200.00	f
+71	73	3.00	f
+71	250	20.00	f
+71	2	3.00	f
+72	85	250.00	f
+72	125	40.00	f
+74	42	300.00	f
+74	147	1.00	f
 74	68	250.00	f
-74	6	120.00	f
-76	159	100.00	f
-77	18	100.00	f
-78	147	100.00	f
+74	6	20.00	f
+76	159	50.00	f
+77	18	20.00	f
+78	147	1.00	f
 332	21	1500.00	f
 332	1	440.00	f
 332	8	800.00	f
@@ -6033,22 +6870,22 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 333	191	1.05	f
 333	7	60.00	f
 333	2	\N	t
-79	725	100.00	f
-80	756	100.00	f
-80	137	100.00	f
+79	725	3.00	f
+80	756	5.00	f
+80	137	25.00	f
 81	77	100.00	f
 82	826	10.00	f
-82	288	100.00	f
+82	288	8.00	f
 84	118	100.00	f
-84	270	100.00	f
-84	6	120.00	f
-85	104	100.00	f
+84	270	200.00	f
+84	6	30.00	f
+85	104	12.00	f
 85	627	30.00	f
-85	159	100.00	f
-85	281	100.00	f
+85	159	15.00	f
+85	281	2.00	f
 88	42	100.00	f
 88	26	20.00	f
-89	284	100.00	f
+89	284	2.00	f
 90	130	20.00	f
 90	820	250.00	f
 336	64	400.00	f
@@ -6089,19 +6926,19 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 340	1	110.00	f
 340	19	400.00	f
 340	15	116.00	f
-91	139	100.00	f
-92	653	100.00	f
-92	207	100.00	f
-93	834	100.00	f
-93	833	100.00	f
-93	207	100.00	f
-94	712	100.00	f
-94	246	100.00	f
-94	257	120.00	f
+91	139	15.00	f
+92	653	500.00	f
+92	207	1.00	f
+93	834	40.00	f
+93	833	40.00	f
+93	207	3.00	f
+94	712	6.00	f
+94	246	7.00	f
+94	257	50.00	f
 342	297	2500.00	f
 342	224	800.00	f
 342	337	500.00	f
-342	119	100.00	f
+342	119	40.00	f
 342	18	80.00	f
 342	3	24.00	f
 342	14	183.60	f
@@ -6166,14 +7003,14 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 349	9	3.50	f
 349	7	40.00	f
 356	20	\N	t
-95	711	100.00	f
-96	33	200.00	f
-96	101	100.00	f
-96	48	30.00	f
-96	251	100.00	f
-97	214	100.00	f
-98	75	100.00	f
-98	615	100.00	f
+95	711	10.00	f
+96	33	400.00	f
+96	101	40.00	f
+96	48	100.00	f
+96	251	10.00	f
+97	214	40.00	f
+98	75	20.00	f
+98	615	250.00	f
 351	846	1000.00	f
 351	6	200.00	f
 351	7	150.00	f
@@ -6214,41 +7051,41 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 356	10	1200.00	f
 356	12	257.50	f
 356	7	150.00	f
-99	2	100.00	f
-100	290	100.00	f
-102	99	100.00	f
+99	2	2.00	f
+100	290	40.00	f
+102	99	25.00	f
 102	49	100.00	f
-103	125	100.00	f
-104	66	100.00	f
-104	209	100.00	f
-104	357	100.00	f
-105	66	100.00	f
-106	323	100.00	f
-106	66	100.00	f
-106	779	100.00	f
-106	96	250.00	f
-107	163	100.00	f
-107	281	100.00	f
-107	310	100.00	f
-107	160	250.00	f
-109	541	100.00	f
-109	471	100.00	f
+103	125	15.00	f
+104	66	40.00	f
+104	209	10.00	f
+104	357	30.00	f
+105	66	10.00	f
+106	323	300.00	f
+106	66	15.00	f
+106	779	2.00	f
+106	96	500.00	f
+107	163	6.00	f
+107	281	6.00	f
+107	310	4.00	f
+107	160	10.00	f
+109	541	600.00	f
+109	471	5.00	f
 109	42	100.00	f
-109	99	100.00	f
-109	122	100.00	f
-110	85	100.00	f
-112	45	100.00	f
-112	143	100.00	f
-112	133	100.00	f
+109	99	50.00	f
+109	122	400.00	f
+110	85	250.00	f
+112	45	300.00	f
+112	143	200.00	f
+112	133	50.00	f
 113	143	100.00	f
-114	656	100.00	f
-114	391	100.00	f
-115	327	100.00	f
-117	6	120.00	f
-117	259	100.00	f
-117	381	100.00	f
-118	763	100.00	f
-118	69	100.00	f
+114	656	40.00	f
+114	391	3.00	f
+115	327	15.00	f
+117	6	15.00	f
+117	259	3.00	f
+117	381	15.00	f
+118	763	2.00	f
+118	69	20.00	f
 119	26	20.00	f
 361	34	\N	t
 362	83	\N	t
@@ -6312,11 +7149,11 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 373	20	\N	t
 376	89	\N	t
 377	34	\N	t
-119	284	100.00	f
+119	284	1.00	f
 120	131	80.00	f
-120	548	30.00	f
+120	548	200.00	f
 121	41	80.00	f
-121	328	100.00	f
+121	328	20.00	f
 369	6	500.00	f
 369	28	10.00	f
 369	9	100.00	f
@@ -6337,28 +7174,28 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 371	14	55.08	f
 371	24	67.00	f
 371	2	\N	t
-122	73	100.00	f
+122	73	5.00	f
 122	576	80.00	f
-122	562	100.00	f
-123	125	100.00	f
-124	6	120.00	f
-124	147	100.00	f
-125	675	100.00	f
+122	562	600.00	f
+123	125	50.00	f
+124	6	30.00	f
+124	147	1.00	f
+125	675	400.00	f
 125	573	100.00	f
 125	41	80.00	f
 125	132	100.00	f
-126	244	100.00	f
-128	54	100.00	f
+126	244	1500.00	f
+128	54	250.00	f
 373	129	250.00	f
 373	105	500.00	f
 373	3	12.00	f
 373	2	\N	t
 128	255	20.00	f
-128	180	100.00	f
-129	73	100.00	f
+128	180	15.00	f
+129	73	3.00	f
 129	255	20.00	f
 130	131	80.00	f
-130	270	100.00	f
+130	270	200.00	f
 375	624	700.00	f
 375	7	80.00	f
 375	11	200.00	f
@@ -6416,19 +7253,19 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 394	141	\N	t
 394	27	\N	t
 394	63	\N	t
-130	650	100.00	f
-133	644	100.00	f
-133	73	100.00	f
-133	173	100.00	f
-134	825	100.00	f
+130	650	1.00	f
+133	644	420.00	f
+133	73	6.00	f
+133	173	20.00	f
+134	825	10.00	f
 134	49	100.00	f
-134	438	250.00	f
-135	42	100.00	f
-137	114	100.00	f
-137	6	120.00	f
-138	48	30.00	f
+134	438	1000.00	f
+135	42	250.00	f
+137	114	10.00	f
+137	6	25.00	f
+138	48	60.00	f
 138	118	100.00	f
-138	49	100.00	f
+138	49	200.00	f
 383	6	400.00	f
 383	12	257.50	f
 383	28	7.00	f
@@ -6445,14 +7282,14 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 384	195	150.00	f
 384	25	32.00	f
 384	4	55.20	f
-139	792	100.00	f
+139	792	750.00	f
 139	575	100.00	f
-139	75	100.00	f
-139	125	100.00	f
-140	49	100.00	f
-140	53	100.00	f
-140	315	100.00	f
-140	327	100.00	f
+139	75	30.00	f
+139	125	20.00	f
+140	49	350.00	f
+140	53	15.00	f
+140	315	40.00	f
+140	327	15.00	f
 142	59	100.00	f
 386	236	1200.00	f
 386	454	500.00	f
@@ -6473,17 +7310,17 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 388	39	40.00	f
 388	11	200.00	f
 388	2	\N	t
-143	6	120.00	f
-144	785	100.00	f
+143	6	20.00	f
+144	785	350.00	f
 145	19	100.00	f
-145	407	100.00	f
-145	201	100.00	f
-146	114	100.00	f
-149	6	120.00	f
-149	32	50.00	f
+145	407	30.00	f
+145	201	30.00	f
+146	114	3.00	f
+149	6	20.00	f
+149	32	120.00	f
 150	206	100.00	f
 151	206	100.00	f
-152	115	100.00	f
+152	115	500.00	f
 154	68	250.00	f
 390	686	400.00	f
 390	28	5.00	f
@@ -6496,35 +7333,35 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 154	91	100.00	f
 155	41	80.00	f
 155	177	100.00	f
-156	41	80.00	f
-158	120	100.00	f
+156	41	200.00	f
+158	120	40.00	f
 159	57	150.00	f
 159	193	30.00	f
-160	784	100.00	f
-161	57	150.00	f
-162	99	100.00	f
-162	153	100.00	f
+160	784	250.00	f
+161	57	500.00	f
+162	99	20.00	f
+162	153	15.00	f
 163	153	100.00	f
-163	99	100.00	f
+163	99	30.00	f
 392	19	600.00	f
 392	9	150.00	f
 392	26	60.00	f
 392	12	154.50	f
 392	86	2.00	f
 392	191	1.05	f
-164	353	100.00	f
-164	241	100.00	f
-164	668	100.00	f
+164	353	300.00	f
+164	241	400.00	f
+164	668	8.00	f
 164	153	100.00	f
 165	118	100.00	f
-166	32	50.00	f
+166	32	150.00	f
 166	199	150.00	f
-166	171	100.00	f
-167	128	100.00	f
-167	54	100.00	f
-167	32	50.00	f
-171	128	100.00	f
-171	59	100.00	f
+166	171	2.00	f
+167	128	1000.00	f
+167	54	300.00	f
+167	32	150.00	f
+171	128	800.00	f
+171	59	40.00	f
 394	161	1500.00	f
 394	394	300.00	f
 394	174	100.00	f
@@ -6615,7 +7452,7 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 407	47	\N	t
 408	124	\N	t
 171	42	100.00	f
-172	32	50.00	f
+172	32	150.00	f
 406	233	300.00	f
 406	29	600.00	f
 406	19	150.00	f
@@ -6644,41 +7481,41 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 408	1	220.00	f
 408	25	32.00	f
 408	26	100.00	f
-174	101	100.00	f
+174	101	40.00	f
 174	50	30.00	f
 175	50	30.00	f
 176	33	200.00	f
 176	516	100.00	f
-176	101	100.00	f
-176	170	100.00	f
+176	101	40.00	f
+176	170	3.00	f
 176	48	30.00	f
 176	50	30.00	f
-176	106	100.00	f
+176	106	15.00	f
 176	94	100.00	f
 177	383	30.00	f
 177	54	100.00	f
 177	41	80.00	f
 178	130	20.00	f
 178	54	100.00	f
-178	168	100.00	f
+178	168	5.00	f
 179	782	120.00	f
 179	642	100.00	f
 179	346	100.00	f
-179	380	100.00	f
+179	380	20.00	f
 179	96	250.00	f
-179	53	100.00	f
-179	435	100.00	f
-180	48	30.00	f
+179	53	15.00	f
+179	435	300.00	f
+180	48	120.00	f
 180	139	100.00	f
-180	724	100.00	f
-180	157	100.00	f
-181	301	100.00	f
+180	724	3.00	f
+180	157	2.00	f
+181	301	45.00	f
 181	139	100.00	f
-181	157	100.00	f
+181	157	3.00	f
 182	41	80.00	f
-184	73	100.00	f
-184	115	100.00	f
-185	778	100.00	f
+184	73	2.00	f
+184	115	500.00	f
+185	778	1200.00	f
 412	62	200.00	f
 412	81	80.00	f
 423	5	600.00	f
@@ -6710,19 +7547,19 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 426	20	\N	t
 427	27	\N	t
 427	92	\N	t
-185	345	100.00	f
+185	345	20.00	f
 186	57	150.00	f
-186	768	100.00	f
-187	460	100.00	f
-187	66	100.00	f
+186	768	30.00	f
+187	460	40.00	f
+187	66	15.00	f
 187	96	250.00	f
 188	110	100.00	f
 188	404	100.00	f
-188	61	100.00	f
-191	753	100.00	f
+188	61	20.00	f
+191	753	5.00	f
 192	42	100.00	f
 192	59	100.00	f
-192	688	100.00	f
+192	688	30.00	f
 194	320	100.00	f
 418	6	300.00	f
 418	719	180.00	f
@@ -6733,14 +7570,14 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 418	38	100.00	f
 194	3	10.00	f
 194	49	100.00	f
-195	61	100.00	f
-195	76	100.00	f
-196	754	100.00	f
-196	6	120.00	f
+195	61	10.00	f
+195	76	500.00	f
+196	754	15.00	f
+196	6	20.00	f
 197	49	100.00	f
-198	104	100.00	f
+198	104	10.00	f
 198	465	100.00	f
-198	2	100.00	f
+198	2	2.00	f
 420	600	4132.00	f
 420	824	400.00	f
 420	9	60.00	f
@@ -6868,10 +7705,10 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 439	22	\N	t
 442	30	\N	t
 199	68	250.00	f
-199	6	120.00	f
+199	6	25.00	f
 199	190	30.00	f
 199	221	120.00	f
-200	53	100.00	f
+200	53	12.00	f
 435	129	400.00	f
 435	185	500.00	f
 435	9	250.00	f
@@ -6920,12 +7757,12 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 440	23	119.00	f
 440	132	100.00	f
 440	248	100.00	f
-200	159	100.00	f
-200	85	100.00	f
+200	159	5.00	f
+200	85	300.00	f
 200	505	100.00	f
 200	583	100.00	f
-201	524	100.00	f
-201	103	100.00	f
+201	524	20.00	f
+201	103	3.00	f
 202	68	250.00	f
 202	96	250.00	f
 442	45	900.00	f
@@ -6937,23 +7774,23 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 442	4	36.80	f
 442	2	\N	t
 202	190	30.00	f
-202	382	100.00	f
-203	209	100.00	f
+202	382	10.00	f
+203	209	1.00	f
 203	96	250.00	f
 204	369	30.00	f
-204	115	100.00	f
-205	115	100.00	f
+204	115	400.00	f
+205	115	400.00	f
 205	369	30.00	f
-208	114	100.00	f
-210	54	100.00	f
+208	114	3.00	f
+210	54	250.00	f
 211	3	10.00	f
-211	288	100.00	f
-212	726	100.00	f
-213	77	100.00	f
+211	288	8.00	f
+212	726	4.00	f
+213	77	400.00	f
 214	175	100.00	f
-214	54	100.00	f
+214	54	250.00	f
 214	670	100.00	f
-214	218	100.00	f
+214	218	8.00	f
 444	102	1200.00	f
 444	46	400.00	f
 444	1	110.00	f
@@ -7005,30 +7842,30 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 451	38	60.00	f
 461	30	\N	t
 214	193	30.00	f
-220	142	100.00	f
+220	142	1.00	f
 222	331	20.00	f
-222	280	100.00	f
-224	316	100.00	f
+222	280	2.00	f
+224	316	30.00	f
 224	50	30.00	f
-224	819	100.00	f
+224	819	6.00	f
 224	48	30.00	f
-225	106	100.00	f
-226	506	100.00	f
+225	106	20.00	f
+226	506	500.00	f
 226	41	80.00	f
-228	138	100.00	f
-230	293	100.00	f
-232	261	100.00	f
-232	342	100.00	f
-233	261	100.00	f
+228	138	500.00	f
+230	293	400.00	f
+232	261	20.00	f
+232	342	15.00	f
+233	261	20.00	f
 233	94	100.00	f
 233	91	100.00	f
-234	148	100.00	f
-234	113	100.00	f
-235	148	100.00	f
+234	148	400.00	f
+234	113	400.00	f
+235	148	1000.00	f
 235	41	80.00	f
 235	61	100.00	f
-237	33	200.00	f
-237	66	100.00	f
+237	33	400.00	f
+237	66	15.00	f
 455	6	600.00	f
 455	12	309.00	f
 455	28	10.00	f
@@ -7068,15 +7905,15 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 458	7	50.00	f
 458	15	58.00	f
 458	18	30.00	f
-238	77	100.00	f
+238	77	800.00	f
 242	42	100.00	f
-242	6	120.00	f
-242	395	100.00	f
-246	137	100.00	f
-246	420	100.00	f
+242	6	25.00	f
+242	395	3.00	f
+246	137	15.00	f
+246	420	10.00	f
 248	370	30.00	f
-248	253	100.00	f
-249	280	100.00	f
+248	253	300.00	f
+249	280	5.00	f
 460	15	174.00	f
 460	3	18.00	f
 460	18	40.00	f
@@ -7106,25 +7943,25 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 463	7	40.00	f
 463	359	150.00	f
 463	2	6.09	f
-254	115	100.00	f
-255	115	100.00	f
-255	66	100.00	f
-256	160	250.00	f
-257	66	100.00	f
-259	344	100.00	f
+254	115	500.00	f
+255	115	600.00	f
+255	66	15.00	f
+256	160	10.00	f
+257	66	15.00	f
+259	344	30.00	f
 466	30	\N	t
 468	134	\N	t
 472	47	\N	t
 474	47	\N	t
 478	36	\N	t
-259	208	100.00	f
-259	61	100.00	f
+259	208	6.00	f
+259	61	30.00	f
 261	33	200.00	f
 262	367	50.00	f
 262	122	100.00	f
-263	33	200.00	f
-263	148	100.00	f
-263	156	100.00	f
+263	33	800.00	f
+263	148	400.00	f
+263	156	5.00	f
 466	102	1200.00	f
 466	707	800.00	f
 466	44	500.00	f
@@ -7162,14 +7999,14 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 470	111	80.00	f
 470	86	2.00	f
 470	198	2.60	f
-264	115	100.00	f
-265	156	100.00	f
+264	115	400.00	f
+265	156	15.00	f
 265	91	100.00	f
 265	94	100.00	f
-266	113	100.00	f
-267	99	100.00	f
-269	226	100.00	f
-270	32	50.00	f
+266	113	400.00	f
+267	99	25.00	f
+269	226	5.00	f
+270	32	300.00	f
 472	53	300.00	f
 472	9	700.00	f
 472	11	1500.00	f
@@ -7178,13 +8015,13 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 472	314	150.00	f
 472	59	100.00	f
 270	76	100.00	f
-271	77	100.00	f
+271	77	800.00	f
 276	41	80.00	f
-276	169	100.00	f
-282	343	100.00	f
+276	169	3.00	f
+282	343	10.00	f
 282	57	150.00	f
 283	94	100.00	f
-283	343	100.00	f
+283	343	10.00	f
 284	57	150.00	f
 474	29	1200.00	f
 474	60	600.00	f
@@ -7201,26 +8038,26 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 475	13	50.00	f
 475	15	58.00	f
 475	2	\N	t
-286	775	100.00	f
+286	775	1400.00	f
 286	118	100.00	f
 286	49	100.00	f
 286	188	250.00	f
-290	76	100.00	f
-290	246	100.00	f
-290	385	100.00	f
-290	749	100.00	f
-290	286	100.00	f
-290	839	100.00	f
-290	142	100.00	f
-291	215	100.00	f
-291	238	100.00	f
-291	169	100.00	f
-292	384	100.00	f
+290	76	250.00	f
+290	246	10.00	f
+290	385	6.00	f
+290	749	4.00	f
+290	286	1.00	f
+290	839	3.00	f
+290	142	1.00	f
+291	215	3.00	f
+291	238	4.00	f
+291	169	3.00	f
+292	384	250.00	f
 292	131	80.00	f
-292	223	100.00	f
-292	183	100.00	f
-294	143	100.00	f
-294	133	100.00	f
+292	223	5.00	f
+292	183	300.00	f
+294	143	400.00	f
+294	133	45.00	f
 478	6	600.00	f
 478	11	280.00	f
 478	4	110.40	f
@@ -7242,25 +8079,25 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 480	9	10.50	f
 480	4	36.80	f
 480	2	6.09	f
-294	268	100.00	f
+294	268	45.00	f
 296	648	100.00	f
-296	342	100.00	f
+296	342	40.00	f
 296	652	100.00	f
-296	142	100.00	f
+296	142	1.00	f
 296	398	100.00	f
 298	781	120.00	f
-298	77	100.00	f
-298	639	100.00	f
-299	77	100.00	f
-299	218	100.00	f
+298	77	400.00	f
+298	639	30.00	f
+299	77	500.00	f
+299	218	5.00	f
 300	528	100.00	f
-301	208	100.00	f
-301	259	100.00	f
-301	119	100.00	f
-302	33	200.00	f
+301	208	8.00	f
+301	259	3.00	f
+301	119	8.00	f
+302	33	800.00	f
 302	533	100.00	f
 302	50	30.00	f
-302	106	100.00	f
+302	106	20.00	f
 302	48	30.00	f
 483	19	400.00	f
 483	9	120.00	f
@@ -7294,24 +8131,24 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 494	58	\N	t
 501	92	\N	t
 303	640	100.00	f
-303	33	200.00	f
-303	120	100.00	f
-303	106	100.00	f
+303	33	800.00	f
+303	120	30.00	f
+303	106	30.00	f
 303	50	30.00	f
 305	118	100.00	f
-306	32	50.00	f
-306	61	100.00	f
-307	32	50.00	f
-307	75	100.00	f
-307	6	120.00	f
+306	32	180.00	f
+306	61	30.00	f
+307	32	200.00	f
+307	75	15.00	f
+307	6	15.00	f
 307	68	250.00	f
-308	706	100.00	f
-308	379	100.00	f
-308	151	100.00	f
-309	85	100.00	f
+308	706	2000.00	f
+308	379	500.00	f
+308	151	5.00	f
+309	85	800.00	f
 309	315	100.00	f
-309	2	100.00	f
-310	208	100.00	f
+309	2	1.00	f
+310	208	30.00	f
 310	150	100.00	f
 489	6	500.00	f
 489	11	120.00	f
@@ -7326,16 +8163,16 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 491	88	600.00	f
 491	7	300.00	f
 491	9	400.00	f
-310	463	100.00	f
-310	281	100.00	f
-310	310	100.00	f
+310	463	10.00	f
+310	281	10.00	f
+310	310	4.00	f
 310	75	100.00	f
 310	382	100.00	f
 310	850	100.00	f
-310	293	100.00	f
-311	85	100.00	f
-311	2	100.00	f
-312	50	30.00	f
+310	293	1000.00	f
+311	85	250.00	f
+311	2	1.00	f
+312	50	90.00	f
 493	6	600.00	f
 493	12	288.40	f
 493	28	10.00	f
@@ -7352,21 +8189,21 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 494	3	12.00	f
 494	13	40.00	f
 312	48	30.00	f
-312	103	100.00	f
+312	103	2.00	f
 313	682	100.00	f
 313	93	100.00	f
 313	737	30.00	f
 314	525	100.00	f
 314	130	20.00	f
-314	133	100.00	f
-314	387	100.00	f
-315	823	100.00	f
-315	526	100.00	f
-315	387	100.00	f
-315	247	100.00	f
+314	133	45.00	f
+314	387	40.00	f
+315	823	2000.00	f
+315	526	40.00	f
+315	387	20.00	f
+315	247	40.00	f
 316	68	250.00	f
 316	296	100.00	f
-316	459	100.00	f
+316	459	30.00	f
 497	13	50.00	f
 497	39	40.00	f
 497	184	30.00	f
@@ -7385,17 +8222,17 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 499	12	721.00	f
 499	7	40.00	f
 499	2	6.09	f
-317	73	100.00	f
-317	104	100.00	f
-317	85	100.00	f
-317	2	100.00	f
-318	138	100.00	f
-318	595	100.00	f
-318	209	100.00	f
-319	32	50.00	f
-319	104	100.00	f
-319	2	100.00	f
-320	33	200.00	f
+317	73	5.00	f
+317	104	5.00	f
+317	85	250.00	f
+317	2	2.00	f
+318	138	250.00	f
+318	595	3.00	f
+318	209	2.00	f
+319	32	150.00	f
+319	104	5.00	f
+319	2	1.00	f
+320	33	400.00	f
 501	6	500.00	f
 501	11	280.00	f
 501	10	600.00	f
@@ -7408,254 +8245,423 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 322	110	100.00	f
 323	341	100.00	f
 323	41	80.00	f
-323	122	100.00	f
+323	122	300.00	f
 324	466	100.00	f
-327	473	100.00	f
-327	125	100.00	f
+327	473	400.00	f
+327	125	20.00	f
 328	313	100.00	f
 328	48	30.00	f
-328	120	100.00	f
-328	106	100.00	f
-332	392	100.00	f
-333	392	100.00	f
-333	492	100.00	f
-333	125	100.00	f
-336	175	100.00	f
-336	77	100.00	f
-336	219	100.00	f
+328	120	20.00	f
+328	106	30.00	f
+332	392	5.00	f
+333	392	8.00	f
+333	492	5.00	f
+333	125	30.00	f
+336	175	250.00	f
+336	77	500.00	f
+336	219	45.00	f
 337	193	30.00	f
-337	219	100.00	f
-338	163	100.00	f
-338	189	100.00	f
-339	226	100.00	f
+337	219	30.00	f
+338	163	4.00	f
+338	189	15.00	f
+339	226	8.00	f
 339	189	100.00	f
-339	61	100.00	f
+339	61	15.00	f
 342	180	100.00	f
-343	104	100.00	f
-343	319	100.00	f
-343	2	100.00	f
+343	104	10.00	f
+343	319	15.00	f
+343	2	1.00	f
 344	131	80.00	f
-344	114	100.00	f
-344	400	100.00	f
-346	259	100.00	f
-347	2	100.00	f
-348	151	100.00	f
-349	32	50.00	f
-349	6	120.00	f
-349	61	100.00	f
-349	151	100.00	f
+344	114	3.00	f
+344	400	250.00	f
+346	259	5.00	f
+347	2	1.00	f
+348	151	5.00	f
+349	32	250.00	f
+349	6	30.00	f
+349	61	30.00	f
+349	151	2.00	f
 351	42	100.00	f
-351	53	100.00	f
-351	2	100.00	f
-353	85	100.00	f
-353	53	100.00	f
-353	817	100.00	f
-353	2	100.00	f
+351	53	10.00	f
+351	2	1.00	f
+353	85	400.00	f
+353	53	10.00	f
+353	817	30.00	f
+353	2	1.00	f
 354	131	80.00	f
-355	68	250.00	f
+355	68	800.00	f
 356	42	100.00	f
-361	32	50.00	f
-361	2	100.00	f
+361	32	200.00	f
+361	2	3.00	f
 362	33	200.00	f
-362	168	100.00	f
-362	48	30.00	f
-362	251	100.00	f
-362	120	100.00	f
-362	106	100.00	f
+362	168	5.00	f
+362	48	100.00	f
+362	251	10.00	f
+362	120	20.00	f
+362	106	30.00	f
 362	54	100.00	f
-363	695	100.00	f
-363	97	100.00	f
-364	364	100.00	f
+363	695	20.00	f
+363	97	30.00	f
+364	364	15.00	f
 364	57	150.00	f
-365	318	100.00	f
+365	318	350.00	f
 366	483	100.00	f
-367	629	100.00	f
-367	723	100.00	f
-367	845	100.00	f
-370	361	100.00	f
-370	96	250.00	f
+367	629	3.00	f
+367	723	15.00	f
+367	845	400.00	f
+370	361	330.00	f
+370	96	600.00	f
 370	221	120.00	f
-371	148	100.00	f
-373	33	200.00	f
-373	66	100.00	f
-373	209	100.00	f
+371	148	800.00	f
+373	33	400.00	f
+373	66	15.00	f
+373	209	2.00	f
 375	379	100.00	f
 376	199	150.00	f
-376	163	100.00	f
+376	163	2.00	f
 376	68	250.00	f
-377	599	100.00	f
+377	599	400.00	f
 378	131	80.00	f
 378	42	100.00	f
-383	223	100.00	f
-383	2	100.00	f
-384	6	120.00	f
-386	42	100.00	f
+383	223	5.00	f
+383	2	2.00	f
+384	6	30.00	f
+386	42	300.00	f
 386	61	100.00	f
-386	114	100.00	f
-387	73	100.00	f
-387	367	50.00	f
-387	2	100.00	f
-388	429	100.00	f
+386	114	3.00	f
+387	73	4.00	f
+387	367	300.00	f
+387	2	1.00	f
+388	429	800.00	f
 388	255	20.00	f
-390	33	200.00	f
+390	33	400.00	f
 390	41	80.00	f
-390	328	100.00	f
+390	328	15.00	f
 392	417	100.00	f
-392	2	100.00	f
-394	262	100.00	f
-395	638	100.00	f
+392	2	2.00	f
+394	262	8.00	f
+395	638	20.00	f
 395	258	120.00	f
-395	560	100.00	f
+395	560	500.00	f
 397	33	200.00	f
-398	110	100.00	f
-398	479	100.00	f
-398	169	100.00	f
-399	2	100.00	f
-400	148	100.00	f
-400	348	100.00	f
-400	413	100.00	f
-400	122	100.00	f
-401	148	100.00	f
-401	113	100.00	f
-401	156	100.00	f
-401	122	100.00	f
-402	49	100.00	f
-402	242	100.00	f
-403	368	100.00	f
-403	434	100.00	f
-403	122	100.00	f
+398	110	800.00	f
+398	479	25.00	f
+398	169	3.00	f
+399	2	1.00	f
+400	148	250.00	f
+400	348	400.00	f
+400	413	300.00	f
+400	122	400.00	f
+401	148	500.00	f
+401	113	600.00	f
+401	156	5.00	f
+401	122	400.00	f
+402	49	250.00	f
+402	242	600.00	f
+403	368	320.00	f
+403	434	320.00	f
+403	122	400.00	f
 407	349	100.00	f
-407	2	100.00	f
-408	137	100.00	f
-412	323	100.00	f
+407	2	3.00	f
+408	137	12.00	f
+412	323	600.00	f
 412	193	30.00	f
-412	647	100.00	f
-412	175	100.00	f
-413	77	100.00	f
-413	53	100.00	f
-414	489	100.00	f
-414	73	100.00	f
-414	2	100.00	f
+412	647	8.00	f
+412	175	300.00	f
+413	77	1000.00	f
+413	53	20.00	f
+414	489	45.00	f
+414	73	5.00	f
+414	2	1.00	f
 418	510	100.00	f
-418	61	100.00	f
-418	2	100.00	f
-420	764	100.00	f
+418	61	5.00	f
+418	2	1.00	f
+420	764	1.00	f
 420	42	100.00	f
-421	104	100.00	f
-421	73	100.00	f
-422	33	200.00	f
-422	48	30.00	f
-422	101	100.00	f
-422	251	100.00	f
-422	626	100.00	f
-423	110	100.00	f
+421	104	12.00	f
+421	73	5.00	f
+422	33	400.00	f
+422	48	100.00	f
+422	101	40.00	f
+422	251	10.00	f
+422	626	20.00	f
+423	110	320.00	f
 423	33	200.00	f
-423	168	100.00	f
-423	289	100.00	f
+423	168	10.00	f
+423	289	1.00	f
 424	139	100.00	f
-424	157	100.00	f
-425	2	100.00	f
-426	48	30.00	f
+424	157	3.00	f
+425	2	2.00	f
+426	48	100.00	f
 426	50	30.00	f
-427	33	200.00	f
+427	33	400.00	f
 427	50	30.00	f
-428	33	200.00	f
-428	101	100.00	f
-428	170	100.00	f
+428	33	400.00	f
+428	101	40.00	f
+428	170	3.00	f
 428	54	100.00	f
-429	101	100.00	f
-429	665	100.00	f
+429	101	40.00	f
+429	665	30.00	f
 429	50	30.00	f
-429	106	100.00	f
-430	104	100.00	f
+429	106	15.00	f
+430	104	10.00	f
 431	118	100.00	f
 431	61	100.00	f
-432	261	100.00	f
-432	651	100.00	f
-432	156	100.00	f
-432	612	100.00	f
-432	767	100.00	f
-433	348	100.00	f
-433	32	50.00	f
-433	2	100.00	f
-435	33	200.00	f
-435	318	100.00	f
-435	142	100.00	f
-435	2	100.00	f
-436	104	100.00	f
-436	66	100.00	f
-437	33	200.00	f
-437	150	100.00	f
+432	261	20.00	f
+432	651	5.00	f
+432	156	10.00	f
+432	612	1.00	f
+432	767	600.00	f
+433	348	1000.00	f
+433	32	150.00	f
+433	2	1.00	f
+435	33	400.00	f
+435	318	350.00	f
+435	142	1.00	f
+435	2	1.00	f
+436	104	15.00	f
+436	66	10.00	f
+437	33	400.00	f
+437	150	40.00	f
 437	484	100.00	f
-437	66	100.00	f
-437	248	100.00	f
-438	364	100.00	f
+437	66	15.00	f
+437	248	30.00	f
+438	364	20.00	f
 438	99	100.00	f
 438	94	100.00	f
 438	716	100.00	f
-438	188	250.00	f
+438	188	1000.00	f
 439	131	80.00	f
-439	296	100.00	f
+439	296	250.00	f
 439	190	30.00	f
-440	75	100.00	f
-442	41	80.00	f
-442	227	100.00	f
+440	75	20.00	f
+442	41	200.00	f
+442	227	300.00	f
 442	248	100.00	f
-442	75	100.00	f
-445	33	200.00	f
-446	32	50.00	f
-446	171	100.00	f
-447	32	50.00	f
-447	2	100.00	f
-448	32	50.00	f
-448	151	100.00	f
-450	705	100.00	f
-450	171	100.00	f
-450	147	100.00	f
+442	75	15.00	f
+445	33	400.00	f
+446	32	250.00	f
+446	171	3.00	f
+447	32	200.00	f
+447	2	2.00	f
+448	32	150.00	f
+448	151	3.00	f
+450	705	500.00	f
+450	171	5.00	f
+450	147	2.00	f
 451	42	100.00	f
-451	2	100.00	f
-456	32	50.00	f
-458	32	50.00	f
-458	6	120.00	f
-460	813	100.00	f
+451	2	1.00	f
+456	32	150.00	f
+458	32	200.00	f
+458	6	30.00	f
+460	813	1200.00	f
 460	49	100.00	f
-462	113	100.00	f
-462	658	100.00	f
-463	358	100.00	f
-466	159	100.00	f
+462	113	400.00	f
+462	658	400.00	f
+463	358	600.00	f
+466	159	45.00	f
 466	94	100.00	f
 467	411	100.00	f
-467	182	100.00	f
-468	182	100.00	f
-470	563	100.00	f
-470	147	100.00	f
+467	182	10.00	f
+468	182	5.00	f
+470	563	600.00	f
+470	147	4.00	f
 470	76	100.00	f
 472	267	100.00	f
-474	76	100.00	f
-474	366	100.00	f
-474	499	100.00	f
-475	309	100.00	f
-475	366	100.00	f
-475	204	100.00	f
-478	289	100.00	f
-479	223	100.00	f
-479	189	100.00	f
-479	2	100.00	f
-483	33	200.00	f
-483	2	100.00	f
-484	333	20.00	f
-484	160	250.00	f
-489	226	100.00	f
-489	223	100.00	f
-489	409	100.00	f
-489	2	100.00	f
-490	6	120.00	f
-491	73	100.00	f
-491	2	100.00	f
-494	204	100.00	f
-497	204	100.00	f
+474	76	250.00	f
+474	366	12.00	f
+474	499	3.00	f
+475	309	30.00	f
+475	366	10.00	f
+475	204	500.00	f
+478	289	2.00	f
+479	223	5.00	f
+479	189	45.00	f
+479	2	3.00	f
+483	33	400.00	f
+483	2	2.00	f
+484	333	150.00	f
+484	160	10.00	f
+489	226	5.00	f
+489	223	5.00	f
+489	409	30.00	f
+489	2	2.00	f
+490	6	15.00	f
+491	73	5.00	f
+491	2	2.00	f
+494	204	500.00	f
+497	204	500.00	f
 499	609	120.00	f
-501	494	10.00	f
+501	494	200.00	f
+5	4	30.00	f
+6	76	250.00	f
+11	116	400.00	f
+11	294	1000.00	f
+13	46	500.00	f
+13	89	\N	t
+13	373	100.00	f
+14	23	120.00	f
+15	24	\N	t
+15	30	\N	t
+18	1	110.00	f
+18	13	\N	t
+19	654	150.00	f
+23	4	40.00	f
+27	23	120.00	f
+28	4	80.00	f
+29	416	20.00	f
+35	373	250.00	f
+40	26	60.00	f
+40	90	\N	t
+43	294	1000.00	f
+47	13	\N	t
+47	23	240.00	f
+47	386	\N	t
+53	32	\N	t
+53	91	100.00	f
+53	99	30.00	f
+56	35	1000.00	f
+56	97	60.00	f
+57	4	80.00	f
+58	4	150.00	f
+60	97	60.00	f
+62	4	80.00	f
+64	97	50.00	f
+66	54	\N	t
+68	61	120.00	f
+70	4	30.00	f
+72	22	\N	t
+72	35	1000.00	f
+75	7	80.00	f
+82	16	700.00	f
+82	19	700.00	f
+89	4	80.00	f
+92	4	60.00	f
+92	359	300.00	f
+93	24	\N	t
+93	44	\N	t
+93	97	15.00	f
+93	670	\N	t
+94	13	\N	t
+94	15	\N	t
+94	63	\N	t
+95	15	\N	t
+96	24	\N	t
+96	54	\N	t
+96	176	\N	t
+96	294	1000.00	f
+97	26	60.00	f
+100	49	100.00	f
+103	23	120.00	f
+104	89	\N	t
+107	1	\N	t
+107	8	\N	t
+107	44	\N	t
+112	4	60.00	f
+113	503	\N	t
+114	23	120.00	f
+115	220	500.00	f
+117	4	80.00	f
+117	294	300.00	f
+118	800	500.00	f
+119	10	300.00	f
+119	121	200.00	f
+119	393	300.00	f
+120	204	400.00	f
+122	495	\N	t
+125	15	\N	t
+125	99	\N	t
+126	395	\N	t
+128	23	240.00	f
+132	29	900.00	f
+132	294	1000.00	f
+138	22	\N	t
+138	52	\N	t
+139	22	\N	t
+139	52	\N	t
+140	89	\N	t
+143	76	1000.00	f
+147	4	100.00	f
+154	156	\N	t
+154	341	30.00	f
+157	122	\N	t
+157	156	\N	t
+162	4	40.00	f
+162	220	120.00	f
+174	186	600.00	f
+176	121	100.00	f
+186	186	1200.00	f
+193	165	500.00	f
+202	4	100.00	f
+207	4	40.00	f
+211	19	800.00	f
+222	186	800.00	f
+225	50	30.00	f
+228	739	\N	t
+230	312	\N	t
+234	19	\N	t
+234	122	\N	t
+237	121	500.00	f
+254	121	500.00	f
+255	4	80.00	f
+256	186	1000.00	f
+263	352	600.00	f
+265	3	15.00	f
+265	411	150.00	f
+267	22	\N	t
+267	115	\N	t
+268	4	50.00	f
+268	360	350.00	f
+269	7	100.00	f
+269	360	300.00	f
+274	359	250.00	f
+276	274	200.00	f
+283	186	1000.00	f
+284	35	800.00	f
+292	310	\N	t
+302	4	30.00	f
+311	748	200.00	f
+312	308	150.00	f
+312	380	30.00	f
+321	4	120.00	f
+324	21	1200.00	f
+333	493	2500.00	f
+338	220	300.00	f
+339	4	100.00	f
+342	237	800.00	f
+355	4	80.00	f
+356	44	400.00	f
+363	352	100.00	f
+367	179	200.00	f
+369	4	100.00	f
+371	4	60.00	f
+383	4	80.00	f
+383	688	50.00	f
+387	4	60.00	f
+392	4	100.00	f
+394	3	30.00	f
+395	3	15.00	f
+395	17	20.00	f
+397	4	80.00	f
+398	3	15.00	f
+398	17	20.00	f
+406	76	300.00	f
+420	76	60.00	f
+421	489	200.00	f
+428	665	20.00	f
+430	4	80.00	f
+433	4	60.00	f
+439	794	100.00	f
+440	4	100.00	f
+440	30	\N	t
+444	4	80.00	f
+463	32	\N	t
+469	7	100.00	f
+479	4	120.00	f
+489	4	200.00	f
+497	76	1500.00	f
+498	4	80.00	f
+498	294	100.00	f
 \.
 
 
@@ -10338,8 +11344,542 @@ SELECT pg_catalog.setval('public.users_id_seq', 2, true);
 
 
 --
--- PostgreSQL database dump complete
+-- Name: allergens allergens_code_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-\unrestrict LZWAAwHY9R11wgpYsH9lWfNR3mcYbrMbMjc774V50nDqPiG1EBdZXCQ8lAzhtHm
+ALTER TABLE ONLY public.allergens
+    ADD CONSTRAINT allergens_code_key UNIQUE (code);
+
+
+--
+-- Name: allergens allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.allergens
+    ADD CONSTRAINT allergens_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: categories categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.categories
+    ADD CONSTRAINT categories_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: cooking_methods cooking_methods_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cooking_methods
+    ADD CONSTRAINT cooking_methods_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: diet_excluded_allergens diet_excluded_allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.diet_excluded_allergens
+    ADD CONSTRAINT diet_excluded_allergens_pkey PRIMARY KEY (diet_id, allergen_id);
+
+
+--
+-- Name: diet_excluded_categories diet_excluded_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.diet_excluded_categories
+    ADD CONSTRAINT diet_excluded_categories_pkey PRIMARY KEY (diet_id, category_id);
+
+
+--
+-- Name: diet_excluded_methods diet_excluded_methods_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.diet_excluded_methods
+    ADD CONSTRAINT diet_excluded_methods_pkey PRIMARY KEY (diet_id, method_id);
+
+
+--
+-- Name: diets diets_id_kind_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.diets
+    ADD CONSTRAINT diets_id_kind_key UNIQUE (id, kind);
+
+
+--
+-- Name: diets diets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.diets
+    ADD CONSTRAINT diets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: favorite_ingredients favorite_ingredients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.favorite_ingredients
+    ADD CONSTRAINT favorite_ingredients_pkey PRIMARY KEY (user_id, ingredient_id);
+
+
+--
+-- Name: favorite_recipes favorite_recipes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.favorite_recipes
+    ADD CONSTRAINT favorite_recipes_pkey PRIMARY KEY (user_id, recipe_id);
+
+
+--
+-- Name: ingredient_aliases ingredient_aliases_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingredient_aliases
+    ADD CONSTRAINT ingredient_aliases_pkey PRIMARY KEY (ingredient_id, alias);
+
+
+--
+-- Name: ingredient_allergens ingredient_allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingredient_allergens
+    ADD CONSTRAINT ingredient_allergens_pkey PRIMARY KEY (ingredient_id, allergen_id);
+
+
+--
+-- Name: ingredient_categories ingredient_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingredient_categories
+    ADD CONSTRAINT ingredient_categories_pkey PRIMARY KEY (ingredient_id, category_id);
+
+
+--
+-- Name: ingredients ingredients_code_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingredients
+    ADD CONSTRAINT ingredients_code_key UNIQUE (code);
+
+
+--
+-- Name: ingredients ingredients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingredients
+    ADD CONSTRAINT ingredients_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: recipe_cooking_methods recipe_cooking_methods_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_cooking_methods
+    ADD CONSTRAINT recipe_cooking_methods_pkey PRIMARY KEY (recipe_id, method_id);
+
+
+--
+-- Name: recipe_ingredients recipe_ingredients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_ingredients
+    ADD CONSTRAINT recipe_ingredients_pkey PRIMARY KEY (recipe_id, ingredient_id);
+
+
+--
+-- Name: recipe_steps recipe_steps_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_steps
+    ADD CONSTRAINT recipe_steps_pkey PRIMARY KEY (recipe_id, step_no);
+
+
+--
+-- Name: recipes recipes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipes
+    ADD CONSTRAINT recipes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: user_allergens user_allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_allergens
+    ADD CONSTRAINT user_allergens_pkey PRIMARY KEY (user_id, allergen_id);
+
+
+--
+-- Name: user_diets user_diets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_diets
+    ADD CONSTRAINT user_diets_pkey PRIMARY KEY (user_id, diet_id);
+
+
+--
+-- Name: user_pantry user_pantry_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_pantry
+    ADD CONSTRAINT user_pantry_pkey PRIMARY KEY (user_id, ingredient_id);
+
+
+--
+-- Name: users users_login_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_login_key UNIQUE (login);
+
+
+--
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: allergens_name_uq; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX allergens_name_uq ON public.allergens USING btree (lower(name));
+
+
+--
+-- Name: categories_name_uq; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX categories_name_uq ON public.categories USING btree (lower(name));
+
+
+--
+-- Name: cooking_methods_name_uq; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX cooking_methods_name_uq ON public.cooking_methods USING btree (lower(name));
+
+
+--
+-- Name: diets_name_uq; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX diets_name_uq ON public.diets USING btree (lower(name));
+
+
+--
+-- Name: favorite_ingredients_ing_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX favorite_ingredients_ing_idx ON public.favorite_ingredients USING btree (ingredient_id);
+
+
+--
+-- Name: favorite_recipes_recipe_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX favorite_recipes_recipe_idx ON public.favorite_recipes USING btree (recipe_id);
+
+
+--
+-- Name: ingredient_aliases_uq; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ingredient_aliases_uq ON public.ingredient_aliases USING btree (ingredient_id, lower(alias));
+
+
+--
+-- Name: ingredients_name_uq; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ingredients_name_uq ON public.ingredients USING btree (lower(name));
+
+
+--
+-- Name: recipe_cooking_methods_method_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX recipe_cooking_methods_method_idx ON public.recipe_cooking_methods USING btree (method_id);
+
+
+--
+-- Name: recipe_ingredients_ingr_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX recipe_ingredients_ingr_idx ON public.recipe_ingredients USING btree (ingredient_id);
+
+
+--
+-- Name: recipes_author_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX recipes_author_idx ON public.recipes USING btree (author_id);
+
+
+--
+-- Name: recipes_time_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX recipes_time_idx ON public.recipes USING btree (cook_time_min);
+
+
+--
+-- Name: user_allergens_allergen_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX user_allergens_allergen_idx ON public.user_allergens USING btree (allergen_id);
+
+
+--
+-- Name: favorite_recipes favorite_recipes_access; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER favorite_recipes_access BEFORE INSERT OR UPDATE ON public.favorite_recipes FOR EACH ROW EXECUTE FUNCTION public.check_favorite_recipe_access();
+
+
+--
+-- Name: recipe_cooking_methods recipe_cooking_methods_no_cook; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER recipe_cooking_methods_no_cook BEFORE INSERT OR UPDATE ON public.recipe_cooking_methods FOR EACH ROW EXECUTE FUNCTION public.check_no_cook_methods();
+
+
+--
+-- Name: recipes recipes_no_cook_flip; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER recipes_no_cook_flip BEFORE UPDATE OF no_cook ON public.recipes FOR EACH ROW EXECUTE FUNCTION public.check_recipe_no_cook_flip();
+
+
+--
+-- Name: diet_excluded_allergens diet_excluded_allergens_allergen_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.diet_excluded_allergens
+    ADD CONSTRAINT diet_excluded_allergens_allergen_id_fkey FOREIGN KEY (allergen_id) REFERENCES public.allergens(id) ON DELETE CASCADE;
+
+
+--
+-- Name: diet_excluded_allergens diet_excluded_allergens_diet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.diet_excluded_allergens
+    ADD CONSTRAINT diet_excluded_allergens_diet_id_fkey FOREIGN KEY (diet_id) REFERENCES public.diets(id) ON DELETE CASCADE;
+
+
+--
+-- Name: diet_excluded_categories diet_excluded_categories_category_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.diet_excluded_categories
+    ADD CONSTRAINT diet_excluded_categories_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.categories(id) ON DELETE CASCADE;
+
+
+--
+-- Name: diet_excluded_categories diet_excluded_categories_diet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.diet_excluded_categories
+    ADD CONSTRAINT diet_excluded_categories_diet_id_fkey FOREIGN KEY (diet_id) REFERENCES public.diets(id) ON DELETE CASCADE;
+
+
+--
+-- Name: diet_excluded_methods diet_excluded_methods_diet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.diet_excluded_methods
+    ADD CONSTRAINT diet_excluded_methods_diet_id_fkey FOREIGN KEY (diet_id) REFERENCES public.diets(id) ON DELETE CASCADE;
+
+
+--
+-- Name: diet_excluded_methods diet_excluded_methods_method_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.diet_excluded_methods
+    ADD CONSTRAINT diet_excluded_methods_method_id_fkey FOREIGN KEY (method_id) REFERENCES public.cooking_methods(id) ON DELETE CASCADE;
+
+
+--
+-- Name: favorite_ingredients favorite_ingredients_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.favorite_ingredients
+    ADD CONSTRAINT favorite_ingredients_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(id) ON DELETE CASCADE;
+
+
+--
+-- Name: favorite_ingredients favorite_ingredients_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.favorite_ingredients
+    ADD CONSTRAINT favorite_ingredients_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: favorite_recipes favorite_recipes_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.favorite_recipes
+    ADD CONSTRAINT favorite_recipes_recipe_id_fkey FOREIGN KEY (recipe_id) REFERENCES public.recipes(id) ON DELETE CASCADE;
+
+
+--
+-- Name: favorite_recipes favorite_recipes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.favorite_recipes
+    ADD CONSTRAINT favorite_recipes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: ingredient_aliases ingredient_aliases_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingredient_aliases
+    ADD CONSTRAINT ingredient_aliases_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(id) ON DELETE CASCADE;
+
+
+--
+-- Name: ingredient_allergens ingredient_allergens_allergen_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingredient_allergens
+    ADD CONSTRAINT ingredient_allergens_allergen_id_fkey FOREIGN KEY (allergen_id) REFERENCES public.allergens(id) ON DELETE CASCADE;
+
+
+--
+-- Name: ingredient_allergens ingredient_allergens_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingredient_allergens
+    ADD CONSTRAINT ingredient_allergens_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(id) ON DELETE CASCADE;
+
+
+--
+-- Name: ingredient_categories ingredient_categories_category_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingredient_categories
+    ADD CONSTRAINT ingredient_categories_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.categories(id) ON DELETE CASCADE;
+
+
+--
+-- Name: ingredient_categories ingredient_categories_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingredient_categories
+    ADD CONSTRAINT ingredient_categories_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(id) ON DELETE CASCADE;
+
+
+--
+-- Name: recipe_cooking_methods recipe_cooking_methods_method_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_cooking_methods
+    ADD CONSTRAINT recipe_cooking_methods_method_id_fkey FOREIGN KEY (method_id) REFERENCES public.cooking_methods(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: recipe_cooking_methods recipe_cooking_methods_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_cooking_methods
+    ADD CONSTRAINT recipe_cooking_methods_recipe_id_fkey FOREIGN KEY (recipe_id) REFERENCES public.recipes(id) ON DELETE CASCADE;
+
+
+--
+-- Name: recipe_ingredients recipe_ingredients_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_ingredients
+    ADD CONSTRAINT recipe_ingredients_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: recipe_ingredients recipe_ingredients_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_ingredients
+    ADD CONSTRAINT recipe_ingredients_recipe_id_fkey FOREIGN KEY (recipe_id) REFERENCES public.recipes(id) ON DELETE CASCADE;
+
+
+--
+-- Name: recipe_steps recipe_steps_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipe_steps
+    ADD CONSTRAINT recipe_steps_recipe_id_fkey FOREIGN KEY (recipe_id) REFERENCES public.recipes(id) ON DELETE CASCADE;
+
+
+--
+-- Name: recipes recipes_author_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.recipes
+    ADD CONSTRAINT recipes_author_fk FOREIGN KEY (author_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_allergens user_allergens_allergen_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_allergens
+    ADD CONSTRAINT user_allergens_allergen_id_fkey FOREIGN KEY (allergen_id) REFERENCES public.allergens(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_allergens user_allergens_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_allergens
+    ADD CONSTRAINT user_allergens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_diets user_diets_diet_id_diet_kind_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_diets
+    ADD CONSTRAINT user_diets_diet_id_diet_kind_fkey FOREIGN KEY (diet_id, diet_kind) REFERENCES public.diets(id, kind) ON DELETE CASCADE;
+
+
+--
+-- Name: user_diets user_diets_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_diets
+    ADD CONSTRAINT user_diets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_pantry user_pantry_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_pantry
+    ADD CONSTRAINT user_pantry_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_pantry user_pantry_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_pantry
+    ADD CONSTRAINT user_pantry_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: users users_pevzner_diet_id_pevzner_kind_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_pevzner_diet_id_pevzner_kind_fkey FOREIGN KEY (pevzner_diet_id, pevzner_kind) REFERENCES public.diets(id, kind) ON DELETE SET NULL (pevzner_diet_id);
+
+
+--
+-- PostgreSQL database dump complete
+--
 
