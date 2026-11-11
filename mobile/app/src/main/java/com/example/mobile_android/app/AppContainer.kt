@@ -17,6 +17,7 @@ import com.example.mobile_android.data.remote.OkHttpTransport
 import com.example.mobile_android.data.remote.RecognitionApi
 import com.example.mobile_android.data.remote.RecognitionResult
 import com.example.mobile_android.data.remote.ServerCatalogRepository
+import com.example.mobile_android.data.remote.ServerHouseholdRepository
 import com.example.mobile_android.data.remote.ServerPreferencesRepository
 import com.example.mobile_android.data.remote.ServerSessionRepository
 import com.example.mobile_android.domain.CatalogRepository
@@ -29,6 +30,8 @@ import com.example.mobile_android.feature.receipt.ReceiptImporter
 import com.example.mobile_android.feature.receipt.ReceiptLine
 import com.example.mobile_android.feature.receipt.ReceiptPhotoKind
 import com.example.mobile_android.feature.receipt.ReceiptServerException
+import com.example.mobile_android.feature.receipt.RecognizedReceipt
+import com.example.mobile_android.feature.receipt.ServerReceiptImporter
 import com.example.mobile_android.feature.shopping.EngineShoppingBudgetSource
 import com.example.mobile_android.feature.shopping.EngineShoppingSuggestionSource
 import com.example.mobile_android.feature.shopping.ShoppingBudgetPlanWriter
@@ -66,8 +69,14 @@ interface LocalFeatureDependencies : AppDependencies {
      * Серверное распознавание фото чека/продуктов. null — экран использует демо-заглушку
      * (строки помечаются как демонстрационные, а не серверные).
      */
-    val receiptPhotoRecognizer: (suspend (ByteArray, ReceiptPhotoKind) -> List<ReceiptLine>)?
+    val receiptPhotoRecognizer: (suspend (ByteArray, ReceiptPhotoKind) -> RecognizedReceipt)?
         get() = null
+
+    /**
+     * Подтверждение импорта распознанного чека на сервере (`POST /recognition-imports`).
+     * null — подтверждение пишет только в локальное хранилище через [receiptImporter].
+     */
+    val serverReceiptImporter: ServerReceiptImporter? get() = null
 }
 
 class AppContainer internal constructor(
@@ -111,9 +120,11 @@ class AppContainer internal constructor(
 /**
  * Зависимости экранов одной подтверждённой сессии.
  *
- * Продукты, план, покупки и отметки хранятся в Room-файле этой сессии и восстанавливаются
- * после перезапуска; профиль читается и сохраняется через `GET/PATCH /me`; распознавание чека
- * идёт через `POST /recognitions`. Каталог загружается с сервера (`GET /catalog`); пока он
+ * План блюд, список покупок и отметки «куплено» хранятся в Room-файле этой сессии и
+ * восстанавливаются после перезапуска; профиль читается и сохраняется через `GET/PATCH /me`;
+ * продукты дома и избранное пишутся на сервер (`pantry_*`, `favorites_*`) и зеркалируются
+ * в Room; распознавание чека идёт через `POST /recognitions`, подтверждение импорта — через
+ * `POST /recognition-imports`. Каталог загружается с сервера (`GET /catalog`); пока он
  * грузится или если сервер недоступен, экраны работают на встроенном демо-каталоге.
  */
 private class SessionFeatures(
@@ -136,19 +147,21 @@ private class SessionFeatures(
     override val catalog: CatalogRepository = ServerCatalogRepository(api, DemoCatalog.catalog, scope)
 
     private val room = RoomHouseholdRepository(database, catalog, emptyList())
+    private val serverHousehold = ServerHouseholdRepository(room, catalog, api)
 
-    override val household: HouseholdRepository = room
+    override val household: HouseholdRepository = serverHousehold
     override val preferences: PreferencesRepository = ServerPreferencesRepository(api)
-    override val receiptImporter: ReceiptImporter = room
+    override val receiptImporter: ReceiptImporter = serverHousehold
+    override val serverReceiptImporter: ServerReceiptImporter = serverHousehold
     override val budgetPlanWriter: ShoppingBudgetPlanWriter = room
     override val budgetSource: ShoppingBudgetSource =
         EngineShoppingBudgetSource(catalog, household, preferences)
     override val suggestionSource: ShoppingSuggestionSource = EngineShoppingSuggestionSource()
 
-    override val receiptPhotoRecognizer: suspend (ByteArray, ReceiptPhotoKind) -> List<ReceiptLine> =
+    override val receiptPhotoRecognizer: suspend (ByteArray, ReceiptPhotoKind) -> RecognizedReceipt =
         { jpeg, kind ->
             try {
-                recognitions.recognize(jpeg, kind.apiKind).toReceiptLines()
+                recognitions.recognize(jpeg, kind.apiKind).toRecognizedReceipt()
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
@@ -162,17 +175,21 @@ private class SessionFeatures(
     }
 }
 
-private fun RecognitionResult.toReceiptLines(): List<ReceiptLine> =
-    lines.mapIndexed { index, line ->
-        ReceiptLine(
-            id = index + 1,
-            text = line.rawName,
-            ingredientId = line.ingredientId,
-            amount = line.quantity?.let(::formatAmount).orEmpty(),
-            unit = line.quantity?.unit,
-            selected = line.matched && line.quantity != null,
-        )
-    }
+private fun RecognitionResult.toRecognizedReceipt(): RecognizedReceipt =
+    RecognizedReceipt(
+        id,
+        lines.mapIndexed { index, line ->
+            ReceiptLine(
+                id = index + 1,
+                text = line.rawName,
+                ingredientId = line.ingredientId,
+                amount = line.quantity?.let(::formatAmount).orEmpty(),
+                unit = line.quantity?.unit,
+                selected = line.matched && line.quantity != null,
+                serverLineId = line.lineId,
+            )
+        },
+    )
 
 private fun formatAmount(quantity: com.example.mobile_android.domain.Quantity): String {
     val value = quantity.value
