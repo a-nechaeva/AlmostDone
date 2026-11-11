@@ -15,6 +15,7 @@ from .recommendations import RecommendationService
 from .users import UserService
 from .runtime import RuntimeService
 from .state import UserStateService
+from .health import readiness
 
 
 class ApplicationService:
@@ -46,6 +47,10 @@ class ApplicationService:
         oid, body, params = command.operation, command.payload, command.parameters
         if oid == "health_get":
             result = Result({"status": "ok", "api_version": "v1"})
+            validate_result(result)
+            return result
+        if oid == "readiness_get":
+            result = Result(readiness(self))
             validate_result(result)
             return result
         if oid == "auth_yandex":

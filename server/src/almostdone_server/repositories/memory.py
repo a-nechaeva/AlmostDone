@@ -8,6 +8,10 @@ class Store:
     mode = "memory-stub"
     persistent = False
 
+    def check_health(self):
+        with self.transaction():
+            pass
+
     def __init__(self):
         self.runtime = MemoryRecords()
 

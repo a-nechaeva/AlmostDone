@@ -67,6 +67,60 @@ paths:
                 minimum: 1
               description: Секунды до повтора; для 503 может отсутствовать.
       security: []
+  /health/ready:
+    get:
+      operationId: readiness_get
+      summary: Проверка готовности API и обязательных зависимостей
+      description: >-
+        Проверяет доступ к хранилищу, таблицам и журналу миграций PostgreSQL,
+        загруженный каталог и движок dishgraph. Внешние Яндекс и GigaChat
+        не вызываются: configured означает только наличие локальной настройки,
+        disabled — функция отключена. Проверка не выполняет запись в БД.
+      tags:
+      - health
+      security: []
+      responses:
+        '200':
+          description: API готов обслуживать запросы
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [status, api_version, checks]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                  api_version:
+                    type: string
+                    enum: [v1]
+                  checks:
+                    type: object
+                    additionalProperties: false
+                    required: [storage, engine, catalog, yandex, recognition]
+                    properties:
+                      storage:
+                        type: string
+                        enum: [ok]
+                      engine:
+                        type: string
+                        enum: [ok]
+                      catalog:
+                        type: string
+                        enum: [ok]
+                      yandex:
+                        type: string
+                        enum: [configured, disabled]
+                      recognition:
+                        type: string
+                        enum: [configured, disabled]
+        '503':
+          description: Обязательная зависимость недоступна или миграции не применены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /auth/yandex:
     post:
       operationId: auth_yandex
