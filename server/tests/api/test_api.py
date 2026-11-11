@@ -26,11 +26,13 @@ def test_all_contract_operations_have_routes_and_runtime_docs(app, client):
     assert client.get("/openapi.json").json()["servers"] == [{"url": "/api/v1"}]
 
 
-def test_auth_required_and_provider_not_faked(app, client):
-    check(app, client.get("/api/v1/me"), "Error", 401)
-    payload = {"oauth_token": "synthetic-token"}
-    check(app, client.post("/api/v1/auth/yandex", json=payload), "Error", 503)
-    assert client.get("/api/v1/me", headers={"Authorization": "Bearer fabricated"}).status_code == 401
+def test_auth_required_and_provider_not_faked():
+    app = create_app(auth_providers={})
+    with TestClient(app) as client:
+        check(app, client.get("/api/v1/me"), "Error", 401)
+        payload = {"oauth_token": "synthetic-token"}
+        check(app, client.post("/api/v1/auth/yandex", json=payload), "Error", 503)
+        assert client.get("/api/v1/me", headers={"Authorization": "Bearer fabricated"}).status_code == 401
 
 
 def test_yandex_identity_is_stable_and_users_are_isolated():
