@@ -12,6 +12,27 @@ class RecognitionService:
         self.runtime, self.catalog, self.users = runtime, catalog, users
         self.recognizer, self.validate_line = recognizer, validate_line
 
+    def display_quantity(self, item):
+        """Количество с фото (г, мл, шт.) — в единице ингредиента из каталога.
+
+        Клиент сохраняет продукт в единице каталога; без перевода строка «1 л молока» не
+        импортируется. Нет коэффициента (например, мл без плотности) — количества нет, его
+        вводит пользователь; оценок сервер не подставляет.
+        """
+        quantity = item.get("suggested_quantity") if isinstance(item, dict) else None
+        candidates = item.get("candidates") if isinstance(item, dict) else None
+        if not quantity or not candidates:
+            return
+        code = max(candidates, key=lambda c: c.get("confidence", 0)).get("ingredient_id")
+        if code not in self.catalog.ingredients:
+            return
+        try:
+            grams = self.catalog.grams(code, quantity)
+            shown = self.catalog.quantity(code, grams)
+        except (KeyError, TypeError, ZeroDivisionError):
+            shown = None
+        item["suggested_quantity"] = shown if shown and 0 < shown["value"] <= 1_000_000 else None
+
     def execute(self, db, uid, user, session, oid, body, params):
         if oid == "recognitions_create":
             if self.recognizer is None:
@@ -29,6 +50,7 @@ class RecognitionService:
             if not isinstance(items, list) or len(items) > 100:
                 raise APIError(503, "service_unavailable", "Некорректный результат распознавания")
             for item in items:
+                self.display_quantity(item)
                 try:
                     self.validate_line(item)
                 except APIError:
