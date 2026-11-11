@@ -42,6 +42,13 @@ def login(client, subject=None):
     return {"Authorization": "Bearer " + session["access_token"]}, session
 
 
+def test_readiness_checks_real_postgres_schema_and_migrations(database):
+    with TestClient(application(database)) as client:
+        response = client.get('/api/v1/health/ready')
+        assert response.status_code == 200, response.text
+        assert response.json()['checks']['storage'] == 'ok'
+
+
 def test_domain_data_session_and_version_survive_restart(database):
     app = application(database)
     assert len(app.state.service.catalog.recipes) >= 100

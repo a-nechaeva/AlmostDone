@@ -32,11 +32,13 @@ class Controller:
         status = next(int(code) for code in operation["responses"] if str(code).startswith("2"))
         result = self.service.execute(command, lambda result: self.contract.response(operation_id, status, result.data))
         response_headers = {}
-        if operation_id != "health_get":
+        if operation_id not in ("health_get", "readiness_get"):
             response_headers = {"Cache-Control": "no-store", "X-Storage-Mode": self.service.store.mode,
                                 "X-Catalog-Mode": "demo" if self.service.catalog.demo else "configured"}
             if result.version is not None:
                 response_headers["ETag"] = f'"state-{result.version}"'
+        if operation_id in ("health_get", "readiness_get"):
+            response_headers['Cache-Control'] = 'no-store'
         if operation_id == "recognitions_create":
             response_headers.update(Location="/api/v1/recognitions/" + result.data["id"], **{"Retry-After": "2"})
         return status, result.data, response_headers

@@ -37,17 +37,27 @@ docker compose -f server/docker-compose.yml ps -a
 docker compose -f server/docker-compose.yml logs migrate
 docker compose -f server/docker-compose.yml logs --tail=100 api
 curl --fail http://localhost:8000/api/v1/health
+curl --fail http://localhost:8000/api/v1/health/ready
 ```
 
 Ожидается: `db` — `healthy`, `migrate` — `Exited (0)`, `api` — `Up`.
 В логах мигратора — `Migrations ready`, API — `Application startup complete`.
-Healthcheck проверяет процесс; работу БД дополнительно проверьте через приложение:
+`/health` проверяет только процесс. Docker healthcheck вызывает `/health/ready`:
+он проверяет подключение к БД, доступность таблиц, применённые миграции,
+загруженный каталог и движок dishgraph. При отказе обязательной зависимости
+возвращается HTTP 503, а контейнер после неудачных проверок становится unhealthy.
+Яндекс и распознавание показываются как `configured` или `disabled`;
+это состояние настройки, а не подтверждение доступности внешнего сервиса.
+Проверки не вызывают Яндекс и GigaChat и не изменяют данные.
+
+Запись и сохранение данных дополнительно проверьте через приложение:
 войдите, добавьте продукт и рецепт в избранное, выполните
 `docker compose -f server/docker-compose.yml restart api` и убедитесь, что вход и данные сохранились.
 
 - Swagger UI: <http://localhost:8000/docs>.
 - OpenAPI: <http://localhost:8000/openapi.json>.
 - Проверка процесса: <http://localhost:8000/api/v1/health>.
+- Проверка готовности: <http://localhost:8000/api/v1/health/ready>.
 
 ### Обновление и остановка
 

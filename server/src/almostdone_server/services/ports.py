@@ -45,6 +45,7 @@ class RuntimeRecords(Protocol):
 
 
 class Repository(Protocol):
+    def check_health(self) -> None: ...
     mode: str
     persistent: bool
     runtime: RuntimeRecords

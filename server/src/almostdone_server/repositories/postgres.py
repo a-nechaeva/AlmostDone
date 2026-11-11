@@ -15,6 +15,32 @@ class PostgresStore:
     mode = "postgresql"
     persistent = True
 
+    def check_health(self):
+        from ..migrate import migration_files, MIGRATIONS_DIR
+
+        try:
+            with self.psycopg.connect(self.dsn, connect_timeout=2,
+                                     options='-c statement_timeout=1000 -c lock_timeout=1000') as connection:
+                connection.execute('SELECT 1').fetchone()
+                for table in (
+                    'users', 'user_pantry', 'favorite_ingredients', 'favorite_recipes',
+                    'user_diets', 'user_allergens', 'diets', 'allergens', 'ingredients',
+                    'ingredient_aliases', 'ingredient_allergens', 'ingredient_categories',
+                    'categories', 'recipes', 'recipe_ingredients', 'recipe_steps',
+                    'cooking_methods', 'recipe_cooking_methods', 'diet_excluded_allergens',
+                    'diet_excluded_categories', 'diet_excluded_methods', 'user_identities',
+                    'auth_sessions', 'auth_tokens', 'user_api_state', 'api_idempotency',
+                    'api_resources', 'recognition_imports',
+                ):
+                    connection.execute(f'SELECT * FROM public.{table} LIMIT 0')
+                applied = {row[0] for row in connection.execute(
+                    'SELECT version FROM public.api_schema_migrations')}
+                required = {path.stem for path in migration_files(MIGRATIONS_DIR)}
+                if not required <= applied:
+                    raise StorageSchemaError('Database migrations are pending')
+        except self.psycopg.Error:
+            raise StorageUnavailable('Database readiness check failed') from None
+
     def __init__(self, dsn):
         import psycopg
         from psycopg.rows import dict_row
