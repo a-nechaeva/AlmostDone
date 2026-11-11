@@ -13,12 +13,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-/** UI-only examples. These responses do not represent a calculated cooking plan. */
+/**
+ * Покупки на бюджет. [computed] = false — фиксированный UI-пример (fake), true — подобрано
+ * движком по продуктам дома и каталогу.
+ */
 data class ShoppingBudgetExample(
     val title: String,
     val packages: List<ShoppingBudgetPackage>,
     val alternativeRecipeIds: List<String>,
     val totalKopecks: Long?,
+    val computed: Boolean = false,
 )
 
 data class ShoppingBudgetPackage(

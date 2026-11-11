@@ -173,6 +173,9 @@ internal fun ShoppingBudgetContent(
                         else "Пригодность бюджета не подтверждена",
                         if (result.estimate == ShoppingBudgetEstimate.UNKNOWN)
                             "Неизвестная цена не равна нулю. Стоимость и остаток бюджета неизвестны."
+                        else if (result.example.computed)
+                            (result.remainingKopecks?.let { "Останется ≈${money(it)}.\n" } ?: "") +
+                                "Цены за целые упаковки. Каждая покупка открывает новые блюда из того, что уже есть дома."
                         else
                             (result.remainingKopecks?.let {
                                 "По демо-оценке останется ≈${money(it)}.\n"

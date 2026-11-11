@@ -45,7 +45,7 @@ def _ssl_context() -> ssl.SSLContext:
 
 def download(url: str) -> bytes:
     """Скачать фото по ссылке из каталога. Подменяется в тестах."""
-    request = urllib.request.Request(url, headers={"User-Agent": "AlmostDone-demo-server"})
+    request = urllib.request.Request(url, headers={"User-Agent": "AlmostDone-server"})
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT, context=_ssl_context()) as response:  # noqa: S310 — ссылки только из каталога
             data = response.read(MAX_BYTES + 1)
@@ -56,8 +56,9 @@ def download(url: str) -> bytes:
     return data
 
 
-def fetch(url: str, cache_dir: Path = CACHE_DIR) -> tuple[bytes, str]:
+def fetch(url: str, cache_dir: Path | None = None) -> tuple[bytes, str]:
     """(байты, MIME) — из кэша на диске или скачав один раз."""
+    cache_dir = cache_dir or CACHE_DIR
     path = cache_dir / hashlib.sha256(url.encode()).hexdigest()
     if path.is_file():
         data = path.read_bytes()

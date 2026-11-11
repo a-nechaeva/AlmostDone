@@ -97,6 +97,46 @@ class Catalog:
             return copy.deepcopy(raw["step_details"])
         return [{"number": n, "text": text, "minutes": None} for n, text in enumerate(raw.get("steps", []), 1)]
 
+    def photo_source(self, recipe_id):
+        """Original photo link of a catalogue recipe, or None."""
+        raw = self.recipes.get(recipe_id)
+        return raw.get("photo_url", raw.get("image_url")) or None if raw else None
+
+    def export(self):
+        """The whole catalogue for a client that matches recipes on the device.
+
+        Quantities use each ingredient's display unit, as everywhere else in the API. Basic
+        products, optional items and items without an amount are not listed in recipes: the
+        engine does not count them as something to buy either. A recipe whose amounts cannot be
+        converted to display units is left out instead of guessing.
+        """
+        staples, recipes = self.gateway.export()
+        ingredients = []
+        for code, ing in sorted(self.ingredients.items(), key=lambda kv: kv[1]["name"]):
+            offer = self.offer(code)
+            ingredients.append({"id": code, "name": ing["name"], "unit": ing.get("display_unit", "g"),
+                                "allergens": sorted(ing.get("allergens", [])),
+                                "allergen_data_complete": bool(ing.get("allergen_data_complete", False)),
+                                "offer": {"quantity": offer["quantity"], "price": offer["price"]}
+                                if offer and offer["price"] else None})
+        items = []
+        for recipe, metrics in recipes:
+            listed = [{"ingredient_id": i.code, "quantity": self.quantity(i.code, i.qty_g)}
+                      for i in recipe.required_items if i.code not in staples and i.qty_g]
+            if not listed or any(item["quantity"] is None or item["quantity"]["value"] <= 0 for item in listed):
+                continue
+            items.append({
+                "id": recipe.id, "title": recipe.title, "photo_url": self.photo_source(recipe.id),
+                "servings": recipe.servings, "minutes": max(1, metrics.cook_time_min),
+                "steps": list(recipe.steps), "ingredients": listed,
+                "nutrition_per_serving": {"kcal": metrics.kcal, "protein_g": metrics.protein,
+                                          "fat_g": metrics.fat, "carbs_g": metrics.carbs},
+                "allergens": sorted(metrics.allergens),
+                "allergen_data_complete": self.allergen_assessment(
+                    [i.code for i in recipe.required_items])["completeness"] == "complete",
+                "methods": list(recipe.methods)})
+        return {"catalog_version": self.version, "ingredients": ingredients, "recipes": items}
+
     def prepare(self, user, recipe_ids, servings, extra_allergens=()):
         self.require_engine()
         prefs = user["preferences"]
@@ -242,6 +282,8 @@ class CatalogService:
             items = [self.catalog.ingredient_body(i, user) for i in self.catalog.search(q)]
             paged, page = self.pagination.paginate(db, uid, user, oid, params, items, q)
             return {'state_version': user['version'], 'catalog_version': self.catalog.version, 'items': paged, 'page': page}
+        if oid == "catalog_export":
+            return self.catalog.export()
         if oid == "recipes_get":
             excluded = params.get("exclude_allergens", [])
             if set(excluded) - set(ALLERGENS):
