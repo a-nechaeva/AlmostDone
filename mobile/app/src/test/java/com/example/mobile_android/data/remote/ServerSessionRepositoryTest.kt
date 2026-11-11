@@ -1,5 +1,6 @@
 package com.example.mobile_android.data.remote
 
+import java.io.EOFException
 import java.net.SocketTimeoutException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
@@ -210,6 +211,28 @@ class ServerSessionRepositoryTest {
         assertNull(repository.sessionKey.first())
         assertNull(store.saved)
         assertEquals(listOf("/api/v1/me/state", "/api/v1/auth/refresh", "/api/v1/auth/logout"), paths)
+    }
+
+    @Test
+    fun logoutRetriesOnceWhenTheIdleConnectionCloses() = runTest {
+        val store = MemorySessionStore(oldTokens())
+        var revokeCalls = 0
+        val repository = repository(store, HttpTransport { request ->
+            when (request.url.encodedPath) {
+                "/api/v1/me/state" -> state()
+                "/api/v1/auth/logout" -> {
+                    assertNull(store.saved)
+                    assertEquals("Bearer old-access", request.headers["Authorization"])
+                    if (++revokeCalls == 1) throw EOFException()
+                    HttpResponse(204)
+                }
+                else -> error("Unexpected request")
+            }
+        })
+        assertEquals("test-session", repository.sessionKey.first())
+        repository.signOut()
+        assertEquals(2, revokeCalls)
+        assertNull(repository.sessionKey.first())
     }
 
     @Test

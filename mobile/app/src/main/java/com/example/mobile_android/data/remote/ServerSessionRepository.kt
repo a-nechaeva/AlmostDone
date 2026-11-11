@@ -152,7 +152,14 @@ internal class ServerSessionRepository(
     }
 
     private suspend fun revoke(access: String): Boolean = try {
-        api.execute(ApiRequest("auth/logout", ApiMethod.POST), access)
+        val request = ApiRequest("auth/logout", ApiMethod.POST)
+        try {
+            api.execute(request, access)
+        } catch (error: ApiNetworkException) {
+            if (error.timedOut) throw error
+            // A closed idle connection can fail before we get a response. Revocation is safe to repeat.
+            api.execute(request, access)
+        }
         true
     } catch (error: ApiHttpException) {
         if (error.status != 401) throw error
