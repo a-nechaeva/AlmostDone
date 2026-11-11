@@ -66,13 +66,21 @@ fun BrandTopBar(
     )
 }
 
+/**
+ * true — приложение на встроенном демо-каталоге (нет сервера или он недоступен): на экранах
+ * подпись «Демо». С каталогом с сервера цены и КБЖУ настоящие, подписи не нужны.
+ */
+val LocalDemoData = compositionLocalOf { true }
+
 @Composable
 fun DemoNotice() {
-    Text(
-        "Демо · цены и КБЖУ приведены для примера",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
+    if (LocalDemoData.current) {
+        Text(
+            "Демо · цены и КБЖУ приведены для примера",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
 }
 
 @Composable

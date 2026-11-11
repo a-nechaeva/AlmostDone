@@ -45,6 +45,7 @@ fun PantryScreen(
     dishes: () -> Unit,
     receipt: () -> Unit,
 ) {
+    val demoData = LocalDemoData.current
     var searching by rememberSaveable { mutableStateOf(state.query.isNotEmpty()) }
     var favoritesOnly by rememberSaveable { mutableStateOf(false) }
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -148,7 +149,7 @@ fun PantryScreen(
                     item {
                         PageHeading("Мои продукты", "${state.added.size} продуктов · всё под рукой")
                     }
-                    item { PantryDemoNotice() }
+                    if (demoData) item { PantryDemoNotice() }
                 }
                 if (searching || state.added.isNotEmpty()) {
                     item(key = "pantry-search") {
@@ -198,7 +199,7 @@ fun PantryScreen(
                     item {
                         Text("Из каталога ингредиентов", style = MaterialTheme.typography.bodySmall)
                     }
-                    item { PantryDemoNotice() }
+                    if (demoData) item { PantryDemoNotice() }
                     val suggestions =
                         (if (state.query.isBlank()) state.catalog.ingredients
                             else state.suggestions)
@@ -427,9 +428,11 @@ fun PantryScreen(
 
 @Composable
 private fun PantryDemoNotice() {
-    Text(
-        "Демо · локальный каталог и продукты на устройстве",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
+    if (LocalDemoData.current) {
+        Text(
+            "Демо · локальный каталог и продукты на устройстве",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
 }

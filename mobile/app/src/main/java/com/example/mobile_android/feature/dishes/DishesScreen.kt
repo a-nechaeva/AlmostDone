@@ -50,6 +50,7 @@ fun DishesScreen(
     toggleAllergen: ((Allergen) -> Unit)? = null,
     resultsPending: Boolean = false,
 ) {
+    val demoData = LocalDemoData.current
     var filtersOpen by rememberSaveable { mutableStateOf(false) }
     val graph = !showHidden && view == DishesView.GRAPH
     val pending =
@@ -124,7 +125,7 @@ fun DishesScreen(
                 else DishesListViewSelector(view, changeView)
             }
             if (graph) {
-                item { DemoNotice() }
+                if (demoData) item { DemoNotice() }
                 item { TextButton(pantry) { Text("Изменить продукты дома") } }
             }
             item {
@@ -201,7 +202,7 @@ fun DishesScreen(
                         reset,
                     )
                 }
-            if (!graph && state.visible.isNotEmpty()) item { DemoNotice() }
+            if (demoData && !graph && state.visible.isNotEmpty()) item { DemoNotice() }
         }
     }
 }

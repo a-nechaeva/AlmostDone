@@ -144,6 +144,7 @@ internal fun ShoppingContent(
     budgetWrite: BudgetPlanWriteState = BudgetPlanWriteState(),
     undoBudgetPlan: () -> Unit = {},
 ) {
+    val demoData = LocalDemoData.current
     val busy = action.pending || budgetWrite.pending
     val allChecked = state.quote.lines.isNotEmpty() && state.quote.lines.all { it.checked }
     LazyColumn(
@@ -157,7 +158,7 @@ internal fun ShoppingContent(
                 "Из выбранных рецептов",
             )
         }
-        item { DemoNotice() }
+        if (demoData) item { DemoNotice() }
         item { ActionMessage(action, dismiss) }
         if (budgetWrite.message != null || budgetWrite.pending || budgetWrite.canUndo)
             item { BudgetPlanFeedback(budgetWrite, undoBudgetPlan, action.pending) }

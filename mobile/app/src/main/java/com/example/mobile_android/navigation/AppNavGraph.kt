@@ -35,6 +35,7 @@ import com.example.mobile_android.feature.dishes.*
 import com.example.mobile_android.feature.favorites.*
 import com.example.mobile_android.feature.pantry.*
 import com.example.mobile_android.feature.profile.*
+import com.example.mobile_android.data.remote.ServerStatus
 import com.example.mobile_android.feature.receipt.ReceiptRoute
 import com.example.mobile_android.feature.recipe.*
 import com.example.mobile_android.feature.shopping.*
@@ -72,6 +73,9 @@ fun AppRoot(container: AppDependencies) {
                 YandexAuthResult.Cancelled -> Unit
             }
         }
+    // подписи «Демо» — только пока каталог не с сервера
+    val serverStatus = container.server?.status?.collectAsStateWithLifecycle()?.value
+    CompositionLocalProvider(LocalDemoData provides (serverStatus !is ServerStatus.Connected)) {
     LoadContent(state, session::retry) { signedIn ->
         if (!signedIn)
             LoginScreen(
@@ -84,6 +88,7 @@ fun AppRoot(container: AppDependencies) {
                 session.actions::dismiss,
             )
         else ApplicationNavigation(container, session::signOut, action, session.actions::dismiss)
+    }
     }
 }
 
