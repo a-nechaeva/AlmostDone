@@ -18,6 +18,15 @@
         android:usesCleartextTraffic="true"
         tools:ignore="UnusedAttribute">
         <!-- usesCleartextTraffic: демо-сервер на ноутбуке работает по HTTP без TLS -->
+        <provider
+            android:name=".feature.receipt.ReceiptFileProvider"
+            android:authorities="${applicationId}.receipt"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/receipt_file_paths" />
+        </provider>
         <activity
             android:name=".MainActivity"
             android:exported="true"

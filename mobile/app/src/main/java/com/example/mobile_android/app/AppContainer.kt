@@ -12,6 +12,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
+import com.example.mobile_android.feature.receipt.ReceiptImporter
+import com.example.mobile_android.feature.shopping.ShoppingBudgetPlanWriter
 import com.yandex.authsdk.YandexAuthOptions
 import com.yandex.authsdk.YandexAuthSdk
 
@@ -28,6 +30,8 @@ interface AppDependencies {
     /** Сервер «Почти готово»; null — работа только на встроенном демо-каталоге (тесты, превью). */
     val server: ServerConnection?
         get() = null
+    val receiptImporter: ReceiptImporter? get() = null
+    val budgetPlanWriter: ShoppingBudgetPlanWriter? get() = null
     val yandexAuth: YandexAuthSdk
 }
 
@@ -44,8 +48,10 @@ class AppContainer(context: Context) : AppDependencies {
                 "household.db",
             )
             .build()
-    override val household: HouseholdRepository =
-        RoomHouseholdRepository(database, catalog, DemoCatalog.initialPantry)
+    private val roomHousehold = RoomHouseholdRepository(database, catalog, DemoCatalog.initialPantry)
+    override val household: HouseholdRepository = roomHousehold
+    override val receiptImporter: ReceiptImporter = roomHousehold
+    override val budgetPlanWriter: ShoppingBudgetPlanWriter = roomHousehold
     private val localPreferences = LocalPreferences(context.applicationContext.householdPreferences)
     override val preferences: PreferencesRepository = localPreferences
     override val session: SessionRepository = localPreferences

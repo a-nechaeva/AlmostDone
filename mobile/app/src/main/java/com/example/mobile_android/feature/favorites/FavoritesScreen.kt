@@ -31,9 +31,12 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.mobile_android.domain.Ingredient
+import com.example.mobile_android.domain.PantryItem
 import com.example.mobile_android.domain.Quantity
 import com.example.mobile_android.feature.common.ActionState
+import com.example.mobile_android.feature.favorites.FavoritesPantryWrite.Phase
 import com.example.mobile_android.ui.components.*
 import com.example.mobile_android.ui.parseQuantity
 import com.example.mobile_android.ui.quantityLabel
@@ -52,6 +55,25 @@ fun FavoritesScreen(
 }
 
 @Composable
+fun FavoritesRoute(viewModel: FavoritesViewModel, onRecipe: (String) -> Unit) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val action by viewModel.actions.state.collectAsStateWithLifecycle()
+    val pantryWrite = viewModel.pantryWrite.collectAsStateWithLifecycle().value
+    LoadContent(state, viewModel::retry) {
+        FavoritesBody(
+            it,
+            action,
+            viewModel::favorite,
+            onRecipe,
+            viewModel.actions::dismiss,
+            { selection -> viewModel.addIngredientToPantry(selection, pantryWrite.revision) },
+            pantryWrite.phase,
+            viewModel::tryDismissPantryWrite,
+        )
+    }
+}
+
+@Composable
 fun FavoritesContent(
     state: FavoritesState,
     action: ActionState,
@@ -60,20 +82,47 @@ fun FavoritesContent(
     dismiss: () -> Unit,
     onIngredientQuantity: ((FavoritesIngredientSelection) -> Unit)? = null,
 ) {
+    FavoritesBody(state, action, favorite, recipe, dismiss, onIngredientQuantity)
+}
+
+@Composable
+private fun FavoritesBody(
+    state: FavoritesState,
+    action: ActionState,
+    favorite: (String, Boolean) -> Unit,
+    recipe: (String) -> Unit,
+    dismiss: () -> Unit,
+    onIngredientQuantity: ((FavoritesIngredientSelection) -> Unit)?,
+    pantryPhase: Phase? = null,
+    tryDismissPantryWrite: () -> Boolean = { true },
+) {
     var ingredients by rememberSaveable { mutableStateOf(false) }
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
     val largeText = LocalDensity.current.fontScale > 1.2f
     val recipeScroll = rememberLazyListState()
     val ingredientScroll = rememberLazyListState()
+    val savingPantry = pantryPhase == Phase.Saving
+    val pending = action.pending || savingPantry
+    LaunchedEffect(pantryPhase) {
+        if (pantryPhase == Phase.Added && tryDismissPantryWrite()) {
+            selectedId = null
+        }
+    }
     val selected = state.ingredients.find { it.id == selectedId }
     if (selected != null) {
         FavoritesQuantityDialog(
             selected,
-            action.pending,
-            onDismiss = { selectedId = null },
+            pending,
+            pantryPhase,
+            current = if (pantryPhase != null) {
+                state.household.pantry.find { it.ingredientId == selected.id }
+            } else null,
+            onDismiss = {
+                if (tryDismissPantryWrite()) selectedId = null
+            },
             onSave = onIngredientQuantity?.let { callback ->
                 { quantity ->
-                    selectedId = null
+                    if (pantryPhase == null) selectedId = null
                     callback(FavoritesIngredientSelection(selected.id, quantity))
                 }
             },
@@ -140,7 +189,7 @@ fun FavoritesContent(
                         ) {
                             Column(
                                 Modifier.weight(1f)
-                                    .clickable(enabled = !action.pending, role = Role.Button) {
+                                    .clickable(enabled = !pending, role = Role.Button) {
                                         selectedId = ingredient.id
                                     }
                                     .heightIn(min = 64.dp)
@@ -158,14 +207,14 @@ fun FavoritesContent(
                             }
                             IconButton(
                                 onClick = { selectedId = ingredient.id },
-                                enabled = !action.pending,
+                                enabled = !pending,
                                 modifier = Modifier.size(48.dp),
                             ) {
                                 Icon(Icons.Default.Add, "Указать количество: ${ingredient.name}")
                             }
                             IconButton(
                                 onClick = { favorite(ingredient.id, true) },
-                                enabled = !action.pending,
+                                enabled = !pending,
                                 modifier = Modifier.size(48.dp),
                             ) {
                                 Icon(
@@ -196,7 +245,8 @@ fun FavoritesContent(
                         match,
                         true,
                         { recipe(match.recipe.id) },
-                        { if (!action.pending) favorite(match.recipe.id, false) },
+                        { if (!pending) favorite(match.recipe.id, false) },
+                        favoriteEnabled = !pending,
                     )
                 }
                 if (state.recipes.isNotEmpty()) item {
@@ -213,6 +263,8 @@ fun FavoritesContent(
 private fun FavoritesQuantityDialog(
     ingredient: Ingredient,
     pending: Boolean,
+    pantryPhase: Phase?,
+    current: PantryItem?,
     onDismiss: () -> Unit,
     onSave: ((Quantity?) -> Unit)?,
 ) {
@@ -220,26 +272,40 @@ private fun FavoritesQuantityDialog(
     var submitted by remember { mutableStateOf(false) }
     val quantity = parseQuantity(value, ingredient.unit)
     val valid = value.isBlank() || quantity != null
+    val saving = pantryPhase == Phase.Saving
+    val failed = pantryPhase == Phase.Failed
+    val finished = pantryPhase == Phase.Added
     val keyboard = LocalSoftwareKeyboardController.current
-    BackHandler(onBack = onDismiss)
+    val dismiss = { if (!saving) onDismiss() }
+    BackHandler(onBack = dismiss)
     AlertDialog(
         modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth().padding(horizontal = 24.dp),
-        properties = DialogProperties(usePlatformDefaultWidth = false),
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = !saving,
+            dismissOnClickOutside = !saving,
+        ),
         containerColor = MaterialTheme.colorScheme.surface,
-        onDismissRequest = onDismiss,
+        onDismissRequest = dismiss,
         title = { Text(ingredient.name) },
         text = {
             Column(
                 Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                if (current != null) {
+                    Text(
+                        "Есть дома: ${quantityLabel(current.quantity)}",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
                 OutlinedTextField(
                     value = value,
                     onValueChange = { value = it.take(20) },
                     label = { Text("Количество, ${ingredient.unit.label}") },
                     singleLine = true,
                     isError = !valid,
-                    enabled = !pending && !submitted,
+                    enabled = !pending && !submitted && !finished,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Decimal,
                         imeAction = ImeAction.Done,
@@ -254,26 +320,39 @@ private fun FavoritesQuantityDialog(
                 if (onSave == null) {
                     Text("Добавление в продукты здесь пока недоступно.")
                 }
+                if (saving) {
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                    Text("Добавляем в продукты…", style = MaterialTheme.typography.bodySmall)
+                }
+                if (failed) {
+                    Text(
+                        "Не удалось добавить продукт.",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
             }
         },
         confirmButton = {
             if (onSave != null) {
                 TextButton(
                     onClick = {
-                        if (!submitted && !pending && valid) {
-                            submitted = true
+                        if (!submitted && !pending && !finished && valid) {
+                            if (pantryPhase == null) submitted = true
                             keyboard?.hide()
                             onSave(quantity)
                         }
                     },
-                    enabled = valid && !pending && !submitted,
-                ) { Text("Добавить в продукты") }
+                    enabled = valid && !pending && !submitted && !finished,
+                ) { Text(if (failed) "Повторить" else "Добавить в продукты") }
             } else {
                 TextButton(onClick = onDismiss) { Text("Закрыть") }
             }
         },
         dismissButton = {
-            if (onSave != null) TextButton(onClick = onDismiss) { Text("Отмена") }
+            if (onSave != null) {
+                TextButton(onClick = dismiss, enabled = !saving) { Text("Отмена") }
+            }
         },
     )
 }

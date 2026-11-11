@@ -18,11 +18,7 @@ class ProfileViewModel(private val preferences: PreferencesRepository) : ViewMod
     }
 
     fun save(draft: FoodPreferences) {
-        val snapshot =
-            draft.copy(
-                excludedAllergens = draft.excludedAllergens.toSet(),
-                dietTable = draft.dietTable.trim().take(100),
-            )
+        val snapshot = draft.normalizedForSave()
         actions.run("Предпочтения сохранены") { preferences.update { snapshot } }
     }
 
@@ -51,3 +47,6 @@ class ProfileViewModel(private val preferences: PreferencesRepository) : ViewMod
             preferences.update { it.copy(dietTable = value.trim().take(100)) }
         }
 }
+
+internal fun FoodPreferences.normalizedForSave() =
+    copy(excludedAllergens = excludedAllergens.toSet(), dietTable = dietTable.trim().take(100).trimEnd())

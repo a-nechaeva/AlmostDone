@@ -1,6 +1,7 @@
 package com.example.mobile_android.feature.profile
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -21,8 +22,11 @@ import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.*
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
@@ -76,6 +80,10 @@ fun ProfileScreen(
     dismiss: () -> Unit,
     dismissLogout: () -> Unit,
     onSave: ((FoodPreferences) -> Unit)? = null,
+    onMyProducts: (() -> Unit)? = null,
+    onEditorVisibilityChanged: (Boolean) -> Unit = {},
+    isRouteActive: Boolean = true,
+    homeScrollState: ScrollState? = null,
 ) {
     ProfileContent(
         preferences,
@@ -86,6 +94,10 @@ fun ProfileScreen(
         dismiss,
         dismissLogout,
         onSave,
+        onMyProducts,
+        onEditorVisibilityChanged,
+        isRouteActive,
+        homeScrollState,
     )
 }
 
@@ -134,15 +146,30 @@ fun ProfileContent(
     dismiss: () -> Unit,
     dismissLogout: () -> Unit,
     onSave: ((FoodPreferences) -> Unit)?,
+    onMyProducts: (() -> Unit)? = null,
+    onEditorVisibilityChanged: (Boolean) -> Unit = {},
+    isRouteActive: Boolean = true,
+    homeScrollState: ScrollState? = null,
 ) {
     var page by rememberSaveable { mutableStateOf(ProfilePage.HOME) }
     var draft by rememberSaveable(stateSaver = PreferencesSaver) { mutableStateOf(preferences) }
     var nestedBaseline by
         rememberSaveable(stateSaver = PreferencesSaver) { mutableStateOf(preferences) }
-    var submitted by remember { mutableStateOf(false) }
+    var submitted by rememberSaveable { mutableStateOf(false) }
     var confirmLogout by rememberSaveable { mutableStateOf(false) }
+    val homeScroll = homeScrollState ?: rememberScrollState()
+    val preferencesScroll = key(page == ProfilePage.HOME) { rememberScrollState() }
     val keyboard = LocalSoftwareKeyboardController.current
+    val reportEditorVisibility by rememberUpdatedState(onEditorVisibilityChanged)
+    val editorVisible = isRouteActive && page != ProfilePage.HOME
     val busy = action.pending || logoutAction.pending || submitted
+
+    if (editorVisible) {
+        DisposableEffect(Unit) {
+            reportEditorVisibility(true)
+            onDispose { reportEditorVisibility(false) }
+        }
+    }
 
     fun cancel() {
         if (busy) return
@@ -161,13 +188,25 @@ fun ProfileContent(
         }
     }
 
-    BackHandler(page != ProfilePage.HOME || confirmLogout) { cancel() }
-    LaunchedEffect(action, preferences, submitted) {
-        if (action.pending && page == ProfilePage.PREFERENCES) submitted = true
-        if (submitted && !action.pending) {
-            if (action.failed) submitted = false
-            else if (preferences == draft.copy(dietTable = draft.dietTable.trim())) {
-                submitted = false
+    BackHandler(isRouteActive && (page != ProfilePage.HOME || confirmLogout)) { cancel() }
+    LaunchedEffect(isRouteActive) {
+        if (!isRouteActive) {
+            if (page != ProfilePage.HOME) keyboard?.hide()
+            page = ProfilePage.HOME
+            draft = preferences
+            nestedBaseline = preferences
+            submitted = false
+            confirmLogout = false
+        }
+    }
+    LaunchedEffect(action, preferences, isRouteActive) {
+        if (isRouteActive && page == ProfilePage.PREFERENCES && submitted && !action.pending) {
+            submitted = false
+            // The preferences stream can advance beyond this write before the UI observes it.
+            // After recreation, the stored value can also confirm a write from the old ViewModel.
+            if (!action.failed &&
+                (action.message != null || preferences == draft.normalizedForSave())
+            ) {
                 page = ProfilePage.HOME
             }
         }
@@ -196,11 +235,17 @@ fun ProfileContent(
         }
         // Each form has its own scroll position; long labels and large fonts grow naturally.
         key(page) {
+            val scroll =
+                when (page) {
+                    ProfilePage.HOME -> homeScroll
+                    ProfilePage.PREFERENCES -> preferencesScroll
+                    else -> rememberScrollState()
+                }
             Column(
-                Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp),
+                Modifier.weight(1f).verticalScroll(scroll).padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                ActionMessage(action, dismiss)
+                if (!submitted) ActionMessage(action, dismiss)
                 if (!confirmLogout) ActionMessage(logoutAction, dismissLogout)
                 when (page) {
                     ProfilePage.HOME -> {
@@ -253,6 +298,15 @@ fun ProfileContent(
                             !busy,
                             favorites,
                         )
+                        if (onMyProducts != null) {
+                            ProfileRow(
+                                "Мои продукты",
+                                "Что есть дома",
+                                Icons.Default.Kitchen,
+                                !busy,
+                                onMyProducts,
+                            )
+                        }
                         Spacer(Modifier.height(16.dp))
                         ProfileRow(
                             "Выйти из демо",
@@ -349,16 +403,18 @@ fun ProfileContent(
                             )
                         PrimaryButton(
                             onClick = {
-                                keyboard?.hide()
-                                dismiss()
-                                submitted = true
-                                onSave?.invoke(draft.copy(dietTable = draft.dietTable.trim()))
+                                if (onSave != null && !busy && !submitted) {
+                                    submitted = true
+                                    keyboard?.hide()
+                                    dismiss()
+                                    onSave(draft)
+                                }
                             },
                             modifier = Modifier.fillMaxWidth(),
                             enabled =
                                 onSave != null &&
                                     !busy &&
-                                    draft.copy(dietTable = draft.dietTable.trim()) != preferences,
+                                    draft.normalizedForSave() != preferences,
                         ) {
                             Text(if (busy) "Сохраняем…" else "Сохранить предпочтения")
                         }
@@ -402,11 +458,21 @@ fun ProfileContent(
                         )
                     }
                     ProfilePage.TABLE -> {
+                        val focusManager = LocalFocusManager.current
                         ProfileHeading("Диетический стол")
                         TextField(
                             draft.dietTable,
                             { draft = draft.copy(dietTable = it.take(100)) },
-                            Modifier.fillMaxWidth(),
+                            Modifier.fillMaxWidth().onPreviewKeyEvent { event ->
+                                if (event.key != Key.Tab) return@onPreviewKeyEvent false
+                                if (event.type == KeyEventType.KeyUp) {
+                                    focusManager.moveFocus(
+                                        if (event.isShiftPressed) FocusDirection.Previous
+                                        else FocusDirection.Next
+                                    )
+                                }
+                                true
+                            },
                             enabled = !busy,
                             label = { Text("Название из назначения") },
                             supportingText = { Text("До 100 символов") },

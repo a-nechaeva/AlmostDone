@@ -2,7 +2,9 @@ package com.example.mobile_android.feature.shopping
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -12,6 +14,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -30,10 +35,11 @@ internal fun ShoppingBudgetContent(
     edit: () -> Unit,
     modifier: Modifier = Modifier,
     openRecipe: ((String) -> Unit)? = null,
-    addExample: ((ShoppingBudgetExample) -> Unit)? = null,
-    action: com.example.mobile_android.feature.common.ActionState =
-        com.example.mobile_android.feature.common.ActionState(),
-    dismissAction: () -> Unit = {},
+    addPlan: (() -> Unit)? = null,
+    undoPlan: () -> Unit = {},
+    write: BudgetPlanWriteState = BudgetPlanWriteState(),
+    shoppingBusy: Boolean = false,
+    listState: LazyListState = rememberLazyListState(),
 ) {
     val keyboard = LocalSoftwareKeyboardController.current
     val request = {
@@ -42,6 +48,7 @@ internal fun ShoppingBudgetContent(
     }
     LazyColumn(
         modifier.fillMaxSize().imePadding().testTag("shopping-ui-budget"),
+        state = listState,
         contentPadding = PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
@@ -74,7 +81,7 @@ internal fun ShoppingBudgetContent(
                             Text(
                                 if (form.invalid)
                                     "Введите сумму от 0 до 1 000 000 ₽, не более двух знаков после запятой"
-                                else "Цены и бюджет — в рублях",
+                                else "Цены и бюджет — в рублях"
                             )
                         },
                         keyboardOptions =
@@ -174,13 +181,13 @@ internal fun ShoppingBudgetContent(
                         positive = within,
                     )
                 }
-                items(result.example.packages, key = { it.ingredientId }) { pack ->
+                items(result.example.packages) { pack ->
                     Card(
                         Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(18.dp),
                         colors =
                             CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surface,
+                                containerColor = MaterialTheme.colorScheme.surface
                             ),
                     ) {
                         Column(
@@ -212,7 +219,7 @@ internal fun ShoppingBudgetContent(
                             shape = RoundedCornerShape(24.dp),
                             colors =
                                 CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface,
+                                    containerColor = MaterialTheme.colorScheme.surface
                                 ),
                         ) {
                             Row(
@@ -231,7 +238,13 @@ internal fun ShoppingBudgetContent(
                                         style = MaterialTheme.typography.bodySmall,
                                     )
                                     if (openRecipe != null)
-                                        TextButton({ openRecipe(id) }) { Text("Открыть рецепт") }
+                                        TextButton(
+                                            { openRecipe(recipe.id) },
+                                            Modifier.testTag("shopping-budget-recipe-${recipe.id}"),
+                                            enabled = !write.pending,
+                                        ) {
+                                            Text("Открыть рецепт")
+                                        }
                                 }
                             }
                         }
@@ -243,7 +256,7 @@ internal fun ShoppingBudgetContent(
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
-                if (addExample == null)
+                if (addPlan == null)
                     item {
                         Text(
                             "Покупки из примера не добавляются в список.",
@@ -251,20 +264,53 @@ internal fun ShoppingBudgetContent(
                         )
                     }
                 else {
-                    item { ActionMessage(action, dismissAction) }
-                    if (action.pending) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
                     item {
-                        PrimaryButton(
-                            { addExample(result.example) },
-                            Modifier.fillMaxWidth(),
-                            enabled = within && !action.pending,
-                        ) {
-                            Text("Добавить план в покупки")
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            BudgetPlanFeedback(write, undoPlan, shoppingBusy)
+                            PrimaryButton(
+                                addPlan,
+                                Modifier.fillMaxWidth(),
+                                enabled = within && !shoppingBusy && !write.pending,
+                            ) {
+                                Text(
+                                    if (write.retryAdd) "Повторить добавление"
+                                    else "Добавить план в покупки"
+                                )
+                            }
                         }
                     }
                 }
-                item { PrimaryButton(edit, Modifier.fillMaxWidth()) { Text("Изменить бюджет") } }
+                item {
+                    PrimaryButton(edit, Modifier.fillMaxWidth(), enabled = !write.pending) {
+                        Text("Изменить бюджет")
+                    }
+                }
             }
+        }
+    }
+}
+
+@Composable
+internal fun BudgetPlanFeedback(
+    write: BudgetPlanWriteState,
+    undo: () -> Unit,
+    shoppingBusy: Boolean,
+) {
+    if (write.pending || write.message != null || write.canUndo) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (write.pending) LinearProgressIndicator(Modifier.fillMaxWidth())
+            val message = if (write.pending) "Сохраняем изменения…" else write.message
+            if (message != null) {
+                Text(
+                    message,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                    color =
+                        if (write.error) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.onSurface,
+                )
+            }
+            if (write.canUndo)
+                TextButton(undo, enabled = !shoppingBusy && !write.pending) { Text("Отменить") }
         }
     }
 }

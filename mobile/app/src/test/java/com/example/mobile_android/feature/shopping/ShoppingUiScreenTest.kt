@@ -71,11 +71,7 @@ class ShoppingUiScreenTest {
         budgetVm?.viewModelScope?.cancel()
     }
 
-    private fun launch(
-        scale: Float = 1f,
-        longName: Boolean = false,
-        connectExamples: Boolean = false,
-    ) {
+    private fun launch(scale: Float = 1f, longName: Boolean = false) {
         compose.setContent {
             val catalog =
                 if (longName)
@@ -88,22 +84,24 @@ class ShoppingUiScreenTest {
                                             if (it.id == "hard-cheese")
                                                 it.copy(
                                                     name =
-                                                        "Твёрдый сыр с очень длинным названием и подробным описанием упаковки",
+                                                        "Твёрдый сыр с очень длинным названием и подробным описанием упаковки"
                                                 )
                                             else it
-                                        },
-                                ),
+                                        }
+                                )
                             )
                     }
                 else DemoCatalogRepository()
-            val vm = remember {
-                ShoppingViewModel(catalog, household, ShoppingUiPreferences(), SavedStateHandle())
-            }
-                .also { shopping = it }
-            val owner = rememberCoroutineScope()
-            val exampleActions = remember { ScreenActions(owner) }
-            val exampleAction by exampleActions.state.collectAsState()
-            var openedRecipe by remember { mutableStateOf<String?>(null) }
+            val vm =
+                remember {
+                        ShoppingViewModel(
+                            catalog,
+                            household,
+                            ShoppingUiPreferences(),
+                            SavedStateHandle(),
+                        )
+                    }
+                    .also { shopping = it }
             val state by vm.state.collectAsState()
             val action by vm.actions.state.collectAsState()
             CompositionLocalProvider(LocalDensity provides Density(2f, scale)) {
@@ -112,9 +110,7 @@ class ShoppingUiScreenTest {
                         LoadContent(state, vm::retry) {
                             ShoppingScreen(
                                 it,
-                                if (exampleAction.pending || exampleAction.message != null)
-                                    exampleAction
-                                else action,
+                                action,
                                 vm::budgetChanged,
                                 vm::toggleChecked,
                                 vm::removeRecipe,
@@ -122,28 +118,9 @@ class ShoppingUiScreenTest {
                                 vm::addBoughtToPantry,
                                 vm::addSuggestion,
                                 {},
-                                {
-                                    vm.actions.dismiss()
-                                    exampleActions.dismiss()
-                                },
-                                openRecipe =
-                                    if (connectExamples) { id -> openedRecipe = id } else null,
-                                addBudgetExample =
-                                    if (connectExamples)
-                                        { example ->
-                                            exampleActions.run("Пример добавлен") {
-                                                example.packages.forEach { pack ->
-                                                    household.addManualPurchase(
-                                                        pack.ingredientId,
-                                                        pack.quantity,
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    else null,
+                                vm.actions::dismiss,
                             )
                         }
-                        openedRecipe?.let { androidx.compose.material3.Text("Открыт рецепт: $it") }
                     }
                 }
             }
@@ -193,7 +170,7 @@ class ShoppingUiScreenTest {
                 AlmostReadyTheme {
                     Surface(color = MaterialTheme.colorScheme.background) {
                         Scaffold(
-                            topBar = { BrandTopBar("План покупок", onBack = vm::clearResult) },
+                            topBar = { BrandTopBar("План покупок", onBack = vm::clearResult) }
                         ) { padding ->
                             ShoppingBudgetContent(
                                 form,
@@ -310,17 +287,6 @@ class ShoppingUiScreenTest {
 
     @Category(UiSmoke::class)
     @Test
-    fun optionalRecipeCallbackReceivesTheExistingRecipeId() {
-        launch(connectExamples = true)
-        openBudget()
-        text("Подобрать план").performScrollTo().performClick()
-        await("В пределах бюджета")
-        compose.onAllNodesWithText("Открыть рецепт")[0].performScrollTo().performClick()
-        await("Открыт рецепт: cheese")
-    }
-
-    @Category(UiSmoke::class)
-    @Test
     fun unknownPriceNeverConfirmsBudget() {
         launchBudget(FakeShoppingBudgetSource(FakeShoppingBudgetSource.UNKNOWN_PRICE))
         text("Подобрать план").performScrollTo().performClick()
@@ -341,29 +307,6 @@ class ShoppingUiScreenTest {
         await("Сколько потратим?")
         text("Подобрать план").performScrollTo().assertIsDisplayed().performClick()
         await("В пределах бюджета")
-    }
-
-    @Category(UiSmoke::class)
-    @Test
-    fun optionalPlanCallbackUsesSharedFakeAndCanRetryWithoutDuplicates() {
-        household.values.value = Household()
-        launch(connectExamples = true)
-        text("Подобрать покупки").performScrollTo().performClick()
-        await("Сколько потратим?")
-        text("Подобрать план").performScrollTo().performClick()
-        await("В пределах бюджета")
-        household.failWrite = true
-        scrollTo("Добавить план в покупки", budget = true).performClick()
-        await("Не удалось сохранить изменения. Повторите действие.")
-        assertTrue(household.values.value.manualPurchases.isEmpty())
-        household.failWrite = false
-        scrollTo("Добавить план в покупки", budget = true).performClick()
-        await("Пример добавлен")
-        scrollTo("Добавить план в покупки", budget = true).performClick()
-        compose.runOnIdle {
-            assertEquals(1, household.values.value.manualPurchases.size)
-            assertTrue(household.values.value.pantry.isEmpty())
-        }
     }
 
     @Category(Screenshot::class)
@@ -469,7 +412,7 @@ class ShoppingUiScreenTest {
                             RoborazziOptions.CompareOptions(
                                 changeThreshold = 0f,
                                 imageComparator = SimpleImageComparator(maxDistance = 0f),
-                            ),
+                            )
                     ),
             )
     }

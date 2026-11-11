@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict UwjRjazx47h5f6vkoPHRkXImdTb2rYICAdWUruikjResMRn6XuvbUW8qXJf9mkk
+\restrict HmdayGIsThgyTabQcGSf1ClVRTxx9iH7nfsvJIocvYvUSsT8InUSO6cp5k5uX9Z
 
 -- Dumped from database version 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1)
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1)
@@ -18,719 +18,6 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
-
-ALTER TABLE IF EXISTS ONLY public.users DROP CONSTRAINT IF EXISTS users_pevzner_diet_id_pevzner_kind_fkey;
-ALTER TABLE IF EXISTS ONLY public.user_pantry DROP CONSTRAINT IF EXISTS user_pantry_user_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.user_pantry DROP CONSTRAINT IF EXISTS user_pantry_ingredient_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.user_diets DROP CONSTRAINT IF EXISTS user_diets_user_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.user_diets DROP CONSTRAINT IF EXISTS user_diets_diet_id_diet_kind_fkey;
-ALTER TABLE IF EXISTS ONLY public.user_allergens DROP CONSTRAINT IF EXISTS user_allergens_user_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.user_allergens DROP CONSTRAINT IF EXISTS user_allergens_allergen_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.recipes DROP CONSTRAINT IF EXISTS recipes_author_fk;
-ALTER TABLE IF EXISTS ONLY public.recipe_steps DROP CONSTRAINT IF EXISTS recipe_steps_recipe_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.recipe_ingredients DROP CONSTRAINT IF EXISTS recipe_ingredients_recipe_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.recipe_ingredients DROP CONSTRAINT IF EXISTS recipe_ingredients_ingredient_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.recipe_cooking_methods DROP CONSTRAINT IF EXISTS recipe_cooking_methods_recipe_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.recipe_cooking_methods DROP CONSTRAINT IF EXISTS recipe_cooking_methods_method_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.ingredient_categories DROP CONSTRAINT IF EXISTS ingredient_categories_ingredient_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.ingredient_categories DROP CONSTRAINT IF EXISTS ingredient_categories_category_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.ingredient_allergens DROP CONSTRAINT IF EXISTS ingredient_allergens_ingredient_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.ingredient_allergens DROP CONSTRAINT IF EXISTS ingredient_allergens_allergen_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.ingredient_aliases DROP CONSTRAINT IF EXISTS ingredient_aliases_ingredient_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.favorite_recipes DROP CONSTRAINT IF EXISTS favorite_recipes_user_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.favorite_recipes DROP CONSTRAINT IF EXISTS favorite_recipes_recipe_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.favorite_ingredients DROP CONSTRAINT IF EXISTS favorite_ingredients_user_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.favorite_ingredients DROP CONSTRAINT IF EXISTS favorite_ingredients_ingredient_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.diet_excluded_methods DROP CONSTRAINT IF EXISTS diet_excluded_methods_method_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.diet_excluded_methods DROP CONSTRAINT IF EXISTS diet_excluded_methods_diet_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.diet_excluded_categories DROP CONSTRAINT IF EXISTS diet_excluded_categories_diet_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.diet_excluded_categories DROP CONSTRAINT IF EXISTS diet_excluded_categories_category_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.diet_excluded_allergens DROP CONSTRAINT IF EXISTS diet_excluded_allergens_diet_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.diet_excluded_allergens DROP CONSTRAINT IF EXISTS diet_excluded_allergens_allergen_id_fkey;
-DROP TRIGGER IF EXISTS favorite_recipes_access ON public.favorite_recipes;
-DROP INDEX IF EXISTS public.recipes_time_idx;
-DROP INDEX IF EXISTS public.recipes_author_idx;
-DROP INDEX IF EXISTS public.recipe_ingredients_ingr_idx;
-DROP INDEX IF EXISTS public.ingredients_name_uq;
-DROP INDEX IF EXISTS public.ingredient_aliases_uq;
-DROP INDEX IF EXISTS public.diets_name_uq;
-DROP INDEX IF EXISTS public.cooking_methods_name_uq;
-DROP INDEX IF EXISTS public.categories_name_uq;
-DROP INDEX IF EXISTS public.allergens_name_uq;
-ALTER TABLE IF EXISTS ONLY public.users DROP CONSTRAINT IF EXISTS users_pkey;
-ALTER TABLE IF EXISTS ONLY public.users DROP CONSTRAINT IF EXISTS users_login_key;
-ALTER TABLE IF EXISTS ONLY public.user_pantry DROP CONSTRAINT IF EXISTS user_pantry_pkey;
-ALTER TABLE IF EXISTS ONLY public.user_diets DROP CONSTRAINT IF EXISTS user_diets_pkey;
-ALTER TABLE IF EXISTS ONLY public.user_allergens DROP CONSTRAINT IF EXISTS user_allergens_pkey;
-ALTER TABLE IF EXISTS ONLY public.recipes DROP CONSTRAINT IF EXISTS recipes_pkey;
-ALTER TABLE IF EXISTS ONLY public.recipe_steps DROP CONSTRAINT IF EXISTS recipe_steps_pkey;
-ALTER TABLE IF EXISTS ONLY public.recipe_ingredients DROP CONSTRAINT IF EXISTS recipe_ingredients_pkey;
-ALTER TABLE IF EXISTS ONLY public.recipe_cooking_methods DROP CONSTRAINT IF EXISTS recipe_cooking_methods_pkey;
-ALTER TABLE IF EXISTS ONLY public.ingredients DROP CONSTRAINT IF EXISTS ingredients_pkey;
-ALTER TABLE IF EXISTS ONLY public.ingredients DROP CONSTRAINT IF EXISTS ingredients_code_key;
-ALTER TABLE IF EXISTS ONLY public.ingredient_categories DROP CONSTRAINT IF EXISTS ingredient_categories_pkey;
-ALTER TABLE IF EXISTS ONLY public.ingredient_allergens DROP CONSTRAINT IF EXISTS ingredient_allergens_pkey;
-ALTER TABLE IF EXISTS ONLY public.ingredient_aliases DROP CONSTRAINT IF EXISTS ingredient_aliases_pkey;
-ALTER TABLE IF EXISTS ONLY public.favorite_recipes DROP CONSTRAINT IF EXISTS favorite_recipes_pkey;
-ALTER TABLE IF EXISTS ONLY public.favorite_ingredients DROP CONSTRAINT IF EXISTS favorite_ingredients_pkey;
-ALTER TABLE IF EXISTS ONLY public.diets DROP CONSTRAINT IF EXISTS diets_pkey;
-ALTER TABLE IF EXISTS ONLY public.diets DROP CONSTRAINT IF EXISTS diets_id_kind_key;
-ALTER TABLE IF EXISTS ONLY public.diet_excluded_methods DROP CONSTRAINT IF EXISTS diet_excluded_methods_pkey;
-ALTER TABLE IF EXISTS ONLY public.diet_excluded_categories DROP CONSTRAINT IF EXISTS diet_excluded_categories_pkey;
-ALTER TABLE IF EXISTS ONLY public.diet_excluded_allergens DROP CONSTRAINT IF EXISTS diet_excluded_allergens_pkey;
-ALTER TABLE IF EXISTS ONLY public.cooking_methods DROP CONSTRAINT IF EXISTS cooking_methods_pkey;
-ALTER TABLE IF EXISTS ONLY public.categories DROP CONSTRAINT IF EXISTS categories_pkey;
-ALTER TABLE IF EXISTS ONLY public.allergens DROP CONSTRAINT IF EXISTS allergens_pkey;
-ALTER TABLE IF EXISTS ONLY public.allergens DROP CONSTRAINT IF EXISTS allergens_code_key;
-ALTER TABLE IF EXISTS public.users ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE IF EXISTS public.recipes ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE IF EXISTS public.ingredients ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE IF EXISTS public.diets ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE IF EXISTS public.cooking_methods ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE IF EXISTS public.categories ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE IF EXISTS public.allergens ALTER COLUMN id DROP DEFAULT;
-DROP SEQUENCE IF EXISTS public.users_id_seq;
-DROP VIEW IF EXISTS public.user_recipe_visibility;
-DROP TABLE IF EXISTS public.user_pantry;
-DROP TABLE IF EXISTS public.user_allergens;
-DROP VIEW IF EXISTS public.user_all_diets;
-DROP TABLE IF EXISTS public.users;
-DROP TABLE IF EXISTS public.user_diets;
-DROP SEQUENCE IF EXISTS public.recipes_id_seq;
-DROP TABLE IF EXISTS public.recipe_steps;
-DROP VIEW IF EXISTS public.recipe_nutrition;
-DROP TABLE IF EXISTS public.recipes;
-DROP TABLE IF EXISTS public.recipe_cooking_methods;
-DROP VIEW IF EXISTS public.recipe_categories;
-DROP VIEW IF EXISTS public.recipe_allergens;
-DROP TABLE IF EXISTS public.recipe_ingredients;
-DROP SEQUENCE IF EXISTS public.ingredients_id_seq;
-DROP TABLE IF EXISTS public.ingredients;
-DROP TABLE IF EXISTS public.ingredient_categories;
-DROP TABLE IF EXISTS public.ingredient_allergens;
-DROP TABLE IF EXISTS public.ingredient_aliases;
-DROP TABLE IF EXISTS public.favorite_recipes;
-DROP TABLE IF EXISTS public.favorite_ingredients;
-DROP SEQUENCE IF EXISTS public.diets_id_seq;
-DROP TABLE IF EXISTS public.diets;
-DROP TABLE IF EXISTS public.diet_excluded_methods;
-DROP TABLE IF EXISTS public.diet_excluded_categories;
-DROP TABLE IF EXISTS public.diet_excluded_allergens;
-DROP SEQUENCE IF EXISTS public.cooking_methods_id_seq;
-DROP TABLE IF EXISTS public.cooking_methods;
-DROP SEQUENCE IF EXISTS public.categories_id_seq;
-DROP TABLE IF EXISTS public.categories;
-DROP SEQUENCE IF EXISTS public.allergens_id_seq;
-DROP TABLE IF EXISTS public.allergens;
-DROP FUNCTION IF EXISTS public.check_favorite_recipe_access();
-DROP EXTENSION IF EXISTS citext;
---
--- Name: citext; Type: EXTENSION; Schema: -; Owner: -
---
-
-CREATE EXTENSION IF NOT EXISTS citext WITH SCHEMA public;
-
-
---
--- Name: EXTENSION citext; Type: COMMENT; Schema: -; Owner: -
---
-
-COMMENT ON EXTENSION citext IS 'data type for case-insensitive character strings';
-
-
---
--- Name: check_favorite_recipe_access(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.check_favorite_recipe_access() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-    IF EXISTS (SELECT 1 FROM recipes
-               WHERE id = NEW.recipe_id
-                 AND author_id IS NOT NULL AND author_id <> NEW.user_id) THEN
-        RAISE EXCEPTION 'рецепт % — чужой личный рецепт', NEW.recipe_id;
-    END IF;
-    RETURN NEW;
-END $$;
-
-
-SET default_tablespace = '';
-
-SET default_table_access_method = heap;
-
---
--- Name: allergens; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.allergens (
-    id integer NOT NULL,
-    code text NOT NULL,
-    name text NOT NULL,
-    CONSTRAINT allergens_code_check CHECK ((code ~ '^[a-z][a-z0-9_]*$'::text)),
-    CONSTRAINT allergens_name_check CHECK (((name <> ''::text) AND (name = btrim(name))))
-);
-
-
---
--- Name: allergens_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.allergens_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: allergens_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.allergens_id_seq OWNED BY public.allergens.id;
-
-
---
--- Name: categories; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.categories (
-    id integer NOT NULL,
-    name text NOT NULL,
-    CONSTRAINT categories_name_check CHECK (((name <> ''::text) AND (name = btrim(name))))
-);
-
-
---
--- Name: categories_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.categories_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: categories_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.categories_id_seq OWNED BY public.categories.id;
-
-
---
--- Name: cooking_methods; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.cooking_methods (
-    id integer NOT NULL,
-    name text NOT NULL,
-    CONSTRAINT cooking_methods_name_check CHECK (((name <> ''::text) AND (name = btrim(name))))
-);
-
-
---
--- Name: cooking_methods_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.cooking_methods_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: cooking_methods_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.cooking_methods_id_seq OWNED BY public.cooking_methods.id;
-
-
---
--- Name: diet_excluded_allergens; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.diet_excluded_allergens (
-    diet_id integer NOT NULL,
-    allergen_id integer NOT NULL
-);
-
-
---
--- Name: diet_excluded_categories; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.diet_excluded_categories (
-    diet_id integer NOT NULL,
-    category_id integer NOT NULL
-);
-
-
---
--- Name: diet_excluded_methods; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.diet_excluded_methods (
-    diet_id integer NOT NULL,
-    method_id integer NOT NULL
-);
-
-
---
--- Name: diets; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.diets (
-    id integer NOT NULL,
-    kind text NOT NULL,
-    name text NOT NULL,
-    description text,
-    CONSTRAINT diets_kind_check CHECK ((kind = ANY (ARRAY['diet'::text, 'pevzner'::text]))),
-    CONSTRAINT diets_name_check CHECK (((name <> ''::text) AND (name = btrim(name))))
-);
-
-
---
--- Name: diets_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.diets_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: diets_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.diets_id_seq OWNED BY public.diets.id;
-
-
---
--- Name: favorite_ingredients; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.favorite_ingredients (
-    user_id integer NOT NULL,
-    ingredient_id integer NOT NULL,
-    added_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
---
--- Name: favorite_recipes; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.favorite_recipes (
-    user_id integer NOT NULL,
-    recipe_id integer NOT NULL,
-    added_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
---
--- Name: ingredient_aliases; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.ingredient_aliases (
-    ingredient_id integer NOT NULL,
-    alias text NOT NULL,
-    CONSTRAINT ingredient_aliases_alias_check CHECK (((alias <> ''::text) AND (alias = btrim(alias))))
-);
-
-
---
--- Name: ingredient_allergens; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.ingredient_allergens (
-    ingredient_id integer NOT NULL,
-    allergen_id integer NOT NULL
-);
-
-
---
--- Name: ingredient_categories; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.ingredient_categories (
-    ingredient_id integer NOT NULL,
-    category_id integer NOT NULL
-);
-
-
---
--- Name: ingredients; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.ingredients (
-    id integer NOT NULL,
-    code text NOT NULL,
-    name text NOT NULL,
-    is_staple boolean DEFAULT false NOT NULL,
-    display_unit text DEFAULT 'g'::text NOT NULL,
-    grams_per_piece numeric(8,2),
-    kcal numeric(7,2) NOT NULL,
-    protein numeric(6,2) NOT NULL,
-    fat numeric(6,2) NOT NULL,
-    carbs numeric(6,2) NOT NULL,
-    package_g numeric(8,2) NOT NULL,
-    package_price numeric(10,2) NOT NULL,
-    CONSTRAINT ingredients_carbs_check CHECK (((carbs >= (0)::numeric) AND (carbs <= (100)::numeric))),
-    CONSTRAINT ingredients_check CHECK ((((protein + fat) + carbs) <= (100)::numeric)),
-    CONSTRAINT ingredients_check1 CHECK (((display_unit <> 'pcs'::text) OR (grams_per_piece IS NOT NULL))),
-    CONSTRAINT ingredients_code_check CHECK ((code ~ '^[a-z][a-z0-9_]*$'::text)),
-    CONSTRAINT ingredients_display_unit_check CHECK ((display_unit = ANY (ARRAY['g'::text, 'ml'::text, 'pcs'::text]))),
-    CONSTRAINT ingredients_fat_check CHECK (((fat >= (0)::numeric) AND (fat <= (100)::numeric))),
-    CONSTRAINT ingredients_grams_per_piece_check CHECK ((grams_per_piece > (0)::numeric)),
-    CONSTRAINT ingredients_kcal_check CHECK (((kcal >= (0)::numeric) AND (kcal <= (900)::numeric))),
-    CONSTRAINT ingredients_name_check CHECK (((name <> ''::text) AND (name = btrim(name)))),
-    CONSTRAINT ingredients_package_g_check CHECK ((package_g > (0)::numeric)),
-    CONSTRAINT ingredients_package_price_check CHECK ((package_price >= (0)::numeric)),
-    CONSTRAINT ingredients_protein_check CHECK (((protein >= (0)::numeric) AND (protein <= (100)::numeric)))
-);
-
-
---
--- Name: ingredients_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.ingredients_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: ingredients_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.ingredients_id_seq OWNED BY public.ingredients.id;
-
-
---
--- Name: recipe_ingredients; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.recipe_ingredients (
-    recipe_id integer NOT NULL,
-    ingredient_id integer NOT NULL,
-    qty_g numeric(8,2),
-    is_optional boolean DEFAULT false NOT NULL,
-    CONSTRAINT recipe_ingredients_qty_g_check CHECK (((qty_g > (0)::numeric) OR (qty_g IS NULL)))
-);
-
-
---
--- Name: recipe_allergens; Type: VIEW; Schema: public; Owner: -
---
-
-CREATE VIEW public.recipe_allergens AS
- SELECT DISTINCT ri.recipe_id,
-    ia.allergen_id
-   FROM (public.recipe_ingredients ri
-     JOIN public.ingredient_allergens ia USING (ingredient_id))
-  WHERE (NOT ri.is_optional);
-
-
---
--- Name: recipe_categories; Type: VIEW; Schema: public; Owner: -
---
-
-CREATE VIEW public.recipe_categories AS
- SELECT DISTINCT ri.recipe_id,
-    ic.category_id
-   FROM (public.recipe_ingredients ri
-     JOIN public.ingredient_categories ic USING (ingredient_id))
-  WHERE (NOT ri.is_optional);
-
-
---
--- Name: recipe_cooking_methods; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.recipe_cooking_methods (
-    recipe_id integer NOT NULL,
-    method_id integer NOT NULL
-);
-
-
---
--- Name: recipes; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.recipes (
-    id integer NOT NULL,
-    title text NOT NULL,
-    description text,
-    servings integer NOT NULL,
-    cook_time_min integer NOT NULL,
-    needs_microwave boolean DEFAULT false NOT NULL,
-    needs_stove boolean DEFAULT false NOT NULL,
-    needs_oven boolean DEFAULT false NOT NULL,
-    image_url text,
-    author_id integer,
-    no_cook boolean DEFAULT false NOT NULL,
-    CONSTRAINT recipes_cook_time_min_check CHECK ((cook_time_min >= 0)),
-    CONSTRAINT recipes_servings_check CHECK ((servings > 0)),
-    CONSTRAINT recipes_title_check CHECK (((title <> ''::text) AND (title = btrim(title))))
-);
-
-
---
--- Name: recipe_nutrition; Type: VIEW; Schema: public; Owner: -
---
-
-CREATE VIEW public.recipe_nutrition AS
- SELECT r.id AS recipe_id,
-    round((sum(((i.kcal * ri.qty_g) / (100)::numeric)) / (r.servings)::numeric), 1) AS kcal,
-    round((sum(((i.protein * ri.qty_g) / (100)::numeric)) / (r.servings)::numeric), 1) AS protein,
-    round((sum(((i.fat * ri.qty_g) / (100)::numeric)) / (r.servings)::numeric), 1) AS fat,
-    round((sum(((i.carbs * ri.qty_g) / (100)::numeric)) / (r.servings)::numeric), 1) AS carbs
-   FROM ((public.recipes r
-     JOIN public.recipe_ingredients ri ON ((ri.recipe_id = r.id)))
-     JOIN public.ingredients i ON ((i.id = ri.ingredient_id)))
-  WHERE (NOT ri.is_optional)
-  GROUP BY r.id, r.servings;
-
-
---
--- Name: recipe_steps; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.recipe_steps (
-    recipe_id integer NOT NULL,
-    step_no integer NOT NULL,
-    instruction text NOT NULL,
-    duration_min integer,
-    CONSTRAINT recipe_steps_duration_min_check CHECK ((duration_min > 0)),
-    CONSTRAINT recipe_steps_instruction_check CHECK ((btrim(instruction) <> ''::text)),
-    CONSTRAINT recipe_steps_step_no_check CHECK ((step_no > 0))
-);
-
-
---
--- Name: recipes_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.recipes_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: recipes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.recipes_id_seq OWNED BY public.recipes.id;
-
-
---
--- Name: user_diets; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.user_diets (
-    user_id integer NOT NULL,
-    diet_id integer NOT NULL,
-    diet_kind text DEFAULT 'diet'::text NOT NULL,
-    CONSTRAINT user_diets_diet_kind_check CHECK ((diet_kind = 'diet'::text))
-);
-
-
---
--- Name: users; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.users (
-    id integer NOT NULL,
-    login public.citext NOT NULL,
-    password_hash text NOT NULL,
-    pevzner_diet_id integer,
-    pevzner_kind text DEFAULT 'pevzner'::text NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT users_login_check CHECK ((login OPERATOR(public.~) '^[A-Za-z0-9_.-]{3,32}$'::public.citext)),
-    CONSTRAINT users_pevzner_kind_check CHECK ((pevzner_kind = 'pevzner'::text))
-);
-
-
---
--- Name: user_all_diets; Type: VIEW; Schema: public; Owner: -
---
-
-CREATE VIEW public.user_all_diets AS
- SELECT user_diets.user_id,
-    user_diets.diet_id
-   FROM public.user_diets
-UNION
- SELECT users.id AS user_id,
-    users.pevzner_diet_id AS diet_id
-   FROM public.users
-  WHERE (users.pevzner_diet_id IS NOT NULL);
-
-
---
--- Name: user_allergens; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.user_allergens (
-    user_id integer NOT NULL,
-    allergen_id integer NOT NULL
-);
-
-
---
--- Name: user_pantry; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.user_pantry (
-    user_id integer NOT NULL,
-    ingredient_id integer NOT NULL,
-    qty_g numeric(8,2),
-    CONSTRAINT user_pantry_qty_g_check CHECK ((qty_g >= (0)::numeric))
-);
-
-
---
--- Name: user_recipe_visibility; Type: VIEW; Schema: public; Owner: -
---
-
-CREATE VIEW public.user_recipe_visibility AS
- WITH flags AS (
-         SELECT u.id AS user_id,
-            r.id AS recipe_id,
-            COALESCE(( SELECT array_agg(DISTINCT a.name ORDER BY a.name) AS array_agg
-                   FROM ((public.recipe_allergens ra
-                     JOIN public.user_allergens ua ON ((ua.allergen_id = ra.allergen_id)))
-                     JOIN public.allergens a ON ((a.id = ra.allergen_id)))
-                  WHERE ((ra.recipe_id = r.id) AND (ua.user_id = u.id))), '{}'::text[]) AS user_allergens_in_dish,
-            COALESCE(( SELECT array_agg(DISTINCT d.name ORDER BY d.name) AS array_agg
-                   FROM (public.user_all_diets ud
-                     JOIN public.diets d ON ((d.id = ud.diet_id)))
-                  WHERE ((ud.user_id = u.id) AND ((EXISTS ( SELECT 1
-                           FROM (public.recipe_categories rc
-                             JOIN public.diet_excluded_categories x ON ((x.category_id = rc.category_id)))
-                          WHERE ((rc.recipe_id = r.id) AND (x.diet_id = d.id)))) OR (EXISTS ( SELECT 1
-                           FROM (public.recipe_allergens ra
-                             JOIN public.diet_excluded_allergens x ON ((x.allergen_id = ra.allergen_id)))
-                          WHERE ((ra.recipe_id = r.id) AND (x.diet_id = d.id)))) OR (EXISTS ( SELECT 1
-                           FROM (public.recipe_cooking_methods rm
-                             JOIN public.diet_excluded_methods x ON ((x.method_id = rm.method_id)))
-                          WHERE ((rm.recipe_id = r.id) AND (x.diet_id = d.id))))))), '{}'::text[]) AS violated_diets,
-            COALESCE(( SELECT array_agg(DISTINCT i.name ORDER BY i.name) AS array_agg
-                   FROM (public.recipe_ingredients ri
-                     JOIN public.ingredients i ON ((i.id = ri.ingredient_id)))
-                  WHERE ((ri.recipe_id = r.id) AND ri.is_optional AND ((EXISTS ( SELECT 1
-                           FROM (public.ingredient_allergens ia
-                             JOIN public.user_allergens ua ON ((ua.allergen_id = ia.allergen_id)))
-                          WHERE ((ia.ingredient_id = i.id) AND (ua.user_id = u.id)))) OR (EXISTS ( SELECT 1
-                           FROM ((public.ingredient_categories ic
-                             JOIN public.diet_excluded_categories x ON ((x.category_id = ic.category_id)))
-                             JOIN public.user_all_diets ud ON ((ud.diet_id = x.diet_id)))
-                          WHERE ((ic.ingredient_id = i.id) AND (ud.user_id = u.id)))) OR (EXISTS ( SELECT 1
-                           FROM ((public.ingredient_allergens ia
-                             JOIN public.diet_excluded_allergens x ON ((x.allergen_id = ia.allergen_id)))
-                             JOIN public.user_all_diets ud ON ((ud.diet_id = x.diet_id)))
-                          WHERE ((ia.ingredient_id = i.id) AND (ud.user_id = u.id))))))), '{}'::text[]) AS skip_optional
-           FROM (public.users u
-             CROSS JOIN public.recipes r)
-          WHERE ((r.author_id IS NULL) OR (r.author_id = u.id))
-        )
- SELECT user_id,
-    recipe_id,
-    user_allergens_in_dish,
-    violated_diets,
-    skip_optional,
-    ((cardinality(user_allergens_in_dish) > 0) OR (cardinality(violated_diets) > 0)) AS is_hidden
-   FROM flags f;
-
-
---
--- Name: users_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.users_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: users_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
-
-
---
--- Name: allergens id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.allergens ALTER COLUMN id SET DEFAULT nextval('public.allergens_id_seq'::regclass);
-
-
---
--- Name: categories id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.categories ALTER COLUMN id SET DEFAULT nextval('public.categories_id_seq'::regclass);
-
-
---
--- Name: cooking_methods id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.cooking_methods ALTER COLUMN id SET DEFAULT nextval('public.cooking_methods_id_seq'::regclass);
-
-
---
--- Name: diets id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.diets ALTER COLUMN id SET DEFAULT nextval('public.diets_id_seq'::regclass);
-
-
---
--- Name: ingredients id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ingredients ALTER COLUMN id SET DEFAULT nextval('public.ingredients_id_seq'::regclass);
-
-
---
--- Name: recipes id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.recipes ALTER COLUMN id SET DEFAULT nextval('public.recipes_id_seq'::regclass);
-
-
---
--- Name: users id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
-
 
 --
 -- Data for Name: allergens; Type: TABLE DATA; Schema: public; Owner: -
@@ -771,6 +58,7 @@ COPY public.categories (id, name) FROM stdin;
 10	Орехи и сухофрукты
 11	Напитки
 12	Сладости и десерты
+13	Яйца
 \.
 
 
@@ -783,40 +71,6 @@ COPY public.cooking_methods (id, name) FROM stdin;
 2	Жарка / Обжаривание
 3	Запекание в духовке
 4	Без термической обработки
-\.
-
-
---
--- Data for Name: diet_excluded_allergens; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.diet_excluded_allergens (diet_id, allergen_id) FROM stdin;
-15	5
-16	7
-\.
-
-
---
--- Data for Name: diet_excluded_categories; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.diet_excluded_categories (diet_id, category_id) FROM stdin;
-12	3
-12	4
-14	3
-13	3
-13	4
-13	5
-\.
-
-
---
--- Data for Name: diet_excluded_methods; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.diet_excluded_methods (diet_id, method_id) FROM stdin;
-1	2
-5	2
 \.
 
 
@@ -847,1571 +101,37 @@ COPY public.diets (id, kind, name, description) FROM stdin;
 
 
 --
--- Data for Name: favorite_ingredients; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: diet_excluded_allergens; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.favorite_ingredients (user_id, ingredient_id, added_at) FROM stdin;
+COPY public.diet_excluded_allergens (diet_id, allergen_id) FROM stdin;
+15	5
+16	7
 \.
 
 
 --
--- Data for Name: favorite_recipes; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: diet_excluded_categories; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.favorite_recipes (user_id, recipe_id, added_at) FROM stdin;
+COPY public.diet_excluded_categories (diet_id, category_id) FROM stdin;
+12	3
+12	4
+14	3
+13	3
+13	4
+13	5
+13	13
 \.
 
 
 --
--- Data for Name: ingredient_aliases; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: diet_excluded_methods; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.ingredient_aliases (ingredient_id, alias) FROM stdin;
-625	Оливки каламата
-785	Тонкий лаваш
-140	Восковой картофель
-299	Грибы белые сушёные
-299	Сушёные белые грибы
-235	Говяжий огузок
-171	Майоран
-401	Ягнёнок
-446	Вырезка
-523	Копчёная свиная шейка
-250	Крахмал
-515	Кокосовое масло
-68	Бульон говяжий
-68	Говяжий бульон
-664	Почки
-291	Брусника
-228	Бамия
-228	Окра
-674	Ржаной солод
-779	Сушёный тимьян
-779	Тимьян сушёный
-539	Крупная белая фасоль
-685	Рисовая лапша широкая
-685	Широкая рисовая лапша
-134	Орегано
-428	Бобы фул (конские)
-824	Черника
-11	Вода
-11	Вода горячая
-11	Вода для карамели
-11	Вода для теста
-11	Вода ледяная
-11	Вода тёплая
-11	Вода холодная
-11	Кипяток
-11	Ледяная вода
-11	Ледяная вода в фарш
-11	Тёплая вода
-11	Холодная вода
-597	Молодой солёный сыр
-509	Китайский лук-чеснок
-756	Сушёный пажитник
-690	Руккола
-476	Дроблёная пшеница джариш
-798	Уксус для соуса
-206	Оливки чёрные
-528	Кость от хамона
-505	Киви
-169	Листья карри
-441	Варенье из чёрной смородины
-760	Сыр для пастель
-386	Фета
-152	Тёмный шоколад
-373	Сыр твёрдый
-373	Твёрдый сыр
-373	Тёртый твёрдый сыр
-344	Перец пири-пири
-293	Булочки
-645	Пекинская капуста
-520	Копчёная колбаса рокворст
-850	Яблочный сок
-233	Виноградные листья
-118	Сельдерей стеблевой
-118	Стебель сельдерея
-118	Стебли сельдерея
-454	Говяжьи кости
-753	Сушёные травы
-614	Мякоть пальмовых плодов
-678	Варёный короткозёрный рис
-678	Рис варёный короткозёрный
-158	Базилик
-158	Листья базилика
-400	Яблоки
-337	Кровяная колбаса морсилья
-337	Морсилья
-96	Бульон куриный
-96	Куриный бульон
-59	Мёд
-111	Кедровые орехи
-23	Перец сладкий
-23	Сладкий перец
-362	Свиная корейка
-486	Зелёные бананы матоке
-752	Сушёные анчоусы икан билис
-329	Манная крупа
-443	Варёная колбаса
-636	Паста ачиоте (рекадо рохо)
-14	Масло оливковое
-14	Оливковое масло
-14	Оливковое масло в соус
-138	Вино красное сухое
-138	Красное сухое вино
-80	Кориандр молотый
-80	Молотый кориандр
-257	Мука пшеничная
-257	Пшеничная мука
-109	Арахис жареный
-109	Жареный арахис
-104	Разрыхлитель
-599	Молоко для крема
-316	Клейкий рис
-469	Грибы сушёные
-469	Сушёные грибы
-181	Стручковая фасоль
-181	Фасоль стручковая
-284	Аджван
-304	Дульсе де лече
-252	Куриное бедро без кости
-331	Горчичное масло
-331	Масло горчичное
-475	Дзавар (пшеничная крупа)
-45	Креветки
-45	Крупные креветки
-45	Мелкие креветки
-434	Булочки для хот-дога
-146	Пармезан
-412	Арбуз
-671	Редька зелёная
-103	Перец чёрный
-103	Чёрный перец
-550	Куриные грудки на кости
-450	Говядина тонкими пластами
-838	Чёрные оливки
-339	Мягкий белый сыр
-713	Семена эгуси молотые
-301	Доубаньцзян
-301	Паста доубаньцзян
-392	Хмели-сунели
-630	Пажитник молотый
-3	Чеснок
-289	Белый перец
-89	Мускатный орех
-139	Вино шаосинское
-139	Шаосинское вино
-55	Паприка
-834	Чили гуахильо
-182	Аннато
-334	Мидии
-676	Рикотта
-827	Жёлтая чечевица
-827	Чечевица жёлтая
-251	Креветочная паста белачан
-683	Рисовая лапша 5 мм
-453	Говяжий хвост
-16	Морковь
-621	Обжаренный порошок карри
-440	Вакамэ сушёная
-436	Бараний бульон
-436	Бульон бараний
-27	Куркума
-56	Свиной фарш
-56	Фарш свиной
-210	Ржаная мука
-196	Копчёный бекон
-804	Фасоль фабес
-722	Смесь бахарат
-709	Священный базилик
-584	Маринованная сельдь
-735	Соус из голубого сыра
-159	Белый уксус
-662	Попкорн
-639	Паста из красного перца
-243	Капуста кале
-243	Кудрявая капуста
-50	Рыбный соус
-219	Тахини
-308	Зелёная папайя
-696	Сардины
-321	Кочхуджан
-789	Тунец
-429	Болгарский йогурт
-555	Курица на кости
-605	Мука для основы
-431	Брусничный соус
-609	Мука обжаренная
-150	Коричневый сахар
-150	Сахар коричневый
-668	Рас-эль-ханут
-272	Солёная треска
-292	Брусничное варенье
-725	Смесь семи специй
-208	Копчёная паприка
-208	Паприка копчёная
-408	Амба
-309	Зелёный острый перец
-157	Бадьян
-70	Мята сушёная
-70	Сушёная мята
-121	Шпинат
-757	Сушёный чили анчо
-707	Свиная шкура с жиром
-113	Кукуруза
-576	Лук для подачи
-341	Паста ахи амарильо
-819	Хлопья жареного чили
-656	Перечная паста бибер сальчасы
-491	Имбирные пряники
-637	Паста багоонг
-258	Нутовая мука
-323	Красный сладкий перец
-791	Тэнкасу — крошка от темпуры
-415	Африканские баклажаны
-711	Семена граната сушёные
-783	Томатный сок
-517	Колбаса копчёная
-54	Огурец
-54	Огурцы
-817	Херес
-179	Творог
-42	Сливки
-810	Филе трески
-513	Козлятина
-626	Орехи кемири
-229	Бок-чой
-229	Зелень бок-чой
-229	Пак-чой
-220	Тесто фило
-628	Осьминог
-720	Сливочный сыр катупири
-506	Кипрская пита
-675	Ржаной хлеб ругбрёд
-782	Томатный кетчуп
-391	Хлопья пул бибер
-253	Лепёшка
-741	Стебли водяной лилии
-787	Тостады
-574	Листья сельдерея
-230	Булгур мелкий
-230	Мелкий булгур
-226	Анис
-813	Форель
-125	Винный уксус
-573	Листья салата
-209	Душистый перец
-209	Перец душистый
-669	Растительное масло для соуса
-556	Курут
-734	Соус ахи
-852	Яйца в начинку
-176	Ростки маша
-780	Толчёные листья маниока
-416	Ахи амарильо
-606	Мука для роши
-72	Свиная грудинка
-765	Тайские баклажаны
-535	Красный чили
-529	Кочхукару
-825	Чернила каракатицы
-406	Аки консервированный
-522	Копчёная рыба
-33	Кокосовое молоко
-129	Красная фасоль
-680	Рис короткозёрный
-34	Ваниль
-477	Дроблёный нут чана дал
-397	Чёрствый белый хлеб
-409	Анисовый ликёр
-82	Паприка сладкая
-82	Паприка сладкая молотая
-82	Сладкая паприка
-665	Прахок
-149	Помидоры в собственном соку
-149	Помидоры консервированные в собственном соку
-149	Томаты в собственном соку
-788	Треска
-432	Брюква
-343	Перец пили-пили
-360	Свежий солёный сыр
-544	Кукурузная мука масарепа
-474	Джамид
-151	Тмин
-64	Нут
-589	Масло пальмовое
-589	Пальмовое масло
-655	Перец тимур
-95	Брынза
-472	Гундрук
-123	Арахис
-305	Желатин
-223	Цедра апельсина
-739	Спагетти
-602	Морковный салат
-769	Тамариндовый соус
-319	Коньяк
-699	Сахар для корочки
-8	Помидор
-8	Помидоры
-8	Помидоры для ачара
-8	Помидоры крупные
-8	Спелые помидоры
-570	Листы для лазаньи
-41	Красный лук
-41	Лук красный
-108	Тыква
-566	Лимонный мирт
-487	Зелёный чай
-39	Укроп
-188	Бульон мясной
-188	Мясной бульон
-52	Тимьян
-52	Чабрец
-65	Орегано сушёный
-65	Сушёный орегано
-265	Рис жасминовый
-803	Фасоль в томате
-19	Рис
-285	Ананас
-488	Зимняя дыня
-221	Томатный соус
-519	Колбаски мергез
-267	Розовая вода
-451	Говяжий жир
-190	Вустерский соус
-136	Свиная шея
-554	Варёная курица
-554	Курица варёная
-652	Перец мулато
-117	Копчёные рёбра
-117	Копчёные рёбрышки
-117	Рёбрышки копчёные
-404	Абрикосовый чатни
-245	Картофель варёный
-245	Отварной картофель
-175	Лепёшка пита
-175	Пита
-175	Питы
-693	Салат ромэн
-21	Курица
-21	Курица для карри
-21	Курица, кусочками
-21	Курица, разделанная
-21	Курица, разделанная на куски
-715	Серый горох
-540	Кукуруза посоле
-420	Бахарат для кабсы
-548	Куриное карри с соусом
-508	Китайская колбаса лап чонг
-413	Арепы
-534	Красный мясистый перец
-489	Золотой сироп
-29	Баранина
-29	Свежайшая баранина
-5	Яйца
-5	Яйца в соус
-5	Яйца для кайи
-5	Яйца для панировки
-5	Яйцо
-5	Яйцо для панировки
-5	Яйцо для смазки
-5	Яйцо куриное
-5	Яйцо целиком
-822	Цельнозерновая мука
-127	Говяжья вырезка
-657	Печень
-427	Бобы садовые
-143	Даси
-143	Даси для соуса
-590	Махлаб
-240	Зира семена
-240	Семена зиры
-524	Копчёная соль
-346	Перец чили свежий
-346	Свежий чили
-35	Говядина
-700	Сахар для обваливания
-44	Капуста
-455	Говяжьи кости с мозгом
-350	Помидоры сан-марцано
-502	Касури мети
-200	Кукурузная мука маса
-200	Кукурузная мука масека
-610	Мука тефф
-353	Репа
-717	Сливки 30 %
-717	Сливки 30%
-296	Вино красное
-296	Красное вино
-600	Молоко обезжиренное
-600	Обезжиренное молоко
-100	Курдючный жир
-745	Сухие бобы фава
-128	Кефир
-314	Кешью
-380	Рисовый уксус
-380	Уксус рисовый
-733	Солёный лимон
-177	Свёкла
-776	Тесто для эмпанадас
-387	Финики жужуб
-829	Коричневая чечевица
-829	Чечевица коричневая
-616	Негушский пршут
-2	Соль
-2	Соль для воды
-216	Светлый соевый соус
-216	Соус соевый светлый
-849	Яблочное пюре
-770	Тапиоковый крахмал
-847	Яблоки плотных кислых сортов
-618	Нут сухой
-618	Сухой нут
-75	Горчица
-247	Каштаны
-326	Кукурузные тортильи
-714	Сердце
-749	Сухой имбирь молотый
-102	Маниок
-102	Юкка
-102	Юкка (маниок)
-141	Гарам масала
-473	Деревенский хлеб
-192	Говяжья голяшка
-456	Говяжья грудинка
-186	Белая рыба
-705	Свиная кровь
-417	Банан
-107	Свинина
-160	Бульонный кубик
-421	Бекон
-13	Кинза
-10	Картофель
-10	Картофель для рёшти
-381	Уксус хересный
-381	Хересный уксус
-58	Зира
-363	Свиные кишки
-30	Острый перец
-30	Перец чили
-30	Стручок острого перца
-771	Творог 5–9 %
-133	Мирин
-617	Нитритная соль
-28	Дрожжи сухие
-28	Сухие дрожжи
-382	Уксус яблочный
-382	Яблочный уксус
-620	Обжаренная кокосовая стружка
-845	Ынджера
-843	Шоколад для глазури
-63	Зелёный чили
-394	Цельная пшеница
-124	Бахарат
-507	Кислые яблоки
-701	Сахар для соуса
-120	Тамариндовая паста
-246	Кашмирский чили молотый
-689	Ростки сои
-511	Клюква
-217	Спаржевая фасоль
-399	Эстрагон
-322	Красный перец молотый
-737	Соус хойсин
-12	Молоко
-12	Молоко тёплое
-12	Тёплое молоко
-12	Холодное молоко
-781	Томатное пюре
-484	Зелёная приправа
-352	Ракушки
-516	Кокосовые сливки
-194	Дайкон
-194	Тёртый дайкон
-464	Горячая вода
-808	Филе лосося
-115	Подорожник
-155	Шампиньоны
-638	Паста из зелёной папайи
-691	Савоярди
-527	Корнишоны
-774	Телячий эскалоп
-726	Смесь специй чар масала
-633	Панко
-482	Жареный тофу
-66	Перец скотч-боннет
-66	Скотч-боннет
-318	Концентрированное молоко
-793	Тёмное пиво стаут
-563	Лепёшки таббун
-249	Красный рис
-766	Тайский чили
-777	Тесто катаифи
-561	Лепёшка пиде
-275	Бараний фарш
-275	Фарш бараний
-275	Фарш из баранины
-145	Куркума свежая
-145	Свежая куркума
-767	Тамалито из кукурузы
-225	Белки
-225	Яичный белок
-437	Бульон овощной
-437	Горячий овощной бульон
-583	Маракуйя
-663	Постная говядина
-738	Соус шито
-565	Лесные ягоды
-458	Горох колотый
-708	Свиной жир
-627	Острый перечный соус
-203	Леденцовый сахар
-300	Гуанчале
-199	Картофельный крахмал
-199	Крахмал картофельный
-256	Мука высокобелковая
-256	Мука сильная
-207	Мексиканский орегано
-207	Орегано мексиканский
-430	Борщ из отрубей
-460	Горчица дижонская
-460	Дижонская горчица
-237	Говяжья пашина
-820	Холодный бульон
-184	Базилик фиолетовый
-184	Райхон
-184	Рейхан (фиолетовый базилик)
-212	Рёбрышки свиные
-212	Свиные рёбрышки
-345	Перец хабанеро
-168	Лист пандана
-168	Листья пандана
-97	Жир свиной топлёный
-97	Смалец
-97	Топлёный свиной жир
-586	Марсала
-839	Чёрный кардамон
-163	Имбирь молотый
-163	Молотый имбирь
-281	Чесночный порошок
-444	Вашрен фрибуржуа
-410	Апельсиновая корка
-24	Лайм
-466	Гранатовая патока
-631	Пальмовое масло денде
-553	Куриный паштет
-547	Куриная грудка
-84	Карри молотое
-84	Карри-порошок
-84	Порошок карри
-744	Сулугуни
-274	Тунец консервированный
-389	Фундук
-784	Тонкая лепёшка
-106	Пальмовый сахар
-106	Сахар пальмовый
-697	Сахар в начинку
-525	Корейская груша
-557	Кускус
-500	Картофель жёлтых сортов
-792	Тёмное бельгийское пиво
-43	Соевый соус
-43	Соевый соус для рыбы на пару
-43	Соус соевый
-732	Солёный белый сыр
-612	Мускатный цвет
-25	Томатная паста
-332	Масло оливковое extra virgin
-332	Оливковое масло экстра вирджин
-101	Лемонграсс
-340	Огурец солёный
-340	Солёные огурцы
-1	Лук
-1	Лук крупный
-1	Лук репчатый
-1	Мелкий лук
-727	Соевые бобы
-153	Хариса
-153	Харисса
-716	Сладкое вино
-840	Чёрный уксус для соуса
-856	Ямс нагаимо
-222	Фисташки
-591	Мелкая костистая рыба
-370	Соус жуг
-724	Смесь пяти специй
-419	Баранья нога
-310	Кайенский перец
-262	Молотый чили
-262	Перец чили молотый
-57	Баклажан
-57	Баклажаны
-328	Мальдивская рыба
-672	Ржаная закваска
-718	Сливовое повидло
-688	Ром
-395	Чабер
-395	Чубрица
-778	Тиляпия
-313	Кечап манис
-823	Цыплёнок
-731	Солёные крекеры
-799	Солодовый уксус
-799	Уксус солодовый
-790	Тушёная зелень
-234	Вишня
-234	Вишня без косточек
-18	Петрушка
-679	Рис карнароли
-317	Комбу
-746	Сухие листья сорго
-844	Щавель
-90	Мята
-90	Мята свежая
-729	Соль в тесто
-254	Листовая капуста
-264	Рассыпчатый картофель
-320	Корень петрушки
-607	Мука для теста
-580	Мак
-643	Пастернак
-405	Адыгейский сыр
-172	Моцарелла
-172	Моцарелла фиор ди латте
-335	Мозговые кости
-687	Рисовая мука обжаренная
-592	Мелкая речная рыба
-499	Кардамон стручки
-374	Сычуаньский перец
-302	Дроблёная пшеница
-761	Сыр куахада
-402	Ягоды
-183	Багет
-759	Сыр для жарки
-347	Перец чёрный молотый
-347	Чёрный перец молотый
-660	Плотный тофу
-504	Кашкавал
-396	Чечевица
-531	Краситель оранжевый
-423	Белая рыба для сырого потребления
-461	Горчица для соуса
-526	Корень женьшеня
-170	Листья кафрского лайма
-170	Листья каффир-лайма
-202	Куриное бедро
-202	Куриные бёдра
-730	Солёная свинина
-644	Пахта
-88	Кукурузная мука
-88	Мука кукурузная
-595	Можжевельник
-4	Масло растительное
-4	Растительное масло
-390	Халуми
-470	Грудинка
-76	Йогурт
-211	Ржаной хлеб
-853	Яйца для крема
-815	Халапеньо
-110	Белый хлеб
-587	Маскарпоне
-126	Галангал
-848	Яблоки плотных сортов
-426	Бобы вигна (чёрный глазок)
-501	Картофель сырой
-698	Сахар для глазури
-842	Сушёные шиитаке
-842	Шиитаке сушёные
-667	Пресная лепёшка чурек
-114	Перец чёрный горошком
-114	Чёрный перец горошком
-422	Белая колбаса
-653	Перец поблано
-74	Цедра лимона
-131	Лук-порей
-191	Гвоздика молотая
-615	Мясная подлива
-654	Зелёный сладкий перец
-654	Перец сладкий зелёный
-135	Свиная лопатка
-164	Какао-порошок
-290	Бербере
-568	Лист эру
-46	Говяжий фарш
-46	Фарш говяжий
-213	Салат листовой
-6	Мука
-666	Предварённая кукурузная мука
-424	Белый рассольный сыр
-77	Густой йогурт
-77	Йогурт густой
-673	Ржаной заквас
-122	Авокадо
-541	Кукуруза початками
-327	Лимонный сок
-703	Свежий тунец
-369	Соус Лисано
-588	Масло для слоения
-36	Корица палочка
-36	Палочка корицы
-682	Рисовая бумага
-376	Тмин молотый
-536	Креветочная паста терази
-681	Рис среднезёрный
-814	Фрик (зелёная пшеница)
-594	Мелкий жёлтый картофель
-533	Красная паста карри
-357	Сахар тростниковый
-357	Тростниковый сахар
-53	Крахмал кукурузный
-53	Кукурузный крахмал
-468	Гречневая мука
-490	Зёрна граната
-356	Розмарин
-646	Перекисшее кимчи
-375	Телятина
-435	Булочки мантоу
-459	Английская горчица
-459	Горчица английская
-593	Мелкие макароны
-315	Кирш
-361	Светлое пиво
-439	Бульон телячий
-439	Телячий бульон
-276	Финики
-67	Баранина на кости
-67	Баранина с косточкой
-9	Сахар
-9	Сахар в крем
-9	Сахар в тесто
-9	Сахар для карамели
-9	Сахар мелкий
-809	Филе лосося с кожей
-189	Апельсиновая вода
-189	Вода флёрдоранж
-116	Круглый рис
-116	Рис круглозёрный
-462	Горчица средней остроты
-818	Хлеб с плотным мякишем
-377	Тофу
-162	Зелёные оливки
-22	Лавровый лист
-758	Сушёный чили гуахильо
-479	Дурбанский порошок карри
-841	Чёрный уксус чжэньцзян
-629	Пажитник
-60	Басмати
-60	Рис басмати
-763	Сычуаньский перец тимур
-611	Мука типа 00
-156	Ачиоте
-447	Вяленая рыба
-694	Салями
-821	Хрен
-288	Барбарис
-514	Кокос тёртый
-287	Банановый цвет
-532	Красная капуста
-851	Яичная лапша
-582	Маниоковое тесто
-748	Сухое печенье
-407	Алыча сушёная
-604	Мука для блинов
-537	Крепкий эспрессо
-485	Зелёные бананы
-142	Гвоздика
-463	Горчичный порошок
-471	Гуаскас сушёные
-854	Яйца к подаче
-801	Телячий фарш
-801	Фарш телячий
-366	Смесь хавайдж
-351	Пшеничная лапша
-295	Вермишель
-836	Чочо (люпин)
-648	Перец анчо
-279	Чернослив
-119	Крупная соль
-119	Соль крупная
-837	Чёрноглазая фасоль
-383	Устричный соус
-260	Пекорино
-260	Пекорино романо
-92	Перец чили хлопьями
-92	Хлопья чили
-658	Плантайн
-677	Рис арборио
-242	Белокочанная капуста
-242	Капуста белокочанная
-242	Капуста свежая
-242	Капустные листья
-414	Атьеке
-198	Корица молотая
-598	Молоко в бешамель
-147	Душистый перец молотый
-147	Перец душистый молотый
-467	Грейпфрут
-425	Бобы
-270	Сливки 20 %
-270	Сливки 20%
-73	Пищевая сода
-73	Сода
-73	Сода пищевая
-816	Хамон серрано
-294	Бульон
-48	Шалот
-403	Абрикосовый конфитюр
-227	Апельсин
-227	Апельсины
-478	Дроблёный рис
-32	Сметана
-418	Баранья лопатка
-728	Сок лайма
-846	Яблоки кислых сортов
-650	Душистый перец горошком
-650	Перец душистый горошком
-494	Йогурт с чесноком
-215	Семена пажитника
-483	Закваска ырша
-218	Сумах
-569	Листовая горчица
-772	Творог твёрдый
-632	Панир
-398	Чёрствый хлеб
-154	Чёрная фасоль
-719	Сливочное масло для теста
-197	Кориандр семена
-197	Семена кориандра
-831	Чечевица тур дал
-585	Маринованный имбирь бени сёга
-797	Уксус 9 %
-797	Уксус 9%
-297	Говяжьи рёбра
-20	Зелёный лук
-20	Лук зелёный
-277	Хлеб
-704	Свиная грудинка со шкурой
-86	Кардамон молотый
-31	Зира молотая
-81	Панировочные сухари
-755	Сушёный лайм лууми
-622	Овечья брынза
-49	Белое сухое вино
-49	Вино белое сухое
-49	Сухое белое вино
-495	Каймак
-857	Японский майонез
-325	Кролик
-325	Кролик, кусочками
-26	Гхи
-26	Гхи в тесто
-26	Масло топлёное
-26	Топлёное масло
-26	Топлёное масло для жарки
-542	Кукуруза чокло
-603	Морковь жёлтая
-795	Тёртый кокос
-684	Рисовая лапша толстая
-684	Толстая рисовая лапша
-661	Помидоры черри
-807	Ферментированные чёрные бобы
-811	Финиковый сироп дибс
-634	Панчетта
-538	Крупная белая рыба
-238	Горчица семена
-238	Семена горчицы
-324	Крахмал маниоки
-324	Крахмал маниоковый
-324	Маниоковый крахмал
-619	Ньяме (ямс)
-239	Грюйер
-239	Тёртый грюйер
-193	Гранатовый соус
-712	Семена фенхеля
-205	Маринованная горчичная зелень
-750	Сушёная бамия молотая
-442	Варёная ветчина
-91	Оливки
-449	Гари (маниоковая крупа)
-99	Каперсы
-241	Кабачки
-241	Кабачок
-307	Жёлтый горох
-94	Банановые листья
-94	Банановый лист
-578	Лёд колотый
-105	Длиннозёрный рис
-105	Рис длиннозёрный
-802	Фасоль
-695	Самбал
-349	Половинки орехов
-768	Тамаринд
-364	Семена аннато
-259	Острая паприка
-259	Паприка острая
-367	Густая сметана
-367	Сметана густая
-354	Рисовая вермишель
-543	Кукурузная крупа среднего помола
-371	Сухой творог
-17	Имбирь
-388	Финиковая паста
-828	Зелёная чечевица
-828	Чечевица зелёная
-342	Перец пасилья
-148	Зелёный подорожник
-148	Плантайн зелёный
-148	Подорожник зелёный
-286	Асафетида
-51	Сахарная пудра
-280	Чернушка
-280	Чернушка (калонджи)
-137	Сушёный лайм
-137	Сушёный лайм луми
-355	Рисовая лапша тонкая
-355	Тонкая рисовая лапша
-269	Свиное сало
-762	Сырные зёрна чеддер
-567	Лист лаксы
-751	Сушёная рыба
-649	Белый перец горошком
-649	Перец белый горошком
-311	Карп
-338	Мука для начинки
-686	Рисовая мука
-185	Батат
-640	Паста массаман
-61	Уксус
-492	Имеретинский шафран
-69	Кунжут
-835	Чипсы из подорожника
-800	Куриный фарш
-800	Фарш куриный
-552	Куриные крылья
-512	Клюквенное варенье
-521	Копчёная колбаса рукворст
-47	Шафран
-747	Сухое молоко
-577	Любисток
-805	Ферментированные бобы иру
-806	Ферментированные чайные листья
-71	Варёный рис
-71	Рис варёный
-581	Мальтозный сироп
-723	Смесь мытмыта
-37	Желтки
-37	Желток
-37	Яичные желтки
-37	Яичный желток
-754	Сушёный красный перец
-571	Листья квашеной капусты
-271	Слоёное тесто
-764	Сычужный фермент
-336	Молотые сушёные креветки
-551	Куриные каркасы
-255	Масло подсолнечное
-255	Подсолнечное масло
-333	Красное пальмовое масло
-333	Масло пальмовое красное
-830	Чечевица мунг
-130	Кунжутное масло
-601	Молотые сушёные раки
-493	Индейка
-303	Дрожжи свежие
-303	Свежие дрожжи
-786	Топлёное масло нитер киббе
-379	Тёмное пиво
-503	Кацуобуси
-214	Сгущённое молоко
-572	Листья молохии
-743	Стручок ванили
-608	Мука кама
-613	Мягкий тофу
-452	Говяжий отруб
-775	Телячья голяшка
-15	Лимон
-278	Хрен тёртый
-742	Стеклянная лапша
-832	Чечевица урад
-173	Овсяные хлопья
-559	Лапша ширатаки
-359	Свежий белый сыр
-385	Фенхель молотый
-411	Апельсиновый сок
-79	Копчёная грудинка
-204	Лепёшки
-98	Зелёный горошек
-833	Чили анчо
-706	Свиная рулька
-306	Жемчужный сахар
-642	Паста самбал
-558	Лапша для рамена
-659	Плоская зелёная фасоль
-224	Колбаски чорисо
-224	Чорисо
-497	Камабоко
-248	Кетчуп
-178	Соус соевый тёмный
-178	Тёмный соевый соус
-564	Лесные грибы
-560	Лепёшка наан
-579	Майоран сушёный
-796	Укроп сушёный
-575	Ломоть хлеба
-736	Соус окономи
-282	Красная чечевица
-282	Чечевица красная
-702	Свежий сыр
-167	Куриное филе
-623	Огуречный рассол
-480	Жареные бобы
-232	Ветчина
-166	Копчёная колбаса
-40	Корица
-244	Капуста квашеная кочаном
-244	Квашеная капуста кочаном
-244	Квашеный кочан капусты
-549	Куриные голени
-87	Миндаль
-231	Ванильный сахар
-624	Оленина
-83	Перец чили сушёный
-83	Сушёный красный чили
-83	Сушёный острый перец
-83	Сушёный перчик чили
-83	Сушёный чили
-83	Сушёный чили целиком
-368	Сосиски
-465	Горячее молоко
-635	Паста ачиоте
-358	Свежая кукуруза
-38	Изюм
-445	Водяной лист
-365	Смесь бизар
-165	Квашеная капуста
-393	Цветная капуста
-268	Саке
-268	Сакэ
-261	Перец гуахильо
-721	Слоёная лепёшка фатир
-545	Кукурузные хлопья
-496	Какао для глазури
-510	Кленовый сироп
-546	Кукурузный хлеб
-266	Рисовая лапша
-312	Картофель фри
-433	Букатини
-438	Бульон рыбный
-438	Рыбный бульон
-530	Краб
-372	Сушёные креветки
-298	Говяжья лопатка
-132	Майонез
-263	Песочное тесто
-93	Арахисовая паста
-78	Кардамон
-710	Маринованная свёкла
-710	Свёкла маринованная
-740	Старое сало
-112	Корень сельдерея
-161	Говядина на кости
-201	Курага
-348	Плантайн спелый
-348	Спелый подорожник
-384	Фенхель
-195	Копчёное сало
-457	Голубиный горох
-62	Грецкие орехи
-62	Грецкий орех
-62	Половинки грецких орехов
-670	Редис
-647	Перец алеппо
-7	Масло сливочное
-7	Сливочное масло
-641	Паста мисо
-273	Томатильо
-481	Жареный горох
-794	Тёмный тростниковый сахар
-330	Масло в тесто
-448	Газированная вода
-283	Грибы шиитаке
-283	Шиитаке
-692	Салат из капусты
-236	Говяжий рубец
-236	Рубец
-85	Сливки 33 %
-85	Сливки 33%
-187	Белая фасоль
-651	Перец кобанеро
-518	Колбаса шоурису
-378	Тыквенные семечки
-812	Фиолетовая кукуруза
-174	Перловая крупа
-596	Моллюски
-826	Чеснок головками
-855	Яйцо в тесто
-498	Каракатица
-144	Кокосовая стружка
-562	Лепёшки сомун
-180	Красный винный уксус
-180	Уксус винный красный
-773	Творожный сыр джиза
-\.
-
-
---
--- Data for Name: ingredient_allergens; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.ingredient_allergens (ingredient_id, allergen_id) FROM stdin;
-5	3
-7	7
-12	7
-26	7
-32	7
-37	3
-42	7
-45	2
-50	4
-62	10
-69	12
-75	9
-76	7
-77	7
-85	7
-87	10
-93	11
-95	7
-109	11
-112	1
-112	4
-118	1
-118	4
-123	11
-128	7
-146	7
-172	7
-173	5
-174	5
-179	7
-186	4
-210	5
-211	5
-214	7
-219	12
-222	10
-225	3
-230	5
-238	9
-239	7
-251	2
-257	5
-260	7
-270	7
-272	4
-274	4
-302	5
-304	7
-311	4
-314	10
-318	7
-328	4
-329	5
-334	8
-336	2
-339	7
-351	5
-352	8
-359	7
-360	7
-367	7
-371	7
-372	2
-373	7
-383	8
-386	7
-389	10
-390	7
-394	5
-405	7
-423	4
-424	7
-429	7
-438	4
-444	7
-447	4
-459	9
-460	9
-461	9
-462	9
-463	9
-465	7
-474	7
-475	5
-476	5
-494	7
-495	7
-497	4
-498	8
-503	4
-504	7
-522	4
-530	2
-536	2
-538	4
-556	7
-557	5
-574	1
-574	4
-584	4
-587	7
-591	4
-592	4
-596	8
-597	7
-598	7
-599	7
-600	7
-601	2
-622	7
-628	8
-632	7
-644	7
-672	5
-673	5
-674	5
-675	5
-676	7
-696	4
-702	7
-703	4
-717	7
-719	7
-720	7
-732	7
-744	7
-747	7
-751	4
-752	4
-759	7
-760	7
-761	7
-762	7
-771	7
-772	7
-773	7
-778	4
-786	7
-788	4
-789	4
-808	4
-809	4
-810	4
-813	4
-814	5
-825	8
-836	6
-851	3
-852	3
-853	3
-854	3
-855	3
-\.
-
-
---
--- Data for Name: ingredient_categories; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.ingredient_categories (ingredient_id, category_id) FROM stdin;
-4	9
-11	11
-14	9
-15	2
-21	3
-24	2
-26	9
-29	3
-35	3
-38	2
-45	4
-46	3
-49	11
-50	4
-56	3
-67	3
-72	3
-74	2
-94	2
-96	3
-97	3
-100	9
-107	3
-135	3
-136	3
-137	2
-138	11
-139	11
-161	3
-166	3
-167	3
-170	2
-186	4
-189	11
-195	3
-196	3
-201	2
-202	3
-212	3
-223	2
-224	3
-227	2
-232	3
-233	2
-234	2
-236	3
-252	3
-255	9
-267	11
-268	11
-269	3
-272	4
-274	4
-275	3
-276	2
-279	2
-285	2
-287	2
-291	2
-296	11
-300	3
-311	4
-325	3
-327	2
-328	4
-332	9
-334	4
-336	4
-361	11
-362	3
-363	3
-368	3
-372	4
-375	3
-379	11
-387	2
-388	2
-400	2
-401	3
-402	2
-403	2
-404	2
-407	2
-409	11
-410	2
-411	2
-412	2
-417	2
-418	3
-419	3
-421	3
-422	3
-423	4
-436	3
-438	4
-442	3
-443	3
-447	4
-448	11
-450	3
-451	9
-464	11
-467	2
-485	2
-486	2
-487	11
-493	3
-498	4
-503	4
-505	2
-507	2
-508	3
-511	2
-517	3
-518	3
-519	3
-520	3
-521	3
-522	4
-523	3
-530	4
-537	11
-538	4
-547	3
-548	3
-549	3
-550	3
-551	3
-552	3
-553	3
-554	3
-555	3
-565	2
-566	2
-583	2
-584	4
-591	4
-592	4
-596	4
-616	3
-628	4
-657	3
-663	3
-696	4
-703	4
-704	3
-705	3
-706	3
-707	3
-708	3
-716	11
-728	2
-730	3
-733	2
-740	3
-751	4
-752	4
-755	2
-778	4
-788	4
-789	4
-792	11
-793	11
-800	3
-801	3
-806	11
-810	4
-811	2
-813	4
-825	4
-846	2
-847	2
-848	2
-850	11
-808	4
-809	4
-7	5
-12	5
-32	5
-42	5
-76	5
-77	5
-85	5
-95	5
-128	5
-146	5
-172	5
-179	5
-214	5
-270	5
-318	5
-339	5
-359	5
-360	5
-367	5
-371	5
-373	5
-405	5
-424	5
-429	5
-465	5
-494	5
-597	5
-598	5
-599	5
-600	5
-622	5
-676	5
-702	5
-717	5
-719	5
-720	5
-732	5
-735	5
-747	5
-759	5
-760	5
-761	5
-762	5
-771	5
-772	5
-773	5
-1	1
-3	1
-8	1
-10	1
-13	1
-16	1
-18	1
-20	1
-25	1
-39	1
-41	1
-44	1
-54	1
-57	1
-121	1
-131	1
-140	1
-149	1
-158	1
-165	1
-184	1
-213	1
-221	1
-241	1
-242	1
-243	1
-244	1
-245	1
-254	1
-264	1
-273	1
-312	1
-320	1
-340	1
-350	1
-393	1
-415	1
-500	1
-509	1
-532	1
-571	1
-573	1
-576	1
-594	1
-602	1
-603	1
-645	1
-661	1
-670	1
-692	1
-693	1
-709	1
-765	1
-781	1
-782	1
-783	1
-796	1
-803	1
-826	1
-112	1
-118	1
-574	1
-587	5
-501	1
+COPY public.diet_excluded_methods (diet_id, method_id) FROM stdin;
+1	2
+5	2
 \.
 
 
@@ -2421,16 +141,13 @@ COPY public.ingredient_categories (ingredient_id, category_id) FROM stdin;
 
 COPY public.ingredients (id, code, name, is_staple, display_unit, grams_per_piece, kcal, protein, fat, carbs, package_g, package_price) FROM stdin;
 1	ing_8214cfa2ad659987	Лук репчатый	f	g	110.00	40.00	1.50	0.20	8.00	1000.00	120.00
-2	ing_5b67906812f9ce35	Соль	t	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
 3	ing_1c4ab4239538af48	Чеснок	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
 4	ing_94735c5d0f98f9bb	Масло растительное	f	g	\N	884.00	0.00	100.00	0.00	500.00	220.00
 5	ing_5080f64e5d37ea5c	Яйцо куриное	f	g	50.00	220.00	20.00	15.00	0.00	1000.00	500.00
 6	ing_9f5aff656efd8171	Мука	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
 7	ing_f9488f0bc6429a47	Масло сливочное	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
 8	ing_43db869e63682a56	Помидор	f	g	123.00	40.00	1.50	0.20	8.00	1000.00	120.00
-9	ing_a64931804dc4ddba	Сахар	t	g	\N	380.00	1.00	1.00	92.00	500.00	150.00
 10	ing_6362b9a2160b3580	Картофель	f	g	213.00	40.00	1.50	0.20	8.00	1000.00	120.00
-11	ing_0611a1b7ac680b4a	Вода	t	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
 12	ing_69f91741a4c2027f	Молоко	f	g	\N	240.00	9.00	18.00	4.00	500.00	200.00
 13	ing_6259499207054466	Кинза	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
 14	ing_14a4780585e50d6a	Масло оливковое	f	g	\N	884.00	0.00	100.00	0.00	500.00	220.00
@@ -2456,7 +173,6 @@ COPY public.ingredients (id, code, name, is_staple, display_unit, grams_per_piec
 34	ing_3d43eae29d5870a1	Ваниль	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
 35	ing_541d4ee1e1c87f07	Говядина	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
 36	ing_a1734f1ac79885e8	Корица палочка	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
-37	ing_d9f4c183296e064b	Яичный желток	f	g	17.00	200.00	5.00	5.00	30.00	500.00	120.00
 38	ing_ef633f7569b37d4b	Изюм	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
 39	ing_459ccb13694bafe1	Укроп	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
 40	ing_eb9af19bcc9eb5a6	Корица	f	g	\N	180.00	5.00	3.00	30.00	100.00	80.00
@@ -2644,7 +360,6 @@ COPY public.ingredients (id, code, name, is_staple, display_unit, grams_per_piec
 222	ing_848f0aeed1309f0d	Фисташки	f	g	\N	610.00	18.00	52.00	14.00	200.00	250.00
 223	ing_42321b4fb33f8555	Цедра апельсина	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
 224	ing_e7c27281a5bce85f	Чорисо	f	g	\N	220.00	20.00	15.00	0.00	1000.00	500.00
-225	ing_7279c85df25c3461	Яичный белок	f	g	33.00	200.00	5.00	5.00	30.00	500.00	120.00
 226	ing_3699907ebc7acfb8	Анис	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
 227	ing_b8b8474cb00f6e86	Апельсин	f	g	\N	55.00	0.80	0.30	13.00	1000.00	180.00
 228	ing_02d8fd09102560a4	Бамия	f	g	\N	40.00	1.50	0.20	8.00	1000.00	120.00
@@ -3271,12 +986,2006 @@ COPY public.ingredients (id, code, name, is_staple, display_unit, grams_per_piec
 849	ing_5c11d7e4bd90a671	Яблочное пюре	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
 850	ing_0d5cf395040623a7	Яблочный сок	f	g	\N	35.00	0.10	0.00	8.00	1000.00	90.00
 851	ing_aab752b6265a2093	Яичная лапша	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
-852	ing_396db69abee4fe76	Яйца в начинку	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-853	ing_95fb155d4212d361	Яйца для крема	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-854	ing_ae53841e3c9dc120	Яйца к подаче	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
-855	ing_ff2d84d748dba759	Яйцо в тесто	f	g	\N	340.00	10.00	2.00	70.00	1000.00	100.00
 856	ing_83f87dc03dc4970c	Ямс нагаимо	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
 857	ing_c4a1003022f208ff	Японский майонез	f	g	\N	200.00	5.00	5.00	30.00	500.00	120.00
+11	ing_0611a1b7ac680b4a	Вода	t	g	\N	0.00	0.00	0.00	0.00	1000.00	90.00
+2	ing_5b67906812f9ce35	Соль	t	g	\N	0.00	0.00	0.00	0.00	100.00	80.00
+9	ing_a64931804dc4ddba	Сахар	t	g	\N	387.00	0.00	0.00	100.00	500.00	150.00
+\.
+
+
+--
+-- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.users (id, login, password_hash, pevzner_diet_id, pevzner_kind, created_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: favorite_ingredients; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.favorite_ingredients (user_id, ingredient_id, added_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: recipes; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.recipes (id, title, description, servings, cook_time_min, needs_microwave, needs_stove, needs_oven, image_url, author_id, no_cook) FROM stdin;
+1	Спагетти карбонара	Паста на четырёх ингредиентах: гуанчале, яйца, пекорино и перец. Сливок в ней нет и никогда не было.	2	15	f	t	f	https://theunitools.com/recipes/spaghetti-carbonara.jpg	\N	f
+2	Ризотто по-милански	Шафрановое ризотто на бульоне, которое мешают почти непрерывно: от этого рис отдаёт крахмал и получается кремовым.	4	25	f	t	f	https://theunitools.com/recipes/risotto-alla-milanese.jpg	\N	f
+3	Рататуй	Прованское овощное рагу, где каждый овощ обжаривают отдельно, а потом соединяют — иначе получится каша.	4	45	f	t	f	https://theunitools.com/recipes/ratatouille.jpg	\N	f
+4	Луковый суп	Суп из лука, бульона и хлеба с сыром. Весь вкус берётся из карамелизации, которая занимает не двадцать минут, а сорок.	4	60	f	t	f	https://theunitools.com/recipes/french-onion-soup.jpg	\N	f
+5	Борщ	Свекольный суп на говяжьем бульоне, где кислота держит и цвет, и вкус. Свёклу тушат отдельно, а не варят в кастрюле.	6	120	f	t	f	https://theunitools.com/recipes/borscht.jpg	\N	f
+6	Хачапури имеретинский	Круглая лепёшка с сыром внутри, а не сверху. Тесто на мацони, начинки — столько же, сколько теста.	4	20	f	t	f	https://theunitools.com/recipes/khachapuri-imeruli.jpg	\N	f
+10	Дал тадка	Чечевичная похлёбка, в которую в конце выливают раскалённое масло со специями. Этот шаг и делает блюдо.	4	35	f	t	f	https://theunitools.com/recipes/dal-tadka.jpg	\N	f
+11	Паэлья валенсиана	Рис на широкой сковороде с курицей, кроликом и фасолью. Мешать нельзя ни разу — от этого зависит корочка на дне.	4	45	f	t	f	https://theunitools.com/recipes/paella-valenciana.jpg	\N	f
+12	Испанская тортилья	Толстый омлет с картофелем и луком, где картофель не жарят, а томят в масле почти до состояния пюре.	4	35	f	t	f	https://theunitools.com/recipes/tortilla-espanola.jpg	\N	f
+13	Мусака	Баклажаны, мясной соус с корицей и толстый слой бешамеля, запечённые до плотности, которую можно резать ножом.	6	75	f	t	t	https://theunitools.com/recipes/moussaka.jpg	\N	f
+15	Фо бо	Прозрачный говяжий бульон с обожжённым имбирём и специями, рисовая лапша и говядина, которая доваривается прямо в миске.	4	240	f	t	f	https://theunitools.com/recipes/pho-bo.jpg	\N	f
+16	Бань ми	Французский багет с вьетнамской начинкой: паштет, свинина, маринованные овощи и кинза в одном сэндвиче.	4	15	f	t	t	https://theunitools.com/recipes/banh-mi.jpg	\N	f
+18	Такос аль пастор	Свинина в маринаде из сушёных чили и ананаса, обжаренная до карамельных краёв, в кукурузной тортилье.	4	20	f	t	f	https://theunitools.com/recipes/tacos-al-pastor.jpg	\N	f
+19	Менемен	Яйца, томлённые в помидорах с зелёным перцем. Их не взбивают и не мешают часто — иначе получится обычная яичница.	2	20	f	t	f	https://theunitools.com/recipes/menemen.jpg	\N	f
+20	Мерджимек чорбасы	Суп из красной чечевицы, который пробивают в пюре и подают с лимоном и маслом с паприкой.	4	35	f	t	f	https://theunitools.com/recipes/mercimek-corbasi.jpg	\N	f
+21	Хинкали	Мешочки из крутого теста с рубленым мясом и бульоном внутри. Бульон появляется сам — от воды, вмешанной в фарш.	4	15	f	t	f	https://theunitools.com/recipes/khinkali.jpg	\N	f
+22	Курица масала в сливочном соусе	Курица, маринованная в йогурте и запечённая, в томатно-сливочном соусе с пажитником.	4	40	f	t	t	https://theunitools.com/recipes/murgh-makhani.jpg	\N	f
+23	Кацудон	Панированная свиная котлета, доваренная в сладко-солёном бульоне с яйцом и выложенная на рис.	2	20	f	t	f	https://theunitools.com/recipes/katsudon.jpg	\N	f
+24	Сырники	Творожные оладьи, где творога должно быть много, а муки — ровно столько, чтобы они не развалились.	4	15	f	t	f	https://theunitools.com/recipes/syrniki.jpg	\N	f
+25	Пад тай	Рисовая лапша, обжаренная с тамариндом, рыбным соусом и пальмовым сахаром. Всё готовится за четыре минуты.	2	10	f	t	f	https://theunitools.com/recipes/pad-thai.jpg	\N	f
+7	Мисо-суп	Суп из даси и мисо, который готовится десять минут. Кипятить мисо нельзя — от этого пропадает и аромат, и польза.	4	15	f	f	f	https://theunitools.com/recipes/miso-soup.jpg	\N	t
+28	Крокеты с хамоном	Густая бешамель с хамоном, охлаждённая до плотности, обваленная в сухарях и обжаренная во фритюре.	4	25	f	t	f	https://theunitools.com/recipes/croquetas-de-jamon.jpg	\N	f
+30	Ломо сальтадо	Говядина, обжаренная в воке с луком и помидорами, поданная с картофелем фри и рисом одновременно.	4	20	f	t	f	https://theunitools.com/recipes/lomo-saltado.jpg	\N	f
+31	Мапо тофу	Тофу в остром соусе из доубаньцзяна с сычуаньским перцем, который не жжёт, а немеет.	4	15	f	t	f	https://theunitools.com/recipes/mapo-tofu.jpg	\N	f
+32	Курица гунбао	Кубики курицы с арахисом и сушёным чили в кисло-сладком соусе, где уксус важнее сахара.	4	10	f	t	f	https://theunitools.com/recipes/gong-bao-chicken.jpg	\N	f
+33	Кок-о-вен	Курица, томлённая в красном вине с беконом, грибами и мелким луком. Маринование накануне решает половину дела.	4	90	f	t	t	https://theunitools.com/recipes/coq-au-vin.jpg	\N	f
+34	Крем-брюле	Заварной крем на желтках, запечённый на водяной бане и покрытый коркой из сожжённого сахара.	4	45	f	t	t	https://theunitools.com/recipes/creme-brulee.jpg	\N	f
+35	Кезешпецле	Швабская яичная лапша, слоями пересыпанная сыром и засыпанная жареным луком.	4	30	f	t	t	https://theunitools.com/recipes/kaesespaetzle.jpg	\N	f
+37	Пибимпап	Рис под отдельно приготовленными овощами, мясом и яйцом, который перемешивают с кочхуджаном прямо перед едой.	4	20	f	t	f	https://theunitools.com/recipes/bibimbap.jpg	\N	f
+38	Кимчхи чиге	Тушёное блюдо из перекисшего кимчи со свининой и тофу. Чем старее кимчи, тем лучше результат.	4	30	f	t	f	https://theunitools.com/recipes/kimchi-jjigae.jpg	\N	f
+39	Сувлаки	Свинина на шпажках в маринаде из лимона, орегано и оливкового масла, приготовленная быстро и на сильном жаре.	4	15	f	t	f	https://theunitools.com/recipes/souvlaki.jpg	\N	f
+40	Бирьяни с курицей	Рис и маринованная курица, доведённые вместе под крышкой: слои готовятся паром, а не перемешиванием.	6	60	f	t	f	https://theunitools.com/recipes/chicken-biryani.jpg	\N	f
+41	Сёю рамен	Бульон, тарэ и масло — три отдельные части, которые собирают в миске, а не варят вместе.	4	180	f	t	f	https://theunitools.com/recipes/shoyu-ramen.jpg	\N	f
+42	Пероги руске	Вареники с картофелем и творожным сыром, поданные с жареным луком и сметаной.	4	20	f	t	f	https://theunitools.com/recipes/pierogi-ruskie.jpg	\N	f
+43	Журек	Кислый суп на ржаной закваске с белой колбасой и яйцом. Кислоту даёт брожение, а не уксус.	4	50	f	t	f	https://theunitools.com/recipes/zurek.jpg	\N	f
+44	Заурбратен	Говядина, вымоченная в уксусном маринаде несколько дней и тушённая в нём же, с соусом на имбирных пряниках.	6	150	f	t	t	https://theunitools.com/recipes/sauerbraten.jpg	\N	f
+45	Швабский картофельный салат	Картофель, заправленный тёплым бульоном с уксусом и маслом. Никакого майонеза — южная Германия его здесь не признаёт.	4	25	f	t	f	https://theunitools.com/recipes/schwaebischer-kartoffelsalat.jpg	\N	f
+46	Аматричана	Гуанчале, помидоры и пекорино. Ни лука, ни чеснока, ни оливкового масла — жир даёт само мясо.	4	20	f	t	f	https://theunitools.com/recipes/bucatini-all-amatriciana.jpg	\N	f
+47	Шакшука	Яйца, припущенные в густом соусе из помидоров и перца с тмином и паприкой.	4	30	f	t	f	https://theunitools.com/recipes/shakshuka.jpg	\N	f
+48	Хумус	Нут, взбитый с тахини, лимоном и ледяной водой до состояния крема. Кожицу с нута снимают.	6	90	f	t	f	https://theunitools.com/recipes/hummus.jpg	\N	f
+49	Фейжоада	Чёрная фасоль, томлённая с несколькими видами копчёной и солёной свинины, с апельсином и капустой на гарнир.	8	180	f	t	f	https://theunitools.com/recipes/feijoada.jpg	\N	f
+50	Пан-ди-кейжу	Сырные шарики из тапиоковой муки — снаружи корочка, внутри тягучая пустота. Без пшеницы и без дрожжей.	6	25	f	f	t	https://theunitools.com/recipes/pao-de-queijo.jpg	\N	f
+51	Пад кра пао	Свиной фарш, обжаренный с чили, чесноком и священным базиликом. Пять минут от начала до тарелки.	2	8	f	t	f	https://theunitools.com/recipes/pad-krapow-moo.jpg	\N	f
+26	Тирамису	Савоярди в кофе под кремом из маскарпоне. Без выпечки, но с двумя местами, где всё может пойти не так.	6	32	f	t	f	https://theunitools.com/recipes/tiramisu.jpg	\N	f
+27	Гаспачо	Холодный томатный суп, который взбивают с хлебом и маслом до состояния эмульсии — от этого он и получается плотным, а не водянистым.	4	20	f	f	f	https://theunitools.com/recipes/gazpacho.jpg	\N	t
+52	Гюдон	Тонко нарезанная говядина, припущенная с луком в даси с соевым соусом и мирином, поверх риса.	2	15	f	t	f	https://theunitools.com/recipes/gyudon.jpg	\N	f
+53	Солянка мясная сборная	Суп на крепком бульоне с несколькими видами мяса, солёными огурцами, оливками и лимоном.	6	120	f	t	f	https://theunitools.com/recipes/solyanka.jpg	\N	f
+54	Тажин с курицей и лимоном	Курица, томлённая с солёными лимонами и оливками. Кислота идёт от кожуры лимона, а не от мякоти.	4	70	f	t	f	https://theunitools.com/recipes/tagine-de-poulet.jpg	\N	f
+55	Харира	Густой суп из чечевицы, нута и помидоров, загущённый мучной болтушкой и заправленный лимоном.	6	90	f	t	f	https://theunitools.com/recipes/harira.jpg	\N	f
+56	Гуляш	Говядина, томлённая с луком и паприкой. Лука по весу столько же, сколько мяса, и он растворяется в соус.	6	150	f	t	f	https://theunitools.com/recipes/goulash.jpg	\N	f
+57	Лангош	Дрожжевая лепёшка, жаренная во фритюре, натёртая чесноком и засыпанная сметаной с сыром.	4	20	f	t	f	https://theunitools.com/recipes/langos.jpg	\N	f
+58	Фиш-энд-чипс	Треска в пивном кляре и картофель, жаренный дважды. Кляр держится на холоде и на газе в пиве.	4	35	f	t	f	https://theunitools.com/recipes/fish-and-chips.jpg	\N	f
+59	Пастуший пирог	Баранина в густом соусе под картофельным пюре, запечённая до румяной корочки.	6	60	f	t	t	https://theunitools.com/recipes/shepherds-pie.jpg	\N	f
+60	Венский шницель	Телятина, отбитая до трёх миллиметров, в сухарях, обжаренная в большом количестве жира до вздутой корочки.	4	15	f	t	f	https://theunitools.com/recipes/wiener-schnitzel.jpg	\N	f
+61	Яблочный штрудель	Яблоки с корицей и изюмом в тесте, растянутом до прозрачности. Тесто тянут руками, а не раскатывают.	8	45	f	t	t	https://theunitools.com/recipes/apfelstrudel.jpg	\N	f
+62	Бакаляу а браш	Солёная треска с тонкой соломкой картофеля и яйцом, которое связывает всё, не превращаясь в омлет.	4	25	f	t	f	https://theunitools.com/recipes/bacalhau-a-bras.jpg	\N	f
+63	Паштел де ната	Слоёные корзиночки с заварным кремом, запечённые при экстремальном жаре до чёрных пятен на поверхности.	12	15	f	t	t	https://theunitools.com/recipes/pastel-de-nata.jpg	\N	f
+64	Аргентинские эмпанадас	Пирожки с рубленой говядиной, луком и яйцом. Начинку остужают до холода, иначе тесто не защипнётся.	6	25	f	t	t	https://theunitools.com/recipes/empanadas-argentinas.jpg	\N	f
+66	Наси горенг	Жареный рис с пастой из чили и креветочной пасты, сладким соевым соусом и яйцом сверху.	4	15	f	t	f	https://theunitools.com/recipes/nasi-goreng.jpg	\N	f
+67	Ренданг	Говядина, которую варят в кокосовом молоке четыре часа, пока молоко не превратится в масло и не начнёт жарить мясо.	6	240	f	t	f	https://theunitools.com/recipes/rendang.jpg	\N	f
+68	Адобо	Курица, тушённая в соевом соусе с уксусом, чесноком и лавровым листом. Уксус не мешают первые десять минут.	4	45	f	t	f	https://theunitools.com/recipes/adobo.jpg	\N	f
+69	Синиганг	Кислый суп на тамаринде со свининой и овощами. Кислота здесь основной вкус, а не оттенок.	6	75	f	t	f	https://theunitools.com/recipes/sinigang.jpg	\N	f
+70	Украинский борщ с пампушками	Борщ на свиных рёбрышках со старым салом, растёртым с чесноком, и чесночными пампушками.	6	120	f	t	f	https://theunitools.com/recipes/borshch-ukrainskyi.jpg	\N	f
+71	Вареники с вишней	Вареники с целой вишней и сахаром. Сок остаётся внутри, если ягоду обвалять в крахмале.	4	15	f	t	f	https://theunitools.com/recipes/varenyky-z-vyshnyamy.jpg	\N	f
+72	Свичкова	Говядина в соусе из протёртых кореньев со сливками, с кнедликами, брусникой и лимоном.	6	150	f	t	f	https://theunitools.com/recipes/svickova.jpg	\N	f
+73	Трдельник	Дрожжевая полоска теста, намотанная на валик, запечённая и обвалянная в сахаре с орехами.	6	20	f	f	t	https://theunitools.com/recipes/trdelnik.jpg	\N	f
+74	Шведские фрикадельки	Мясные шарики на панаде из хлеба и сливок, в сливочном соусе, с брусникой и картофельным пюре.	4	30	f	t	f	https://theunitools.com/recipes/koettbullar.jpg	\N	f
+75	Кулебяка с корицей	Булочки с корицей и кардамоном, свёрнутые узлом. Кардамон в тесте важнее корицы в начинке.	12	15	f	f	t	https://theunitools.com/recipes/kanelbullar.jpg	\N	f
+76	Кушари	Рис, чечевица и макароны в одной тарелке под томатным соусом с уксусом и жареным луком.	6	60	f	t	f	https://theunitools.com/recipes/koshari.jpg	\N	f
+77	Фуль медамес	Бобы фава, томлённые до кремовой мягкости, с оливковым маслом, лимоном и зирой.	4	240	f	t	f	https://theunitools.com/recipes/ful-medames.jpg	\N	f
+80	Гормэ сабзи	Тушёная баранина с горой зелени, фасолью и сушёным лаймом. Зелень жарят до почти чёрного цвета.	6	150	f	t	f	https://theunitools.com/recipes/ghormeh-sabzi.jpg	\N	f
+81	Тахдиг	Рис с золотой хрустящей коркой на дне кастрюли. Корку делают из риса, картофеля или лаваша.	6	60	f	t	f	https://theunitools.com/recipes/tahdig.jpg	\N	f
+82	Узбекский плов	Рис, доведённый паром над зирваком из баранины, моркови и лука. Рис не мешают с момента закладки.	6	100	f	t	f	https://theunitools.com/recipes/plov-uzbekskiy.jpg	\N	f
+83	Самса	Слоёные треугольники с рубленой бараниной и луком, запечённые до хрустящей корки.	6	35	f	f	t	https://theunitools.com/recipes/samsa.jpg	\N	f
+84	Новоанглийский клэм-чаудер	Густой суп на моллюсках со сливками, картофелем и беконом. Без помидоров — это принципиально.	4	35	f	t	f	https://theunitools.com/recipes/clam-chowder.jpg	\N	f
+85	Куриные крылья баффало	Крылья без панировки в соусе из острого перечного соуса и сливочного масла. Соль вытягивает влагу перед запеканием.	4	50	f	f	t	https://theunitools.com/recipes/buffalo-wings.jpg	\N	f
+86	Пицца маргарита	Тесто долгого брожения, помидоры без варки, моцарелла и базилик. Всё решает время, а не количество ингредиентов.	4	10	f	f	t	https://theunitools.com/recipes/pizza-margherita.jpg	\N	f
+88	Палак панир	Шпинат, бланшированный и пробитый в пюре, с кубиками панира. Шпинат нельзя тушить — он побуреет.	4	25	f	t	f	https://theunitools.com/recipes/palak-paneer.jpg	\N	f
+89	Самоса	Треугольники с картофелем и горошком в тесте на гхи. Жарят на среднем огне, а не на сильном.	6	30	f	t	f	https://theunitools.com/recipes/samosa.jpg	\N	f
+90	Цзяоцзы	Пельмени со свининой и капустой, обжаренные и допаренные в одной сковороде под крышкой.	4	15	f	t	f	https://theunitools.com/recipes/jiaozi.jpg	\N	f
+91	Янчжоуский жареный рис	Рис с креветками, ветчиной и яйцом, где каждое зерно отдельно и покрыто тонкой яичной плёнкой.	4	10	f	t	f	https://theunitools.com/recipes/yangzhou-fried-rice.jpg	\N	f
+92	Чиле рельено	Перец поблано, фаршированный сыром, в воздушном яичном кляре, обжаренный и залитый томатным соусом.	4	30	f	t	f	https://theunitools.com/recipes/chiles-en-nogada.jpg	\N	f
+93	Посоле рохо	Суп из свинины и кукурузы посоле в соусе из сушёных чили, с горой свежих добавок на столе.	8	180	f	t	f	https://theunitools.com/recipes/pozole-rojo.jpg	\N	f
+94	Нихари	Говяжья голяшка, томлённая всю ночь, в густом соусе с костным мозгом. Загущается пшеничной болтушкой.	6	300	f	t	f	https://theunitools.com/recipes/nihari.jpg	\N	f
+95	Чапли кебаб	Плоские котлеты из говядины с кукурузной мукой, помидорами и целыми семенами кориандра.	4	20	f	t	f	https://theunitools.com/recipes/chapli-kebab.jpg	\N	f
+96	Лакса лемак	Лапша в кокосовом бульоне на пасте ремпах с креветками и тофу. Пасту обжаривают до отделения масла.	4	30	f	t	f	https://theunitools.com/recipes/laksa-lemak.jpg	\N	f
+97	Роти чанай	Слоёная лепёшка, растянутая до прозрачности и скомканная перед жаркой. Слои получаются из воздуха, а не из масла.	6	20	f	t	f	https://theunitools.com/recipes/roti-canai.jpg	\N	f
+98	Стамппот	Картофельное пюре, размятое вместе с кудрявой капустой, с копчёной колбасой и ямкой подливы.	4	35	f	t	f	https://theunitools.com/recipes/stamppot.jpg	\N	f
+99	Поффертьес	Крошечные дрожжевые оладьи из гречневой и пшеничной муки, подаются с маслом и сахарной пудрой.	4	20	f	t	f	https://theunitools.com/recipes/poffertjes.jpg	\N	f
+100	Доро уот	Курица в густом соусе из бербере, где килограмм лука томят всухую до полного распада.	6	120	f	t	f	https://theunitools.com/recipes/doro-wat.jpg	\N	f
+102	Ропа вьеха	Говядина, разобранная на волокна и тушённая в софрито с перцем и оливками. Мясо варят целым куском заранее.	6	150	f	t	f	https://theunitools.com/recipes/ropa-vieja.jpg	\N	f
+103	Морос и кристианос	Рис, сваренный в отваре из-под чёрной фасоли, отчего становится тёмным и вбирает весь её вкус.	6	90	f	t	f	https://theunitools.com/recipes/moros-y-cristianos.jpg	\N	f
+79	Киббе нейе	Сырое киббе: свежайшая баранина, растёртая с булгуром и специями, под оливковым маслом.	4	40	f	t	f	https://theunitools.com/recipes/kibbeh-nayyeh.jpg	\N	f
+78	Табуле	Салат из петрушки с небольшим количеством булгура, а не наоборот. Зелени здесь в десять раз больше крупы.	4	44	f	f	f	https://theunitools.com/recipes/tabbouleh.jpg	\N	t
+104	Курица джерк	Курица в маринаде на скотч-боннете и душистом перце, копчёная на дровах пименто.	6	120	f	t	t	https://theunitools.com/recipes/jerk-chicken.jpg	\N	f
+105	Аки с солёной рыбой	Национальное блюдо Ямайки: плод аки, по виду и текстуре напоминающий яичницу, с вымоченной солёной треской.	4	25	f	t	f	https://theunitools.com/recipes/ackee-and-saltfish.jpg	\N	f
+106	Джоллоф рис	Рис, сваренный в густом соусе из помидоров, перца и лука. Соус уваривают до тёмного цвета до закладки риса.	6	60	f	t	f	https://theunitools.com/recipes/jollof-rice.jpg	\N	f
+107	Суйя	Говядина на шпажках в обсыпке из молотого арахиса со специями. Обсыпку наносят дважды — до и после жарки.	4	15	f	t	f	https://theunitools.com/recipes/suya.jpg	\N	f
+108	Арепас	Лепёшки из предварённой кукурузной муки, обжаренные и разрезанные, чтобы набить начинкой.	4	25	f	t	t	https://theunitools.com/recipes/arepas.jpg	\N	f
+109	Ахиако	Куриный суп на трёх сортах картофеля с травой гуаскас, каперсами и сливками.	6	75	f	t	f	https://theunitools.com/recipes/ajiaco-bogotano.jpg	\N	f
+110	Киш лорен	Песочная основа с беконом и заливкой из сливок с яйцами. Ни сыра, ни лука — в классическом рецепте их нет.	6	60	f	f	t	https://theunitools.com/recipes/quiche-lorraine.jpg	\N	f
+111	Круассан	Слоёное дрожжевое тесто с двадцатью семью слоями масла. Всё решает температура: тесто и масло должны быть одинаково холодными.	8	20	f	f	t	https://theunitools.com/recipes/croissant.jpg	\N	f
+112	Темпура	Овощи и креветки в ледяном кляре с комками. Мешать до гладкости нельзя — от этого зависит хрусткость.	4	20	f	t	f	https://theunitools.com/recipes/tempura.jpg	\N	f
+113	Окономияки	Толстый блин с капустой, где тесто только связывает. Ямс в тесте даёт ту воздушную текстуру.	4	25	f	t	f	https://theunitools.com/recipes/okonomiyaki.jpg	\N	f
+114	Лахмаджун	Тончайшая лепёшка с бараньим фаршем и перечной пастой, запечённая три минуты в раскалённой духовке.	6	20	f	f	t	https://theunitools.com/recipes/lahmacun.jpg	\N	f
+115	Пахлава	Сорок слоёв юфки с фисташками, залитые сиропом. Горячая пахлава заливается холодным сиропом, и только так.	12	60	f	t	t	https://theunitools.com/recipes/baklava.jpg	\N	f
+116	Спанакопита	Пирог из фило со шпинатом и фетой. Шпинат отжимают досуха — иначе низ останется сырым.	8	50	f	t	t	https://theunitools.com/recipes/spanakopita.jpg	\N	f
+117	Пататас бравас	Картофель, обжаренный дважды, под острым соусом на паприке. Соус без помидоров — в мадридском варианте их нет.	4	30	f	t	f	https://theunitools.com/recipes/patatas-bravas.jpg	\N	f
+118	Момо	Непальские пельмени на пару с буйволятиной или курицей и соусом ачар из обжаренных помидоров.	4	20	f	t	f	https://theunitools.com/recipes/momo.jpg	\N	f
+119	Дал бхат	Чечевичный суп с рисом и овощной таркари. Ежедневная еда Непала, которую едят дважды в день всю жизнь.	4	45	f	t	f	https://theunitools.com/recipes/dal-bhat.jpg	\N	f
+120	Котту роти	Рубленая лепёшка годамба, обжаренная с овощами, яйцом и карри прямо на плите двумя тесаками.	4	15	f	t	f	https://theunitools.com/recipes/kottu-roti.jpg	\N	f
+122	Чевапи	Колбаски из рубленого мяса без оболочки, на углях, с луком и лепёшкой сомун.	4	15	f	t	f	https://theunitools.com/recipes/cevapi.jpg	\N	f
+123	Айвар	Икра из печёного красного перца и баклажана, уваренная в масле до густоты пасты.	10	90	f	t	t	https://theunitools.com/recipes/ajvar.jpg	\N	f
+124	Фрикаделлер	Датские мясные биточки, плоские, а не круглые, жаренные на сливочном масле до тёмной корочки.	4	25	f	t	f	https://theunitools.com/recipes/frikadeller.jpg	\N	f
+126	Сармале	Голубцы в квашеных капустных листьях с фаршем и рисом, томлённые три часа под слоем капусты.	8	180	f	t	t	https://theunitools.com/recipes/sarmale.jpg	\N	f
+127	Мамалыга	Кукурузная каша плотной консистенции, которую режут ниткой, а не ножом.	6	40	f	t	f	https://theunitools.com/recipes/mamaliga.jpg	\N	f
+129	Баница	Спираль из фило с брынзой и яйцами, залитая йогуртом с содой перед выпечкой.	8	45	f	f	t	https://theunitools.com/recipes/banitsa.jpg	\N	f
+130	Лохикейтто	Финский суп с лососем, картофелем и сливками, с горой укропа и кусочком масла в тарелке.	4	40	f	t	f	https://theunitools.com/recipes/lohikeitto.jpg	\N	f
+125	Смёрребрёд	Открытый бутерброд на ржаном хлебе с маслом. Порядок слоёв и толщина масла имеют значение.	4	25	f	t	f	https://theunitools.com/recipes/smorrebrod.jpg	\N	f
+131	Карельские пирожки	Ржаная корзиночка с рисовой кашей, смазанная маслом после выпечки и поданная с яичным маслом.	8	25	f	t	t	https://theunitools.com/recipes/karjalanpiirakka.jpg	\N	f
+132	Ирландское рагу	Баранина с картофелем и луком, томлённая без обжарки. Мясо не подрумянивают — в этом весь смысл.	6	150	f	t	f	https://theunitools.com/recipes/irish-stew.jpg	\N	f
+133	Содовый хлеб	Хлеб на соде и пахте без дрожжей и без расстойки. От замеса до духовки — три минуты.	8	45	f	f	t	https://theunitools.com/recipes/soda-bread.jpg	\N	f
+134	Чёрный ризотто	Ризотто с каракатицей и её чернилами. Чернила вливают в конце, иначе они дадут горечь.	4	50	f	t	f	https://theunitools.com/recipes/crni-rizot.jpg	\N	f
+135	Загорски штрукли	Тонкое тесто с творожной начинкой, отваренное и запечённое под сливками.	6	45	f	t	t	https://theunitools.com/recipes/zagorski-strukli.jpg	\N	f
+137	Форикол	Баранина с капустой, слоями, с целым перцем горошком. Всего четыре ингредиента и два часа времени.	6	130	f	t	f	https://theunitools.com/recipes/farikal.jpg	\N	f
+138	Мидии по-мариньерски	Мидии, приготовленные на пару в белом вине с сельдереем и луком. Пять минут под крышкой и не дольше.	4	15	f	t	f	https://theunitools.com/recipes/moules-marinieres.jpg	\N	f
+139	Фламандская карбонада	Говядина, томлённая в тёмном пиве с луком и ломтем хлеба с горчицей, который загущает соус.	6	180	f	t	t	https://theunitools.com/recipes/carbonade-flamande.jpg	\N	f
+141	Рёшти	Картофельный блин из крупной тёрки, обжаренный до корочки с двух сторон. Картофель отваривают накануне.	4	30	f	t	t	https://theunitools.com/recipes/roesti.jpg	\N	f
+142	Гапама	Тыква, запечённая целиком с рисом, сухофруктами и орехами. Праздничное блюдо, которое режут за столом.	6	90	f	t	t	https://theunitools.com/recipes/ghapama.jpg	\N	f
+143	Спас	Суп на мацуне с пшеничной крупой. Главная сложность — не дать кисломолочной основе свернуться.	4	40	f	t	f	https://theunitools.com/recipes/spas.jpg	\N	f
+144	Шах-плов	Плов, запечённый в «короне» из лаваша. Корочка держит форму и режется на куски, как пирог.	6	70	f	t	t	https://theunitools.com/recipes/shah-plov.jpg	\N	f
+145	Кюфта-бозбаш	Прозрачный суп с одной большой мясной кюфтой на порцию, внутри которой спрятаны слива и курага.	4	80	f	t	f	https://theunitools.com/recipes/kufta-bozbash.jpg	\N	f
+146	Бешбармак	Отварное мясо на листах теста с луковой подливой сорпой. Главное блюдо казахского застолья.	6	180	f	t	f	https://theunitools.com/recipes/beshbarmak.jpg	\N	f
+147	Баурсаки	Кусочки дрожжевого теста, жаренные во фритюре до полых внутри шариков. Хлеб к чаю и к столу.	8	25	f	t	f	https://theunitools.com/recipes/baursaki.jpg	\N	f
+148	Брынзове галушки	Картофельные клёцки с овечьей брынзой и шкварками. Национальное блюдо Словакии.	4	20	f	t	f	https://theunitools.com/recipes/bryndzove-halusky.jpg	\N	f
+149	Капустница	Суп из квашеной капусты с копчёностями, колбасой и сушёными грибами. Рождественский стол Словакии.	6	90	f	t	f	https://theunitools.com/recipes/kapustnica.jpg	\N	f
+150	Пастель-де-чокло	Запеканка из мясной начинки под шапкой из молотой кукурузы, с оливкой и яйцом внутри.	6	60	f	t	t	https://theunitools.com/recipes/pastel-de-choclo.jpg	\N	f
+151	Эмпанадас-де-пино	Печёные пирожки с мясной начинкой, оливкой и яйцом. Чилийская еда 18 сентября и любого воскресенья.	6	30	f	t	f	https://theunitools.com/recipes/empanadas-de-pino.jpg	\N	f
+152	Пабельон-криольо	Тарелка из четырёх частей: тушёная говядина волокнами, чёрная фасоль, белый рис и жареный банан.	4	150	f	t	f	https://theunitools.com/recipes/pabellon-criollo.jpg	\N	f
+153	Качапас	Толстые оладьи из молотой свежей кукурузы, сложенные пополам вокруг мягкого сыра.	4	25	f	t	f	https://theunitools.com/recipes/cachapas.jpg	\N	f
+154	Сальтеньяс	Печёные пирожки с начинкой, которая внутри остаётся жидкой. Боливийский завтрак на ходу.	6	30	f	t	f	https://theunitools.com/recipes/saltenas.jpg	\N	f
+155	Сильпанчо	Отбивная в панировке размером с тарелку, поверх риса и картофеля, с яйцом и сырым салатом.	4	30	f	t	f	https://theunitools.com/recipes/silpancho.jpg	\N	f
+156	Энсебольядо	Суп из тунца с юккой и маринованным луком. В Эквадоре его едят на завтрак и считают средством от похмелья.	4	40	f	t	f	https://theunitools.com/recipes/encebollado.jpg	\N	f
+157	Льяпингачос	Картофельные лепёшки с сыром внутри, жаренные на ачиоте, с арахисовым соусом.	4	30	f	t	f	https://theunitools.com/recipes/llapingachos.jpg	\N	f
+140	Сырное фондю	Грюйер и вашрен, растопленные в белом вине с крахмалом. Кислота вина не даёт сыру свернуться.	4	20	f	f	f	https://theunitools.com/recipes/fondue-moitie-moitie.jpg	\N	t
+159	Иракская долма	Виноградные листья и овощи, фаршированные рисом с мясом, уложенные слоями и сваренные под гнётом.	6	75	f	t	f	https://theunitools.com/recipes/dolma-iraqi.jpg	\N	f
+160	Мансаф	Баранина в соусе из ферментированного сушёного йогурта джамид, на рисе и лепёшке. Национальное блюдо Иордании.	8	150	f	t	f	https://theunitools.com/recipes/mansaf.jpg	\N	f
+161	Маклюба	Рис с мясом и жареными овощами, сваренный в одной кастрюле и перевёрнутый на блюдо целиком.	6	90	f	t	f	https://theunitools.com/recipes/maqluba.jpg	\N	f
+162	Брик	Тонкий лист теста с яйцом внутри, обжаренный так, чтобы желток остался жидким.	4	10	f	t	f	https://theunitools.com/recipes/brik.jpg	\N	f
+163	Тунисский лаблаби	Нут в чесночном бульоне, вылитый на кусочки чёрствого хлеба, с яйцом, тмином и хариссой.	4	90	f	t	f	https://theunitools.com/recipes/shakshuka-tunisienne.jpg	\N	f
+164	Алжирский кускус	Крупа, трижды пропаренная над кастрюлей с мясом и овощами, с бульоном отдельно.	6	120	f	t	f	https://theunitools.com/recipes/couscous-algerien.jpg	\N	f
+165	Чорба-фрик	Суп с зелёной подкопчённой пшеницей фрик, бараниной и мятой. Первое блюдо на столе в Рамадан.	6	70	f	t	f	https://theunitools.com/recipes/chorba-frik.jpg	\N	f
+166	Цеппелинай	Крупные картофельные клёцки с мясной начинкой, названные в честь дирижаблей. Со шкварками и сметаной.	4	40	f	t	f	https://theunitools.com/recipes/cepelinai.jpg	\N	f
+167	Шалтибарщяй	Холодный свекольный суп на кефире, ярко-розовый, с огурцом, укропом и варёной картошкой отдельно.	4	40	f	t	f	https://theunitools.com/recipes/saltibarsciai.jpg	\N	f
+170	Мульгипудер	Картофельно-перловая каша со шкварками. Эстонское блюдо, признанное национальным символом.	4	80	f	t	f	https://theunitools.com/recipes/mulgipuder.jpg	\N	f
+172	Драники	Картофельные оладьи из тёртого сырого картофеля, жаренные до хрустящей корки, со сметаной.	4	25	f	t	f	https://theunitools.com/recipes/draniki.jpg	\N	f
+174	Мохинга	Рисовая лапша в густом рыбном бульоне на банановом стволе. Завтрак и неофициальное национальное блюдо Мьянмы.	6	80	f	t	f	https://theunitools.com/recipes/mohinga.jpg	\N	f
+175	Лапет-тхоке	Салат из ферментированных чайных листьев с жареными бобами, орехами и чесноком.	4	15	f	t	f	https://theunitools.com/recipes/lahpet-thoke.jpg	\N	f
+176	Фиш-амок	Рыба в кокосовом карри, приготовленная на пару в чашке из бананового листа.	4	25	f	t	f	https://theunitools.com/recipes/fish-amok.jpg	\N	f
+177	Лок-лак	Кубики говядины, обжаренные на сильном огне, на салате, с соусом из лайма и чёрного перца.	4	15	f	t	f	https://theunitools.com/recipes/lok-lak.jpg	\N	f
+178	Хайнаньский рис с курицей	Курица, сваренная целиком при температуре ниже кипения, и рис на её бульоне, с тремя соусами.	4	60	f	t	f	https://theunitools.com/recipes/hainanese-chicken-rice.jpg	\N	f
+179	Краб в соусе чили	Краб в густом томатно-чилийском соусе с яйцом, который вычерпывают жареными булочками мантоу.	4	25	f	t	f	https://theunitools.com/recipes/chilli-crab.jpg	\N	f
+180	Лу-жоу-фань	Рубленая свиная грудинка, тушённая в соевом соусе со специями, поверх белого риса.	4	100	f	t	f	https://theunitools.com/recipes/lu-rou-fan.jpg	\N	f
+181	Тайваньский суп с говядиной	Пшеничная лапша в тёмном бульоне из говяжьей голяшки с бобовой пастой и специями.	4	150	f	t	f	https://theunitools.com/recipes/beef-noodle-soup-taiwan.jpg	\N	f
+182	Ньяма-чома	Козлятина, медленно зажаренная над углями крупными кусками, с кача́мбари и угали.	6	90	f	t	f	https://theunitools.com/recipes/nyama-choma.jpg	\N	f
+183	Сукума-вики	Тушёная листовая капуста с луком и помидорами. Ежедневный гарнир к угали по всей Восточной Африке.	4	20	f	t	f	https://theunitools.com/recipes/sukuma-wiki.jpg	\N	f
+184	Ваакье	Рис с чёрными бобами, сваренный с листьями сорго, которые красят его в бордовый цвет.	6	80	f	t	f	https://theunitools.com/recipes/waakye.jpg	\N	f
+158	Масгуф	Речная рыба, распластанная и запечённая стоя у открытого огня. Багдадское блюдо с берегов Тигра.	4	75	f	f	f	https://theunitools.com/recipes/masgouf.jpg	\N	t
+171	Кама	Десерт из смеси обжаренных зерновых мук на кефире. Эстонский завтрак и летний десерт разом.	4	31	f	f	f	https://theunitools.com/recipes/kama.jpg	\N	t
+185	Банку с тиляпией	Ферментированное кукурузно-маниоковое тесто, вымешанное до гладкости, с жареной рыбой и острым перечным соусом.	4	45	f	t	f	https://theunitools.com/recipes/banku-with-tilapia.jpg	\N	f
+186	Тьебуджен	Рис, сваренный в томатном бульоне от рыбы, с фаршированной зеленью рыбой и овощами. Национальное блюдо Сенегала.	6	90	f	t	f	https://theunitools.com/recipes/thieboudienne.jpg	\N	f
+187	Ясса с курицей	Курица, маринованная в лимоне, под горой карамелизованного лука с горчицей.	4	75	f	t	f	https://theunitools.com/recipes/yassa-poulet.jpg	\N	f
+188	Бобóти	Запеканка из пряного фарша с сухофруктами под яично-молочной заливкой. Национальное блюдо ЮАР.	6	60	f	t	t	https://theunitools.com/recipes/bobotie.jpg	\N	f
+189	Чакалака	Острая овощная закуска из моркови, перца и фасоли с карри. К брааю, к пап или сама по себе.	6	20	f	t	f	https://theunitools.com/recipes/chakalaka.jpg	\N	f
+191	Кьётсупа	Прозрачный суп из баранины с корнеплодами и перловкой. Один горшок, четыре продукта, три часа.	6	150	f	t	f	https://theunitools.com/recipes/kjotsupa.jpg	\N	f
+193	Йота	Густой суп из квашеной репы или капусты с фасолью, картофелем и копчёностями.	6	90	f	t	f	https://theunitools.com/recipes/jota.jpg	\N	f
+194	Босански лонац	Мясо и овощи, уложенные слоями в глиняный горшок и томившиеся четыре часа без помешивания.	6	240	f	f	t	https://theunitools.com/recipes/bosanski-lonac.jpg	\N	f
+196	Тавче-гравче	Белая фасоль, запечённая в глиняной сковороде с луком, паприкой и перцем. Национальное блюдо Северной Македонии.	6	120	f	t	t	https://theunitools.com/recipes/tavce-gravce.jpg	\N	f
+197	Селско месо	Свинина, тушённая с грибами, луком и вином в глиняном горшочке, под сыром.	4	70	f	t	t	https://theunitools.com/recipes/selsko-meso.jpg	\N	f
+199	Австралийский мясной пирог	Порционный пирог с густой говяжьей начинкой: песочное дно, слоёная крышка, кетчуп сверху.	6	90	f	t	f	https://theunitools.com/recipes/meat-pie-australian.jpg	\N	f
+200	Павлова	Меренга с хрустящей корочкой и мягкой серединой, под взбитыми сливками и киви.	8	90	f	f	t	https://theunitools.com/recipes/pavlova.jpg	\N	f
+201	Курица в стиле ханги	Курица и корнеплоды, завёрнутые и запечённые с копчёной солью — домашняя версия земляной печи маори.	6	150	f	f	t	https://theunitools.com/recipes/hangi-style-chicken.jpg	\N	f
+202	Путин	Картофель фри с сырными зёрнами под горячей мясной подливой. Квебекская уличная классика.	4	40	f	t	f	https://theunitools.com/recipes/poutine.jpg	\N	f
+203	Туртьер	Закрытый пирог с пряным свиным фаршем и картофелем. Квебекский рождественский стол.	8	70	f	t	f	https://theunitools.com/recipes/tourtiere.jpg	\N	f
+204	Гальо-пинто	Вчерашний рис, обжаренный с чёрной фасолью и соусом Лисано. Костариканский завтрак каждый день.	4	20	f	t	f	https://theunitools.com/recipes/gallo-pinto.jpg	\N	f
+205	Касадо	Обеденная тарелка из риса, фасоли, салата, подорожника и мяса — всё разложено по секторам.	4	40	f	t	f	https://theunitools.com/recipes/casado.jpg	\N	f
+206	Буузы	Крупные пельмени на пару с рубленой бараниной. Главная еда монгольского Цагаан сара.	6	25	f	t	f	https://theunitools.com/recipes/buuz.jpg	\N	f
+207	Цуйван	Домашняя лапша, приготовленная на пару прямо над мясом, а потом перемешанная с ним.	4	45	f	t	f	https://theunitools.com/recipes/tsuivan.jpg	\N	f
+208	Кыргызский бешбармак	Баранина с домашней лапшой в луковом соусе чык. Кыргызский вариант — с бараниной и без картофеля.	6	165	f	t	f	https://theunitools.com/recipes/beshbarmak-kyrgyz.jpg	\N	f
+209	Лагман	Тянутая вручную лапша с мясо-овощной подливой ваджа. Дунганское блюдо, ставшее общим для Центральной Азии.	4	40	f	t	f	https://theunitools.com/recipes/lagman.jpg	\N	f
+210	Курутоб	Слоёная лепёшка фатир, размоченная в разведённом сушёном курте, под жареным луком и овощами.	4	20	f	t	f	https://theunitools.com/recipes/kurutob.jpg	\N	f
+211	Таджикский оши палав	Плов с бараниной, жёлтой морковью и целой головкой чеснока, признанный ЮНЕСКО наследием.	6	90	f	t	f	https://theunitools.com/recipes/oshi-plov-tajik.jpg	\N	f
+192	Потица	Дрожжевой рулет с ореховой начинкой, свёрнутый в кольцо. Словенская выпечка к каждому празднику.	12	60	f	f	f	https://theunitools.com/recipes/potica.jpg	\N	t
+212	Кабули палав	Рис с бараниной под слоем карамелизованной моркови, изюма и миндаля. Национальное блюдо Афганистана.	6	110	f	t	f	https://theunitools.com/recipes/kabuli-pulao.jpg	\N	f
+213	Афганское манту	Пельмени на пару с говядиной и луком, под чесночным йогуртом и соусом из жёлтого гороха.	5	45	f	t	f	https://theunitools.com/recipes/mantu-afghan.jpg	\N	f
+214	Фаттуш	Салат из овощей и зелени с обжаренными кусочками лепёшки и сумахом.	4	10	f	t	f	https://theunitools.com/recipes/fattoush.jpg	\N	f
+215	Киббе в противне	Два слоя булгура с мясом и прослойка из фарша с орехами, запечённые в противне.	8	45	f	t	t	https://theunitools.com/recipes/kibbeh-bil-sanieh.jpg	\N	f
+220	Занзибарский пилау	Рис с говядиной на пряностях острова: гвоздика, кардамон, корица и чёрный перец без всякой куркумы.	6	75	f	t	f	https://theunitools.com/recipes/zanzibar-pilau.jpg	\N	f
+223	Бхуна кхичури	Рис с чечевицей, обжаренные до закладки воды. Бенгальская еда дождливого дня.	5	45	f	t	f	https://theunitools.com/recipes/bhuna-khichuri.jpg	\N	f
+224	Лаап	Рубленое мясо с обжаренной рисовой мукой, травами и лаймом. Национальное блюдо Лаоса.	4	20	f	t	f	https://theunitools.com/recipes/larb-lao.jpg	\N	f
+226	Сувла	Крупные куски свинины или ягнёнка на вертеле, медленно вращающиеся над углями два часа.	6	130	f	t	f	https://theunitools.com/recipes/souvla.jpg	\N	f
+228	Кролик по-мальтийски	Кролик, тушённый в красном вине с чесноком и лавром. Национальное блюдо Мальты.	4	105	f	t	f	https://theunitools.com/recipes/maltese-rabbit-stew.jpg	\N	f
+229	Пастицци	Слоёные пирожки с рикоттой или гороховой начинкой. Мальтийская уличная еда на каждом углу.	8	35	f	t	f	https://theunitools.com/recipes/pastizzi.jpg	\N	f
+230	Чивито	Сэндвич с тонким стейком, ветчиной, беконом, сыром и яйцом. Национальное блюдо Уругвая.	4	20	f	t	f	https://theunitools.com/recipes/chivito.jpg	\N	f
+232	Пепиан	Курица в густом соусе из обжаренных семян и перцев. Одно из старейших блюд Гватемалы.	6	70	f	t	f	https://theunitools.com/recipes/pepian.jpg	\N	f
+233	Гватемальские тамалес	Кукурузное тесто с мясом и соусом рекадо, завёрнутое в банановый лист и сваренное на пару.	8	90	f	t	f	https://theunitools.com/recipes/tamales-guatemaltecos.jpg	\N	f
+234	Доминиканский санкочо	Густой суп из нескольких видов мяса и корнеплодов. Праздничная еда, которую готовят на большую компанию.	8	120	f	t	f	https://theunitools.com/recipes/sancocho-dominicano.jpg	\N	f
+235	Мангу	Пюре из варёного зелёного подорожника с маринованным луком, яйцом, сыром и салями.	4	30	f	t	f	https://theunitools.com/recipes/mangu.jpg	\N	f
+237	Каллалу	Густой суп-пюре из листьев таро с окрой и кокосовым молоком. Воскресный стол Тринидада.	6	55	f	t	f	https://theunitools.com/recipes/callaloo.jpg	\N	f
+238	Таве коси	Ягнёнок, запечённый под густым йогуртовым соусом с яйцом и рисом. Национальное блюдо Албании.	6	90	f	t	t	https://theunitools.com/recipes/tave-kosi.jpg	\N	f
+239	Бюрек со шпинатом	Пирог из тонкого теста со шпинатом и брынзой, слоями, залитыми маслом.	8	45	f	t	f	https://theunitools.com/recipes/byrek-me-spinaq.jpg	\N	f
+240	Плацинда	Плоский пирог из вытянутого теста с брынзой, тыквой или яблоками, жаренный на сухой сковороде.	6	30	f	t	f	https://theunitools.com/recipes/placinta.jpg	\N	f
+222	Шорше илиш	Хилса в соусе из молотой горчицы, приготовленная на пару. Главная рыба Бенгалии.	4	25	f	f	f	https://theunitools.com/recipes/shorshe-ilish.jpg	\N	t
+225	Там мак хунг	Салат из зелёной папайи, растёртый в ступке. Лаосская версия — с ферментированной рыбой падэк.	4	35	f	f	f	https://theunitools.com/recipes/tam-mak-hoong.jpg	\N	t
+242	Копчёная шейка с бобами	Копчёная свиная шейка, вымоченная и отваренная, с бобами в сливочном соусе. Национальное блюдо Люксембурга.	4	100	f	t	f	https://theunitools.com/recipes/judd-mat-gaardebounen.jpg	\N	f
+246	Кабса	Рис с курицей на пряном бульоне с сушёным лаймом и томатом. Главное блюдо саудовского стола.	6	75	f	t	f	https://theunitools.com/recipes/kabsa.jpg	\N	f
+248	Сальта	Мясное рагу, поданное кипящим в каменном горшке, под взбитой пеной из пажитника хульба.	4	90	f	t	f	https://theunitools.com/recipes/saltah.jpg	\N	f
+254	Ндоле	Горькие листья с арахисовой пастой, мясом и креветками. Национальное блюдо Камеруна.	6	75	f	t	f	https://theunitools.com/recipes/ndole.jpg	\N	f
+255	Пуле DG	Жареная курица с обжаренным подорожником и овощами. Блюдо, названное «курица директора».	5	45	f	t	f	https://theunitools.com/recipes/poulet-dg.jpg	\N	f
+256	Атьеке с рыбой	Ферментированная маниоковая крупа на пару с жареной рыбой и острым луковым салатом.	4	30	f	t	f	https://theunitools.com/recipes/attieke-poisson.jpg	\N	f
+257	Кеджену	Курица, томлённая в закрытом глиняном горшке без воды. Ивуарийское блюдо медленного огня.	4	80	f	f	t	https://theunitools.com/recipes/kedjenou.jpg	\N	f
+259	Курица пири-пири	Курица, распластанная и зажаренная на углях под соусом из перца пири-пири, чеснока и лимона.	4	45	f	t	f	https://theunitools.com/recipes/frango-piri-piri.jpg	\N	f
+260	Ромазава	Мясо в бульоне с горькой зеленью брэд-мафана, вызывающей лёгкое покалывание во рту.	5	75	f	t	f	https://theunitools.com/recipes/romazava.jpg	\N	f
+261	Равитуту	Толчёные листья маниока, тушённые со свининой и кокосовым молоком.	5	85	f	t	f	https://theunitools.com/recipes/ravitoto.jpg	\N	f
+262	Балеадас	Пшеничная лепёшка, сложенная пополам, с фасолевым пюре, сметаной и сыром.	4	30	f	t	f	https://theunitools.com/recipes/baleadas.jpg	\N	f
+263	Суп из ракушек	Суп из моллюска конх в кокосовом молоке с юккой и подорожником. Кухня карибского побережья гарифуна.	5	60	f	t	f	https://theunitools.com/recipes/sopa-de-caracol.jpg	\N	f
+264	Никарагуанский гальо-пинто	Рис с красной фасолью, обжаренный вместе. Никарагуанская версия — на красной фасоли и без соуса Лисано.	4	20	f	t	f	https://theunitools.com/recipes/gallo-pinto-nicaraguense.jpg	\N	f
+265	Накатамаль	Большой тамаль из кукурузного теста со свининой, рисом и картофелем, сваренный в банановом листе.	8	180	f	t	f	https://theunitools.com/recipes/nacatamal.jpg	\N	f
+266	Панамский санкочо	Куриный суп с корнем ньяме и травой кулантро. Панамское средство от похмелья и от простуды.	6	90	f	t	f	https://theunitools.com/recipes/sancocho-panameno.jpg	\N	f
+267	Панамская ропа вьеха	Говядина волокнами в томатном соусе с оливками и каперсами, панамской школы — суше кубинской.	5	120	f	t	f	https://theunitools.com/recipes/ropa-vieja-panamena.jpg	\N	f
+269	Чипа	Хлебные колечки из маниоковой муки с сыром, без пшеницы и без дрожжей.	8	25	f	f	t	https://theunitools.com/recipes/chipa.jpg	\N	f
+249	Бинт ас-сахн	Многослойный сдобный хлеб, промазанный топлёным маслом, залитый мёдом и чернушкой.	8	35	f	f	f	https://theunitools.com/recipes/bint-al-sahn.jpg	\N	t
+268	Парагвайский суп	Плотная кукурузная запеканка с сыром и луком, которую вопреки названию едят вилкой.	8	50	f	f	f	https://theunitools.com/recipes/sopa-paraguaya.jpg	\N	t
+270	Флия	Слоёный пирог из жидкого теста, наливаемого по одному слою под раскалённой крышкой саче.	8	90	f	f	f	https://theunitools.com/recipes/flia.jpg	\N	t
+271	Таве Эльбасани	Ягнёнок с рисом под йогуртовым соусом, запечённый в глиняной форме до румяной корки.	6	95	f	t	t	https://theunitools.com/recipes/tave-elbasani.jpg	\N	f
+273	Качамак	Кукурузная каша с картофелем, вымешанная с сыром и каймаком до тягучести.	4	45	f	t	f	https://theunitools.com/recipes/kacamak.jpg	\N	f
+274	Эма датши	Зелёный перец чили, тушённый в сыре. Национальное блюдо Бутана, где чили — овощ, а не приправа.	4	20	f	t	f	https://theunitools.com/recipes/ema-datshi.jpg	\N	f
+276	Мас хуни	Тунец, растёртый с кокосом, луком и лаймом, к горячей лепёшке роши. Мальдивский завтрак.	4	15	f	t	f	https://theunitools.com/recipes/mas-huni.jpg	\N	f
+279	Ролекс	Омлет с овощами, завёрнутый в лепёшку чапати. Уличная еда Кампалы, названная от «rolled eggs».	4	30	f	t	f	https://theunitools.com/recipes/rolex-uganda.jpg	\N	f
+282	Курица моамбе	Курица в соусе из мякоти пальмовых плодов. Национальное блюдо Конго.	5	70	f	t	f	https://theunitools.com/recipes/poulet-moambe.jpg	\N	f
+283	Либоке с рыбой	Рыба со специями, завёрнутая в банановый лист и запечённая в углях.	4	35	f	t	t	https://theunitools.com/recipes/liboke-de-poisson.jpg	\N	f
+284	Тигадегена	Мясо в густом арахисовом соусе с овощами. Малийское блюдо воскресного обеда.	6	90	f	t	f	https://theunitools.com/recipes/tigadegena.jpg	\N	f
+286	Оссобуко по-милански	Телячья голяшка, тушённая два часа в вине и бульоне, с гремолатой из цедры и чеснока.	4	130	f	t	f	https://theunitools.com/recipes/osso-buco-alla-milanese.jpg	\N	f
+290	Роган джош	Кашмирская баранина в йогуртовом соусе с перцем кашмири, красная от него, а не от остроты.	5	100	f	t	f	https://theunitools.com/recipes/rogan-josh.jpg	\N	f
+291	Масала доса	Тонкий хрустящий блин из сброженного рисово-чечевичного теста с картофельной начинкой.	6	45	f	t	f	https://theunitools.com/recipes/masala-dosa.jpg	\N	f
+292	Буйабес	Марсельская рыбная похлёбка из нескольких сортов рыбы, с шафраном и соусом руй.	6	70	f	t	f	https://theunitools.com/recipes/bouillabaisse.jpg	\N	f
+294	Никудзяга	Говядина с картофелем, тушённые в даси с соевым соусом и мирином. Домашняя японская классика.	4	35	f	t	f	https://theunitools.com/recipes/nikujaga.jpg	\N	f
+296	Моле поблано	Курица в тёмном соусе из нескольких видов перца, орехов, специй и шоколада.	8	120	f	t	f	https://theunitools.com/recipes/mole-poblano.jpg	\N	f
+298	Искендер-кебаб	Ломтики донера на кусочках питы, под томатным соусом, растопленным маслом и йогуртом.	4	30	f	t	t	https://theunitools.com/recipes/iskender-kebab.jpg	\N	f
+299	Турецкие манты	Крошечные пельмени с бараниной, отваренные и поданные под чесночным йогуртом и маслом с паприкой.	5	25	f	t	f	https://theunitools.com/recipes/manti-turkish.jpg	\N	f
+300	Фабада астурийская	Крупная белая фасоль фабес, тушённая с чорисо, морсильей и копчёной свининой.	6	180	f	t	f	https://theunitools.com/recipes/fabada-asturiana.jpg	\N	f
+301	Осьминог по-галисийски	Отварной осьминог на деревянной доске с паприкой, крупной солью и оливковым маслом.	4	60	f	t	f	https://theunitools.com/recipes/pulpo-a-feira.jpg	\N	f
+302	Кхао сой	Северотайская лапша в кокосовом карри, с варёной лапшой в бульоне и жареной сверху.	4	45	f	t	f	https://theunitools.com/recipes/khao-soi.jpg	\N	f
+303	Массаман карри	Мягкое карри с говядиной, картофелем и арахисом, на специях мусульманской традиции.	5	90	f	t	f	https://theunitools.com/recipes/massaman-curry.jpg	\N	f
+304	Гемиста	Помидоры и перцы, фаршированные рисом с зеленью и запечённые с картофелем в оливковом масле.	6	80	f	t	t	https://theunitools.com/recipes/gemista.jpg	\N	f
+305	Авголемоно	Куриный суп с рисом, загущённый яйцом, взбитым с лимонным соком.	5	65	f	t	f	https://theunitools.com/recipes/avgolemono.jpg	\N	f
+306	Пельмени	Мелкие пельмени из пресного теста с рубленым мясом и луком, сваренные в бульоне.	6	15	f	t	f	https://theunitools.com/recipes/pelmeni.jpg	\N	f
+307	Бефстроганов	Говядина, нарезанная соломкой и обжаренная на сильном огне, в сметанном соусе с луком.	4	25	f	t	f	https://theunitools.com/recipes/beef-stroganoff.jpg	\N	f
+308	Швайнсхаксе	Свиная рулька, запечённая до стеклянной хрустящей корки, с тёмным пивом и квашеной капустой.	4	180	f	t	t	https://theunitools.com/recipes/schweinshaxe.jpg	\N	f
+310	Раздёрганная свинина	Свиная лопатка, копчёная десять часов при низкой температуре и разобранная на волокна.	10	600	f	t	t	https://theunitools.com/recipes/pulled-pork.jpg	\N	f
+311	Пирог с лаймом	Начинка из сгущённого молока с соком лайма на основе из крошки крекера, без запекания начинки.	8	20	f	f	t	https://theunitools.com/recipes/key-lime-pie.jpg	\N	f
+312	Бун ча	Жареная на углях свинина в тёплом кисло-сладком бульоне, с рисовой вермишелью и травами.	4	30	f	t	f	https://theunitools.com/recipes/bun-cha.jpg	\N	f
+313	Гой куон	Свежие рулетики из рисовой бумаги с креветкой, свининой, лапшой и травами, без обжарки.	4	20	f	t	f	https://theunitools.com/recipes/goi-cuon.jpg	\N	f
+314	Кальбиччим	Говяжьи рёбра, тушённые в соевом соусе с грушей, до состояния, когда мясо сходит с кости.	5	120	f	t	f	https://theunitools.com/recipes/galbijjim.jpg	\N	f
+315	Самгетан	Целый цыплёнок, фаршированный клейким рисом и женьшенем, сваренный в собственном бульоне.	4	75	f	t	f	https://theunitools.com/recipes/samgyetang.jpg	\N	f
+316	Ростбиф с йоркширским пудингом	Говядина, запечённая куском, с воздушным пудингом из жидкого теста на говяжьем жире.	6	90	f	t	t	https://theunitools.com/recipes/roast-beef-yorkshire.jpg	\N	f
+317	Финиковый пудинг с ирисочным соусом	Влажный финиковый кекс, политый горячим соусом из сливок и тёмного сахара.	8	40	f	t	f	https://theunitools.com/recipes/sticky-toffee-pudding.jpg	\N	f
+318	Бигос	Квашеная и свежая капуста, тушённые с несколькими видами мяса и сухофруктами трое суток.	10	240	f	t	f	https://theunitools.com/recipes/bigos.jpg	\N	f
+319	Сырник польский	Плотный творожный пирог на песочной основе, из твёрдого творога, а не из сливочного сыра.	12	70	f	f	t	https://theunitools.com/recipes/sernik.jpg	\N	f
+320	Мокека баиана	Рыба, тушённая в кокосовом молоке с пальмовым маслом денде, в глиняном горшке.	5	35	f	t	f	https://theunitools.com/recipes/moqueca-baiana.jpg	\N	f
+321	Кошинья	Обжаренные во фритюре капельки из заварного теста с куриной начинкой, в форме куриной ножки.	8	40	f	t	f	https://theunitools.com/recipes/coxinha.jpg	\N	f
+322	Ахи де гальина	Курица волокнами в кремовом соусе из жёлтого перца ахи амарильо, орехов и хлеба.	5	50	f	t	f	https://theunitools.com/recipes/aji-de-gallina.jpg	\N	f
+323	Кауса лименья	Слои жёлтого картофельного пюре с лаймом и перцем ахи, с начинкой из курицы или тунца.	6	30	f	t	f	https://theunitools.com/recipes/causa-limena.jpg	\N	f
+324	Фесенджан	Утка или курица в густом соусе из молотых грецких орехов и гранатовой патоки.	6	150	f	t	f	https://theunitools.com/recipes/fesenjan.jpg	\N	f
+326	Калду верде	Картофельный крем-суп с тонко нашинкованной капустой и ломтиками копчёной колбасы шоурису.	5	35	f	t	f	https://theunitools.com/recipes/caldo-verde.jpg	\N	f
+327	Сардины на углях	Целые сардины, посоленные крупной солью и зажаренные на углях, на ломте хлеба.	4	15	f	t	t	https://theunitools.com/recipes/sardinhas-assadas.jpg	\N	f
+328	Сатэ аям	Куриные шпажки на углях с густым арахисовым соусом и сладким соевым кечапом манисом.	5	25	f	t	f	https://theunitools.com/recipes/sate-ayam.jpg	\N	f
+309	Шварцвальдский торт	Шоколадный бисквит, пропитанный вишнёвым киршем, со взбитыми сливками и вишней.	12	35	f	f	f	https://theunitools.com/recipes/schwarzwaelder-kirschtorte.jpg	\N	t
+332	Чахохбили	Курица, тушённая без воды в собственном соку с помидорами и горой свежей зелени.	5	50	f	t	f	https://theunitools.com/recipes/chakhokhbili.jpg	\N	f
+333	Сациви	Индейка или курица в холодном ореховом соусе с чесноком и специями. Новогодний стол Грузии.	8	90	f	t	t	https://theunitools.com/recipes/satsivi.jpg	\N	f
+336	Фатте с нутом	Слои жареной питы, горячего нута и чесночного йогурта с топлёным маслом и кедровыми орехами.	5	90	f	t	f	https://theunitools.com/recipes/fattet-hummus.jpg	\N	f
+338	Пастилья	Слоёный пирог с голубем или курицей, миндалём и корицей, посыпанный сахарной пудрой.	8	90	f	t	f	https://theunitools.com/recipes/pastilla.jpg	\N	f
+339	Марокканский чебакия	Печенье в форме цветка, обжаренное во фритюре и вымоченное в мёде с кунжутом.	10	60	f	t	f	https://theunitools.com/recipes/chebakia.jpg	\N	f
+340	Молохия	Суп из листьев джута, тягучий по текстуре, с чесночной зажаркой и кориандром.	5	70	f	t	f	https://theunitools.com/recipes/molokhia.jpg	\N	f
+342	Асадо	Говядина на решётке над дровяными углями, часами, с одной только крупной солью.	8	210	f	t	f	https://theunitools.com/recipes/asado-argentino.jpg	\N	f
+344	Тафельшпиц	Говяжий огузок, сваренный в прозрачном бульоне, с яблочным хреном и жареным картофелем.	6	180	f	t	f	https://theunitools.com/recipes/tafelspitz.jpg	\N	f
+346	Халасле	Огненно-красная рыбацкая уха на паприке, из речной рыбы, сваренная в котелке.	6	75	f	t	f	https://theunitools.com/recipes/halaszle.jpg	\N	f
+348	Вепрево колено с кнедликами	Тушёная свинина с хлебными кнедликами и кислой капустой. Неофициальное национальное блюдо Чехии.	6	120	f	t	f	https://theunitools.com/recipes/vepro-knedlo-zelo.jpg	\N	f
+349	Кулайда	Сливочный грибной суп с укропом, картофелем и яйцом-пашот, подкислённый уксусом.	5	35	f	t	f	https://theunitools.com/recipes/kulajda.jpg	\N	f
+351	Шведский яблочный пирог	Яблочный пирог с корицей под хрустящей масляной крошкой, к ванильному соусу.	8	45	f	t	f	https://theunitools.com/recipes/appelkaka.jpg	\N	f
+352	Стегт флеск	Ломти свиной грудинки, жаренные до хруста, с картофелем и петрушечным соусом.	4	45	f	t	f	https://theunitools.com/recipes/stegt-flaesk.jpg	\N	f
+353	Рисаламанде	Холодный рисовый пудинг со взбитыми сливками и миндалём, под горячим вишнёвым соусом.	8	60	f	t	f	https://theunitools.com/recipes/risalamande.jpg	\N	f
+354	Эртенсуп	Густой гороховый суп с копчёной колбасой, такой плотный, что ложка в нём стоит.	6	150	f	t	f	https://theunitools.com/recipes/erwtensoep.jpg	\N	f
+355	Биттербаллен	Шарики из густого мясного рагу в панировке, жаренные во фритюре, с горчицей.	8	40	f	t	f	https://theunitools.com/recipes/bitterballen.jpg	\N	f
+356	Колканнон	Картофельное пюре с капустой и зелёным луком, с озером растопленного масла в центре.	6	35	f	t	f	https://theunitools.com/recipes/colcannon.jpg	\N	f
+337	Сфиха	Открытые лепёшки с бараньим фаршем, помидором и гранатовым соусом, из Баальбека.	6	25	f	f	f	https://theunitools.com/recipes/sfiha.jpg	\N	t
+343	Альфахорес	Два рассыпчатых коржика из кукурузного крахмала, склеенных дульсе де лече, в кокосе.	10	15	f	f	f	https://theunitools.com/recipes/alfajores.jpg	\N	t
+347	Торт Добош	Пять тонких бисквитных коржей с шоколадным кремом под карамельной крышкой.	12	45	f	f	f	https://theunitools.com/recipes/dobos-torta.jpg	\N	t
+362	Наси лемак	Рис на кокосовом молоке с пандановым листом, к нему самбал, анчоусы, яйцо и арахис.	5	50	f	t	f	https://theunitools.com/recipes/nasi-lemak.jpg	\N	f
+363	Чар квай теу	Широкая рисовая лапша, обжаренная на очень сильном огне с креветками, яйцом и ростками.	2	10	f	t	f	https://theunitools.com/recipes/char-kway-teow.jpg	\N	f
+364	Каре-каре	Говяжий хвост в густом арахисовом соусе с овощами, к креветочной пасте багоонг.	6	210	f	t	f	https://theunitools.com/recipes/kare-kare.jpg	\N	f
+366	Ынджера	Кислая пористая лепёшка из теффа на трёхдневной закваске, служащая и хлебом, и тарелкой.	8	40	f	t	f	https://theunitools.com/recipes/injera.jpg	\N	f
+367	Кытфо	Рубленая сырая говядина, вымешанная с пряным маслом нитер киббе и смесью мытмыта.	4	30	f	t	f	https://theunitools.com/recipes/kitfo.jpg	\N	f
+369	Паф-паф	Дрожжевые шарики из жидкого теста, обжаренные во фритюре, снаружи хрустящие, внутри воздушные.	8	30	f	t	f	https://theunitools.com/recipes/puff-puff.jpg	\N	f
+370	Аррос кон польо	Курица с рисом на пиве и шафране, с горошком, перцем и оливками.	6	60	f	t	f	https://theunitools.com/recipes/arroz-con-pollo-cubano.jpg	\N	f
+371	Тостонес	Зелёный подорожник, обжаренный дважды с расплющиванием между заходами, с чесночным соусом.	4	25	f	t	f	https://theunitools.com/recipes/tostones.jpg	\N	f
+373	Райс энд пис	Рис, сваренный с красной фасолью в кокосовом молоке, с тимьяном и целым скотч-боннетом.	6	95	f	t	f	https://theunitools.com/recipes/rice-and-peas.jpg	\N	f
+375	Поронкяристюс	Строганина из оленины, обжаренная в масле и потушенная в пиве, с пюре и брусникой.	4	45	f	t	f	https://theunitools.com/recipes/poronkaristys.jpg	\N	f
+376	Чёттакакер	Крупные мясные котлеты в коричневом соусе, с брусникой и тушёным горошком.	5	45	f	t	f	https://theunitools.com/recipes/kjottkaker.jpg	\N	f
+377	Школьная булочка	Сдобная булочка с кардамоном, заварным кремом в центре, глазурью и кокосовой стружкой.	12	20	f	t	t	https://theunitools.com/recipes/skolebrod.jpg	\N	f
+378	Ватерзой	Гентское рагу из курицы или рыбы в сливочном бульоне с соломкой корнеплодов.	5	60	f	t	f	https://theunitools.com/recipes/waterzooi.jpg	\N	f
+379	Льежские вафли	Плотные дрожжевые вафли из густого теста с жемчужным сахаром, карамелизующимся снаружи.	10	25	f	f	t	https://theunitools.com/recipes/belgian-waffles.jpg	\N	f
+383	Фритуле	Маленькие пончики с изюмом, цитрусовой цедрой и ракией, обжаренные во фритюре.	8	25	f	t	f	https://theunitools.com/recipes/fritule.jpg	\N	f
+384	Сарма	Голубцы из квашеных капустных листьев со свининой и рисом, тушённые с копчёностями.	8	150	f	t	f	https://theunitools.com/recipes/sarma-serbian.jpg	\N	f
+386	Чорба де бурта	Кислый суп из говяжьего рубца в сливочно-чесночном бульоне, загущённый желтками.	6	240	f	t	f	https://theunitools.com/recipes/ciorba-de-burta.jpg	\N	f
+387	Папанаши	Творожные пончики в форме бублика с шариком сверху, со сметаной и вареньем.	6	25	f	t	f	https://theunitools.com/recipes/papanasi.jpg	\N	f
+390	Хопперы	Тонкие чашеобразные блины из сброженного рисового теста с кокосовым молоком, часто с яйцом.	6	40	f	t	f	https://theunitools.com/recipes/hoppers.jpg	\N	f
+392	Сель роти	Кольцо из сброженного рисового теста, обжаренное во фритюре, хрустящее снаружи и мягкое внутри.	8	40	f	t	f	https://theunitools.com/recipes/sel-roti.jpg	\N	f
+365	Лече флан	Плотный карамельный флан на одних желтках, приготовленный на пару в металлической форме.	8	45	f	f	f	https://theunitools.com/recipes/leche-flan.jpg	\N	t
+388	Таратор	Холодный суп из йогурта с огурцом, чесноком, укропом и грецкими орехами.	4	51	f	f	f	https://theunitools.com/recipes/tarator.jpg	\N	t
+394	Халим	Мясо, пшеница и бобовые, вываренные и взбитые в однородную густую массу за шесть часов.	10	360	f	t	f	https://theunitools.com/recipes/haleem.jpg	\N	f
+395	Сикх-кебаб	Фарш с луком и специями, налепленный на шампур и зажаренный на углях.	5	20	f	t	f	https://theunitools.com/recipes/seekh-kebab.jpg	\N	f
+396	Кенийская чапати	Слоёная мягкая лепёшка из пшеничного теста, свёрнутого спиралью перед раскаткой.	8	30	f	t	f	https://theunitools.com/recipes/chapati-kenyan.jpg	\N	f
+397	Мандази	Треугольные пончики на кокосовом молоке с кардамоном, слегка сладкие, к чаю.	8	25	f	t	f	https://theunitools.com/recipes/mandazi.jpg	\N	f
+398	Банни чау	Половина буханки белого хлеба с вынутым мякишем, наполненная бараньим карри.	4	90	f	t	f	https://theunitools.com/recipes/bunny-chow.jpg	\N	f
+399	Мелктерт	Молочный тарт с корицей: заварная начинка почти без яиц в песочной основе.	10	40	f	t	t	https://theunitools.com/recipes/melktert.jpg	\N	f
+400	Бандеха пайса	Поднос из фасоли, риса, мяса, шкварок, яйца, арепы, авокадо и жареного банана.	4	150	f	t	f	https://theunitools.com/recipes/bandeja-paisa.jpg	\N	f
+401	Колумбийский санкочо	Куриный суп с юккой, подорожником и кукурузой, сваренный на открытом огне.	8	110	f	t	f	https://theunitools.com/recipes/sancocho-colombiano.jpg	\N	f
+402	Куранто в кастрюле	Моллюски, мясо и картофельные лепёшки, сваренные слоями в одной кастрюле без воды.	6	60	f	t	f	https://theunitools.com/recipes/curanto-en-olla.jpg	\N	f
+403	Комплето	Хот-дог с горой размятого авокадо, помидоров и майонеза, цветами повторяющий флаг Италии.	4	10	f	t	t	https://theunitools.com/recipes/completo-italiano.jpg	\N	f
+406	Азербайджанская долма	Виноградные листья с бараниной, рисом и мятой, сваренные под гнётом, к чесночному мацони.	6	60	f	t	f	https://theunitools.com/recipes/dolma-azerbaijani.jpg	\N	f
+408	Иракский бирьяни	Рис с курицей, вермишелью, орехами и изюмом, где все части готовятся отдельно.	6	75	f	t	f	https://theunitools.com/recipes/iraqi-biryani.jpg	\N	f
+412	Мухаммара	Паста из печёного красного перца, грецких орехов и гранатового соуса, из Алеппо.	6	25	f	t	f	https://theunitools.com/recipes/muhammara.jpg	\N	f
+413	Шиш барак	Мелкие пельмени с бараниной, запечённые и сваренные в йогуртовом соусе с чесноком и мятой.	5	45	f	t	t	https://theunitools.com/recipes/shish-barak.jpg	\N	f
+414	Печенье АНЗАК	Овсяное печенье на золотом сиропе и соде, без яиц, хранящееся неделями.	20	18	f	t	t	https://theunitools.com/recipes/anzac-biscuits.jpg	\N	f
+420	Скир с ягодами	Домашний скир — исландский кисломолочный продукт, отцеженный до плотности, с черникой.	6	20	f	t	f	https://theunitools.com/recipes/skyr-with-berries.jpg	\N	f
+421	Исландский чёрный хлеб	Сладковатый ржаной хлеб, запечённый в закрытой форме двенадцать часов при низкой температуре.	12	720	f	f	t	https://theunitools.com/recipes/rugbraud.jpg	\N	f
+422	Катонг лакса	Рисовая лапша в кокосовом бульоне с креветками, нарезанная коротко и подаваемая с ложкой.	4	60	f	t	f	https://theunitools.com/recipes/laksa-singapore.jpg	\N	f
+407	Бакинская пахлава	Ромбы из восьми слоёв теста с ореховой начинкой, под шафранным сиропом.	16	45	f	f	f	https://theunitools.com/recipes/pakhlava-baku.jpg	\N	t
+418	Масляные тарталетки	Песочные корзиночки с начинкой из масла, сахара и сиропа, текучей или схватившейся.	12	22	f	f	f	https://theunitools.com/recipes/butter-tarts.jpg	\N	t
+423	Тост с кайей	Подсушенный хлеб с кокосово-яичным джемом кайя и холодным маслом, к яйцам всмятку.	4	50	f	t	f	https://theunitools.com/recipes/kaya-toast.jpg	\N	f
+424	Гуа бао	Паровая булочка, сложенная пополам, с тушёной грудинкой, маринованной зеленью и арахисом.	8	100	f	t	f	https://theunitools.com/recipes/gua-bao.jpg	\N	f
+425	Тайваньское ананасовое печенье	Квадратики песочного теста с плотной начинкой из уваренного ананаса и зимней дыни.	16	90	f	t	f	https://theunitools.com/recipes/pineapple-cake.jpg	\N	f
+426	Шанская лапша	Рисовая лапша с томатно-куриным соусом, маринованной зеленью и молотым арахисом.	4	45	f	t	f	https://theunitools.com/recipes/shan-noodles.jpg	\N	f
+427	Он но кхао свэ	Пшеничная лапша в густом кокосовом бульоне с курицей и нутовой мукой.	5	50	f	t	f	https://theunitools.com/recipes/ohn-no-khao-swe.jpg	\N	f
+428	Ном банчок	Холодная рисовая лапша с рыбно-кокосовым карри и горой сырых овощей и трав.	5	40	f	t	f	https://theunitools.com/recipes/num-banh-chok.jpg	\N	f
+429	Самло корко	Густой овощной суп с молотым обжаренным рисом, свининой и прахоком, из десятка овощей.	6	50	f	t	f	https://theunitools.com/recipes/samlor-korko.jpg	\N	f
+430	Торта фрита	Плоские лепёшки на топлёном жире, обжаренные во фритюре, которые в Уругвае пекут в дождь.	8	25	f	t	f	https://theunitools.com/recipes/torta-frita.jpg	\N	f
+431	Бусека	Густой суп из рубца с белой фасолью, чорисо и овощами, уругвайская зимняя еда.	6	210	f	t	f	https://theunitools.com/recipes/buseca.jpg	\N	f
+432	Как-ик	Красный суп из индейки с обожжёнными перцами и специями, блюдо майя кекчи.	6	120	f	t	f	https://theunitools.com/recipes/kak-ik.jpg	\N	f
+433	Рельенитос	Шарики из пюре спелого подорожника с начинкой из чёрной фасоли и шоколада.	6	45	f	t	f	https://theunitools.com/recipes/rellenitos.jpg	\N	f
+435	Сладкая фасоль	Сладкий десертный крем из красной фасоли с кокосовым молоком, бататом и печеньем.	8	90	f	t	f	https://theunitools.com/recipes/habichuelas-con-dulce.jpg	\N	f
+436	Тринидадская роти	Слоёная лепёшка, разбитая в лохмотья прямо на сковороде, к карри из курицы или козлятины.	6	40	f	t	f	https://theunitools.com/recipes/trinidad-roti.jpg	\N	f
+437	Пелау	Рис с курицей, голубиным горохом и кокосовым молоком, обжаренный в пережжённом сахаре.	6	60	f	t	f	https://theunitools.com/recipes/pelau.jpg	\N	f
+438	Айяка	Кукурузное тесто с мясным гисо, оливками и изюмом, завёрнутое в банановый лист.	10	90	f	t	f	https://theunitools.com/recipes/hallaca.jpg	\N	f
+439	Асадо негро	Говядина, обжаренная в пережжённом сахаре до чёрного и тушённая четыре часа.	8	260	f	t	f	https://theunitools.com/recipes/asado-negro.jpg	\N	f
+440	Пике мачо	Гора жареного картофеля с кусками говядины, сосисками, яйцом и острым перцем локото.	4	40	f	t	f	https://theunitools.com/recipes/pique-macho.jpg	\N	f
+442	Эквадорский севиче	Креветки в томатно-лаймовом бульоне, поданные холодными с попкорном и чипсами из подорожника.	5	20	f	t	f	https://theunitools.com/recipes/ceviche-ecuatoriano.jpg	\N	f
+444	Кариманьола	Продолговатые крокеты из юкки с мясной начинкой, обжаренные во фритюре.	6	45	f	t	f	https://theunitools.com/recipes/carimanola.jpg	\N	f
+445	Рис с кокосом	Рис на кокосовом молоке с карамелизованными шкварками кокоса, тёмный и слегка сладкий.	6	45	f	t	f	https://theunitools.com/recipes/arroz-con-coco.jpg	\N	f
+446	Кугелис	Картофельная запеканка из тёртого сырого картофеля с беконом и луком, со сметаной.	8	95	f	t	t	https://theunitools.com/recipes/kugelis.jpg	\N	f
+447	Шакотис	Ветвистый торт, испечённый слой за слоем на вращающемся вертеле над огнём.	16	90	f	f	t	https://theunitools.com/recipes/sakotis.jpg	\N	f
+448	Складраусис	Ржаная корзиночка с двумя слоями пюре — картофельным и морковным, с корицей.	10	30	f	t	f	https://theunitools.com/recipes/sklandrausis.jpg	\N	f
+450	Веривёрст	Кровяная колбаса с перловкой и майораном, запечённая с брусничным вареньем.	8	60	f	t	t	https://theunitools.com/recipes/verivorst.jpg	\N	f
+451	Кохуке	Творожный батончик в шоколадной глазури, эстонский десерт из холодильника.	12	10	f	f	f	https://theunitools.com/recipes/kohuke.jpg	\N	t
+456	Штрукли	Рулет из тонкого теста с творожной начинкой, сваренный в ткани и нарезанный кружками.	8	45	f	t	f	https://theunitools.com/recipes/struklji.jpg	\N	f
+458	Бегова чорба	Густой куриный суп с бамией, загущённый желтками со сметаной, боснийская классика.	6	75	f	t	f	https://theunitools.com/recipes/begova-corba.jpg	\N	f
+460	Охридская форель	Форель, запечённая целиком с лимоном и травами, из Охридского озера.	4	30	f	f	t	https://theunitools.com/recipes/ohridska-pastrmka.jpg	\N	f
+462	Олья де карне	Костариканский мясной котёл с юккой, тыквой, кукурузой и бананом плантайн.	6	180	f	t	f	https://theunitools.com/recipes/olla-de-carne.jpg	\N	f
+463	Чорреадас	Оладьи из перемолотой свежей кукурузы, поданные со сметаной натилья.	4	20	f	t	f	https://theunitools.com/recipes/chorreadas.jpg	\N	f
+466	Вигорон	Варёная юкка со шкварками и капустным салатом, поданная на банановом листе.	5	90	f	t	f	https://theunitools.com/recipes/vigoron.jpg	\N	f
+467	Индио вьехо	Густое рагу из разобранной говядины, загущённое кукурузной масой и мятой.	5	120	f	t	f	https://theunitools.com/recipes/indio-viejo.jpg	\N	f
+468	Вори вори	Куриный суп с шариками из кукурузной муки и сыра, парагвайская зимняя еда.	6	70	f	t	f	https://theunitools.com/recipes/vori-vori.jpg	\N	f
+469	Мбеху	Крахмальная лепёшка с сыром, схваченная на сухой сковороде без единой капли воды.	6	25	f	t	f	https://theunitools.com/recipes/mbeju.jpg	\N	f
+470	Мусахан	Курица с луком и сумахом на лепёшке таббун, пропитанной оливковым маслом.	6	90	f	t	t	https://theunitools.com/recipes/musakhan.jpg	\N	f
+472	Оманская халва	Тягучая халва из крахмала, розовой воды и шафрана, вымешанная два часа в котле.	16	130	f	t	f	https://theunitools.com/recipes/omani-halwa.jpg	\N	f
+474	Зурбиан	Йеменский рис с бараниной и картофелем, окрашенный шафраном и запечённый под крышкой.	6	110	f	t	t	https://theunitools.com/recipes/zurbian.jpg	\N	f
+475	Фахса	Кипящее рагу из баранины в каменной миске, поданное с пенистым соусом хульба.	5	120	f	t	f	https://theunitools.com/recipes/fahsa.jpg	\N	f
+478	Решта	Алжирская домашняя лапша, пропаренная над бульоном и залитая белым соусом с курицей.	6	80	f	t	f	https://theunitools.com/recipes/rechta.jpg	\N	f
+479	Макруд	Ромбы из манной крупы с финиковой начинкой, обжаренные и вымоченные в мёде.	14	35	f	t	f	https://theunitools.com/recipes/makroud.jpg	\N	f
+480	Гураса	Толстая суданская лепёшка на сковороде, поданная с мясным рагу или соусом.	6	30	f	t	f	https://theunitools.com/recipes/gurasa.jpg	\N	f
+483	Витумбуа	Рисовые оладьи на кокосовом молоке, выпеченные в сковороде с полусферическими лунками.	8	30	f	t	f	https://theunitools.com/recipes/vitumbua.jpg	\N	f
+484	Эру	Камерунское рагу из мелко нарезанной листовой зелени с водяным листом и пальмовым маслом.	6	70	f	t	f	https://theunitools.com/recipes/eru.jpg	\N	f
+455	Бухты	Дрожжевые булочки с повидлом или творогом, испечённые вплотную и слипшиеся боками.	12	35	f	f	f	https://theunitools.com/recipes/sladke-buchty.jpg	\N	t
+457	Краньская колбаса	Варёная свиная колбаса с чесноком, поданная с хреном и горчицей, защищённая по происхождению.	6	30	f	f	f	https://theunitools.com/recipes/kranjska-klobasa.jpg	\N	t
+461	Пастрмалия	Лодочка из дрожжевого теста с солёной свининой и яйцом, из Штипа.	4	25	f	f	f	https://theunitools.com/recipes/pastrmajlija.jpg	\N	t
+486	Клефтико	Баранина, запечённая пять часов в закрытой глиняной посуде без единой капли воды.	6	300	f	f	t	https://theunitools.com/recipes/kleftiko.jpg	\N	f
+489	Имарет	Мальтийские ромбы из теста с финиковой начинкой на анисе, обжаренные во фритюре.	12	40	f	t	f	https://theunitools.com/recipes/imqaret.jpg	\N	f
+490	Фергесе	Албанская запеканка из перца, помидоров и творожного сыра, поданная в глиняной сковороде.	4	35	f	t	t	https://theunitools.com/recipes/fergese.jpg	\N	f
+491	Баллокуме	Кукурузное печенье из Эльбасана, взбитое вручную в деревянной посуде на весенний праздник.	14	25	f	f	t	https://theunitools.com/recipes/ballokume.jpg	\N	f
+493	Мученичи	Дрожжевые восьмёрки, смазанные мёдом и посыпанные орехами, на день Сорока мучеников.	12	25	f	f	t	https://theunitools.com/recipes/mucenici.jpg	\N	f
+494	Куурдак	Баранина, жаренная в собственном курдючном жире с луком и картофелем.	5	55	f	t	f	https://theunitools.com/recipes/kuurdak.jpg	\N	f
+498	Хуушуур	Монгольские жареные чебуреки с бараниной, плоские и хрустящие, к Наадаму.	6	35	f	t	f	https://theunitools.com/recipes/khuushuur.jpg	\N	f
+499	Сутэй цай	Монгольский солёный чай с молоком и маслом, который варят, а не заваривают.	6	25	f	t	f	https://theunitools.com/recipes/suutei-tsai.jpg	\N	f
+501	Болани	Афганская лепёшка с картофельной или луковой начинкой, обжаренная на сухой сковороде.	6	30	f	t	f	https://theunitools.com/recipes/bolani.jpg	\N	f
+361	Гата	Слоёная сдоба с сухой сладкой начинкой хориз из муки, масла и сахара.	10	40	f	f	f	https://theunitools.com/recipes/gata.jpg	\N	t
+128	Шопский салат	Помидоры, огурцы и перец под шапкой тёртой брынзы. Овощи режут крупно, брынзу натирают мелко.	4	10	f	f	f	https://theunitools.com/recipes/shopska-salata.jpg	\N	t
+195	Боснийский бурек	Спираль из тончайшего вытянутого теста с мясной начинкой. В Боснии буреком называют только мясной.	6	45	f	f	f	https://theunitools.com/recipes/burek-bosanski.jpg	\N	t
+198	Ламингтоны	Кубики бисквита, обмакнутые в шоколадную глазурь и обвалянные в кокосовой стружке.	12	30	f	f	f	https://theunitools.com/recipes/lamingtons.jpg	\N	t
+121	Пол самбол	Кокосовая стружка, растёртая с чили, луком и лаймом. Готовится за пять минут и подаётся ко всему.	6	15	f	f	f	https://theunitools.com/recipes/pol-sambol.jpg	\N	t
+29	Севиче	Сырая рыба в соке лайма с луком и перцем ахи. Маринуется минуты, а не часы — иначе получается варёная.	4	22	f	f	f	https://theunitools.com/recipes/ceviche.jpg	\N	t
+14	Хориатики	Деревенский салат без листьев: помидоры, огурец, лук, оливки и целый кусок феты сверху.	4	10	f	f	f	https://theunitools.com/recipes/horiatiki-salata.jpg	\N	t
+497	Чакка	Откинутый кисломолочный сыр с зеленью и чесноком, таджикская закуска к лепёшке.	6	52	f	f	f	https://theunitools.com/recipes/chakka.jpg	\N	t
+8	Гуакамоле	Авокадо, лайм, лук и чили, размятые вилкой. Ни блендера, ни сметаны — от них получается соус, а не гуакамоле.	4	14	f	f	f	https://theunitools.com/recipes/guacamole.jpg	\N	t
+65	Чимичурри	Соус из петрушки, орегано, чеснока и уксуса. Не блендер, а нож: текстура здесь важнее гладкости.	8	20	f	f	f	https://theunitools.com/recipes/chimichurri.jpg	\N	t
+17	Песто алла дженовезе	Базилик, растёртый с чесноком и кедровыми орехами. Ни нагрева, ни блендера — только ступка и холод.	4	20	f	f	f	https://theunitools.com/recipes/pesto-alla-genovese.jpg	\N	t
+\.
+
+
+--
+-- Data for Name: favorite_recipes; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.favorite_recipes (user_id, recipe_id, added_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: ingredient_aliases; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.ingredient_aliases (ingredient_id, alias) FROM stdin;
+625	Оливки каламата
+785	Тонкий лаваш
+140	Восковой картофель
+299	Грибы белые сушёные
+299	Сушёные белые грибы
+235	Говяжий огузок
+171	Майоран
+401	Ягнёнок
+446	Вырезка
+523	Копчёная свиная шейка
+250	Крахмал
+515	Кокосовое масло
+68	Бульон говяжий
+68	Говяжий бульон
+664	Почки
+291	Брусника
+228	Бамия
+228	Окра
+674	Ржаной солод
+779	Сушёный тимьян
+779	Тимьян сушёный
+539	Крупная белая фасоль
+685	Рисовая лапша широкая
+685	Широкая рисовая лапша
+134	Орегано
+428	Бобы фул (конские)
+824	Черника
+11	Вода
+11	Вода горячая
+11	Вода для карамели
+11	Вода для теста
+11	Вода ледяная
+11	Вода тёплая
+11	Вода холодная
+11	Кипяток
+11	Ледяная вода
+11	Ледяная вода в фарш
+11	Тёплая вода
+11	Холодная вода
+597	Молодой солёный сыр
+509	Китайский лук-чеснок
+756	Сушёный пажитник
+690	Руккола
+476	Дроблёная пшеница джариш
+798	Уксус для соуса
+206	Оливки чёрные
+528	Кость от хамона
+505	Киви
+169	Листья карри
+441	Варенье из чёрной смородины
+760	Сыр для пастель
+386	Фета
+152	Тёмный шоколад
+373	Сыр твёрдый
+373	Твёрдый сыр
+373	Тёртый твёрдый сыр
+344	Перец пири-пири
+293	Булочки
+645	Пекинская капуста
+520	Копчёная колбаса рокворст
+850	Яблочный сок
+233	Виноградные листья
+118	Сельдерей стеблевой
+118	Стебель сельдерея
+118	Стебли сельдерея
+454	Говяжьи кости
+753	Сушёные травы
+614	Мякоть пальмовых плодов
+678	Варёный короткозёрный рис
+678	Рис варёный короткозёрный
+158	Базилик
+158	Листья базилика
+400	Яблоки
+337	Кровяная колбаса морсилья
+337	Морсилья
+96	Бульон куриный
+96	Куриный бульон
+59	Мёд
+111	Кедровые орехи
+23	Перец сладкий
+23	Сладкий перец
+362	Свиная корейка
+486	Зелёные бананы матоке
+752	Сушёные анчоусы икан билис
+329	Манная крупа
+443	Варёная колбаса
+636	Паста ачиоте (рекадо рохо)
+14	Масло оливковое
+14	Оливковое масло
+14	Оливковое масло в соус
+138	Вино красное сухое
+138	Красное сухое вино
+80	Кориандр молотый
+80	Молотый кориандр
+257	Мука пшеничная
+257	Пшеничная мука
+109	Арахис жареный
+109	Жареный арахис
+104	Разрыхлитель
+599	Молоко для крема
+316	Клейкий рис
+469	Грибы сушёные
+469	Сушёные грибы
+181	Стручковая фасоль
+181	Фасоль стручковая
+284	Аджван
+304	Дульсе де лече
+252	Куриное бедро без кости
+331	Горчичное масло
+331	Масло горчичное
+475	Дзавар (пшеничная крупа)
+45	Креветки
+45	Крупные креветки
+45	Мелкие креветки
+434	Булочки для хот-дога
+146	Пармезан
+412	Арбуз
+671	Редька зелёная
+103	Перец чёрный
+103	Чёрный перец
+550	Куриные грудки на кости
+450	Говядина тонкими пластами
+838	Чёрные оливки
+339	Мягкий белый сыр
+713	Семена эгуси молотые
+301	Доубаньцзян
+301	Паста доубаньцзян
+392	Хмели-сунели
+630	Пажитник молотый
+3	Чеснок
+289	Белый перец
+89	Мускатный орех
+139	Вино шаосинское
+139	Шаосинское вино
+55	Паприка
+834	Чили гуахильо
+182	Аннато
+334	Мидии
+676	Рикотта
+827	Жёлтая чечевица
+827	Чечевица жёлтая
+251	Креветочная паста белачан
+683	Рисовая лапша 5 мм
+453	Говяжий хвост
+16	Морковь
+621	Обжаренный порошок карри
+440	Вакамэ сушёная
+436	Бараний бульон
+436	Бульон бараний
+27	Куркума
+56	Свиной фарш
+56	Фарш свиной
+210	Ржаная мука
+196	Копчёный бекон
+804	Фасоль фабес
+722	Смесь бахарат
+709	Священный базилик
+584	Маринованная сельдь
+735	Соус из голубого сыра
+159	Белый уксус
+662	Попкорн
+639	Паста из красного перца
+243	Капуста кале
+243	Кудрявая капуста
+50	Рыбный соус
+219	Тахини
+308	Зелёная папайя
+696	Сардины
+321	Кочхуджан
+789	Тунец
+429	Болгарский йогурт
+555	Курица на кости
+605	Мука для основы
+431	Брусничный соус
+609	Мука обжаренная
+150	Коричневый сахар
+150	Сахар коричневый
+668	Рас-эль-ханут
+272	Солёная треска
+292	Брусничное варенье
+725	Смесь семи специй
+208	Копчёная паприка
+208	Паприка копчёная
+408	Амба
+309	Зелёный острый перец
+157	Бадьян
+70	Мята сушёная
+70	Сушёная мята
+121	Шпинат
+757	Сушёный чили анчо
+707	Свиная шкура с жиром
+113	Кукуруза
+576	Лук для подачи
+341	Паста ахи амарильо
+819	Хлопья жареного чили
+656	Перечная паста бибер сальчасы
+491	Имбирные пряники
+637	Паста багоонг
+258	Нутовая мука
+323	Красный сладкий перец
+791	Тэнкасу — крошка от темпуры
+415	Африканские баклажаны
+711	Семена граната сушёные
+783	Томатный сок
+517	Колбаса копчёная
+54	Огурец
+54	Огурцы
+817	Херес
+179	Творог
+42	Сливки
+810	Филе трески
+513	Козлятина
+626	Орехи кемири
+229	Бок-чой
+229	Зелень бок-чой
+229	Пак-чой
+220	Тесто фило
+628	Осьминог
+720	Сливочный сыр катупири
+506	Кипрская пита
+675	Ржаной хлеб ругбрёд
+782	Томатный кетчуп
+391	Хлопья пул бибер
+253	Лепёшка
+741	Стебли водяной лилии
+787	Тостады
+574	Листья сельдерея
+230	Булгур мелкий
+230	Мелкий булгур
+226	Анис
+813	Форель
+125	Винный уксус
+573	Листья салата
+209	Душистый перец
+209	Перец душистый
+669	Растительное масло для соуса
+556	Курут
+734	Соус ахи
+176	Ростки маша
+780	Толчёные листья маниока
+416	Ахи амарильо
+606	Мука для роши
+72	Свиная грудинка
+765	Тайские баклажаны
+535	Красный чили
+529	Кочхукару
+825	Чернила каракатицы
+406	Аки консервированный
+522	Копчёная рыба
+33	Кокосовое молоко
+129	Красная фасоль
+680	Рис короткозёрный
+34	Ваниль
+477	Дроблёный нут чана дал
+397	Чёрствый белый хлеб
+409	Анисовый ликёр
+82	Паприка сладкая
+82	Паприка сладкая молотая
+82	Сладкая паприка
+665	Прахок
+149	Помидоры в собственном соку
+149	Помидоры консервированные в собственном соку
+149	Томаты в собственном соку
+788	Треска
+432	Брюква
+343	Перец пили-пили
+360	Свежий солёный сыр
+544	Кукурузная мука масарепа
+474	Джамид
+151	Тмин
+64	Нут
+589	Масло пальмовое
+589	Пальмовое масло
+655	Перец тимур
+95	Брынза
+472	Гундрук
+123	Арахис
+305	Желатин
+223	Цедра апельсина
+739	Спагетти
+602	Морковный салат
+769	Тамариндовый соус
+319	Коньяк
+699	Сахар для корочки
+8	Помидор
+8	Помидоры
+8	Помидоры для ачара
+8	Помидоры крупные
+8	Спелые помидоры
+570	Листы для лазаньи
+41	Красный лук
+41	Лук красный
+108	Тыква
+566	Лимонный мирт
+487	Зелёный чай
+39	Укроп
+188	Бульон мясной
+188	Мясной бульон
+52	Тимьян
+52	Чабрец
+65	Орегано сушёный
+65	Сушёный орегано
+265	Рис жасминовый
+803	Фасоль в томате
+19	Рис
+285	Ананас
+488	Зимняя дыня
+221	Томатный соус
+519	Колбаски мергез
+267	Розовая вода
+451	Говяжий жир
+190	Вустерский соус
+136	Свиная шея
+554	Варёная курица
+554	Курица варёная
+652	Перец мулато
+117	Копчёные рёбра
+117	Копчёные рёбрышки
+117	Рёбрышки копчёные
+404	Абрикосовый чатни
+245	Картофель варёный
+245	Отварной картофель
+175	Лепёшка пита
+175	Пита
+175	Питы
+693	Салат ромэн
+21	Курица
+21	Курица для карри
+21	Курица, кусочками
+21	Курица, разделанная
+21	Курица, разделанная на куски
+715	Серый горох
+540	Кукуруза посоле
+420	Бахарат для кабсы
+548	Куриное карри с соусом
+508	Китайская колбаса лап чонг
+413	Арепы
+534	Красный мясистый перец
+489	Золотой сироп
+29	Баранина
+29	Свежайшая баранина
+5	Яйца
+5	Яйца в соус
+5	Яйца для кайи
+5	Яйца для панировки
+5	Яйцо
+5	Яйцо для панировки
+5	Яйцо для смазки
+5	Яйцо куриное
+5	Яйцо целиком
+822	Цельнозерновая мука
+127	Говяжья вырезка
+657	Печень
+427	Бобы садовые
+143	Даси
+143	Даси для соуса
+590	Махлаб
+240	Зира семена
+240	Семена зиры
+524	Копчёная соль
+346	Перец чили свежий
+346	Свежий чили
+35	Говядина
+700	Сахар для обваливания
+44	Капуста
+455	Говяжьи кости с мозгом
+350	Помидоры сан-марцано
+502	Касури мети
+200	Кукурузная мука маса
+200	Кукурузная мука масека
+610	Мука тефф
+353	Репа
+717	Сливки 30 %
+717	Сливки 30%
+296	Вино красное
+296	Красное вино
+600	Молоко обезжиренное
+600	Обезжиренное молоко
+100	Курдючный жир
+745	Сухие бобы фава
+128	Кефир
+314	Кешью
+380	Рисовый уксус
+380	Уксус рисовый
+733	Солёный лимон
+177	Свёкла
+776	Тесто для эмпанадас
+387	Финики жужуб
+829	Коричневая чечевица
+829	Чечевица коричневая
+616	Негушский пршут
+2	Соль
+2	Соль для воды
+216	Светлый соевый соус
+216	Соус соевый светлый
+849	Яблочное пюре
+770	Тапиоковый крахмал
+847	Яблоки плотных кислых сортов
+618	Нут сухой
+618	Сухой нут
+75	Горчица
+247	Каштаны
+326	Кукурузные тортильи
+714	Сердце
+749	Сухой имбирь молотый
+102	Маниок
+102	Юкка
+102	Юкка (маниок)
+141	Гарам масала
+473	Деревенский хлеб
+192	Говяжья голяшка
+456	Говяжья грудинка
+186	Белая рыба
+705	Свиная кровь
+417	Банан
+107	Свинина
+160	Бульонный кубик
+421	Бекон
+13	Кинза
+10	Картофель
+10	Картофель для рёшти
+381	Уксус хересный
+381	Хересный уксус
+58	Зира
+363	Свиные кишки
+30	Острый перец
+30	Перец чили
+30	Стручок острого перца
+771	Творог 5–9 %
+133	Мирин
+617	Нитритная соль
+28	Дрожжи сухие
+28	Сухие дрожжи
+382	Уксус яблочный
+382	Яблочный уксус
+620	Обжаренная кокосовая стружка
+845	Ынджера
+843	Шоколад для глазури
+63	Зелёный чили
+394	Цельная пшеница
+124	Бахарат
+507	Кислые яблоки
+701	Сахар для соуса
+120	Тамариндовая паста
+246	Кашмирский чили молотый
+689	Ростки сои
+511	Клюква
+217	Спаржевая фасоль
+399	Эстрагон
+322	Красный перец молотый
+737	Соус хойсин
+12	Молоко
+12	Молоко тёплое
+12	Тёплое молоко
+12	Холодное молоко
+781	Томатное пюре
+484	Зелёная приправа
+352	Ракушки
+516	Кокосовые сливки
+194	Дайкон
+194	Тёртый дайкон
+464	Горячая вода
+808	Филе лосося
+115	Подорожник
+155	Шампиньоны
+638	Паста из зелёной папайи
+691	Савоярди
+527	Корнишоны
+774	Телячий эскалоп
+726	Смесь специй чар масала
+633	Панко
+482	Жареный тофу
+66	Перец скотч-боннет
+66	Скотч-боннет
+318	Концентрированное молоко
+793	Тёмное пиво стаут
+563	Лепёшки таббун
+249	Красный рис
+766	Тайский чили
+777	Тесто катаифи
+561	Лепёшка пиде
+275	Бараний фарш
+275	Фарш бараний
+275	Фарш из баранины
+145	Куркума свежая
+145	Свежая куркума
+767	Тамалито из кукурузы
+437	Бульон овощной
+437	Горячий овощной бульон
+583	Маракуйя
+663	Постная говядина
+738	Соус шито
+565	Лесные ягоды
+458	Горох колотый
+708	Свиной жир
+627	Острый перечный соус
+203	Леденцовый сахар
+300	Гуанчале
+199	Картофельный крахмал
+199	Крахмал картофельный
+256	Мука высокобелковая
+256	Мука сильная
+207	Мексиканский орегано
+207	Орегано мексиканский
+430	Борщ из отрубей
+460	Горчица дижонская
+460	Дижонская горчица
+237	Говяжья пашина
+820	Холодный бульон
+184	Базилик фиолетовый
+184	Райхон
+184	Рейхан (фиолетовый базилик)
+212	Рёбрышки свиные
+212	Свиные рёбрышки
+345	Перец хабанеро
+168	Лист пандана
+168	Листья пандана
+97	Жир свиной топлёный
+97	Смалец
+97	Топлёный свиной жир
+586	Марсала
+839	Чёрный кардамон
+163	Имбирь молотый
+163	Молотый имбирь
+281	Чесночный порошок
+444	Вашрен фрибуржуа
+410	Апельсиновая корка
+24	Лайм
+466	Гранатовая патока
+631	Пальмовое масло денде
+553	Куриный паштет
+547	Куриная грудка
+84	Карри молотое
+84	Карри-порошок
+84	Порошок карри
+744	Сулугуни
+274	Тунец консервированный
+389	Фундук
+784	Тонкая лепёшка
+106	Пальмовый сахар
+106	Сахар пальмовый
+697	Сахар в начинку
+525	Корейская груша
+557	Кускус
+500	Картофель жёлтых сортов
+792	Тёмное бельгийское пиво
+43	Соевый соус
+43	Соевый соус для рыбы на пару
+43	Соус соевый
+732	Солёный белый сыр
+612	Мускатный цвет
+25	Томатная паста
+332	Масло оливковое extra virgin
+332	Оливковое масло экстра вирджин
+101	Лемонграсс
+340	Огурец солёный
+340	Солёные огурцы
+1	Лук
+1	Лук крупный
+1	Лук репчатый
+1	Мелкий лук
+727	Соевые бобы
+153	Хариса
+153	Харисса
+716	Сладкое вино
+840	Чёрный уксус для соуса
+856	Ямс нагаимо
+222	Фисташки
+591	Мелкая костистая рыба
+370	Соус жуг
+724	Смесь пяти специй
+419	Баранья нога
+310	Кайенский перец
+262	Молотый чили
+262	Перец чили молотый
+57	Баклажан
+57	Баклажаны
+328	Мальдивская рыба
+672	Ржаная закваска
+718	Сливовое повидло
+688	Ром
+395	Чабер
+395	Чубрица
+778	Тиляпия
+313	Кечап манис
+823	Цыплёнок
+731	Солёные крекеры
+799	Солодовый уксус
+799	Уксус солодовый
+790	Тушёная зелень
+234	Вишня
+234	Вишня без косточек
+18	Петрушка
+679	Рис карнароли
+317	Комбу
+746	Сухие листья сорго
+844	Щавель
+90	Мята
+90	Мята свежая
+729	Соль в тесто
+254	Листовая капуста
+264	Рассыпчатый картофель
+320	Корень петрушки
+607	Мука для теста
+580	Мак
+643	Пастернак
+405	Адыгейский сыр
+172	Моцарелла
+172	Моцарелла фиор ди латте
+335	Мозговые кости
+687	Рисовая мука обжаренная
+592	Мелкая речная рыба
+499	Кардамон стручки
+374	Сычуаньский перец
+302	Дроблёная пшеница
+761	Сыр куахада
+402	Ягоды
+183	Багет
+759	Сыр для жарки
+347	Перец чёрный молотый
+347	Чёрный перец молотый
+660	Плотный тофу
+504	Кашкавал
+396	Чечевица
+531	Краситель оранжевый
+423	Белая рыба для сырого потребления
+461	Горчица для соуса
+526	Корень женьшеня
+170	Листья кафрского лайма
+170	Листья каффир-лайма
+202	Куриное бедро
+202	Куриные бёдра
+730	Солёная свинина
+644	Пахта
+88	Кукурузная мука
+88	Мука кукурузная
+595	Можжевельник
+4	Масло растительное
+4	Растительное масло
+390	Халуми
+470	Грудинка
+76	Йогурт
+211	Ржаной хлеб
+815	Халапеньо
+110	Белый хлеб
+587	Маскарпоне
+126	Галангал
+848	Яблоки плотных сортов
+426	Бобы вигна (чёрный глазок)
+501	Картофель сырой
+698	Сахар для глазури
+842	Сушёные шиитаке
+842	Шиитаке сушёные
+667	Пресная лепёшка чурек
+114	Перец чёрный горошком
+114	Чёрный перец горошком
+422	Белая колбаса
+653	Перец поблано
+74	Цедра лимона
+131	Лук-порей
+191	Гвоздика молотая
+615	Мясная подлива
+654	Зелёный сладкий перец
+654	Перец сладкий зелёный
+135	Свиная лопатка
+164	Какао-порошок
+290	Бербере
+568	Лист эру
+46	Говяжий фарш
+46	Фарш говяжий
+213	Салат листовой
+6	Мука
+666	Предварённая кукурузная мука
+424	Белый рассольный сыр
+77	Густой йогурт
+77	Йогурт густой
+673	Ржаной заквас
+122	Авокадо
+541	Кукуруза початками
+327	Лимонный сок
+703	Свежий тунец
+369	Соус Лисано
+588	Масло для слоения
+36	Корица палочка
+36	Палочка корицы
+682	Рисовая бумага
+376	Тмин молотый
+536	Креветочная паста терази
+681	Рис среднезёрный
+814	Фрик (зелёная пшеница)
+594	Мелкий жёлтый картофель
+533	Красная паста карри
+357	Сахар тростниковый
+357	Тростниковый сахар
+53	Крахмал кукурузный
+53	Кукурузный крахмал
+468	Гречневая мука
+490	Зёрна граната
+356	Розмарин
+646	Перекисшее кимчи
+375	Телятина
+435	Булочки мантоу
+459	Английская горчица
+459	Горчица английская
+593	Мелкие макароны
+315	Кирш
+361	Светлое пиво
+439	Бульон телячий
+439	Телячий бульон
+276	Финики
+67	Баранина на кости
+67	Баранина с косточкой
+9	Сахар
+9	Сахар в крем
+9	Сахар в тесто
+9	Сахар для карамели
+9	Сахар мелкий
+809	Филе лосося с кожей
+189	Апельсиновая вода
+189	Вода флёрдоранж
+116	Круглый рис
+116	Рис круглозёрный
+462	Горчица средней остроты
+818	Хлеб с плотным мякишем
+377	Тофу
+162	Зелёные оливки
+22	Лавровый лист
+758	Сушёный чили гуахильо
+479	Дурбанский порошок карри
+841	Чёрный уксус чжэньцзян
+629	Пажитник
+60	Басмати
+60	Рис басмати
+763	Сычуаньский перец тимур
+611	Мука типа 00
+156	Ачиоте
+447	Вяленая рыба
+694	Салями
+821	Хрен
+288	Барбарис
+514	Кокос тёртый
+287	Банановый цвет
+532	Красная капуста
+851	Яичная лапша
+582	Маниоковое тесто
+748	Сухое печенье
+407	Алыча сушёная
+604	Мука для блинов
+537	Крепкий эспрессо
+485	Зелёные бананы
+142	Гвоздика
+463	Горчичный порошок
+471	Гуаскас сушёные
+801	Телячий фарш
+801	Фарш телячий
+366	Смесь хавайдж
+351	Пшеничная лапша
+295	Вермишель
+836	Чочо (люпин)
+648	Перец анчо
+279	Чернослив
+119	Крупная соль
+119	Соль крупная
+837	Чёрноглазая фасоль
+383	Устричный соус
+260	Пекорино
+260	Пекорино романо
+92	Перец чили хлопьями
+92	Хлопья чили
+658	Плантайн
+677	Рис арборио
+242	Белокочанная капуста
+242	Капуста белокочанная
+242	Капуста свежая
+242	Капустные листья
+414	Атьеке
+198	Корица молотая
+598	Молоко в бешамель
+147	Душистый перец молотый
+147	Перец душистый молотый
+467	Грейпфрут
+425	Бобы
+270	Сливки 20 %
+270	Сливки 20%
+73	Пищевая сода
+73	Сода
+73	Сода пищевая
+816	Хамон серрано
+294	Бульон
+48	Шалот
+403	Абрикосовый конфитюр
+227	Апельсин
+227	Апельсины
+478	Дроблёный рис
+32	Сметана
+418	Баранья лопатка
+728	Сок лайма
+846	Яблоки кислых сортов
+650	Душистый перец горошком
+650	Перец душистый горошком
+494	Йогурт с чесноком
+215	Семена пажитника
+483	Закваска ырша
+218	Сумах
+569	Листовая горчица
+772	Творог твёрдый
+632	Панир
+398	Чёрствый хлеб
+154	Чёрная фасоль
+719	Сливочное масло для теста
+197	Кориандр семена
+197	Семена кориандра
+831	Чечевица тур дал
+585	Маринованный имбирь бени сёга
+797	Уксус 9 %
+797	Уксус 9%
+297	Говяжьи рёбра
+20	Зелёный лук
+20	Лук зелёный
+277	Хлеб
+704	Свиная грудинка со шкурой
+86	Кардамон молотый
+31	Зира молотая
+81	Панировочные сухари
+755	Сушёный лайм лууми
+622	Овечья брынза
+49	Белое сухое вино
+49	Вино белое сухое
+49	Сухое белое вино
+495	Каймак
+857	Японский майонез
+325	Кролик
+325	Кролик, кусочками
+26	Гхи
+26	Гхи в тесто
+26	Масло топлёное
+26	Топлёное масло
+26	Топлёное масло для жарки
+542	Кукуруза чокло
+603	Морковь жёлтая
+795	Тёртый кокос
+684	Рисовая лапша толстая
+684	Толстая рисовая лапша
+661	Помидоры черри
+807	Ферментированные чёрные бобы
+811	Финиковый сироп дибс
+634	Панчетта
+538	Крупная белая рыба
+238	Горчица семена
+238	Семена горчицы
+324	Крахмал маниоки
+324	Крахмал маниоковый
+324	Маниоковый крахмал
+619	Ньяме (ямс)
+239	Грюйер
+239	Тёртый грюйер
+193	Гранатовый соус
+712	Семена фенхеля
+205	Маринованная горчичная зелень
+750	Сушёная бамия молотая
+442	Варёная ветчина
+91	Оливки
+449	Гари (маниоковая крупа)
+99	Каперсы
+241	Кабачки
+241	Кабачок
+307	Жёлтый горох
+94	Банановые листья
+94	Банановый лист
+578	Лёд колотый
+105	Длиннозёрный рис
+105	Рис длиннозёрный
+802	Фасоль
+695	Самбал
+349	Половинки орехов
+768	Тамаринд
+364	Семена аннато
+259	Острая паприка
+259	Паприка острая
+367	Густая сметана
+367	Сметана густая
+354	Рисовая вермишель
+543	Кукурузная крупа среднего помола
+371	Сухой творог
+17	Имбирь
+388	Финиковая паста
+828	Зелёная чечевица
+828	Чечевица зелёная
+342	Перец пасилья
+148	Зелёный подорожник
+148	Плантайн зелёный
+148	Подорожник зелёный
+286	Асафетида
+51	Сахарная пудра
+280	Чернушка
+280	Чернушка (калонджи)
+137	Сушёный лайм
+137	Сушёный лайм луми
+355	Рисовая лапша тонкая
+355	Тонкая рисовая лапша
+269	Свиное сало
+762	Сырные зёрна чеддер
+567	Лист лаксы
+751	Сушёная рыба
+649	Белый перец горошком
+649	Перец белый горошком
+311	Карп
+338	Мука для начинки
+686	Рисовая мука
+185	Батат
+640	Паста массаман
+61	Уксус
+492	Имеретинский шафран
+69	Кунжут
+835	Чипсы из подорожника
+800	Куриный фарш
+800	Фарш куриный
+552	Куриные крылья
+512	Клюквенное варенье
+521	Копчёная колбаса рукворст
+47	Шафран
+747	Сухое молоко
+577	Любисток
+805	Ферментированные бобы иру
+806	Ферментированные чайные листья
+71	Варёный рис
+71	Рис варёный
+581	Мальтозный сироп
+723	Смесь мытмыта
+754	Сушёный красный перец
+571	Листья квашеной капусты
+271	Слоёное тесто
+764	Сычужный фермент
+336	Молотые сушёные креветки
+551	Куриные каркасы
+255	Масло подсолнечное
+255	Подсолнечное масло
+333	Красное пальмовое масло
+333	Масло пальмовое красное
+830	Чечевица мунг
+130	Кунжутное масло
+601	Молотые сушёные раки
+493	Индейка
+303	Дрожжи свежие
+303	Свежие дрожжи
+786	Топлёное масло нитер киббе
+379	Тёмное пиво
+503	Кацуобуси
+214	Сгущённое молоко
+572	Листья молохии
+743	Стручок ванили
+608	Мука кама
+613	Мягкий тофу
+452	Говяжий отруб
+775	Телячья голяшка
+15	Лимон
+278	Хрен тёртый
+742	Стеклянная лапша
+832	Чечевица урад
+173	Овсяные хлопья
+559	Лапша ширатаки
+359	Свежий белый сыр
+385	Фенхель молотый
+411	Апельсиновый сок
+79	Копчёная грудинка
+204	Лепёшки
+98	Зелёный горошек
+833	Чили анчо
+706	Свиная рулька
+306	Жемчужный сахар
+642	Паста самбал
+558	Лапша для рамена
+659	Плоская зелёная фасоль
+224	Колбаски чорисо
+224	Чорисо
+497	Камабоко
+248	Кетчуп
+178	Соус соевый тёмный
+178	Тёмный соевый соус
+564	Лесные грибы
+560	Лепёшка наан
+579	Майоран сушёный
+796	Укроп сушёный
+575	Ломоть хлеба
+736	Соус окономи
+282	Красная чечевица
+282	Чечевица красная
+702	Свежий сыр
+167	Куриное филе
+623	Огуречный рассол
+480	Жареные бобы
+232	Ветчина
+166	Копчёная колбаса
+40	Корица
+244	Капуста квашеная кочаном
+244	Квашеная капуста кочаном
+244	Квашеный кочан капусты
+549	Куриные голени
+87	Миндаль
+231	Ванильный сахар
+624	Оленина
+83	Перец чили сушёный
+83	Сушёный красный чили
+83	Сушёный острый перец
+83	Сушёный перчик чили
+83	Сушёный чили
+83	Сушёный чили целиком
+368	Сосиски
+465	Горячее молоко
+635	Паста ачиоте
+358	Свежая кукуруза
+38	Изюм
+445	Водяной лист
+365	Смесь бизар
+165	Квашеная капуста
+393	Цветная капуста
+268	Саке
+268	Сакэ
+261	Перец гуахильо
+721	Слоёная лепёшка фатир
+545	Кукурузные хлопья
+496	Какао для глазури
+510	Кленовый сироп
+546	Кукурузный хлеб
+266	Рисовая лапша
+312	Картофель фри
+433	Букатини
+438	Бульон рыбный
+438	Рыбный бульон
+530	Краб
+372	Сушёные креветки
+298	Говяжья лопатка
+132	Майонез
+263	Песочное тесто
+93	Арахисовая паста
+78	Кардамон
+710	Маринованная свёкла
+710	Свёкла маринованная
+740	Старое сало
+112	Корень сельдерея
+161	Говядина на кости
+201	Курага
+348	Плантайн спелый
+348	Спелый подорожник
+384	Фенхель
+195	Копчёное сало
+457	Голубиный горох
+62	Грецкие орехи
+62	Грецкий орех
+62	Половинки грецких орехов
+670	Редис
+647	Перец алеппо
+7	Масло сливочное
+7	Сливочное масло
+641	Паста мисо
+273	Томатильо
+481	Жареный горох
+794	Тёмный тростниковый сахар
+330	Масло в тесто
+448	Газированная вода
+283	Грибы шиитаке
+283	Шиитаке
+692	Салат из капусты
+236	Говяжий рубец
+236	Рубец
+85	Сливки 33 %
+85	Сливки 33%
+187	Белая фасоль
+651	Перец кобанеро
+518	Колбаса шоурису
+378	Тыквенные семечки
+812	Фиолетовая кукуруза
+174	Перловая крупа
+596	Моллюски
+826	Чеснок головками
+498	Каракатица
+144	Кокосовая стружка
+562	Лепёшки сомун
+180	Красный винный уксус
+180	Уксус винный красный
+773	Творожный сыр джиза
+5	Желтки
+5	Желток
+5	Яичные желтки
+5	Яичный желток
+5	Белки
+5	Яичный белок
+5	Яйца в начинку
+5	Яйца для крема
+5	Яйца к подаче
+5	Яйцо в тесто
+\.
+
+
+--
+-- Data for Name: ingredient_allergens; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.ingredient_allergens (ingredient_id, allergen_id) FROM stdin;
+5	3
+7	7
+12	7
+26	7
+32	7
+42	7
+45	2
+50	4
+62	10
+69	12
+75	9
+76	7
+77	7
+85	7
+87	10
+93	11
+95	7
+109	11
+112	1
+118	1
+123	11
+128	7
+146	7
+172	7
+173	5
+174	5
+179	7
+186	4
+210	5
+211	5
+214	7
+219	12
+222	10
+230	5
+238	9
+239	7
+251	2
+257	5
+260	7
+270	7
+272	4
+274	4
+302	5
+304	7
+311	4
+314	10
+318	7
+328	4
+329	5
+334	8
+336	2
+339	7
+351	5
+352	8
+359	7
+360	7
+367	7
+371	7
+372	2
+373	7
+383	8
+386	7
+389	10
+390	7
+394	5
+405	7
+423	4
+424	7
+429	7
+438	4
+444	7
+447	4
+459	9
+460	9
+461	9
+462	9
+463	9
+465	7
+474	7
+475	5
+476	5
+494	7
+495	7
+497	4
+498	8
+503	4
+504	7
+522	4
+530	2
+536	2
+538	4
+556	7
+557	5
+574	1
+584	4
+587	7
+591	4
+592	4
+596	8
+597	7
+598	7
+599	7
+600	7
+601	2
+622	7
+628	8
+632	7
+644	7
+672	5
+673	5
+674	5
+675	5
+676	7
+696	4
+702	7
+703	4
+717	7
+719	7
+720	7
+732	7
+744	7
+747	7
+751	4
+752	4
+759	7
+760	7
+761	7
+762	7
+771	7
+772	7
+773	7
+778	4
+786	7
+788	4
+789	4
+808	4
+809	4
+810	4
+813	4
+814	5
+825	8
+836	6
+851	3
+\.
+
+
+--
+-- Data for Name: ingredient_categories; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.ingredient_categories (ingredient_id, category_id) FROM stdin;
+4	9
+11	11
+14	9
+15	2
+21	3
+24	2
+26	9
+29	3
+35	3
+38	2
+45	4
+46	3
+49	11
+50	4
+56	3
+67	3
+72	3
+74	2
+94	2
+96	3
+97	3
+100	9
+107	3
+135	3
+136	3
+137	2
+138	11
+139	11
+161	3
+166	3
+167	3
+170	2
+186	4
+189	11
+195	3
+196	3
+201	2
+202	3
+212	3
+223	2
+224	3
+227	2
+232	3
+233	2
+234	2
+236	3
+252	3
+255	9
+267	11
+268	11
+269	3
+272	4
+274	4
+275	3
+276	2
+279	2
+285	2
+287	2
+291	2
+296	11
+300	3
+311	4
+325	3
+327	2
+328	4
+332	9
+334	4
+336	4
+361	11
+362	3
+363	3
+368	3
+372	4
+375	3
+379	11
+387	2
+388	2
+400	2
+401	3
+402	2
+403	2
+404	2
+407	2
+409	11
+410	2
+411	2
+412	2
+417	2
+418	3
+419	3
+421	3
+422	3
+423	4
+436	3
+438	4
+442	3
+443	3
+447	4
+448	11
+450	3
+451	9
+464	11
+467	2
+485	2
+486	2
+487	11
+493	3
+498	4
+503	4
+505	2
+507	2
+508	3
+511	2
+517	3
+518	3
+519	3
+520	3
+521	3
+522	4
+523	3
+530	4
+537	11
+538	4
+547	3
+548	3
+549	3
+550	3
+551	3
+552	3
+553	3
+554	3
+555	3
+565	2
+566	2
+583	2
+584	4
+591	4
+592	4
+596	4
+616	3
+628	4
+657	3
+663	3
+696	4
+703	4
+704	3
+705	3
+706	3
+707	3
+708	3
+716	11
+728	2
+730	3
+733	2
+740	3
+751	4
+752	4
+755	2
+778	4
+788	4
+789	4
+792	11
+793	11
+800	3
+801	3
+806	11
+810	4
+811	2
+813	4
+825	4
+846	2
+847	2
+848	2
+850	11
+808	4
+809	4
+7	5
+12	5
+32	5
+42	5
+76	5
+77	5
+85	5
+95	5
+128	5
+146	5
+172	5
+179	5
+214	5
+270	5
+318	5
+339	5
+359	5
+360	5
+367	5
+371	5
+373	5
+405	5
+424	5
+429	5
+465	5
+494	5
+597	5
+598	5
+599	5
+600	5
+622	5
+676	5
+702	5
+717	5
+719	5
+720	5
+732	5
+735	5
+747	5
+759	5
+760	5
+761	5
+762	5
+771	5
+772	5
+773	5
+1	1
+3	1
+8	1
+10	1
+13	1
+16	1
+18	1
+20	1
+25	1
+39	1
+41	1
+44	1
+54	1
+57	1
+121	1
+131	1
+140	1
+149	1
+158	1
+165	1
+184	1
+213	1
+221	1
+241	1
+242	1
+243	1
+244	1
+245	1
+254	1
+264	1
+273	1
+312	1
+320	1
+340	1
+350	1
+393	1
+415	1
+500	1
+509	1
+532	1
+571	1
+573	1
+576	1
+594	1
+602	1
+603	1
+645	1
+661	1
+670	1
+692	1
+693	1
+709	1
+765	1
+781	1
+782	1
+783	1
+796	1
+803	1
+826	1
+112	1
+118	1
+574	1
+587	5
+501	1
+5	13
+2	8
+9	6
+103	8
+114	8
+347	8
+53	6
+250	6
+324	6
+770	6
+257	7
+210	7
+199	6
 \.
 
 
@@ -3876,34 +3585,45 @@ COPY public.recipe_cooking_methods (recipe_id, method_id) FROM stdin;
 COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FROM stdin;
 1	739	200.00	f
 1	300	100.00	f
-1	37	51.00	f
-1	5	50.00	f
 1	260	60.00	f
+1	5	200.00	f
 1	2	\N	t
 2	679	320.00	f
+13	5	100.00	f
 2	1	110.00	f
+26	5	200.00	f
 2	7	80.00	f
 2	146	80.00	f
 2	2	\N	t
+32	5	50.00	f
+34	5	250.00	f
 3	23	238.00	f
 3	8	600.00	f
 3	1	110.00	f
 3	3	9.00	f
 3	14	82.62	f
+63	5	300.00	f
 4	1	1000.00	f
 4	7	50.00	f
+192	5	200.00	f
+200	5	300.00	f
+292	5	50.00	f
+311	5	200.00	f
 4	239	150.00	f
 5	161	700.00	f
+343	5	150.00	f
 5	44	300.00	f
 5	10	852.00	f
 5	16	61.00	f
 5	1	110.00	f
 5	25	32.00	f
+351	5	200.00	f
 5	3	9.00	f
 5	32	\N	t
 6	6	400.00	f
 6	5	50.00	f
 6	7	40.00	f
+361	5	50.00	f
 6	9	3.50	f
 6	744	250.00	f
 6	405	250.00	f
@@ -3911,8 +3631,13 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 7	11	800.00	f
 7	317	10.00	f
 7	503	15.00	f
+365	5	500.00	f
 7	377	200.00	f
+378	5	150.00	f
+386	5	200.00	f
 8	24	67.00	f
+407	5	150.00	f
+425	5	100.00	f
 8	8	123.00	f
 8	2	\N	t
 2	47	\N	t
@@ -3926,9 +3651,12 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 10	83	\N	t
 11	82	\N	t
 10	831	200.00	f
+455	5	150.00	f
+458	5	150.00	f
 10	3	12.00	f
 10	1	110.00	f
 10	8	246.00	f
+491	5	300.00	f
 10	2	\N	t
 11	21	400.00	f
 11	325	300.00	f
@@ -3949,7 +3677,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 13	7	80.00	f
 13	6	80.00	f
 13	12	721.00	f
-13	37	34.00	f
 13	14	55.08	f
 14	8	492.00	f
 14	386	200.00	f
@@ -4034,8 +3761,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 25	24	\N	t
 25	4	41.40	f
 26	587	500.00	f
-26	37	68.00	f
-26	225	66.00	f
 26	9	100.00	f
 26	691	300.00	f
 26	164	\N	t
@@ -4070,7 +3795,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 31	17	15.00	f
 31	4	41.40	f
 32	167	500.00	f
-32	225	33.00	f
 32	109	80.00	f
 32	43	33.60	f
 32	9	7.00	f
@@ -4084,7 +3808,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 33	16	122.00	f
 33	3	12.00	f
 33	7	40.00	f
-34	37	85.00	f
 34	9	80.00	f
 35	6	400.00	f
 35	5	200.00	f
@@ -4289,7 +4012,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 63	9	200.00	f
 63	11	100.00	f
 63	6	40.00	f
-63	37	102.00	f
 64	35	600.00	f
 64	1	440.00	f
 64	5	150.00	f
@@ -4536,6 +4258,7 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 98	196	150.00	f
 98	12	154.50	f
 98	7	60.00	f
+110	5	200.00	f
 99	468	125.00	f
 99	257	125.00	f
 99	12	412.00	f
@@ -4614,7 +4337,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 110	7	125.00	f
 110	11	30.00	f
 110	79	250.00	f
-110	5	150.00	f
 110	12	103.00	f
 111	256	500.00	f
 111	12	288.40	f
@@ -4667,6 +4389,7 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 118	17	25.00	f
 118	3	15.00	f
 118	13	20.00	f
+135	5	150.00	f
 118	8	400.00	f
 118	4	41.40	f
 118	2	\N	t
@@ -4763,7 +4486,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 135	6	300.00	f
 135	11	150.00	f
 135	4	27.60	f
-135	5	50.00	f
 135	371	600.00	f
 135	32	200.00	f
 135	7	60.00	f
@@ -5183,7 +4905,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 192	12	309.00	f
 192	28	10.00	f
 192	7	150.00	f
-192	37	68.00	f
 192	9	120.00	f
 192	62	600.00	f
 192	2	6.09	f
@@ -5237,7 +4958,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 199	271	400.00	f
 199	5	50.00	f
 199	4	36.80	f
-200	225	198.00	f
 200	9	350.00	f
 200	402	250.00	f
 201	21	1800.00	f
@@ -5964,7 +5684,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 292	3	24.00	f
 292	10	500.00	f
 292	14	137.70	f
-292	37	17.00	f
 292	47	\N	t
 296	36	\N	t
 298	134	\N	t
@@ -6102,7 +5821,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 311	7	110.00	f
 311	9	50.00	f
 311	214	400.00	f
-311	37	68.00	f
 311	24	536.00	f
 311	51	30.00	f
 312	72	400.00	f
@@ -6363,7 +6081,7 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 343	6	200.00	f
 343	7	200.00	f
 343	51	150.00	f
-343	37	51.00	f
+347	5	400.00	f
 343	304	500.00	f
 343	144	100.00	f
 344	235	1800.00	f
@@ -6394,7 +6112,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 346	23	119.00	f
 346	110	400.00	f
 346	2	\N	t
-347	5	300.00	f
 347	9	150.00	f
 347	6	150.00	f
 347	7	250.00	f
@@ -6434,7 +6151,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 351	9	150.00	f
 351	173	80.00	f
 351	12	309.00	f
-351	37	68.00	f
 352	72	900.00	f
 352	10	1000.00	f
 352	12	515.00	f
@@ -6491,7 +6207,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 109	42	100.00	f
 109	99	100.00	f
 109	122	100.00	f
-110	855	100.00	f
 110	85	100.00	f
 112	45	100.00	f
 112	143	100.00	f
@@ -6517,10 +6232,10 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 370	31	\N	t
 361	607	500.00	f
 361	7	200.00	f
+377	5	200.00	f
 361	28	5.00	f
 361	338	250.00	f
 361	9	200.00	f
-361	37	17.00	f
 362	265	500.00	f
 362	17	30.00	f
 362	3	15.00	f
@@ -6549,7 +6264,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 364	287	200.00	f
 364	637	150.00	f
 364	4	55.20	f
-365	37	170.00	f
 365	214	400.00	f
 365	9	200.00	f
 365	11	60.00	f
@@ -6638,8 +6352,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 377	7	120.00	f
 377	9	100.00	f
 377	86	4.00	f
-377	5	50.00	f
-377	37	51.00	f
 377	53	30.00	f
 377	51	200.00	f
 377	144	80.00	f
@@ -6650,7 +6362,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 378	10	500.00	f
 378	1	110.00	f
 378	7	60.00	f
-378	37	51.00	f
 378	18	30.00	f
 378	15	58.00	f
 379	6	500.00	f
@@ -6683,7 +6394,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 134	825	100.00	f
 134	49	100.00	f
 134	438	250.00	f
-135	852	100.00	f
 135	42	100.00	f
 137	114	100.00	f
 137	6	120.00	f
@@ -6721,7 +6431,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 386	112	150.00	f
 386	1	110.00	f
 386	3	36.00	f
-386	37	68.00	f
 386	2	\N	t
 387	179	500.00	f
 387	5	100.00	f
@@ -6891,7 +6600,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 407	12	206.00	f
 407	28	7.00	f
 407	26	300.00	f
-407	37	51.00	f
 407	62	500.00	f
 407	9	400.00	f
 407	86	2.00	f
@@ -6944,6 +6652,7 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 185	778	100.00	f
 412	62	200.00	f
 412	81	80.00	f
+423	5	600.00	f
 412	3	9.00	f
 412	15	58.00	f
 412	14	91.80	f
@@ -7024,7 +6733,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 422	176	150.00	f
 422	4	110.40	f
 422	2	\N	t
-423	5	200.00	f
 423	9	150.00	f
 423	7	120.00	f
 423	178	22.40	f
@@ -7049,7 +6757,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 425	747	40.00	f
 425	373	40.00	f
 425	51	60.00	f
-425	37	34.00	f
 425	53	40.00	f
 426	266	400.00	f
 426	800	500.00	f
@@ -7298,7 +7005,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 455	28	10.00	f
 455	9	80.00	f
 455	7	150.00	f
-455	37	51.00	f
 455	718	300.00	f
 455	179	250.00	f
 455	51	40.00	f
@@ -7330,7 +7036,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 458	16	122.00	f
 458	112	150.00	f
 458	1	110.00	f
-458	37	51.00	f
 458	7	50.00	f
 458	15	58.00	f
 458	18	30.00	f
@@ -7592,7 +7297,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 491	88	600.00	f
 491	7	300.00	f
 491	9	400.00	f
-491	37	102.00	f
 310	463	100.00	f
 310	281	100.00	f
 310	310	100.00	f
@@ -7705,7 +7409,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 344	114	100.00	f
 344	400	100.00	f
 346	259	100.00	f
-347	853	100.00	f
 347	2	100.00	f
 348	151	100.00	f
 349	32	50.00	f
@@ -7819,7 +7522,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 423	110	100.00	f
 423	33	200.00	f
 423	168	100.00	f
-423	854	100.00	f
 423	289	100.00	f
 424	139	100.00	f
 424	157	100.00	f
@@ -10534,420 +10236,6 @@ COPY public.recipe_steps (recipe_id, step_no, instruction, duration_min) FROM st
 
 
 --
--- Data for Name: recipes; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.recipes (id, title, description, servings, cook_time_min, needs_microwave, needs_stove, needs_oven, image_url, author_id, no_cook) FROM stdin;
-1	Спагетти карбонара	Паста на четырёх ингредиентах: гуанчале, яйца, пекорино и перец. Сливок в ней нет и никогда не было.	2	15	f	t	f	https://theunitools.com/recipes/spaghetti-carbonara.jpg	\N	f
-2	Ризотто по-милански	Шафрановое ризотто на бульоне, которое мешают почти непрерывно: от этого рис отдаёт крахмал и получается кремовым.	4	25	f	t	f	https://theunitools.com/recipes/risotto-alla-milanese.jpg	\N	f
-3	Рататуй	Прованское овощное рагу, где каждый овощ обжаривают отдельно, а потом соединяют — иначе получится каша.	4	45	f	t	f	https://theunitools.com/recipes/ratatouille.jpg	\N	f
-4	Луковый суп	Суп из лука, бульона и хлеба с сыром. Весь вкус берётся из карамелизации, которая занимает не двадцать минут, а сорок.	4	60	f	t	f	https://theunitools.com/recipes/french-onion-soup.jpg	\N	f
-5	Борщ	Свекольный суп на говяжьем бульоне, где кислота держит и цвет, и вкус. Свёклу тушат отдельно, а не варят в кастрюле.	6	120	f	t	f	https://theunitools.com/recipes/borscht.jpg	\N	f
-6	Хачапури имеретинский	Круглая лепёшка с сыром внутри, а не сверху. Тесто на мацони, начинки — столько же, сколько теста.	4	20	f	t	f	https://theunitools.com/recipes/khachapuri-imeruli.jpg	\N	f
-10	Дал тадка	Чечевичная похлёбка, в которую в конце выливают раскалённое масло со специями. Этот шаг и делает блюдо.	4	35	f	t	f	https://theunitools.com/recipes/dal-tadka.jpg	\N	f
-11	Паэлья валенсиана	Рис на широкой сковороде с курицей, кроликом и фасолью. Мешать нельзя ни разу — от этого зависит корочка на дне.	4	45	f	t	f	https://theunitools.com/recipes/paella-valenciana.jpg	\N	f
-12	Испанская тортилья	Толстый омлет с картофелем и луком, где картофель не жарят, а томят в масле почти до состояния пюре.	4	35	f	t	f	https://theunitools.com/recipes/tortilla-espanola.jpg	\N	f
-13	Мусака	Баклажаны, мясной соус с корицей и толстый слой бешамеля, запечённые до плотности, которую можно резать ножом.	6	75	f	t	t	https://theunitools.com/recipes/moussaka.jpg	\N	f
-15	Фо бо	Прозрачный говяжий бульон с обожжённым имбирём и специями, рисовая лапша и говядина, которая доваривается прямо в миске.	4	240	f	t	f	https://theunitools.com/recipes/pho-bo.jpg	\N	f
-16	Бань ми	Французский багет с вьетнамской начинкой: паштет, свинина, маринованные овощи и кинза в одном сэндвиче.	4	15	f	t	t	https://theunitools.com/recipes/banh-mi.jpg	\N	f
-18	Такос аль пастор	Свинина в маринаде из сушёных чили и ананаса, обжаренная до карамельных краёв, в кукурузной тортилье.	4	20	f	t	f	https://theunitools.com/recipes/tacos-al-pastor.jpg	\N	f
-19	Менемен	Яйца, томлённые в помидорах с зелёным перцем. Их не взбивают и не мешают часто — иначе получится обычная яичница.	2	20	f	t	f	https://theunitools.com/recipes/menemen.jpg	\N	f
-20	Мерджимек чорбасы	Суп из красной чечевицы, который пробивают в пюре и подают с лимоном и маслом с паприкой.	4	35	f	t	f	https://theunitools.com/recipes/mercimek-corbasi.jpg	\N	f
-21	Хинкали	Мешочки из крутого теста с рубленым мясом и бульоном внутри. Бульон появляется сам — от воды, вмешанной в фарш.	4	15	f	t	f	https://theunitools.com/recipes/khinkali.jpg	\N	f
-22	Курица масала в сливочном соусе	Курица, маринованная в йогурте и запечённая, в томатно-сливочном соусе с пажитником.	4	40	f	t	t	https://theunitools.com/recipes/murgh-makhani.jpg	\N	f
-23	Кацудон	Панированная свиная котлета, доваренная в сладко-солёном бульоне с яйцом и выложенная на рис.	2	20	f	t	f	https://theunitools.com/recipes/katsudon.jpg	\N	f
-24	Сырники	Творожные оладьи, где творога должно быть много, а муки — ровно столько, чтобы они не развалились.	4	15	f	t	f	https://theunitools.com/recipes/syrniki.jpg	\N	f
-25	Пад тай	Рисовая лапша, обжаренная с тамариндом, рыбным соусом и пальмовым сахаром. Всё готовится за четыре минуты.	2	10	f	t	f	https://theunitools.com/recipes/pad-thai.jpg	\N	f
-7	Мисо-суп	Суп из даси и мисо, который готовится десять минут. Кипятить мисо нельзя — от этого пропадает и аромат, и польза.	4	15	f	f	f	https://theunitools.com/recipes/miso-soup.jpg	\N	t
-28	Крокеты с хамоном	Густая бешамель с хамоном, охлаждённая до плотности, обваленная в сухарях и обжаренная во фритюре.	4	25	f	t	f	https://theunitools.com/recipes/croquetas-de-jamon.jpg	\N	f
-30	Ломо сальтадо	Говядина, обжаренная в воке с луком и помидорами, поданная с картофелем фри и рисом одновременно.	4	20	f	t	f	https://theunitools.com/recipes/lomo-saltado.jpg	\N	f
-31	Мапо тофу	Тофу в остром соусе из доубаньцзяна с сычуаньским перцем, который не жжёт, а немеет.	4	15	f	t	f	https://theunitools.com/recipes/mapo-tofu.jpg	\N	f
-32	Курица гунбао	Кубики курицы с арахисом и сушёным чили в кисло-сладком соусе, где уксус важнее сахара.	4	10	f	t	f	https://theunitools.com/recipes/gong-bao-chicken.jpg	\N	f
-33	Кок-о-вен	Курица, томлённая в красном вине с беконом, грибами и мелким луком. Маринование накануне решает половину дела.	4	90	f	t	t	https://theunitools.com/recipes/coq-au-vin.jpg	\N	f
-34	Крем-брюле	Заварной крем на желтках, запечённый на водяной бане и покрытый коркой из сожжённого сахара.	4	45	f	t	t	https://theunitools.com/recipes/creme-brulee.jpg	\N	f
-35	Кезешпецле	Швабская яичная лапша, слоями пересыпанная сыром и засыпанная жареным луком.	4	30	f	t	t	https://theunitools.com/recipes/kaesespaetzle.jpg	\N	f
-37	Пибимпап	Рис под отдельно приготовленными овощами, мясом и яйцом, который перемешивают с кочхуджаном прямо перед едой.	4	20	f	t	f	https://theunitools.com/recipes/bibimbap.jpg	\N	f
-38	Кимчхи чиге	Тушёное блюдо из перекисшего кимчи со свининой и тофу. Чем старее кимчи, тем лучше результат.	4	30	f	t	f	https://theunitools.com/recipes/kimchi-jjigae.jpg	\N	f
-39	Сувлаки	Свинина на шпажках в маринаде из лимона, орегано и оливкового масла, приготовленная быстро и на сильном жаре.	4	15	f	t	f	https://theunitools.com/recipes/souvlaki.jpg	\N	f
-40	Бирьяни с курицей	Рис и маринованная курица, доведённые вместе под крышкой: слои готовятся паром, а не перемешиванием.	6	60	f	t	f	https://theunitools.com/recipes/chicken-biryani.jpg	\N	f
-41	Сёю рамен	Бульон, тарэ и масло — три отдельные части, которые собирают в миске, а не варят вместе.	4	180	f	t	f	https://theunitools.com/recipes/shoyu-ramen.jpg	\N	f
-42	Пероги руске	Вареники с картофелем и творожным сыром, поданные с жареным луком и сметаной.	4	20	f	t	f	https://theunitools.com/recipes/pierogi-ruskie.jpg	\N	f
-43	Журек	Кислый суп на ржаной закваске с белой колбасой и яйцом. Кислоту даёт брожение, а не уксус.	4	50	f	t	f	https://theunitools.com/recipes/zurek.jpg	\N	f
-44	Заурбратен	Говядина, вымоченная в уксусном маринаде несколько дней и тушённая в нём же, с соусом на имбирных пряниках.	6	150	f	t	t	https://theunitools.com/recipes/sauerbraten.jpg	\N	f
-45	Швабский картофельный салат	Картофель, заправленный тёплым бульоном с уксусом и маслом. Никакого майонеза — южная Германия его здесь не признаёт.	4	25	f	t	f	https://theunitools.com/recipes/schwaebischer-kartoffelsalat.jpg	\N	f
-46	Аматричана	Гуанчале, помидоры и пекорино. Ни лука, ни чеснока, ни оливкового масла — жир даёт само мясо.	4	20	f	t	f	https://theunitools.com/recipes/bucatini-all-amatriciana.jpg	\N	f
-47	Шакшука	Яйца, припущенные в густом соусе из помидоров и перца с тмином и паприкой.	4	30	f	t	f	https://theunitools.com/recipes/shakshuka.jpg	\N	f
-48	Хумус	Нут, взбитый с тахини, лимоном и ледяной водой до состояния крема. Кожицу с нута снимают.	6	90	f	t	f	https://theunitools.com/recipes/hummus.jpg	\N	f
-49	Фейжоада	Чёрная фасоль, томлённая с несколькими видами копчёной и солёной свинины, с апельсином и капустой на гарнир.	8	180	f	t	f	https://theunitools.com/recipes/feijoada.jpg	\N	f
-50	Пан-ди-кейжу	Сырные шарики из тапиоковой муки — снаружи корочка, внутри тягучая пустота. Без пшеницы и без дрожжей.	6	25	f	f	t	https://theunitools.com/recipes/pao-de-queijo.jpg	\N	f
-51	Пад кра пао	Свиной фарш, обжаренный с чили, чесноком и священным базиликом. Пять минут от начала до тарелки.	2	8	f	t	f	https://theunitools.com/recipes/pad-krapow-moo.jpg	\N	f
-26	Тирамису	Савоярди в кофе под кремом из маскарпоне. Без выпечки, но с двумя местами, где всё может пойти не так.	6	32	f	t	f	https://theunitools.com/recipes/tiramisu.jpg	\N	f
-27	Гаспачо	Холодный томатный суп, который взбивают с хлебом и маслом до состояния эмульсии — от этого он и получается плотным, а не водянистым.	4	20	f	f	f	https://theunitools.com/recipes/gazpacho.jpg	\N	t
-52	Гюдон	Тонко нарезанная говядина, припущенная с луком в даси с соевым соусом и мирином, поверх риса.	2	15	f	t	f	https://theunitools.com/recipes/gyudon.jpg	\N	f
-53	Солянка мясная сборная	Суп на крепком бульоне с несколькими видами мяса, солёными огурцами, оливками и лимоном.	6	120	f	t	f	https://theunitools.com/recipes/solyanka.jpg	\N	f
-54	Тажин с курицей и лимоном	Курица, томлённая с солёными лимонами и оливками. Кислота идёт от кожуры лимона, а не от мякоти.	4	70	f	t	f	https://theunitools.com/recipes/tagine-de-poulet.jpg	\N	f
-55	Харира	Густой суп из чечевицы, нута и помидоров, загущённый мучной болтушкой и заправленный лимоном.	6	90	f	t	f	https://theunitools.com/recipes/harira.jpg	\N	f
-56	Гуляш	Говядина, томлённая с луком и паприкой. Лука по весу столько же, сколько мяса, и он растворяется в соус.	6	150	f	t	f	https://theunitools.com/recipes/goulash.jpg	\N	f
-57	Лангош	Дрожжевая лепёшка, жаренная во фритюре, натёртая чесноком и засыпанная сметаной с сыром.	4	20	f	t	f	https://theunitools.com/recipes/langos.jpg	\N	f
-58	Фиш-энд-чипс	Треска в пивном кляре и картофель, жаренный дважды. Кляр держится на холоде и на газе в пиве.	4	35	f	t	f	https://theunitools.com/recipes/fish-and-chips.jpg	\N	f
-59	Пастуший пирог	Баранина в густом соусе под картофельным пюре, запечённая до румяной корочки.	6	60	f	t	t	https://theunitools.com/recipes/shepherds-pie.jpg	\N	f
-60	Венский шницель	Телятина, отбитая до трёх миллиметров, в сухарях, обжаренная в большом количестве жира до вздутой корочки.	4	15	f	t	f	https://theunitools.com/recipes/wiener-schnitzel.jpg	\N	f
-61	Яблочный штрудель	Яблоки с корицей и изюмом в тесте, растянутом до прозрачности. Тесто тянут руками, а не раскатывают.	8	45	f	t	t	https://theunitools.com/recipes/apfelstrudel.jpg	\N	f
-62	Бакаляу а браш	Солёная треска с тонкой соломкой картофеля и яйцом, которое связывает всё, не превращаясь в омлет.	4	25	f	t	f	https://theunitools.com/recipes/bacalhau-a-bras.jpg	\N	f
-63	Паштел де ната	Слоёные корзиночки с заварным кремом, запечённые при экстремальном жаре до чёрных пятен на поверхности.	12	15	f	t	t	https://theunitools.com/recipes/pastel-de-nata.jpg	\N	f
-64	Аргентинские эмпанадас	Пирожки с рубленой говядиной, луком и яйцом. Начинку остужают до холода, иначе тесто не защипнётся.	6	25	f	t	t	https://theunitools.com/recipes/empanadas-argentinas.jpg	\N	f
-66	Наси горенг	Жареный рис с пастой из чили и креветочной пасты, сладким соевым соусом и яйцом сверху.	4	15	f	t	f	https://theunitools.com/recipes/nasi-goreng.jpg	\N	f
-67	Ренданг	Говядина, которую варят в кокосовом молоке четыре часа, пока молоко не превратится в масло и не начнёт жарить мясо.	6	240	f	t	f	https://theunitools.com/recipes/rendang.jpg	\N	f
-68	Адобо	Курица, тушённая в соевом соусе с уксусом, чесноком и лавровым листом. Уксус не мешают первые десять минут.	4	45	f	t	f	https://theunitools.com/recipes/adobo.jpg	\N	f
-69	Синиганг	Кислый суп на тамаринде со свининой и овощами. Кислота здесь основной вкус, а не оттенок.	6	75	f	t	f	https://theunitools.com/recipes/sinigang.jpg	\N	f
-70	Украинский борщ с пампушками	Борщ на свиных рёбрышках со старым салом, растёртым с чесноком, и чесночными пампушками.	6	120	f	t	f	https://theunitools.com/recipes/borshch-ukrainskyi.jpg	\N	f
-71	Вареники с вишней	Вареники с целой вишней и сахаром. Сок остаётся внутри, если ягоду обвалять в крахмале.	4	15	f	t	f	https://theunitools.com/recipes/varenyky-z-vyshnyamy.jpg	\N	f
-72	Свичкова	Говядина в соусе из протёртых кореньев со сливками, с кнедликами, брусникой и лимоном.	6	150	f	t	f	https://theunitools.com/recipes/svickova.jpg	\N	f
-73	Трдельник	Дрожжевая полоска теста, намотанная на валик, запечённая и обвалянная в сахаре с орехами.	6	20	f	f	t	https://theunitools.com/recipes/trdelnik.jpg	\N	f
-74	Шведские фрикадельки	Мясные шарики на панаде из хлеба и сливок, в сливочном соусе, с брусникой и картофельным пюре.	4	30	f	t	f	https://theunitools.com/recipes/koettbullar.jpg	\N	f
-75	Кулебяка с корицей	Булочки с корицей и кардамоном, свёрнутые узлом. Кардамон в тесте важнее корицы в начинке.	12	15	f	f	t	https://theunitools.com/recipes/kanelbullar.jpg	\N	f
-76	Кушари	Рис, чечевица и макароны в одной тарелке под томатным соусом с уксусом и жареным луком.	6	60	f	t	f	https://theunitools.com/recipes/koshari.jpg	\N	f
-77	Фуль медамес	Бобы фава, томлённые до кремовой мягкости, с оливковым маслом, лимоном и зирой.	4	240	f	t	f	https://theunitools.com/recipes/ful-medames.jpg	\N	f
-80	Гормэ сабзи	Тушёная баранина с горой зелени, фасолью и сушёным лаймом. Зелень жарят до почти чёрного цвета.	6	150	f	t	f	https://theunitools.com/recipes/ghormeh-sabzi.jpg	\N	f
-81	Тахдиг	Рис с золотой хрустящей коркой на дне кастрюли. Корку делают из риса, картофеля или лаваша.	6	60	f	t	f	https://theunitools.com/recipes/tahdig.jpg	\N	f
-82	Узбекский плов	Рис, доведённый паром над зирваком из баранины, моркови и лука. Рис не мешают с момента закладки.	6	100	f	t	f	https://theunitools.com/recipes/plov-uzbekskiy.jpg	\N	f
-83	Самса	Слоёные треугольники с рубленой бараниной и луком, запечённые до хрустящей корки.	6	35	f	f	t	https://theunitools.com/recipes/samsa.jpg	\N	f
-84	Новоанглийский клэм-чаудер	Густой суп на моллюсках со сливками, картофелем и беконом. Без помидоров — это принципиально.	4	35	f	t	f	https://theunitools.com/recipes/clam-chowder.jpg	\N	f
-85	Куриные крылья баффало	Крылья без панировки в соусе из острого перечного соуса и сливочного масла. Соль вытягивает влагу перед запеканием.	4	50	f	f	t	https://theunitools.com/recipes/buffalo-wings.jpg	\N	f
-86	Пицца маргарита	Тесто долгого брожения, помидоры без варки, моцарелла и базилик. Всё решает время, а не количество ингредиентов.	4	10	f	f	t	https://theunitools.com/recipes/pizza-margherita.jpg	\N	f
-88	Палак панир	Шпинат, бланшированный и пробитый в пюре, с кубиками панира. Шпинат нельзя тушить — он побуреет.	4	25	f	t	f	https://theunitools.com/recipes/palak-paneer.jpg	\N	f
-89	Самоса	Треугольники с картофелем и горошком в тесте на гхи. Жарят на среднем огне, а не на сильном.	6	30	f	t	f	https://theunitools.com/recipes/samosa.jpg	\N	f
-90	Цзяоцзы	Пельмени со свининой и капустой, обжаренные и допаренные в одной сковороде под крышкой.	4	15	f	t	f	https://theunitools.com/recipes/jiaozi.jpg	\N	f
-91	Янчжоуский жареный рис	Рис с креветками, ветчиной и яйцом, где каждое зерно отдельно и покрыто тонкой яичной плёнкой.	4	10	f	t	f	https://theunitools.com/recipes/yangzhou-fried-rice.jpg	\N	f
-92	Чиле рельено	Перец поблано, фаршированный сыром, в воздушном яичном кляре, обжаренный и залитый томатным соусом.	4	30	f	t	f	https://theunitools.com/recipes/chiles-en-nogada.jpg	\N	f
-93	Посоле рохо	Суп из свинины и кукурузы посоле в соусе из сушёных чили, с горой свежих добавок на столе.	8	180	f	t	f	https://theunitools.com/recipes/pozole-rojo.jpg	\N	f
-94	Нихари	Говяжья голяшка, томлённая всю ночь, в густом соусе с костным мозгом. Загущается пшеничной болтушкой.	6	300	f	t	f	https://theunitools.com/recipes/nihari.jpg	\N	f
-95	Чапли кебаб	Плоские котлеты из говядины с кукурузной мукой, помидорами и целыми семенами кориандра.	4	20	f	t	f	https://theunitools.com/recipes/chapli-kebab.jpg	\N	f
-96	Лакса лемак	Лапша в кокосовом бульоне на пасте ремпах с креветками и тофу. Пасту обжаривают до отделения масла.	4	30	f	t	f	https://theunitools.com/recipes/laksa-lemak.jpg	\N	f
-97	Роти чанай	Слоёная лепёшка, растянутая до прозрачности и скомканная перед жаркой. Слои получаются из воздуха, а не из масла.	6	20	f	t	f	https://theunitools.com/recipes/roti-canai.jpg	\N	f
-98	Стамппот	Картофельное пюре, размятое вместе с кудрявой капустой, с копчёной колбасой и ямкой подливы.	4	35	f	t	f	https://theunitools.com/recipes/stamppot.jpg	\N	f
-99	Поффертьес	Крошечные дрожжевые оладьи из гречневой и пшеничной муки, подаются с маслом и сахарной пудрой.	4	20	f	t	f	https://theunitools.com/recipes/poffertjes.jpg	\N	f
-100	Доро уот	Курица в густом соусе из бербере, где килограмм лука томят всухую до полного распада.	6	120	f	t	f	https://theunitools.com/recipes/doro-wat.jpg	\N	f
-102	Ропа вьеха	Говядина, разобранная на волокна и тушённая в софрито с перцем и оливками. Мясо варят целым куском заранее.	6	150	f	t	f	https://theunitools.com/recipes/ropa-vieja.jpg	\N	f
-103	Морос и кристианос	Рис, сваренный в отваре из-под чёрной фасоли, отчего становится тёмным и вбирает весь её вкус.	6	90	f	t	f	https://theunitools.com/recipes/moros-y-cristianos.jpg	\N	f
-79	Киббе нейе	Сырое киббе: свежайшая баранина, растёртая с булгуром и специями, под оливковым маслом.	4	40	f	t	f	https://theunitools.com/recipes/kibbeh-nayyeh.jpg	\N	f
-78	Табуле	Салат из петрушки с небольшим количеством булгура, а не наоборот. Зелени здесь в десять раз больше крупы.	4	44	f	f	f	https://theunitools.com/recipes/tabbouleh.jpg	\N	t
-104	Курица джерк	Курица в маринаде на скотч-боннете и душистом перце, копчёная на дровах пименто.	6	120	f	t	t	https://theunitools.com/recipes/jerk-chicken.jpg	\N	f
-105	Аки с солёной рыбой	Национальное блюдо Ямайки: плод аки, по виду и текстуре напоминающий яичницу, с вымоченной солёной треской.	4	25	f	t	f	https://theunitools.com/recipes/ackee-and-saltfish.jpg	\N	f
-106	Джоллоф рис	Рис, сваренный в густом соусе из помидоров, перца и лука. Соус уваривают до тёмного цвета до закладки риса.	6	60	f	t	f	https://theunitools.com/recipes/jollof-rice.jpg	\N	f
-107	Суйя	Говядина на шпажках в обсыпке из молотого арахиса со специями. Обсыпку наносят дважды — до и после жарки.	4	15	f	t	f	https://theunitools.com/recipes/suya.jpg	\N	f
-108	Арепас	Лепёшки из предварённой кукурузной муки, обжаренные и разрезанные, чтобы набить начинкой.	4	25	f	t	t	https://theunitools.com/recipes/arepas.jpg	\N	f
-109	Ахиако	Куриный суп на трёх сортах картофеля с травой гуаскас, каперсами и сливками.	6	75	f	t	f	https://theunitools.com/recipes/ajiaco-bogotano.jpg	\N	f
-110	Киш лорен	Песочная основа с беконом и заливкой из сливок с яйцами. Ни сыра, ни лука — в классическом рецепте их нет.	6	60	f	f	t	https://theunitools.com/recipes/quiche-lorraine.jpg	\N	f
-111	Круассан	Слоёное дрожжевое тесто с двадцатью семью слоями масла. Всё решает температура: тесто и масло должны быть одинаково холодными.	8	20	f	f	t	https://theunitools.com/recipes/croissant.jpg	\N	f
-112	Темпура	Овощи и креветки в ледяном кляре с комками. Мешать до гладкости нельзя — от этого зависит хрусткость.	4	20	f	t	f	https://theunitools.com/recipes/tempura.jpg	\N	f
-113	Окономияки	Толстый блин с капустой, где тесто только связывает. Ямс в тесте даёт ту воздушную текстуру.	4	25	f	t	f	https://theunitools.com/recipes/okonomiyaki.jpg	\N	f
-114	Лахмаджун	Тончайшая лепёшка с бараньим фаршем и перечной пастой, запечённая три минуты в раскалённой духовке.	6	20	f	f	t	https://theunitools.com/recipes/lahmacun.jpg	\N	f
-115	Пахлава	Сорок слоёв юфки с фисташками, залитые сиропом. Горячая пахлава заливается холодным сиропом, и только так.	12	60	f	t	t	https://theunitools.com/recipes/baklava.jpg	\N	f
-116	Спанакопита	Пирог из фило со шпинатом и фетой. Шпинат отжимают досуха — иначе низ останется сырым.	8	50	f	t	t	https://theunitools.com/recipes/spanakopita.jpg	\N	f
-117	Пататас бравас	Картофель, обжаренный дважды, под острым соусом на паприке. Соус без помидоров — в мадридском варианте их нет.	4	30	f	t	f	https://theunitools.com/recipes/patatas-bravas.jpg	\N	f
-118	Момо	Непальские пельмени на пару с буйволятиной или курицей и соусом ачар из обжаренных помидоров.	4	20	f	t	f	https://theunitools.com/recipes/momo.jpg	\N	f
-119	Дал бхат	Чечевичный суп с рисом и овощной таркари. Ежедневная еда Непала, которую едят дважды в день всю жизнь.	4	45	f	t	f	https://theunitools.com/recipes/dal-bhat.jpg	\N	f
-120	Котту роти	Рубленая лепёшка годамба, обжаренная с овощами, яйцом и карри прямо на плите двумя тесаками.	4	15	f	t	f	https://theunitools.com/recipes/kottu-roti.jpg	\N	f
-122	Чевапи	Колбаски из рубленого мяса без оболочки, на углях, с луком и лепёшкой сомун.	4	15	f	t	f	https://theunitools.com/recipes/cevapi.jpg	\N	f
-123	Айвар	Икра из печёного красного перца и баклажана, уваренная в масле до густоты пасты.	10	90	f	t	t	https://theunitools.com/recipes/ajvar.jpg	\N	f
-124	Фрикаделлер	Датские мясные биточки, плоские, а не круглые, жаренные на сливочном масле до тёмной корочки.	4	25	f	t	f	https://theunitools.com/recipes/frikadeller.jpg	\N	f
-126	Сармале	Голубцы в квашеных капустных листьях с фаршем и рисом, томлённые три часа под слоем капусты.	8	180	f	t	t	https://theunitools.com/recipes/sarmale.jpg	\N	f
-127	Мамалыга	Кукурузная каша плотной консистенции, которую режут ниткой, а не ножом.	6	40	f	t	f	https://theunitools.com/recipes/mamaliga.jpg	\N	f
-129	Баница	Спираль из фило с брынзой и яйцами, залитая йогуртом с содой перед выпечкой.	8	45	f	f	t	https://theunitools.com/recipes/banitsa.jpg	\N	f
-130	Лохикейтто	Финский суп с лососем, картофелем и сливками, с горой укропа и кусочком масла в тарелке.	4	40	f	t	f	https://theunitools.com/recipes/lohikeitto.jpg	\N	f
-125	Смёрребрёд	Открытый бутерброд на ржаном хлебе с маслом. Порядок слоёв и толщина масла имеют значение.	4	25	f	t	f	https://theunitools.com/recipes/smorrebrod.jpg	\N	f
-131	Карельские пирожки	Ржаная корзиночка с рисовой кашей, смазанная маслом после выпечки и поданная с яичным маслом.	8	25	f	t	t	https://theunitools.com/recipes/karjalanpiirakka.jpg	\N	f
-132	Ирландское рагу	Баранина с картофелем и луком, томлённая без обжарки. Мясо не подрумянивают — в этом весь смысл.	6	150	f	t	f	https://theunitools.com/recipes/irish-stew.jpg	\N	f
-133	Содовый хлеб	Хлеб на соде и пахте без дрожжей и без расстойки. От замеса до духовки — три минуты.	8	45	f	f	t	https://theunitools.com/recipes/soda-bread.jpg	\N	f
-134	Чёрный ризотто	Ризотто с каракатицей и её чернилами. Чернила вливают в конце, иначе они дадут горечь.	4	50	f	t	f	https://theunitools.com/recipes/crni-rizot.jpg	\N	f
-135	Загорски штрукли	Тонкое тесто с творожной начинкой, отваренное и запечённое под сливками.	6	45	f	t	t	https://theunitools.com/recipes/zagorski-strukli.jpg	\N	f
-137	Форикол	Баранина с капустой, слоями, с целым перцем горошком. Всего четыре ингредиента и два часа времени.	6	130	f	t	f	https://theunitools.com/recipes/farikal.jpg	\N	f
-138	Мидии по-мариньерски	Мидии, приготовленные на пару в белом вине с сельдереем и луком. Пять минут под крышкой и не дольше.	4	15	f	t	f	https://theunitools.com/recipes/moules-marinieres.jpg	\N	f
-139	Фламандская карбонада	Говядина, томлённая в тёмном пиве с луком и ломтем хлеба с горчицей, который загущает соус.	6	180	f	t	t	https://theunitools.com/recipes/carbonade-flamande.jpg	\N	f
-141	Рёшти	Картофельный блин из крупной тёрки, обжаренный до корочки с двух сторон. Картофель отваривают накануне.	4	30	f	t	t	https://theunitools.com/recipes/roesti.jpg	\N	f
-142	Гапама	Тыква, запечённая целиком с рисом, сухофруктами и орехами. Праздничное блюдо, которое режут за столом.	6	90	f	t	t	https://theunitools.com/recipes/ghapama.jpg	\N	f
-143	Спас	Суп на мацуне с пшеничной крупой. Главная сложность — не дать кисломолочной основе свернуться.	4	40	f	t	f	https://theunitools.com/recipes/spas.jpg	\N	f
-144	Шах-плов	Плов, запечённый в «короне» из лаваша. Корочка держит форму и режется на куски, как пирог.	6	70	f	t	t	https://theunitools.com/recipes/shah-plov.jpg	\N	f
-145	Кюфта-бозбаш	Прозрачный суп с одной большой мясной кюфтой на порцию, внутри которой спрятаны слива и курага.	4	80	f	t	f	https://theunitools.com/recipes/kufta-bozbash.jpg	\N	f
-146	Бешбармак	Отварное мясо на листах теста с луковой подливой сорпой. Главное блюдо казахского застолья.	6	180	f	t	f	https://theunitools.com/recipes/beshbarmak.jpg	\N	f
-147	Баурсаки	Кусочки дрожжевого теста, жаренные во фритюре до полых внутри шариков. Хлеб к чаю и к столу.	8	25	f	t	f	https://theunitools.com/recipes/baursaki.jpg	\N	f
-148	Брынзове галушки	Картофельные клёцки с овечьей брынзой и шкварками. Национальное блюдо Словакии.	4	20	f	t	f	https://theunitools.com/recipes/bryndzove-halusky.jpg	\N	f
-149	Капустница	Суп из квашеной капусты с копчёностями, колбасой и сушёными грибами. Рождественский стол Словакии.	6	90	f	t	f	https://theunitools.com/recipes/kapustnica.jpg	\N	f
-150	Пастель-де-чокло	Запеканка из мясной начинки под шапкой из молотой кукурузы, с оливкой и яйцом внутри.	6	60	f	t	t	https://theunitools.com/recipes/pastel-de-choclo.jpg	\N	f
-151	Эмпанадас-де-пино	Печёные пирожки с мясной начинкой, оливкой и яйцом. Чилийская еда 18 сентября и любого воскресенья.	6	30	f	t	f	https://theunitools.com/recipes/empanadas-de-pino.jpg	\N	f
-152	Пабельон-криольо	Тарелка из четырёх частей: тушёная говядина волокнами, чёрная фасоль, белый рис и жареный банан.	4	150	f	t	f	https://theunitools.com/recipes/pabellon-criollo.jpg	\N	f
-153	Качапас	Толстые оладьи из молотой свежей кукурузы, сложенные пополам вокруг мягкого сыра.	4	25	f	t	f	https://theunitools.com/recipes/cachapas.jpg	\N	f
-154	Сальтеньяс	Печёные пирожки с начинкой, которая внутри остаётся жидкой. Боливийский завтрак на ходу.	6	30	f	t	f	https://theunitools.com/recipes/saltenas.jpg	\N	f
-155	Сильпанчо	Отбивная в панировке размером с тарелку, поверх риса и картофеля, с яйцом и сырым салатом.	4	30	f	t	f	https://theunitools.com/recipes/silpancho.jpg	\N	f
-156	Энсебольядо	Суп из тунца с юккой и маринованным луком. В Эквадоре его едят на завтрак и считают средством от похмелья.	4	40	f	t	f	https://theunitools.com/recipes/encebollado.jpg	\N	f
-157	Льяпингачос	Картофельные лепёшки с сыром внутри, жаренные на ачиоте, с арахисовым соусом.	4	30	f	t	f	https://theunitools.com/recipes/llapingachos.jpg	\N	f
-140	Сырное фондю	Грюйер и вашрен, растопленные в белом вине с крахмалом. Кислота вина не даёт сыру свернуться.	4	20	f	f	f	https://theunitools.com/recipes/fondue-moitie-moitie.jpg	\N	t
-159	Иракская долма	Виноградные листья и овощи, фаршированные рисом с мясом, уложенные слоями и сваренные под гнётом.	6	75	f	t	f	https://theunitools.com/recipes/dolma-iraqi.jpg	\N	f
-160	Мансаф	Баранина в соусе из ферментированного сушёного йогурта джамид, на рисе и лепёшке. Национальное блюдо Иордании.	8	150	f	t	f	https://theunitools.com/recipes/mansaf.jpg	\N	f
-161	Маклюба	Рис с мясом и жареными овощами, сваренный в одной кастрюле и перевёрнутый на блюдо целиком.	6	90	f	t	f	https://theunitools.com/recipes/maqluba.jpg	\N	f
-162	Брик	Тонкий лист теста с яйцом внутри, обжаренный так, чтобы желток остался жидким.	4	10	f	t	f	https://theunitools.com/recipes/brik.jpg	\N	f
-163	Тунисский лаблаби	Нут в чесночном бульоне, вылитый на кусочки чёрствого хлеба, с яйцом, тмином и хариссой.	4	90	f	t	f	https://theunitools.com/recipes/shakshuka-tunisienne.jpg	\N	f
-164	Алжирский кускус	Крупа, трижды пропаренная над кастрюлей с мясом и овощами, с бульоном отдельно.	6	120	f	t	f	https://theunitools.com/recipes/couscous-algerien.jpg	\N	f
-165	Чорба-фрик	Суп с зелёной подкопчённой пшеницей фрик, бараниной и мятой. Первое блюдо на столе в Рамадан.	6	70	f	t	f	https://theunitools.com/recipes/chorba-frik.jpg	\N	f
-166	Цеппелинай	Крупные картофельные клёцки с мясной начинкой, названные в честь дирижаблей. Со шкварками и сметаной.	4	40	f	t	f	https://theunitools.com/recipes/cepelinai.jpg	\N	f
-167	Шалтибарщяй	Холодный свекольный суп на кефире, ярко-розовый, с огурцом, укропом и варёной картошкой отдельно.	4	40	f	t	f	https://theunitools.com/recipes/saltibarsciai.jpg	\N	f
-170	Мульгипудер	Картофельно-перловая каша со шкварками. Эстонское блюдо, признанное национальным символом.	4	80	f	t	f	https://theunitools.com/recipes/mulgipuder.jpg	\N	f
-172	Драники	Картофельные оладьи из тёртого сырого картофеля, жаренные до хрустящей корки, со сметаной.	4	25	f	t	f	https://theunitools.com/recipes/draniki.jpg	\N	f
-174	Мохинга	Рисовая лапша в густом рыбном бульоне на банановом стволе. Завтрак и неофициальное национальное блюдо Мьянмы.	6	80	f	t	f	https://theunitools.com/recipes/mohinga.jpg	\N	f
-175	Лапет-тхоке	Салат из ферментированных чайных листьев с жареными бобами, орехами и чесноком.	4	15	f	t	f	https://theunitools.com/recipes/lahpet-thoke.jpg	\N	f
-176	Фиш-амок	Рыба в кокосовом карри, приготовленная на пару в чашке из бананового листа.	4	25	f	t	f	https://theunitools.com/recipes/fish-amok.jpg	\N	f
-177	Лок-лак	Кубики говядины, обжаренные на сильном огне, на салате, с соусом из лайма и чёрного перца.	4	15	f	t	f	https://theunitools.com/recipes/lok-lak.jpg	\N	f
-178	Хайнаньский рис с курицей	Курица, сваренная целиком при температуре ниже кипения, и рис на её бульоне, с тремя соусами.	4	60	f	t	f	https://theunitools.com/recipes/hainanese-chicken-rice.jpg	\N	f
-179	Краб в соусе чили	Краб в густом томатно-чилийском соусе с яйцом, который вычерпывают жареными булочками мантоу.	4	25	f	t	f	https://theunitools.com/recipes/chilli-crab.jpg	\N	f
-180	Лу-жоу-фань	Рубленая свиная грудинка, тушённая в соевом соусе со специями, поверх белого риса.	4	100	f	t	f	https://theunitools.com/recipes/lu-rou-fan.jpg	\N	f
-181	Тайваньский суп с говядиной	Пшеничная лапша в тёмном бульоне из говяжьей голяшки с бобовой пастой и специями.	4	150	f	t	f	https://theunitools.com/recipes/beef-noodle-soup-taiwan.jpg	\N	f
-182	Ньяма-чома	Козлятина, медленно зажаренная над углями крупными кусками, с кача́мбари и угали.	6	90	f	t	f	https://theunitools.com/recipes/nyama-choma.jpg	\N	f
-183	Сукума-вики	Тушёная листовая капуста с луком и помидорами. Ежедневный гарнир к угали по всей Восточной Африке.	4	20	f	t	f	https://theunitools.com/recipes/sukuma-wiki.jpg	\N	f
-184	Ваакье	Рис с чёрными бобами, сваренный с листьями сорго, которые красят его в бордовый цвет.	6	80	f	t	f	https://theunitools.com/recipes/waakye.jpg	\N	f
-158	Масгуф	Речная рыба, распластанная и запечённая стоя у открытого огня. Багдадское блюдо с берегов Тигра.	4	75	f	f	f	https://theunitools.com/recipes/masgouf.jpg	\N	t
-171	Кама	Десерт из смеси обжаренных зерновых мук на кефире. Эстонский завтрак и летний десерт разом.	4	31	f	f	f	https://theunitools.com/recipes/kama.jpg	\N	t
-185	Банку с тиляпией	Ферментированное кукурузно-маниоковое тесто, вымешанное до гладкости, с жареной рыбой и острым перечным соусом.	4	45	f	t	f	https://theunitools.com/recipes/banku-with-tilapia.jpg	\N	f
-186	Тьебуджен	Рис, сваренный в томатном бульоне от рыбы, с фаршированной зеленью рыбой и овощами. Национальное блюдо Сенегала.	6	90	f	t	f	https://theunitools.com/recipes/thieboudienne.jpg	\N	f
-187	Ясса с курицей	Курица, маринованная в лимоне, под горой карамелизованного лука с горчицей.	4	75	f	t	f	https://theunitools.com/recipes/yassa-poulet.jpg	\N	f
-188	Бобóти	Запеканка из пряного фарша с сухофруктами под яично-молочной заливкой. Национальное блюдо ЮАР.	6	60	f	t	t	https://theunitools.com/recipes/bobotie.jpg	\N	f
-189	Чакалака	Острая овощная закуска из моркови, перца и фасоли с карри. К брааю, к пап или сама по себе.	6	20	f	t	f	https://theunitools.com/recipes/chakalaka.jpg	\N	f
-191	Кьётсупа	Прозрачный суп из баранины с корнеплодами и перловкой. Один горшок, четыре продукта, три часа.	6	150	f	t	f	https://theunitools.com/recipes/kjotsupa.jpg	\N	f
-193	Йота	Густой суп из квашеной репы или капусты с фасолью, картофелем и копчёностями.	6	90	f	t	f	https://theunitools.com/recipes/jota.jpg	\N	f
-194	Босански лонац	Мясо и овощи, уложенные слоями в глиняный горшок и томившиеся четыре часа без помешивания.	6	240	f	f	t	https://theunitools.com/recipes/bosanski-lonac.jpg	\N	f
-196	Тавче-гравче	Белая фасоль, запечённая в глиняной сковороде с луком, паприкой и перцем. Национальное блюдо Северной Македонии.	6	120	f	t	t	https://theunitools.com/recipes/tavce-gravce.jpg	\N	f
-197	Селско месо	Свинина, тушённая с грибами, луком и вином в глиняном горшочке, под сыром.	4	70	f	t	t	https://theunitools.com/recipes/selsko-meso.jpg	\N	f
-199	Австралийский мясной пирог	Порционный пирог с густой говяжьей начинкой: песочное дно, слоёная крышка, кетчуп сверху.	6	90	f	t	f	https://theunitools.com/recipes/meat-pie-australian.jpg	\N	f
-200	Павлова	Меренга с хрустящей корочкой и мягкой серединой, под взбитыми сливками и киви.	8	90	f	f	t	https://theunitools.com/recipes/pavlova.jpg	\N	f
-201	Курица в стиле ханги	Курица и корнеплоды, завёрнутые и запечённые с копчёной солью — домашняя версия земляной печи маори.	6	150	f	f	t	https://theunitools.com/recipes/hangi-style-chicken.jpg	\N	f
-202	Путин	Картофель фри с сырными зёрнами под горячей мясной подливой. Квебекская уличная классика.	4	40	f	t	f	https://theunitools.com/recipes/poutine.jpg	\N	f
-203	Туртьер	Закрытый пирог с пряным свиным фаршем и картофелем. Квебекский рождественский стол.	8	70	f	t	f	https://theunitools.com/recipes/tourtiere.jpg	\N	f
-204	Гальо-пинто	Вчерашний рис, обжаренный с чёрной фасолью и соусом Лисано. Костариканский завтрак каждый день.	4	20	f	t	f	https://theunitools.com/recipes/gallo-pinto.jpg	\N	f
-205	Касадо	Обеденная тарелка из риса, фасоли, салата, подорожника и мяса — всё разложено по секторам.	4	40	f	t	f	https://theunitools.com/recipes/casado.jpg	\N	f
-206	Буузы	Крупные пельмени на пару с рубленой бараниной. Главная еда монгольского Цагаан сара.	6	25	f	t	f	https://theunitools.com/recipes/buuz.jpg	\N	f
-207	Цуйван	Домашняя лапша, приготовленная на пару прямо над мясом, а потом перемешанная с ним.	4	45	f	t	f	https://theunitools.com/recipes/tsuivan.jpg	\N	f
-208	Кыргызский бешбармак	Баранина с домашней лапшой в луковом соусе чык. Кыргызский вариант — с бараниной и без картофеля.	6	165	f	t	f	https://theunitools.com/recipes/beshbarmak-kyrgyz.jpg	\N	f
-209	Лагман	Тянутая вручную лапша с мясо-овощной подливой ваджа. Дунганское блюдо, ставшее общим для Центральной Азии.	4	40	f	t	f	https://theunitools.com/recipes/lagman.jpg	\N	f
-210	Курутоб	Слоёная лепёшка фатир, размоченная в разведённом сушёном курте, под жареным луком и овощами.	4	20	f	t	f	https://theunitools.com/recipes/kurutob.jpg	\N	f
-211	Таджикский оши палав	Плов с бараниной, жёлтой морковью и целой головкой чеснока, признанный ЮНЕСКО наследием.	6	90	f	t	f	https://theunitools.com/recipes/oshi-plov-tajik.jpg	\N	f
-192	Потица	Дрожжевой рулет с ореховой начинкой, свёрнутый в кольцо. Словенская выпечка к каждому празднику.	12	60	f	f	f	https://theunitools.com/recipes/potica.jpg	\N	t
-212	Кабули палав	Рис с бараниной под слоем карамелизованной моркови, изюма и миндаля. Национальное блюдо Афганистана.	6	110	f	t	f	https://theunitools.com/recipes/kabuli-pulao.jpg	\N	f
-213	Афганское манту	Пельмени на пару с говядиной и луком, под чесночным йогуртом и соусом из жёлтого гороха.	5	45	f	t	f	https://theunitools.com/recipes/mantu-afghan.jpg	\N	f
-214	Фаттуш	Салат из овощей и зелени с обжаренными кусочками лепёшки и сумахом.	4	10	f	t	f	https://theunitools.com/recipes/fattoush.jpg	\N	f
-215	Киббе в противне	Два слоя булгура с мясом и прослойка из фарша с орехами, запечённые в противне.	8	45	f	t	t	https://theunitools.com/recipes/kibbeh-bil-sanieh.jpg	\N	f
-220	Занзибарский пилау	Рис с говядиной на пряностях острова: гвоздика, кардамон, корица и чёрный перец без всякой куркумы.	6	75	f	t	f	https://theunitools.com/recipes/zanzibar-pilau.jpg	\N	f
-223	Бхуна кхичури	Рис с чечевицей, обжаренные до закладки воды. Бенгальская еда дождливого дня.	5	45	f	t	f	https://theunitools.com/recipes/bhuna-khichuri.jpg	\N	f
-224	Лаап	Рубленое мясо с обжаренной рисовой мукой, травами и лаймом. Национальное блюдо Лаоса.	4	20	f	t	f	https://theunitools.com/recipes/larb-lao.jpg	\N	f
-226	Сувла	Крупные куски свинины или ягнёнка на вертеле, медленно вращающиеся над углями два часа.	6	130	f	t	f	https://theunitools.com/recipes/souvla.jpg	\N	f
-228	Кролик по-мальтийски	Кролик, тушённый в красном вине с чесноком и лавром. Национальное блюдо Мальты.	4	105	f	t	f	https://theunitools.com/recipes/maltese-rabbit-stew.jpg	\N	f
-229	Пастицци	Слоёные пирожки с рикоттой или гороховой начинкой. Мальтийская уличная еда на каждом углу.	8	35	f	t	f	https://theunitools.com/recipes/pastizzi.jpg	\N	f
-230	Чивито	Сэндвич с тонким стейком, ветчиной, беконом, сыром и яйцом. Национальное блюдо Уругвая.	4	20	f	t	f	https://theunitools.com/recipes/chivito.jpg	\N	f
-232	Пепиан	Курица в густом соусе из обжаренных семян и перцев. Одно из старейших блюд Гватемалы.	6	70	f	t	f	https://theunitools.com/recipes/pepian.jpg	\N	f
-233	Гватемальские тамалес	Кукурузное тесто с мясом и соусом рекадо, завёрнутое в банановый лист и сваренное на пару.	8	90	f	t	f	https://theunitools.com/recipes/tamales-guatemaltecos.jpg	\N	f
-234	Доминиканский санкочо	Густой суп из нескольких видов мяса и корнеплодов. Праздничная еда, которую готовят на большую компанию.	8	120	f	t	f	https://theunitools.com/recipes/sancocho-dominicano.jpg	\N	f
-235	Мангу	Пюре из варёного зелёного подорожника с маринованным луком, яйцом, сыром и салями.	4	30	f	t	f	https://theunitools.com/recipes/mangu.jpg	\N	f
-237	Каллалу	Густой суп-пюре из листьев таро с окрой и кокосовым молоком. Воскресный стол Тринидада.	6	55	f	t	f	https://theunitools.com/recipes/callaloo.jpg	\N	f
-238	Таве коси	Ягнёнок, запечённый под густым йогуртовым соусом с яйцом и рисом. Национальное блюдо Албании.	6	90	f	t	t	https://theunitools.com/recipes/tave-kosi.jpg	\N	f
-239	Бюрек со шпинатом	Пирог из тонкого теста со шпинатом и брынзой, слоями, залитыми маслом.	8	45	f	t	f	https://theunitools.com/recipes/byrek-me-spinaq.jpg	\N	f
-240	Плацинда	Плоский пирог из вытянутого теста с брынзой, тыквой или яблоками, жаренный на сухой сковороде.	6	30	f	t	f	https://theunitools.com/recipes/placinta.jpg	\N	f
-222	Шорше илиш	Хилса в соусе из молотой горчицы, приготовленная на пару. Главная рыба Бенгалии.	4	25	f	f	f	https://theunitools.com/recipes/shorshe-ilish.jpg	\N	t
-225	Там мак хунг	Салат из зелёной папайи, растёртый в ступке. Лаосская версия — с ферментированной рыбой падэк.	4	35	f	f	f	https://theunitools.com/recipes/tam-mak-hoong.jpg	\N	t
-242	Копчёная шейка с бобами	Копчёная свиная шейка, вымоченная и отваренная, с бобами в сливочном соусе. Национальное блюдо Люксембурга.	4	100	f	t	f	https://theunitools.com/recipes/judd-mat-gaardebounen.jpg	\N	f
-246	Кабса	Рис с курицей на пряном бульоне с сушёным лаймом и томатом. Главное блюдо саудовского стола.	6	75	f	t	f	https://theunitools.com/recipes/kabsa.jpg	\N	f
-248	Сальта	Мясное рагу, поданное кипящим в каменном горшке, под взбитой пеной из пажитника хульба.	4	90	f	t	f	https://theunitools.com/recipes/saltah.jpg	\N	f
-254	Ндоле	Горькие листья с арахисовой пастой, мясом и креветками. Национальное блюдо Камеруна.	6	75	f	t	f	https://theunitools.com/recipes/ndole.jpg	\N	f
-255	Пуле DG	Жареная курица с обжаренным подорожником и овощами. Блюдо, названное «курица директора».	5	45	f	t	f	https://theunitools.com/recipes/poulet-dg.jpg	\N	f
-256	Атьеке с рыбой	Ферментированная маниоковая крупа на пару с жареной рыбой и острым луковым салатом.	4	30	f	t	f	https://theunitools.com/recipes/attieke-poisson.jpg	\N	f
-257	Кеджену	Курица, томлённая в закрытом глиняном горшке без воды. Ивуарийское блюдо медленного огня.	4	80	f	f	t	https://theunitools.com/recipes/kedjenou.jpg	\N	f
-259	Курица пири-пири	Курица, распластанная и зажаренная на углях под соусом из перца пири-пири, чеснока и лимона.	4	45	f	t	f	https://theunitools.com/recipes/frango-piri-piri.jpg	\N	f
-260	Ромазава	Мясо в бульоне с горькой зеленью брэд-мафана, вызывающей лёгкое покалывание во рту.	5	75	f	t	f	https://theunitools.com/recipes/romazava.jpg	\N	f
-261	Равитуту	Толчёные листья маниока, тушённые со свининой и кокосовым молоком.	5	85	f	t	f	https://theunitools.com/recipes/ravitoto.jpg	\N	f
-262	Балеадас	Пшеничная лепёшка, сложенная пополам, с фасолевым пюре, сметаной и сыром.	4	30	f	t	f	https://theunitools.com/recipes/baleadas.jpg	\N	f
-263	Суп из ракушек	Суп из моллюска конх в кокосовом молоке с юккой и подорожником. Кухня карибского побережья гарифуна.	5	60	f	t	f	https://theunitools.com/recipes/sopa-de-caracol.jpg	\N	f
-264	Никарагуанский гальо-пинто	Рис с красной фасолью, обжаренный вместе. Никарагуанская версия — на красной фасоли и без соуса Лисано.	4	20	f	t	f	https://theunitools.com/recipes/gallo-pinto-nicaraguense.jpg	\N	f
-265	Накатамаль	Большой тамаль из кукурузного теста со свининой, рисом и картофелем, сваренный в банановом листе.	8	180	f	t	f	https://theunitools.com/recipes/nacatamal.jpg	\N	f
-266	Панамский санкочо	Куриный суп с корнем ньяме и травой кулантро. Панамское средство от похмелья и от простуды.	6	90	f	t	f	https://theunitools.com/recipes/sancocho-panameno.jpg	\N	f
-267	Панамская ропа вьеха	Говядина волокнами в томатном соусе с оливками и каперсами, панамской школы — суше кубинской.	5	120	f	t	f	https://theunitools.com/recipes/ropa-vieja-panamena.jpg	\N	f
-269	Чипа	Хлебные колечки из маниоковой муки с сыром, без пшеницы и без дрожжей.	8	25	f	f	t	https://theunitools.com/recipes/chipa.jpg	\N	f
-249	Бинт ас-сахн	Многослойный сдобный хлеб, промазанный топлёным маслом, залитый мёдом и чернушкой.	8	35	f	f	f	https://theunitools.com/recipes/bint-al-sahn.jpg	\N	t
-268	Парагвайский суп	Плотная кукурузная запеканка с сыром и луком, которую вопреки названию едят вилкой.	8	50	f	f	f	https://theunitools.com/recipes/sopa-paraguaya.jpg	\N	t
-270	Флия	Слоёный пирог из жидкого теста, наливаемого по одному слою под раскалённой крышкой саче.	8	90	f	f	f	https://theunitools.com/recipes/flia.jpg	\N	t
-271	Таве Эльбасани	Ягнёнок с рисом под йогуртовым соусом, запечённый в глиняной форме до румяной корки.	6	95	f	t	t	https://theunitools.com/recipes/tave-elbasani.jpg	\N	f
-273	Качамак	Кукурузная каша с картофелем, вымешанная с сыром и каймаком до тягучести.	4	45	f	t	f	https://theunitools.com/recipes/kacamak.jpg	\N	f
-274	Эма датши	Зелёный перец чили, тушённый в сыре. Национальное блюдо Бутана, где чили — овощ, а не приправа.	4	20	f	t	f	https://theunitools.com/recipes/ema-datshi.jpg	\N	f
-276	Мас хуни	Тунец, растёртый с кокосом, луком и лаймом, к горячей лепёшке роши. Мальдивский завтрак.	4	15	f	t	f	https://theunitools.com/recipes/mas-huni.jpg	\N	f
-279	Ролекс	Омлет с овощами, завёрнутый в лепёшку чапати. Уличная еда Кампалы, названная от «rolled eggs».	4	30	f	t	f	https://theunitools.com/recipes/rolex-uganda.jpg	\N	f
-282	Курица моамбе	Курица в соусе из мякоти пальмовых плодов. Национальное блюдо Конго.	5	70	f	t	f	https://theunitools.com/recipes/poulet-moambe.jpg	\N	f
-283	Либоке с рыбой	Рыба со специями, завёрнутая в банановый лист и запечённая в углях.	4	35	f	t	t	https://theunitools.com/recipes/liboke-de-poisson.jpg	\N	f
-284	Тигадегена	Мясо в густом арахисовом соусе с овощами. Малийское блюдо воскресного обеда.	6	90	f	t	f	https://theunitools.com/recipes/tigadegena.jpg	\N	f
-286	Оссобуко по-милански	Телячья голяшка, тушённая два часа в вине и бульоне, с гремолатой из цедры и чеснока.	4	130	f	t	f	https://theunitools.com/recipes/osso-buco-alla-milanese.jpg	\N	f
-290	Роган джош	Кашмирская баранина в йогуртовом соусе с перцем кашмири, красная от него, а не от остроты.	5	100	f	t	f	https://theunitools.com/recipes/rogan-josh.jpg	\N	f
-291	Масала доса	Тонкий хрустящий блин из сброженного рисово-чечевичного теста с картофельной начинкой.	6	45	f	t	f	https://theunitools.com/recipes/masala-dosa.jpg	\N	f
-292	Буйабес	Марсельская рыбная похлёбка из нескольких сортов рыбы, с шафраном и соусом руй.	6	70	f	t	f	https://theunitools.com/recipes/bouillabaisse.jpg	\N	f
-294	Никудзяга	Говядина с картофелем, тушённые в даси с соевым соусом и мирином. Домашняя японская классика.	4	35	f	t	f	https://theunitools.com/recipes/nikujaga.jpg	\N	f
-296	Моле поблано	Курица в тёмном соусе из нескольких видов перца, орехов, специй и шоколада.	8	120	f	t	f	https://theunitools.com/recipes/mole-poblano.jpg	\N	f
-298	Искендер-кебаб	Ломтики донера на кусочках питы, под томатным соусом, растопленным маслом и йогуртом.	4	30	f	t	t	https://theunitools.com/recipes/iskender-kebab.jpg	\N	f
-299	Турецкие манты	Крошечные пельмени с бараниной, отваренные и поданные под чесночным йогуртом и маслом с паприкой.	5	25	f	t	f	https://theunitools.com/recipes/manti-turkish.jpg	\N	f
-300	Фабада астурийская	Крупная белая фасоль фабес, тушённая с чорисо, морсильей и копчёной свининой.	6	180	f	t	f	https://theunitools.com/recipes/fabada-asturiana.jpg	\N	f
-301	Осьминог по-галисийски	Отварной осьминог на деревянной доске с паприкой, крупной солью и оливковым маслом.	4	60	f	t	f	https://theunitools.com/recipes/pulpo-a-feira.jpg	\N	f
-302	Кхао сой	Северотайская лапша в кокосовом карри, с варёной лапшой в бульоне и жареной сверху.	4	45	f	t	f	https://theunitools.com/recipes/khao-soi.jpg	\N	f
-303	Массаман карри	Мягкое карри с говядиной, картофелем и арахисом, на специях мусульманской традиции.	5	90	f	t	f	https://theunitools.com/recipes/massaman-curry.jpg	\N	f
-304	Гемиста	Помидоры и перцы, фаршированные рисом с зеленью и запечённые с картофелем в оливковом масле.	6	80	f	t	t	https://theunitools.com/recipes/gemista.jpg	\N	f
-305	Авголемоно	Куриный суп с рисом, загущённый яйцом, взбитым с лимонным соком.	5	65	f	t	f	https://theunitools.com/recipes/avgolemono.jpg	\N	f
-306	Пельмени	Мелкие пельмени из пресного теста с рубленым мясом и луком, сваренные в бульоне.	6	15	f	t	f	https://theunitools.com/recipes/pelmeni.jpg	\N	f
-307	Бефстроганов	Говядина, нарезанная соломкой и обжаренная на сильном огне, в сметанном соусе с луком.	4	25	f	t	f	https://theunitools.com/recipes/beef-stroganoff.jpg	\N	f
-308	Швайнсхаксе	Свиная рулька, запечённая до стеклянной хрустящей корки, с тёмным пивом и квашеной капустой.	4	180	f	t	t	https://theunitools.com/recipes/schweinshaxe.jpg	\N	f
-310	Раздёрганная свинина	Свиная лопатка, копчёная десять часов при низкой температуре и разобранная на волокна.	10	600	f	t	t	https://theunitools.com/recipes/pulled-pork.jpg	\N	f
-311	Пирог с лаймом	Начинка из сгущённого молока с соком лайма на основе из крошки крекера, без запекания начинки.	8	20	f	f	t	https://theunitools.com/recipes/key-lime-pie.jpg	\N	f
-312	Бун ча	Жареная на углях свинина в тёплом кисло-сладком бульоне, с рисовой вермишелью и травами.	4	30	f	t	f	https://theunitools.com/recipes/bun-cha.jpg	\N	f
-313	Гой куон	Свежие рулетики из рисовой бумаги с креветкой, свининой, лапшой и травами, без обжарки.	4	20	f	t	f	https://theunitools.com/recipes/goi-cuon.jpg	\N	f
-314	Кальбиччим	Говяжьи рёбра, тушённые в соевом соусе с грушей, до состояния, когда мясо сходит с кости.	5	120	f	t	f	https://theunitools.com/recipes/galbijjim.jpg	\N	f
-315	Самгетан	Целый цыплёнок, фаршированный клейким рисом и женьшенем, сваренный в собственном бульоне.	4	75	f	t	f	https://theunitools.com/recipes/samgyetang.jpg	\N	f
-316	Ростбиф с йоркширским пудингом	Говядина, запечённая куском, с воздушным пудингом из жидкого теста на говяжьем жире.	6	90	f	t	t	https://theunitools.com/recipes/roast-beef-yorkshire.jpg	\N	f
-317	Финиковый пудинг с ирисочным соусом	Влажный финиковый кекс, политый горячим соусом из сливок и тёмного сахара.	8	40	f	t	f	https://theunitools.com/recipes/sticky-toffee-pudding.jpg	\N	f
-318	Бигос	Квашеная и свежая капуста, тушённые с несколькими видами мяса и сухофруктами трое суток.	10	240	f	t	f	https://theunitools.com/recipes/bigos.jpg	\N	f
-319	Сырник польский	Плотный творожный пирог на песочной основе, из твёрдого творога, а не из сливочного сыра.	12	70	f	f	t	https://theunitools.com/recipes/sernik.jpg	\N	f
-320	Мокека баиана	Рыба, тушённая в кокосовом молоке с пальмовым маслом денде, в глиняном горшке.	5	35	f	t	f	https://theunitools.com/recipes/moqueca-baiana.jpg	\N	f
-321	Кошинья	Обжаренные во фритюре капельки из заварного теста с куриной начинкой, в форме куриной ножки.	8	40	f	t	f	https://theunitools.com/recipes/coxinha.jpg	\N	f
-322	Ахи де гальина	Курица волокнами в кремовом соусе из жёлтого перца ахи амарильо, орехов и хлеба.	5	50	f	t	f	https://theunitools.com/recipes/aji-de-gallina.jpg	\N	f
-323	Кауса лименья	Слои жёлтого картофельного пюре с лаймом и перцем ахи, с начинкой из курицы или тунца.	6	30	f	t	f	https://theunitools.com/recipes/causa-limena.jpg	\N	f
-324	Фесенджан	Утка или курица в густом соусе из молотых грецких орехов и гранатовой патоки.	6	150	f	t	f	https://theunitools.com/recipes/fesenjan.jpg	\N	f
-326	Калду верде	Картофельный крем-суп с тонко нашинкованной капустой и ломтиками копчёной колбасы шоурису.	5	35	f	t	f	https://theunitools.com/recipes/caldo-verde.jpg	\N	f
-327	Сардины на углях	Целые сардины, посоленные крупной солью и зажаренные на углях, на ломте хлеба.	4	15	f	t	t	https://theunitools.com/recipes/sardinhas-assadas.jpg	\N	f
-328	Сатэ аям	Куриные шпажки на углях с густым арахисовым соусом и сладким соевым кечапом манисом.	5	25	f	t	f	https://theunitools.com/recipes/sate-ayam.jpg	\N	f
-309	Шварцвальдский торт	Шоколадный бисквит, пропитанный вишнёвым киршем, со взбитыми сливками и вишней.	12	35	f	f	f	https://theunitools.com/recipes/schwarzwaelder-kirschtorte.jpg	\N	t
-332	Чахохбили	Курица, тушённая без воды в собственном соку с помидорами и горой свежей зелени.	5	50	f	t	f	https://theunitools.com/recipes/chakhokhbili.jpg	\N	f
-333	Сациви	Индейка или курица в холодном ореховом соусе с чесноком и специями. Новогодний стол Грузии.	8	90	f	t	t	https://theunitools.com/recipes/satsivi.jpg	\N	f
-336	Фатте с нутом	Слои жареной питы, горячего нута и чесночного йогурта с топлёным маслом и кедровыми орехами.	5	90	f	t	f	https://theunitools.com/recipes/fattet-hummus.jpg	\N	f
-338	Пастилья	Слоёный пирог с голубем или курицей, миндалём и корицей, посыпанный сахарной пудрой.	8	90	f	t	f	https://theunitools.com/recipes/pastilla.jpg	\N	f
-339	Марокканский чебакия	Печенье в форме цветка, обжаренное во фритюре и вымоченное в мёде с кунжутом.	10	60	f	t	f	https://theunitools.com/recipes/chebakia.jpg	\N	f
-340	Молохия	Суп из листьев джута, тягучий по текстуре, с чесночной зажаркой и кориандром.	5	70	f	t	f	https://theunitools.com/recipes/molokhia.jpg	\N	f
-342	Асадо	Говядина на решётке над дровяными углями, часами, с одной только крупной солью.	8	210	f	t	f	https://theunitools.com/recipes/asado-argentino.jpg	\N	f
-344	Тафельшпиц	Говяжий огузок, сваренный в прозрачном бульоне, с яблочным хреном и жареным картофелем.	6	180	f	t	f	https://theunitools.com/recipes/tafelspitz.jpg	\N	f
-346	Халасле	Огненно-красная рыбацкая уха на паприке, из речной рыбы, сваренная в котелке.	6	75	f	t	f	https://theunitools.com/recipes/halaszle.jpg	\N	f
-348	Вепрево колено с кнедликами	Тушёная свинина с хлебными кнедликами и кислой капустой. Неофициальное национальное блюдо Чехии.	6	120	f	t	f	https://theunitools.com/recipes/vepro-knedlo-zelo.jpg	\N	f
-349	Кулайда	Сливочный грибной суп с укропом, картофелем и яйцом-пашот, подкислённый уксусом.	5	35	f	t	f	https://theunitools.com/recipes/kulajda.jpg	\N	f
-351	Шведский яблочный пирог	Яблочный пирог с корицей под хрустящей масляной крошкой, к ванильному соусу.	8	45	f	t	f	https://theunitools.com/recipes/appelkaka.jpg	\N	f
-352	Стегт флеск	Ломти свиной грудинки, жаренные до хруста, с картофелем и петрушечным соусом.	4	45	f	t	f	https://theunitools.com/recipes/stegt-flaesk.jpg	\N	f
-353	Рисаламанде	Холодный рисовый пудинг со взбитыми сливками и миндалём, под горячим вишнёвым соусом.	8	60	f	t	f	https://theunitools.com/recipes/risalamande.jpg	\N	f
-354	Эртенсуп	Густой гороховый суп с копчёной колбасой, такой плотный, что ложка в нём стоит.	6	150	f	t	f	https://theunitools.com/recipes/erwtensoep.jpg	\N	f
-355	Биттербаллен	Шарики из густого мясного рагу в панировке, жаренные во фритюре, с горчицей.	8	40	f	t	f	https://theunitools.com/recipes/bitterballen.jpg	\N	f
-356	Колканнон	Картофельное пюре с капустой и зелёным луком, с озером растопленного масла в центре.	6	35	f	t	f	https://theunitools.com/recipes/colcannon.jpg	\N	f
-337	Сфиха	Открытые лепёшки с бараньим фаршем, помидором и гранатовым соусом, из Баальбека.	6	25	f	f	f	https://theunitools.com/recipes/sfiha.jpg	\N	t
-343	Альфахорес	Два рассыпчатых коржика из кукурузного крахмала, склеенных дульсе де лече, в кокосе.	10	15	f	f	f	https://theunitools.com/recipes/alfajores.jpg	\N	t
-347	Торт Добош	Пять тонких бисквитных коржей с шоколадным кремом под карамельной крышкой.	12	45	f	f	f	https://theunitools.com/recipes/dobos-torta.jpg	\N	t
-362	Наси лемак	Рис на кокосовом молоке с пандановым листом, к нему самбал, анчоусы, яйцо и арахис.	5	50	f	t	f	https://theunitools.com/recipes/nasi-lemak.jpg	\N	f
-363	Чар квай теу	Широкая рисовая лапша, обжаренная на очень сильном огне с креветками, яйцом и ростками.	2	10	f	t	f	https://theunitools.com/recipes/char-kway-teow.jpg	\N	f
-364	Каре-каре	Говяжий хвост в густом арахисовом соусе с овощами, к креветочной пасте багоонг.	6	210	f	t	f	https://theunitools.com/recipes/kare-kare.jpg	\N	f
-366	Ынджера	Кислая пористая лепёшка из теффа на трёхдневной закваске, служащая и хлебом, и тарелкой.	8	40	f	t	f	https://theunitools.com/recipes/injera.jpg	\N	f
-367	Кытфо	Рубленая сырая говядина, вымешанная с пряным маслом нитер киббе и смесью мытмыта.	4	30	f	t	f	https://theunitools.com/recipes/kitfo.jpg	\N	f
-369	Паф-паф	Дрожжевые шарики из жидкого теста, обжаренные во фритюре, снаружи хрустящие, внутри воздушные.	8	30	f	t	f	https://theunitools.com/recipes/puff-puff.jpg	\N	f
-370	Аррос кон польо	Курица с рисом на пиве и шафране, с горошком, перцем и оливками.	6	60	f	t	f	https://theunitools.com/recipes/arroz-con-pollo-cubano.jpg	\N	f
-371	Тостонес	Зелёный подорожник, обжаренный дважды с расплющиванием между заходами, с чесночным соусом.	4	25	f	t	f	https://theunitools.com/recipes/tostones.jpg	\N	f
-373	Райс энд пис	Рис, сваренный с красной фасолью в кокосовом молоке, с тимьяном и целым скотч-боннетом.	6	95	f	t	f	https://theunitools.com/recipes/rice-and-peas.jpg	\N	f
-375	Поронкяристюс	Строганина из оленины, обжаренная в масле и потушенная в пиве, с пюре и брусникой.	4	45	f	t	f	https://theunitools.com/recipes/poronkaristys.jpg	\N	f
-376	Чёттакакер	Крупные мясные котлеты в коричневом соусе, с брусникой и тушёным горошком.	5	45	f	t	f	https://theunitools.com/recipes/kjottkaker.jpg	\N	f
-377	Школьная булочка	Сдобная булочка с кардамоном, заварным кремом в центре, глазурью и кокосовой стружкой.	12	20	f	t	t	https://theunitools.com/recipes/skolebrod.jpg	\N	f
-378	Ватерзой	Гентское рагу из курицы или рыбы в сливочном бульоне с соломкой корнеплодов.	5	60	f	t	f	https://theunitools.com/recipes/waterzooi.jpg	\N	f
-379	Льежские вафли	Плотные дрожжевые вафли из густого теста с жемчужным сахаром, карамелизующимся снаружи.	10	25	f	f	t	https://theunitools.com/recipes/belgian-waffles.jpg	\N	f
-383	Фритуле	Маленькие пончики с изюмом, цитрусовой цедрой и ракией, обжаренные во фритюре.	8	25	f	t	f	https://theunitools.com/recipes/fritule.jpg	\N	f
-384	Сарма	Голубцы из квашеных капустных листьев со свининой и рисом, тушённые с копчёностями.	8	150	f	t	f	https://theunitools.com/recipes/sarma-serbian.jpg	\N	f
-386	Чорба де бурта	Кислый суп из говяжьего рубца в сливочно-чесночном бульоне, загущённый желтками.	6	240	f	t	f	https://theunitools.com/recipes/ciorba-de-burta.jpg	\N	f
-387	Папанаши	Творожные пончики в форме бублика с шариком сверху, со сметаной и вареньем.	6	25	f	t	f	https://theunitools.com/recipes/papanasi.jpg	\N	f
-390	Хопперы	Тонкие чашеобразные блины из сброженного рисового теста с кокосовым молоком, часто с яйцом.	6	40	f	t	f	https://theunitools.com/recipes/hoppers.jpg	\N	f
-392	Сель роти	Кольцо из сброженного рисового теста, обжаренное во фритюре, хрустящее снаружи и мягкое внутри.	8	40	f	t	f	https://theunitools.com/recipes/sel-roti.jpg	\N	f
-365	Лече флан	Плотный карамельный флан на одних желтках, приготовленный на пару в металлической форме.	8	45	f	f	f	https://theunitools.com/recipes/leche-flan.jpg	\N	t
-388	Таратор	Холодный суп из йогурта с огурцом, чесноком, укропом и грецкими орехами.	4	51	f	f	f	https://theunitools.com/recipes/tarator.jpg	\N	t
-394	Халим	Мясо, пшеница и бобовые, вываренные и взбитые в однородную густую массу за шесть часов.	10	360	f	t	f	https://theunitools.com/recipes/haleem.jpg	\N	f
-395	Сикх-кебаб	Фарш с луком и специями, налепленный на шампур и зажаренный на углях.	5	20	f	t	f	https://theunitools.com/recipes/seekh-kebab.jpg	\N	f
-396	Кенийская чапати	Слоёная мягкая лепёшка из пшеничного теста, свёрнутого спиралью перед раскаткой.	8	30	f	t	f	https://theunitools.com/recipes/chapati-kenyan.jpg	\N	f
-397	Мандази	Треугольные пончики на кокосовом молоке с кардамоном, слегка сладкие, к чаю.	8	25	f	t	f	https://theunitools.com/recipes/mandazi.jpg	\N	f
-398	Банни чау	Половина буханки белого хлеба с вынутым мякишем, наполненная бараньим карри.	4	90	f	t	f	https://theunitools.com/recipes/bunny-chow.jpg	\N	f
-399	Мелктерт	Молочный тарт с корицей: заварная начинка почти без яиц в песочной основе.	10	40	f	t	t	https://theunitools.com/recipes/melktert.jpg	\N	f
-400	Бандеха пайса	Поднос из фасоли, риса, мяса, шкварок, яйца, арепы, авокадо и жареного банана.	4	150	f	t	f	https://theunitools.com/recipes/bandeja-paisa.jpg	\N	f
-401	Колумбийский санкочо	Куриный суп с юккой, подорожником и кукурузой, сваренный на открытом огне.	8	110	f	t	f	https://theunitools.com/recipes/sancocho-colombiano.jpg	\N	f
-402	Куранто в кастрюле	Моллюски, мясо и картофельные лепёшки, сваренные слоями в одной кастрюле без воды.	6	60	f	t	f	https://theunitools.com/recipes/curanto-en-olla.jpg	\N	f
-403	Комплето	Хот-дог с горой размятого авокадо, помидоров и майонеза, цветами повторяющий флаг Италии.	4	10	f	t	t	https://theunitools.com/recipes/completo-italiano.jpg	\N	f
-406	Азербайджанская долма	Виноградные листья с бараниной, рисом и мятой, сваренные под гнётом, к чесночному мацони.	6	60	f	t	f	https://theunitools.com/recipes/dolma-azerbaijani.jpg	\N	f
-408	Иракский бирьяни	Рис с курицей, вермишелью, орехами и изюмом, где все части готовятся отдельно.	6	75	f	t	f	https://theunitools.com/recipes/iraqi-biryani.jpg	\N	f
-412	Мухаммара	Паста из печёного красного перца, грецких орехов и гранатового соуса, из Алеппо.	6	25	f	t	f	https://theunitools.com/recipes/muhammara.jpg	\N	f
-413	Шиш барак	Мелкие пельмени с бараниной, запечённые и сваренные в йогуртовом соусе с чесноком и мятой.	5	45	f	t	t	https://theunitools.com/recipes/shish-barak.jpg	\N	f
-414	Печенье АНЗАК	Овсяное печенье на золотом сиропе и соде, без яиц, хранящееся неделями.	20	18	f	t	t	https://theunitools.com/recipes/anzac-biscuits.jpg	\N	f
-420	Скир с ягодами	Домашний скир — исландский кисломолочный продукт, отцеженный до плотности, с черникой.	6	20	f	t	f	https://theunitools.com/recipes/skyr-with-berries.jpg	\N	f
-421	Исландский чёрный хлеб	Сладковатый ржаной хлеб, запечённый в закрытой форме двенадцать часов при низкой температуре.	12	720	f	f	t	https://theunitools.com/recipes/rugbraud.jpg	\N	f
-422	Катонг лакса	Рисовая лапша в кокосовом бульоне с креветками, нарезанная коротко и подаваемая с ложкой.	4	60	f	t	f	https://theunitools.com/recipes/laksa-singapore.jpg	\N	f
-407	Бакинская пахлава	Ромбы из восьми слоёв теста с ореховой начинкой, под шафранным сиропом.	16	45	f	f	f	https://theunitools.com/recipes/pakhlava-baku.jpg	\N	t
-418	Масляные тарталетки	Песочные корзиночки с начинкой из масла, сахара и сиропа, текучей или схватившейся.	12	22	f	f	f	https://theunitools.com/recipes/butter-tarts.jpg	\N	t
-423	Тост с кайей	Подсушенный хлеб с кокосово-яичным джемом кайя и холодным маслом, к яйцам всмятку.	4	50	f	t	f	https://theunitools.com/recipes/kaya-toast.jpg	\N	f
-424	Гуа бао	Паровая булочка, сложенная пополам, с тушёной грудинкой, маринованной зеленью и арахисом.	8	100	f	t	f	https://theunitools.com/recipes/gua-bao.jpg	\N	f
-425	Тайваньское ананасовое печенье	Квадратики песочного теста с плотной начинкой из уваренного ананаса и зимней дыни.	16	90	f	t	f	https://theunitools.com/recipes/pineapple-cake.jpg	\N	f
-426	Шанская лапша	Рисовая лапша с томатно-куриным соусом, маринованной зеленью и молотым арахисом.	4	45	f	t	f	https://theunitools.com/recipes/shan-noodles.jpg	\N	f
-427	Он но кхао свэ	Пшеничная лапша в густом кокосовом бульоне с курицей и нутовой мукой.	5	50	f	t	f	https://theunitools.com/recipes/ohn-no-khao-swe.jpg	\N	f
-428	Ном банчок	Холодная рисовая лапша с рыбно-кокосовым карри и горой сырых овощей и трав.	5	40	f	t	f	https://theunitools.com/recipes/num-banh-chok.jpg	\N	f
-429	Самло корко	Густой овощной суп с молотым обжаренным рисом, свининой и прахоком, из десятка овощей.	6	50	f	t	f	https://theunitools.com/recipes/samlor-korko.jpg	\N	f
-430	Торта фрита	Плоские лепёшки на топлёном жире, обжаренные во фритюре, которые в Уругвае пекут в дождь.	8	25	f	t	f	https://theunitools.com/recipes/torta-frita.jpg	\N	f
-431	Бусека	Густой суп из рубца с белой фасолью, чорисо и овощами, уругвайская зимняя еда.	6	210	f	t	f	https://theunitools.com/recipes/buseca.jpg	\N	f
-432	Как-ик	Красный суп из индейки с обожжёнными перцами и специями, блюдо майя кекчи.	6	120	f	t	f	https://theunitools.com/recipes/kak-ik.jpg	\N	f
-433	Рельенитос	Шарики из пюре спелого подорожника с начинкой из чёрной фасоли и шоколада.	6	45	f	t	f	https://theunitools.com/recipes/rellenitos.jpg	\N	f
-435	Сладкая фасоль	Сладкий десертный крем из красной фасоли с кокосовым молоком, бататом и печеньем.	8	90	f	t	f	https://theunitools.com/recipes/habichuelas-con-dulce.jpg	\N	f
-436	Тринидадская роти	Слоёная лепёшка, разбитая в лохмотья прямо на сковороде, к карри из курицы или козлятины.	6	40	f	t	f	https://theunitools.com/recipes/trinidad-roti.jpg	\N	f
-437	Пелау	Рис с курицей, голубиным горохом и кокосовым молоком, обжаренный в пережжённом сахаре.	6	60	f	t	f	https://theunitools.com/recipes/pelau.jpg	\N	f
-438	Айяка	Кукурузное тесто с мясным гисо, оливками и изюмом, завёрнутое в банановый лист.	10	90	f	t	f	https://theunitools.com/recipes/hallaca.jpg	\N	f
-439	Асадо негро	Говядина, обжаренная в пережжённом сахаре до чёрного и тушённая четыре часа.	8	260	f	t	f	https://theunitools.com/recipes/asado-negro.jpg	\N	f
-440	Пике мачо	Гора жареного картофеля с кусками говядины, сосисками, яйцом и острым перцем локото.	4	40	f	t	f	https://theunitools.com/recipes/pique-macho.jpg	\N	f
-442	Эквадорский севиче	Креветки в томатно-лаймовом бульоне, поданные холодными с попкорном и чипсами из подорожника.	5	20	f	t	f	https://theunitools.com/recipes/ceviche-ecuatoriano.jpg	\N	f
-444	Кариманьола	Продолговатые крокеты из юкки с мясной начинкой, обжаренные во фритюре.	6	45	f	t	f	https://theunitools.com/recipes/carimanola.jpg	\N	f
-445	Рис с кокосом	Рис на кокосовом молоке с карамелизованными шкварками кокоса, тёмный и слегка сладкий.	6	45	f	t	f	https://theunitools.com/recipes/arroz-con-coco.jpg	\N	f
-446	Кугелис	Картофельная запеканка из тёртого сырого картофеля с беконом и луком, со сметаной.	8	95	f	t	t	https://theunitools.com/recipes/kugelis.jpg	\N	f
-447	Шакотис	Ветвистый торт, испечённый слой за слоем на вращающемся вертеле над огнём.	16	90	f	f	t	https://theunitools.com/recipes/sakotis.jpg	\N	f
-448	Складраусис	Ржаная корзиночка с двумя слоями пюре — картофельным и морковным, с корицей.	10	30	f	t	f	https://theunitools.com/recipes/sklandrausis.jpg	\N	f
-450	Веривёрст	Кровяная колбаса с перловкой и майораном, запечённая с брусничным вареньем.	8	60	f	t	t	https://theunitools.com/recipes/verivorst.jpg	\N	f
-451	Кохуке	Творожный батончик в шоколадной глазури, эстонский десерт из холодильника.	12	10	f	f	f	https://theunitools.com/recipes/kohuke.jpg	\N	t
-456	Штрукли	Рулет из тонкого теста с творожной начинкой, сваренный в ткани и нарезанный кружками.	8	45	f	t	f	https://theunitools.com/recipes/struklji.jpg	\N	f
-458	Бегова чорба	Густой куриный суп с бамией, загущённый желтками со сметаной, боснийская классика.	6	75	f	t	f	https://theunitools.com/recipes/begova-corba.jpg	\N	f
-460	Охридская форель	Форель, запечённая целиком с лимоном и травами, из Охридского озера.	4	30	f	f	t	https://theunitools.com/recipes/ohridska-pastrmka.jpg	\N	f
-462	Олья де карне	Костариканский мясной котёл с юккой, тыквой, кукурузой и бананом плантайн.	6	180	f	t	f	https://theunitools.com/recipes/olla-de-carne.jpg	\N	f
-463	Чорреадас	Оладьи из перемолотой свежей кукурузы, поданные со сметаной натилья.	4	20	f	t	f	https://theunitools.com/recipes/chorreadas.jpg	\N	f
-466	Вигорон	Варёная юкка со шкварками и капустным салатом, поданная на банановом листе.	5	90	f	t	f	https://theunitools.com/recipes/vigoron.jpg	\N	f
-467	Индио вьехо	Густое рагу из разобранной говядины, загущённое кукурузной масой и мятой.	5	120	f	t	f	https://theunitools.com/recipes/indio-viejo.jpg	\N	f
-468	Вори вори	Куриный суп с шариками из кукурузной муки и сыра, парагвайская зимняя еда.	6	70	f	t	f	https://theunitools.com/recipes/vori-vori.jpg	\N	f
-469	Мбеху	Крахмальная лепёшка с сыром, схваченная на сухой сковороде без единой капли воды.	6	25	f	t	f	https://theunitools.com/recipes/mbeju.jpg	\N	f
-470	Мусахан	Курица с луком и сумахом на лепёшке таббун, пропитанной оливковым маслом.	6	90	f	t	t	https://theunitools.com/recipes/musakhan.jpg	\N	f
-472	Оманская халва	Тягучая халва из крахмала, розовой воды и шафрана, вымешанная два часа в котле.	16	130	f	t	f	https://theunitools.com/recipes/omani-halwa.jpg	\N	f
-474	Зурбиан	Йеменский рис с бараниной и картофелем, окрашенный шафраном и запечённый под крышкой.	6	110	f	t	t	https://theunitools.com/recipes/zurbian.jpg	\N	f
-475	Фахса	Кипящее рагу из баранины в каменной миске, поданное с пенистым соусом хульба.	5	120	f	t	f	https://theunitools.com/recipes/fahsa.jpg	\N	f
-478	Решта	Алжирская домашняя лапша, пропаренная над бульоном и залитая белым соусом с курицей.	6	80	f	t	f	https://theunitools.com/recipes/rechta.jpg	\N	f
-479	Макруд	Ромбы из манной крупы с финиковой начинкой, обжаренные и вымоченные в мёде.	14	35	f	t	f	https://theunitools.com/recipes/makroud.jpg	\N	f
-480	Гураса	Толстая суданская лепёшка на сковороде, поданная с мясным рагу или соусом.	6	30	f	t	f	https://theunitools.com/recipes/gurasa.jpg	\N	f
-483	Витумбуа	Рисовые оладьи на кокосовом молоке, выпеченные в сковороде с полусферическими лунками.	8	30	f	t	f	https://theunitools.com/recipes/vitumbua.jpg	\N	f
-484	Эру	Камерунское рагу из мелко нарезанной листовой зелени с водяным листом и пальмовым маслом.	6	70	f	t	f	https://theunitools.com/recipes/eru.jpg	\N	f
-455	Бухты	Дрожжевые булочки с повидлом или творогом, испечённые вплотную и слипшиеся боками.	12	35	f	f	f	https://theunitools.com/recipes/sladke-buchty.jpg	\N	t
-457	Краньская колбаса	Варёная свиная колбаса с чесноком, поданная с хреном и горчицей, защищённая по происхождению.	6	30	f	f	f	https://theunitools.com/recipes/kranjska-klobasa.jpg	\N	t
-461	Пастрмалия	Лодочка из дрожжевого теста с солёной свининой и яйцом, из Штипа.	4	25	f	f	f	https://theunitools.com/recipes/pastrmajlija.jpg	\N	t
-486	Клефтико	Баранина, запечённая пять часов в закрытой глиняной посуде без единой капли воды.	6	300	f	f	t	https://theunitools.com/recipes/kleftiko.jpg	\N	f
-489	Имарет	Мальтийские ромбы из теста с финиковой начинкой на анисе, обжаренные во фритюре.	12	40	f	t	f	https://theunitools.com/recipes/imqaret.jpg	\N	f
-490	Фергесе	Албанская запеканка из перца, помидоров и творожного сыра, поданная в глиняной сковороде.	4	35	f	t	t	https://theunitools.com/recipes/fergese.jpg	\N	f
-491	Баллокуме	Кукурузное печенье из Эльбасана, взбитое вручную в деревянной посуде на весенний праздник.	14	25	f	f	t	https://theunitools.com/recipes/ballokume.jpg	\N	f
-493	Мученичи	Дрожжевые восьмёрки, смазанные мёдом и посыпанные орехами, на день Сорока мучеников.	12	25	f	f	t	https://theunitools.com/recipes/mucenici.jpg	\N	f
-494	Куурдак	Баранина, жаренная в собственном курдючном жире с луком и картофелем.	5	55	f	t	f	https://theunitools.com/recipes/kuurdak.jpg	\N	f
-498	Хуушуур	Монгольские жареные чебуреки с бараниной, плоские и хрустящие, к Наадаму.	6	35	f	t	f	https://theunitools.com/recipes/khuushuur.jpg	\N	f
-499	Сутэй цай	Монгольский солёный чай с молоком и маслом, который варят, а не заваривают.	6	25	f	t	f	https://theunitools.com/recipes/suutei-tsai.jpg	\N	f
-501	Болани	Афганская лепёшка с картофельной или луковой начинкой, обжаренная на сухой сковороде.	6	30	f	t	f	https://theunitools.com/recipes/bolani.jpg	\N	f
-361	Гата	Слоёная сдоба с сухой сладкой начинкой хориз из муки, масла и сахара.	10	40	f	f	f	https://theunitools.com/recipes/gata.jpg	\N	t
-128	Шопский салат	Помидоры, огурцы и перец под шапкой тёртой брынзы. Овощи режут крупно, брынзу натирают мелко.	4	10	f	f	f	https://theunitools.com/recipes/shopska-salata.jpg	\N	t
-195	Боснийский бурек	Спираль из тончайшего вытянутого теста с мясной начинкой. В Боснии буреком называют только мясной.	6	45	f	f	f	https://theunitools.com/recipes/burek-bosanski.jpg	\N	t
-198	Ламингтоны	Кубики бисквита, обмакнутые в шоколадную глазурь и обвалянные в кокосовой стружке.	12	30	f	f	f	https://theunitools.com/recipes/lamingtons.jpg	\N	t
-121	Пол самбол	Кокосовая стружка, растёртая с чили, луком и лаймом. Готовится за пять минут и подаётся ко всему.	6	15	f	f	f	https://theunitools.com/recipes/pol-sambol.jpg	\N	t
-29	Севиче	Сырая рыба в соке лайма с луком и перцем ахи. Маринуется минуты, а не часы — иначе получается варёная.	4	22	f	f	f	https://theunitools.com/recipes/ceviche.jpg	\N	t
-14	Хориатики	Деревенский салат без листьев: помидоры, огурец, лук, оливки и целый кусок феты сверху.	4	10	f	f	f	https://theunitools.com/recipes/horiatiki-salata.jpg	\N	t
-497	Чакка	Откинутый кисломолочный сыр с зеленью и чесноком, таджикская закуска к лепёшке.	6	52	f	f	f	https://theunitools.com/recipes/chakka.jpg	\N	t
-8	Гуакамоле	Авокадо, лайм, лук и чили, размятые вилкой. Ни блендера, ни сметаны — от них получается соус, а не гуакамоле.	4	14	f	f	f	https://theunitools.com/recipes/guacamole.jpg	\N	t
-65	Чимичурри	Соус из петрушки, орегано, чеснока и уксуса. Не блендер, а нож: текстура здесь важнее гладкости.	8	20	f	f	f	https://theunitools.com/recipes/chimichurri.jpg	\N	t
-17	Песто алла дженовезе	Базилик, растёртый с чесноком и кедровыми орехами. Ни нагрева, ни блендера — только ступка и холод.	4	20	f	f	f	https://theunitools.com/recipes/pesto-alla-genovese.jpg	\N	t
-\.
-
-
---
 -- Data for Name: user_allergens; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -10972,14 +10260,6 @@ COPY public.user_pantry (user_id, ingredient_id, qty_g) FROM stdin;
 
 
 --
--- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.users (id, login, password_hash, pevzner_diet_id, pevzner_kind, created_at) FROM stdin;
-\.
-
-
---
 -- Name: allergens_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
@@ -10990,7 +10270,7 @@ SELECT pg_catalog.setval('public.allergens_id_seq', 14, true);
 -- Name: categories_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.categories_id_seq', 12, true);
+SELECT pg_catalog.setval('public.categories_id_seq', 13, true);
 
 
 --
@@ -11029,502 +10309,8 @@ SELECT pg_catalog.setval('public.users_id_seq', 2, true);
 
 
 --
--- Name: allergens allergens_code_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.allergens
-    ADD CONSTRAINT allergens_code_key UNIQUE (code);
-
-
---
--- Name: allergens allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.allergens
-    ADD CONSTRAINT allergens_pkey PRIMARY KEY (id);
-
-
---
--- Name: categories categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.categories
-    ADD CONSTRAINT categories_pkey PRIMARY KEY (id);
-
-
---
--- Name: cooking_methods cooking_methods_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.cooking_methods
-    ADD CONSTRAINT cooking_methods_pkey PRIMARY KEY (id);
-
-
---
--- Name: diet_excluded_allergens diet_excluded_allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.diet_excluded_allergens
-    ADD CONSTRAINT diet_excluded_allergens_pkey PRIMARY KEY (diet_id, allergen_id);
-
-
---
--- Name: diet_excluded_categories diet_excluded_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.diet_excluded_categories
-    ADD CONSTRAINT diet_excluded_categories_pkey PRIMARY KEY (diet_id, category_id);
-
-
---
--- Name: diet_excluded_methods diet_excluded_methods_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.diet_excluded_methods
-    ADD CONSTRAINT diet_excluded_methods_pkey PRIMARY KEY (diet_id, method_id);
-
-
---
--- Name: diets diets_id_kind_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.diets
-    ADD CONSTRAINT diets_id_kind_key UNIQUE (id, kind);
-
-
---
--- Name: diets diets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.diets
-    ADD CONSTRAINT diets_pkey PRIMARY KEY (id);
-
-
---
--- Name: favorite_ingredients favorite_ingredients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.favorite_ingredients
-    ADD CONSTRAINT favorite_ingredients_pkey PRIMARY KEY (user_id, ingredient_id);
-
-
---
--- Name: favorite_recipes favorite_recipes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.favorite_recipes
-    ADD CONSTRAINT favorite_recipes_pkey PRIMARY KEY (user_id, recipe_id);
-
-
---
--- Name: ingredient_aliases ingredient_aliases_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ingredient_aliases
-    ADD CONSTRAINT ingredient_aliases_pkey PRIMARY KEY (ingredient_id, alias);
-
-
---
--- Name: ingredient_allergens ingredient_allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ingredient_allergens
-    ADD CONSTRAINT ingredient_allergens_pkey PRIMARY KEY (ingredient_id, allergen_id);
-
-
---
--- Name: ingredient_categories ingredient_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ingredient_categories
-    ADD CONSTRAINT ingredient_categories_pkey PRIMARY KEY (ingredient_id, category_id);
-
-
---
--- Name: ingredients ingredients_code_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ingredients
-    ADD CONSTRAINT ingredients_code_key UNIQUE (code);
-
-
---
--- Name: ingredients ingredients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ingredients
-    ADD CONSTRAINT ingredients_pkey PRIMARY KEY (id);
-
-
---
--- Name: recipe_cooking_methods recipe_cooking_methods_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.recipe_cooking_methods
-    ADD CONSTRAINT recipe_cooking_methods_pkey PRIMARY KEY (recipe_id, method_id);
-
-
---
--- Name: recipe_ingredients recipe_ingredients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.recipe_ingredients
-    ADD CONSTRAINT recipe_ingredients_pkey PRIMARY KEY (recipe_id, ingredient_id);
-
-
---
--- Name: recipe_steps recipe_steps_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.recipe_steps
-    ADD CONSTRAINT recipe_steps_pkey PRIMARY KEY (recipe_id, step_no);
-
-
---
--- Name: recipes recipes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.recipes
-    ADD CONSTRAINT recipes_pkey PRIMARY KEY (id);
-
-
---
--- Name: user_allergens user_allergens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.user_allergens
-    ADD CONSTRAINT user_allergens_pkey PRIMARY KEY (user_id, allergen_id);
-
-
---
--- Name: user_diets user_diets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.user_diets
-    ADD CONSTRAINT user_diets_pkey PRIMARY KEY (user_id, diet_id);
-
-
---
--- Name: user_pantry user_pantry_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.user_pantry
-    ADD CONSTRAINT user_pantry_pkey PRIMARY KEY (user_id, ingredient_id);
-
-
---
--- Name: users users_login_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.users
-    ADD CONSTRAINT users_login_key UNIQUE (login);
-
-
---
--- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.users
-    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
-
-
---
--- Name: allergens_name_uq; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX allergens_name_uq ON public.allergens USING btree (lower(name));
-
-
---
--- Name: categories_name_uq; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX categories_name_uq ON public.categories USING btree (lower(name));
-
-
---
--- Name: cooking_methods_name_uq; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX cooking_methods_name_uq ON public.cooking_methods USING btree (lower(name));
-
-
---
--- Name: diets_name_uq; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX diets_name_uq ON public.diets USING btree (lower(name));
-
-
---
--- Name: ingredient_aliases_uq; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX ingredient_aliases_uq ON public.ingredient_aliases USING btree (ingredient_id, lower(alias));
-
-
---
--- Name: ingredients_name_uq; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX ingredients_name_uq ON public.ingredients USING btree (lower(name));
-
-
---
--- Name: recipe_ingredients_ingr_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX recipe_ingredients_ingr_idx ON public.recipe_ingredients USING btree (ingredient_id);
-
-
---
--- Name: recipes_author_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX recipes_author_idx ON public.recipes USING btree (author_id);
-
-
---
--- Name: recipes_time_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX recipes_time_idx ON public.recipes USING btree (cook_time_min);
-
-
---
--- Name: favorite_recipes favorite_recipes_access; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER favorite_recipes_access BEFORE INSERT OR UPDATE ON public.favorite_recipes FOR EACH ROW EXECUTE FUNCTION public.check_favorite_recipe_access();
-
-
---
--- Name: diet_excluded_allergens diet_excluded_allergens_allergen_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.diet_excluded_allergens
-    ADD CONSTRAINT diet_excluded_allergens_allergen_id_fkey FOREIGN KEY (allergen_id) REFERENCES public.allergens(id) ON DELETE CASCADE;
-
-
---
--- Name: diet_excluded_allergens diet_excluded_allergens_diet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.diet_excluded_allergens
-    ADD CONSTRAINT diet_excluded_allergens_diet_id_fkey FOREIGN KEY (diet_id) REFERENCES public.diets(id) ON DELETE CASCADE;
-
-
---
--- Name: diet_excluded_categories diet_excluded_categories_category_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.diet_excluded_categories
-    ADD CONSTRAINT diet_excluded_categories_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.categories(id) ON DELETE CASCADE;
-
-
---
--- Name: diet_excluded_categories diet_excluded_categories_diet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.diet_excluded_categories
-    ADD CONSTRAINT diet_excluded_categories_diet_id_fkey FOREIGN KEY (diet_id) REFERENCES public.diets(id) ON DELETE CASCADE;
-
-
---
--- Name: diet_excluded_methods diet_excluded_methods_diet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.diet_excluded_methods
-    ADD CONSTRAINT diet_excluded_methods_diet_id_fkey FOREIGN KEY (diet_id) REFERENCES public.diets(id) ON DELETE CASCADE;
-
-
---
--- Name: diet_excluded_methods diet_excluded_methods_method_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.diet_excluded_methods
-    ADD CONSTRAINT diet_excluded_methods_method_id_fkey FOREIGN KEY (method_id) REFERENCES public.cooking_methods(id) ON DELETE CASCADE;
-
-
---
--- Name: favorite_ingredients favorite_ingredients_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.favorite_ingredients
-    ADD CONSTRAINT favorite_ingredients_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(id) ON DELETE CASCADE;
-
-
---
--- Name: favorite_ingredients favorite_ingredients_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.favorite_ingredients
-    ADD CONSTRAINT favorite_ingredients_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-
---
--- Name: favorite_recipes favorite_recipes_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.favorite_recipes
-    ADD CONSTRAINT favorite_recipes_recipe_id_fkey FOREIGN KEY (recipe_id) REFERENCES public.recipes(id) ON DELETE CASCADE;
-
-
---
--- Name: favorite_recipes favorite_recipes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.favorite_recipes
-    ADD CONSTRAINT favorite_recipes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-
---
--- Name: ingredient_aliases ingredient_aliases_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ingredient_aliases
-    ADD CONSTRAINT ingredient_aliases_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(id) ON DELETE CASCADE;
-
-
---
--- Name: ingredient_allergens ingredient_allergens_allergen_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ingredient_allergens
-    ADD CONSTRAINT ingredient_allergens_allergen_id_fkey FOREIGN KEY (allergen_id) REFERENCES public.allergens(id) ON DELETE CASCADE;
-
-
---
--- Name: ingredient_allergens ingredient_allergens_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ingredient_allergens
-    ADD CONSTRAINT ingredient_allergens_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(id) ON DELETE CASCADE;
-
-
---
--- Name: ingredient_categories ingredient_categories_category_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ingredient_categories
-    ADD CONSTRAINT ingredient_categories_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.categories(id) ON DELETE CASCADE;
-
-
---
--- Name: ingredient_categories ingredient_categories_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ingredient_categories
-    ADD CONSTRAINT ingredient_categories_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(id) ON DELETE CASCADE;
-
-
---
--- Name: recipe_cooking_methods recipe_cooking_methods_method_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.recipe_cooking_methods
-    ADD CONSTRAINT recipe_cooking_methods_method_id_fkey FOREIGN KEY (method_id) REFERENCES public.cooking_methods(id) ON DELETE RESTRICT;
-
-
---
--- Name: recipe_cooking_methods recipe_cooking_methods_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.recipe_cooking_methods
-    ADD CONSTRAINT recipe_cooking_methods_recipe_id_fkey FOREIGN KEY (recipe_id) REFERENCES public.recipes(id) ON DELETE CASCADE;
-
-
---
--- Name: recipe_ingredients recipe_ingredients_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.recipe_ingredients
-    ADD CONSTRAINT recipe_ingredients_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(id) ON DELETE RESTRICT;
-
-
---
--- Name: recipe_ingredients recipe_ingredients_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.recipe_ingredients
-    ADD CONSTRAINT recipe_ingredients_recipe_id_fkey FOREIGN KEY (recipe_id) REFERENCES public.recipes(id) ON DELETE CASCADE;
-
-
---
--- Name: recipe_steps recipe_steps_recipe_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.recipe_steps
-    ADD CONSTRAINT recipe_steps_recipe_id_fkey FOREIGN KEY (recipe_id) REFERENCES public.recipes(id) ON DELETE CASCADE;
-
-
---
--- Name: recipes recipes_author_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.recipes
-    ADD CONSTRAINT recipes_author_fk FOREIGN KEY (author_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-
---
--- Name: user_allergens user_allergens_allergen_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.user_allergens
-    ADD CONSTRAINT user_allergens_allergen_id_fkey FOREIGN KEY (allergen_id) REFERENCES public.allergens(id) ON DELETE CASCADE;
-
-
---
--- Name: user_allergens user_allergens_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.user_allergens
-    ADD CONSTRAINT user_allergens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-
---
--- Name: user_diets user_diets_diet_id_diet_kind_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.user_diets
-    ADD CONSTRAINT user_diets_diet_id_diet_kind_fkey FOREIGN KEY (diet_id, diet_kind) REFERENCES public.diets(id, kind) ON DELETE CASCADE;
-
-
---
--- Name: user_diets user_diets_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.user_diets
-    ADD CONSTRAINT user_diets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-
---
--- Name: user_pantry user_pantry_ingredient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.user_pantry
-    ADD CONSTRAINT user_pantry_ingredient_id_fkey FOREIGN KEY (ingredient_id) REFERENCES public.ingredients(id) ON DELETE CASCADE;
-
-
---
--- Name: user_pantry user_pantry_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.user_pantry
-    ADD CONSTRAINT user_pantry_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-
---
--- Name: users users_pevzner_diet_id_pevzner_kind_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.users
-    ADD CONSTRAINT users_pevzner_diet_id_pevzner_kind_fkey FOREIGN KEY (pevzner_diet_id, pevzner_kind) REFERENCES public.diets(id, kind) ON DELETE SET NULL (pevzner_diet_id);
-
-
---
 -- PostgreSQL database dump complete
 --
 
-\unrestrict UwjRjazx47h5f6vkoPHRkXImdTb2rYICAdWUruikjResMRn6XuvbUW8qXJf9mkk
+\unrestrict HmdayGIsThgyTabQcGSf1ClVRTxx9iH7nfsvJIocvYvUSsT8InUSO6cp5k5uX9Z
 
