@@ -37,9 +37,8 @@ interface PreferencesRepository {
 }
 
 interface SessionRepository {
-    val signedIn: Flow<Boolean>
-
-    suspend fun signIn(login: String, password: String)
+    /** Stable across token rotation. Null when there is no verified session. */
+    val sessionKey: Flow<String?>
 
     suspend fun signInWithToken(token: String)
 

@@ -2,7 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Сервер «Почти готово»: каталог и распознавание фото -->
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
@@ -15,9 +14,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Mobile_android"
-        android:usesCleartextTraffic="true"
         tools:ignore="UnusedAttribute">
-        <!-- usesCleartextTraffic: демо-сервер на ноутбуке работает по HTTP без TLS -->
         <provider
             android:name=".feature.receipt.ReceiptFileProvider"
             android:authorities="${applicationId}.receipt"

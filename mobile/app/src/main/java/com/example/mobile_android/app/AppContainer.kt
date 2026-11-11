@@ -2,73 +2,57 @@ package com.example.mobile_android.app
 
 import android.app.Application
 import android.content.Context
-import androidx.room.Room
-import com.example.mobile_android.data.DemoCatalog
-import com.example.mobile_android.data.local.*
-import com.example.mobile_android.data.remote.NetworkCatalogRepository
-import com.example.mobile_android.data.remote.ServerConnection
-import com.example.mobile_android.domain.*
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.first
+import androidx.activity.result.contract.ActivityResultContract
+import com.example.mobile_android.BuildConfig
+import com.example.mobile_android.data.local.DataStoreSessionStore
+import com.example.mobile_android.data.local.householdPreferences
+import com.example.mobile_android.data.remote.ApiClient
+import com.example.mobile_android.data.remote.AuthenticatedApi
+import com.example.mobile_android.data.remote.HttpTransport
+import com.example.mobile_android.data.remote.OkHttpTransport
+import com.example.mobile_android.data.remote.ServerSessionRepository
+import com.example.mobile_android.domain.CatalogRepository
+import com.example.mobile_android.domain.HouseholdRepository
+import com.example.mobile_android.domain.PreferencesRepository
+import com.example.mobile_android.domain.SessionRepository
+import com.example.mobile_android.feature.auth.YandexLogin
+import com.example.mobile_android.feature.auth.YandexLoginResult
 import com.example.mobile_android.feature.receipt.ReceiptImporter
 import com.example.mobile_android.feature.shopping.ShoppingBudgetPlanWriter
-import com.yandex.authsdk.YandexAuthOptions
-import com.yandex.authsdk.YandexAuthSdk
 
 class AlmostReadyApplication : Application() {
     val container: AppContainer by lazy { AppContainer(this) }
 }
 
 interface AppDependencies {
+    val session: SessionRepository
+    val yandexLogin: ActivityResultContract<Unit, YandexLoginResult>
+}
+
+/** Dependencies for hosts that exercise the feature screens with local data. */
+interface LocalFeatureDependencies : AppDependencies {
     val catalog: CatalogRepository
     val household: HouseholdRepository
     val preferences: PreferencesRepository
-    val session: SessionRepository
-
-    /** Сервер «Почти готово»; null — работа только на встроенном демо-каталоге (тесты, превью). */
-    val server: ServerConnection?
-        get() = null
     val receiptImporter: ReceiptImporter? get() = null
     val budgetPlanWriter: ShoppingBudgetPlanWriter? get() = null
-    val yandexAuth: YandexAuthSdk
 }
 
-class AppContainer(context: Context) : AppDependencies {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private val network =
-        NetworkCatalogRepository(scope, context.applicationContext.householdPreferences, DemoCatalog.catalog)
-    override val catalog: CatalogRepository = network
-    override val server: ServerConnection = network
-    private val database =
-        Room.databaseBuilder(
-                context.applicationContext,
-                HouseholdDatabase::class.java,
-                "household.db",
-            )
-            .build()
-    private val roomHousehold = RoomHouseholdRepository(database, catalog, DemoCatalog.initialPantry)
-    override val household: HouseholdRepository = roomHousehold
-    override val receiptImporter: ReceiptImporter = roomHousehold
-    override val budgetPlanWriter: ShoppingBudgetPlanWriter = roomHousehold
-    private val localPreferences = LocalPreferences(context.applicationContext.householdPreferences)
-    override val preferences: PreferencesRepository = localPreferences
-    override val session: SessionRepository = localPreferences
-    override val yandexAuth: YandexAuthSdk =
-        YandexAuthSdk.create(YandexAuthOptions(context.applicationContext))
+class AppContainer internal constructor(
+    context: Context,
+    baseUrl: String,
+    transport: HttpTransport,
+    override val yandexLogin: ActivityResultContract<Unit, YandexLoginResult>,
+) : AppDependencies {
+    constructor(context: Context) :
+        this(context, BuildConfig.API_BASE_URL, OkHttpTransport(), YandexLogin(context))
 
-    init {
-        network.onConnected = { catalog, demoPantry -> seedDemoPantry(catalog, demoPantry) }
-    }
+    private val client = ApiClient(baseUrl, transport, BuildConfig.DEBUG)
+    private val sessions = ServerSessionRepository(
+        client,
+        DataStoreSessionStore(context.applicationContext.householdPreferences, client.serverKey),
+    )
+    override val session: SessionRepository = sessions
 
-    /**
-     * Первое подключение к серверу: если в кладовке нет ни одного продукта из реального каталога,
-     * кладём демо-набор с сервера — по одной упаковке каждого продукта.
-     */
-    private suspend fun seedDemoPantry(catalog: Catalog, demoPantry: List<String>) {
-        val pantry = household.household.first().pantry
-        if (pantry.any { catalog.ingredient(it.ingredientId) != null }) return
-        demoPantry.forEach { id -> catalog.ingredient(id)?.let { household.addPantry(id, it.offer?.quantity) } }
-    }
+    val api: AuthenticatedApi = sessions
 }

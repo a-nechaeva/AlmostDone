@@ -153,7 +153,7 @@ class LocalPersistenceTest {
     }
 
     @Test
-    fun preferencesAreAtomicPersistedAndContainNoPassword() = runBlocking {
+    fun foodPreferencesAreAtomicAndPersistAcrossReopen() = runBlocking {
         val file = File(context.cacheDir, "test-${UUID.randomUUID()}.preferences_pb")
         val firstScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         val secondScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -165,18 +165,13 @@ class LocalPersistenceTest {
                 launch { prefs.update { it.copy(glutenFree = true) } }
                 launch { prefs.update { it.copy(lactoseFree = true) } }
             }
-            prefs.signIn("demo", "demo")
             assertTrue(prefs.preferences.first().glutenFree)
             assertTrue(prefs.preferences.first().lactoseFree)
-            val stored = store.data.first()
-            assertFalse(stored.asMap().keys.any { it.name.contains("password", ignoreCase = true) })
-            assertFalse(stored.asMap().values.any { it == "demo" })
             firstScope.coroutineContext.job.cancelAndJoin()
             val restored =
                 LocalPreferences(
                     PreferenceDataStoreFactory.create(scope = secondScope, produceFile = { file })
                 )
-            assertTrue(restored.signedIn.first())
             assertTrue(restored.preferences.first().glutenFree)
             assertTrue(restored.preferences.first().lactoseFree)
         } finally {

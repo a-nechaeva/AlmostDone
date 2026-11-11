@@ -12,15 +12,13 @@ import kotlinx.coroutines.flow.map
 val Context.householdPreferences by preferencesDataStore(name = "household_preferences")
 
 class LocalPreferences(private val store: DataStore<Preferences>) :
-    PreferencesRepository, SessionRepository {
+    PreferencesRepository {
     private val foodType = stringPreferencesKey("food_type")
     private val allergens = stringSetPreferencesKey("excluded_allergens")
     private val gluten = booleanPreferencesKey("gluten_free")
     private val lactose = booleanPreferencesKey("lactose_free")
     private val diabetes = booleanPreferencesKey("diabetes")
     private val table = stringPreferencesKey("diet_table")
-    private val session = booleanPreferencesKey("demo_signed_in")
-    private val yandexToken = stringPreferencesKey("yandex_oauth_token")
 
     private fun decode(p: Preferences) =
         FoodPreferences(
@@ -34,7 +32,6 @@ class LocalPreferences(private val store: DataStore<Preferences>) :
 
     override val preferences: Flow<FoodPreferences> =
         store.data.map(::decode).distinctUntilChanged()
-    override val signedIn = store.data.map { it[session] ?: false }.distinctUntilChanged()
 
     override suspend fun update(transform: (FoodPreferences) -> FoodPreferences) {
         store.edit { p ->
@@ -45,28 +42,6 @@ class LocalPreferences(private val store: DataStore<Preferences>) :
             p[lactose] = changed.lactoseFree
             p[diabetes] = changed.diabetes
             p[table] = changed.dietTable
-        }
-    }
-
-    override suspend fun signIn(login: String, password: String) {
-        require(login.trim() == "demo" && password == "demo") {
-            "Для демонстрационного входа используйте demo / demo."
-        }
-        store.edit { it[session] = true }
-    }
-
-    override suspend fun signInWithToken(token: String) {
-        require(token.isNotBlank()) { "Яндекс не вернул токен доступа. Попробуйте ещё раз." }
-        store.edit {
-            it[session] = true
-            it[yandexToken] = token
-        }
-    }
-
-    override suspend fun signOut() {
-        store.edit {
-            it[session] = false
-            it.remove(yandexToken)
         }
     }
 }
