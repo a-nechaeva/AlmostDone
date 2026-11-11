@@ -245,7 +245,8 @@ internal fun ShoppingContent(
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        "Демо-цены за докупаемые упаковки, ₽. В магазине могут отличаться.",
+                        if (LocalDemoData.current) "Демо-цены за докупаемые упаковки, ₽. В магазине могут отличаться."
+                        else "Цены за докупаемые упаковки, ₽. В магазине могут отличаться.",
                         style = MaterialTheme.typography.bodySmall,
                     )
                     if (state.quote.totalKopecks == null)

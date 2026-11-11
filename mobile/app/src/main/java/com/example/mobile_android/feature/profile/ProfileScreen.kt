@@ -152,6 +152,8 @@ fun ProfileContent(
     homeScrollState: ScrollState? = null,
 ) {
     val profileAvailable = preferences != null
+    // Профиль на сервере (вход через Яндекс ID) — не «демо», даже если форма доступна.
+    val demoProfile = profileAvailable && LocalDemoData.current
     val baseline = preferences ?: FoodPreferences()
     var page by rememberSaveable { mutableStateOf(ProfilePage.HOME) }
     var draft by rememberSaveable(stateSaver = PreferencesSaver) { mutableStateOf(baseline) }
@@ -271,11 +273,11 @@ fun ProfileContent(
                             }
                             Column {
                                 Text(
-                                    if (profileAvailable) "Демо-профиль" else "Яндекс ID",
+                                    if (!profileAvailable) "Яндекс ID" else if (LocalDemoData.current) "Демо-профиль" else "Мой профиль",
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold,
                                 )
-                                if (profileAvailable) Text(
+                                if (profileAvailable && LocalDemoData.current) Text(
                                     "Логин: demo",
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     style =
@@ -311,7 +313,7 @@ fun ProfileContent(
                         }
                         Spacer(Modifier.height(16.dp))
                         ProfileRow(
-                            if (profileAvailable) "Выйти из демо" else "Выйти",
+                            if (demoProfile) "Выйти из демо" else "Выйти",
                             "Завершить текущую сессию",
                             Icons.AutoMirrored.Filled.KeyboardArrowRight,
                             !busy,
@@ -320,7 +322,8 @@ fun ProfileContent(
                             confirmLogout = true
                         }
                         if (profileAvailable) Text(
-                            "Демонстрационный режим. Настройки хранятся на этом устройстве.",
+                            if (LocalDemoData.current) "Демонстрационный режим. Настройки хранятся на этом устройстве."
+                            else "Настройки сохраняются в аккаунте.",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall,
                         )
@@ -531,12 +534,12 @@ fun ProfileContent(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     Text(
-                        if (profileAvailable) "Выйти из демо?" else "Выйти из аккаунта?",
+                        if (demoProfile) "Выйти из демо?" else "Выйти из аккаунта?",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        if (profileAvailable)
+                        if (demoProfile)
                             "Продукты, покупки и настройки останутся на этом устройстве. Для входа используйте demo / demo."
                         else "Для следующего входа понадобится Яндекс ID.",
                         style = MaterialTheme.typography.bodyMedium,

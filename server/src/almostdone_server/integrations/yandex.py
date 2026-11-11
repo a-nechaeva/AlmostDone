@@ -1,9 +1,10 @@
 """Yandex userinfo verification. Credentials are never accepted as app sessions."""
 import json
 from urllib.error import HTTPError, URLError
-from urllib.request import HTTPRedirectHandler, Request, build_opener
+from urllib.request import HTTPRedirectHandler, HTTPSHandler, Request, build_opener
 
 from ..errors import APIError
+from .tls import default_context
 
 
 class _NoRedirect(HTTPRedirectHandler):
@@ -24,7 +25,7 @@ class YandexProvider:
         request = Request('https://login.yandex.ru/info?format=json',
                           headers={'Authorization': 'OAuth ' + token, 'Accept': 'application/json'})
         try:
-            with build_opener(_NoRedirect()).open(request, timeout=10) as response:
+            with build_opener(_NoRedirect(), HTTPSHandler(context=default_context())).open(request, timeout=10) as response:
                 content = response.read(65537)
                 if len(content) > 65536:
                     raise ValueError('Unexpected userinfo response size')

@@ -66,8 +66,15 @@ fun BrandTopBar(
     )
 }
 
+/**
+ * true — экраны на встроенном демо-каталоге (тесты, сервер недоступен): цены и КБЖУ условные,
+ * на экранах подпись «Демо». С каталогом сервера — false, подписи скрыты.
+ */
+val LocalDemoData = staticCompositionLocalOf { true }
+
 @Composable
 fun DemoNotice() {
+    if (!LocalDemoData.current) return
     Text(
         "Демо · цены и КБЖУ приведены для примера",
         style = MaterialTheme.typography.bodySmall,

@@ -68,4 +68,36 @@ class ApiClientTest {
         }
         assertEquals(1, calls)
     }
+
+    @Test
+    fun getIsRepeatedOnceAfterAStaleConnection() = runTest {
+        var calls = 0
+        val client = ApiClient("https://api.example.test/api/v1/", HttpTransport {
+            if (++calls == 1) throw java.io.IOException("unexpected end of stream")
+            HttpResponse(200, """{"ok":true}""")
+        })
+        assertTrue(client.execute(ApiRequest("me")).json!!.getBoolean("ok"))
+        assertEquals(2, calls)
+    }
+
+    @Test
+    fun mutationsAndTimeoutsAreNotRepeated() = runTest {
+        var calls = 0
+        val broken = ApiClient("https://api.example.test/api/v1/", HttpTransport {
+            calls++
+            throw java.io.IOException("reset")
+        })
+        val post = runCatching { broken.execute(ApiRequest("me", ApiMethod.PATCH, JSONObject())) }
+        assertFalse((post.exceptionOrNull() as ApiNetworkException).timedOut)
+        assertEquals(1, calls)
+
+        calls = 0
+        val slow = ApiClient("https://api.example.test/api/v1/", HttpTransport {
+            calls++
+            throw java.io.InterruptedIOException("timeout")
+        })
+        val get = runCatching { slow.execute(ApiRequest("me")) }
+        assertTrue((get.exceptionOrNull() as ApiNetworkException).timedOut)
+        assertEquals(1, calls)
+    }
 }

@@ -18,8 +18,11 @@ def install_transport(monkeypatch, *, body=None, error=None):
                 raise error
             return io.BytesIO(body)
 
-    def build_opener(handler):
-        assert handler.redirect_request(None, None, 302, "Redirect", {}, "https://example.org") is None
+    def build_opener(*handlers):
+        redirect = next(h for h in handlers if hasattr(h, "redirect_request"))
+        assert redirect.redirect_request(None, None, 302, "Redirect", {}, "https://example.org") is None
+        # certifi-сертификаты: Python с python.org на macOS не видит системные
+        assert any(isinstance(h, auth.HTTPSHandler) for h in handlers)
         return Opener()
 
     monkeypatch.setattr(auth, "build_opener", build_opener)

@@ -46,6 +46,7 @@ import com.example.mobile_android.feature.receipt.ReceiptRoute
 import com.example.mobile_android.feature.recipe.*
 import com.example.mobile_android.feature.shopping.*
 import com.example.mobile_android.ui.components.*
+import com.example.mobile_android.data.DemoCatalog
 
 enum class AppTab(val route: String, val label: String, val icon: ImageVector) {
     PANTRY("pantry", "Продукты", Icons.Outlined.Kitchen),
@@ -130,6 +131,9 @@ private fun ApplicationNavigation(
     dismissSession: () -> Unit,
 ) {
     val nav = rememberNavController()
+    // Подписи «Демо» — только пока экраны работают на встроенном каталоге (сервер недоступен).
+    val catalog = remember(c) { c?.catalog?.catalog }?.collectAsStateWithLifecycle(null)?.value
+    CompositionLocalProvider(LocalDemoData provides (catalog == null || catalog === DemoCatalog.catalog)) {
     NavHost(nav, startDestination = AppTab.PANTRY.route) {
         composable(AppTab.PANTRY.route) {
             if (c == null) {
@@ -352,6 +356,7 @@ private fun ApplicationNavigation(
             }
         }
         composable("receipt") { ReceiptRoute(c) { nav.popBackStack() } }
+    }
     }
 }
 
