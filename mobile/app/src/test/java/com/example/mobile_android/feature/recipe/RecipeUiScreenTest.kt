@@ -207,7 +207,8 @@ class RecipeUiScreenTest {
         val catalog = DemoCatalog.catalog.copy(
             recipes = DemoCatalog.catalog.recipes.map { it.copy(nutritionPerServing = null, allergenDataComplete = false, photo = "") },
         )
-        screenshot("unknown", state = recipeUiState(catalog = catalog, pantry = DemoCatalog.initialPantry + PantryItem("hard-cheese", null)))
+        // Продукт без веса теперь считается достаточным; неизвестно — несовместимые единицы (мл вместо г).
+        screenshot("unknown", state = recipeUiState(catalog = catalog, pantry = DemoCatalog.initialPantry + PantryItem("hard-cheese", Quantity(200.0, QuantityUnit.MILLILITER))))
     }
 
     private fun screenshot(name: String, scale: Float = 1f, width: Int = 400, steps: Boolean = false, state: RecipeState = recipeUiState()) {
