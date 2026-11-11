@@ -31,9 +31,15 @@ class Database(dict):
             {"id": 15, "kind": "diet", "name": "Безглютеновая"},
         ]
         self.pantry = [{"code": "egg", "qty_g": Decimal("100.00")}]
+        self.metadata = {"state_version": 0, "diabetes": False, "pantry_display": {}, "state_hash": None}
 
     def execute(self, sql, params=()):
         self.queries.append((sql, params))
+        if sql.startswith("SELECT state_version"):
+            return Rows([copy.deepcopy(self.metadata)])
+        if 'INSERT INTO user_api_state(user_id,state_version' in sql:
+            self.metadata = {"state_version": params[1], "diabetes": params[2],
+                             "pantry_display": copy.deepcopy(params[3].obj), "state_hash": params[4]}
         if sql.startswith("SELECT id,pevzner"):
             return Rows([self.account])
         if sql.startswith("SELECT name FROM diets"):
@@ -88,7 +94,7 @@ def test_save_uses_existing_tables_without_ddl_and_maps_preferences():
     assert any("INSERT INTO user_pantry" in sql and params[1] == Decimal("100") for sql, params in writes)
     assert any("UPDATE users SET pevzner_diet_id" in sql and params == (11, 1) for sql, params in writes)
     assert {params[1] for sql, params in writes if "INSERT INTO user_diets" in sql} == {12, 15}
-    assert all("api_" not in sql and not sql.startswith(("CREATE", "ALTER", "DROP")) for sql, _ in db.queries)
+    assert all(not sql.startswith(("CREATE", "ALTER", "DROP")) for sql, _ in db.queries)
     assert states.load(db, "1")["pantry"]["egg"] == {"value": 2, "unit": "pcs"}
 
 
@@ -134,7 +140,7 @@ def test_runtime_state_is_not_published_when_sql_commit_fails(monkeypatch):
     with pytest.raises(StorageUnavailable) as error:
         with repository.transaction() as db:
             assert isinstance(db, Transaction)
-            repository.runtime.put(db.runtime, "sessions", "test", {"user_id": "1"})
+            db.execute("UPDATE user_api_state SET state_version=1 WHERE user_id=1")
     assert str(error.value) == "База данных временно недоступна"
     assert repository.runtime._data == before
 
@@ -159,6 +165,6 @@ def test_temporary_sql_failure_rolls_back_runtime_and_maps_to_unavailable(monkey
     monkeypatch.setattr(psycopg, "connect", lambda *args, **kwargs: Connection())
     with pytest.raises(StorageUnavailable):
         with repository.transaction() as db:
-            repository.runtime.put(db.runtime, "replays", "key", {"result": "uncommitted"})
+            db.execute("UPDATE user_api_state SET state_version=1 WHERE user_id=1")
             raise getattr(psycopg.errors, failure_name)("temporary SQL failure")
     assert repository.runtime._data == before
