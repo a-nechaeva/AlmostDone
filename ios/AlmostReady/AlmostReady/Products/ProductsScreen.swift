@@ -28,6 +28,8 @@ struct ProductsScreen: View {
                 .padding(.vertical, 12)
             }
             .scrollDismissesKeyboard(.never)
+            // Search results and pantry rows share IDs but have different actions.
+            .id(isSearching)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             dishesLink
