@@ -10,6 +10,8 @@ from PIL import Image, ImageChops, ImageOps
 
 BASELINE = Path(__file__).with_name("baselines") / "products.png"
 PRODUCTS_SIZE = (1206, 2622)
+# Independent captures on iOS 26.2 differed by one RGB level around the demo badge shadow.
+DEMO_BADGE_SHADOW = (800, 100, 1206, 450)
 
 
 def export_products_screenshot(result, destination):
@@ -59,18 +61,20 @@ def compare(reports):
     if expected.size != actual.size:
         raise SystemExit(f"Baseline has size {expected.size}, actual has size {actual.size}")
 
-    difference = ImageChops.difference(expected, actual)
-    if difference.getbbox(alpha_only=False):
-        mask = difference.getchannel("R")
-        for channel in ("G", "B", "A"):
-            mask = ImageChops.lighter(mask, difference.getchannel(channel))
+    red, green, blue, alpha = ImageChops.difference(expected, actual).split()
+    rgb_difference = ImageChops.lighter(ImageChops.lighter(red, green), blue)
+    shadow_difference = rgb_difference.crop(DEMO_BADGE_SHADOW)
+    rounding_pixels = shadow_difference.histogram()[1]
+    rgb_difference.paste(shadow_difference.point(lambda value: 0 if value == 1 else value), DEMO_BADGE_SHADOW)
+    mask = ImageChops.lighter(rgb_difference, alpha)
+    if mask.getbbox():
         mask = mask.point(lambda value: 255 if value else 0)
         grayscale = ImageOps.grayscale(actual).convert("RGB")
-        red = Image.new("RGB", actual.size, (255, 0, 0))
-        Image.composite(red, grayscale, mask).save(screenshots / "diff.png")
+        highlight = Image.new("RGB", actual.size, (255, 0, 0))
+        Image.composite(highlight, grayscale, mask).save(screenshots / "diff.png")
         raise SystemExit("Products screenshot differs from the baseline. See screenshots/diff.png.")
 
-    print("Products screenshot matches the baseline.")
+    print(f"Products screenshot matches the baseline ({rounding_pixels} RGB rounding pixels in the badge shadow).")
 
 
 if __name__ == "__main__":
