@@ -48,10 +48,16 @@ interface HouseholdDao {
 
     @Query("DELETE FROM pantry WHERE ingredientId = :id") suspend fun removePantry(id: String)
 
+    /** Полная замена зеркала серверных запасов (источник истины — сервер). */
+    @Query("DELETE FROM pantry") suspend fun clearPantry()
+
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun addFavorite(row: FavoriteEntity)
 
     @Query("DELETE FROM favorites WHERE itemId = :id AND ingredient = :ingredient")
     suspend fun removeFavorite(id: String, ingredient: Boolean)
+
+    /** Полная замена зеркала серверного избранного. */
+    @Query("DELETE FROM favorites") suspend fun clearFavorites()
 
     @Upsert suspend fun savePlan(row: PlanEntity)
 
