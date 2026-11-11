@@ -76,11 +76,12 @@ class RecipeEngineTest {
     }
 
     @Test
-    fun unknownQuantityCannotBeTreatedAsEnoughOrZero() {
+    fun unknownPantryQuantityIsTreatedAsEnough() {
+        // Договорённость команды (как на сервере): продукт дома без веса — достаточно.
         val result = match(items = pantry + PantryItem("hard-cheese", null))
-        assertFalse(result.ready)
-        assertNull(result.purchaseKopecks)
-        assertEquals(setOf("hard-cheese"), result.uncertainQuantityIds)
+        assertTrue(result.ready)
+        assertEquals(0L, result.purchaseKopecks)
+        assertTrue(result.uncertainQuantityIds.isEmpty())
     }
 
     @Test
@@ -247,7 +248,7 @@ class RecipeEngineTest {
     }
 
     @Test
-    fun unknownQuantityInShoppingPreventsKnownTotal() {
+    fun unknownPantryQuantityNeedsNoPurchase() {
         val quote =
             shoppingQuote(
                 catalog,
@@ -256,8 +257,8 @@ class RecipeEngineTest {
                     plan = listOf(PlannedRecipe("cheese", 2)),
                 ),
             )
-        assertNull(quote.totalKopecks)
-        assertNull(quote.lines.single().buyQuantity)
+        assertTrue(quote.lines.isEmpty())
+        assertEquals(0L, quote.totalKopecks)
     }
 
     @Test
@@ -326,5 +327,32 @@ class RecipeEngineTest {
     @Test(expected = IllegalArgumentException::class)
     fun negativeQuantityIsRejected() {
         Quantity(-1.0, QuantityUnit.GRAM)
+    }
+
+    @Test
+    fun purchaseSetsGroupDishesByMissingProductsLikeTheEngineGraph() {
+        val noTomatoes = pantry.filter { it.ingredientId != "tomatoes" }
+        val matches = catalog.recipes.map { matchRecipe(it, noTomatoes, catalog, preferences) }
+        val sets = purchaseSets(catalog, matches)
+        assertEquals(listOf("hard-cheese+tomatoes", "tomatoes", "hard-cheese"), sets.map { it.key })
+        val both = sets.first()
+        // томатов берём под самый большой недостаток (300 г → упаковка 500 г), сыр — 200 г
+        assertEquals(
+            listOf(Quantity(200.0, QuantityUnit.GRAM), Quantity(500.0, QuantityUnit.GRAM)),
+            both.items.map { it.quantity },
+        )
+        assertEquals(23000L + 16000L, both.priceKopecks)
+        // открывает и блюда, которым нужна только часть набора
+        assertEquals(setOf("omelette", "pasta", "cheese", "cheeseEgg"), both.recipeIds.toSet())
+        assertEquals(setOf("omelette", "pasta"), sets[1].recipeIds.toSet())
+    }
+
+    @Test
+    fun purchaseSetsSkipReadyUnknownAndOverLimitDishes() {
+        assertEquals(listOf("hard-cheese"), purchaseSets(catalog, catalog.recipes.map { match(it) }).map { it.key })
+        val empty = catalog.recipes.map { matchRecipe(it, emptyList(), catalog, preferences) }
+        // без продуктов дома всем блюдам не хватает 4+ продуктов
+        assertTrue(purchaseSets(catalog, empty, maxItems = 3).all { it.items.size <= 3 })
+        assertTrue(purchaseSets(catalog, empty.filter { it.missing.size > 3 }).isEmpty())
     }
 }

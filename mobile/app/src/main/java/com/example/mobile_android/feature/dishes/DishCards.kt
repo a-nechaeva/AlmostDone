@@ -27,8 +27,9 @@ internal enum class DishGroup(val title: String) {
 
 internal fun dishGroup(match: RecipeMatch): DishGroup =
     when {
-        match.dietary.status == Suitability.UNKNOWN || !match.recipe.allergenDataComplete ->
-            DishGroup.DIET_UNKNOWN
+        // Неполные сведения об аллергенах важны, только когда аллергены исключены: тогда
+        // движок уже вернул UNKNOWN (см. assess). Без исключений блюдо оценивается как обычно.
+        match.dietary.status == Suitability.UNKNOWN -> DishGroup.DIET_UNKNOWN
         match.uncertainQuantityIds.isNotEmpty() -> DishGroup.QUANTITY_UNKNOWN
         else ->
             when (match.missing.size) {

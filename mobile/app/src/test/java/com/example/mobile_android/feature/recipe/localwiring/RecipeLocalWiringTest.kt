@@ -201,7 +201,8 @@ class RecipeLocalWiringTest {
         assertNoHeart()
         val demo = DemoCatalog.catalog
         val recipe = checkNotNull(demo.recipe(RECIPE_ID))
-        runBlocking { household.setPantry("hard-cheese", null) }
+        // Неизвестно — несовместимые единицы; продукт без веса теперь считается достаточным.
+        runBlocking { household.setPantry("hard-cheese", Quantity(200.0, QuantityUnit.MILLILITER)) }
         val unknown = recipe.copy(photo = "", nutritionPerServing = null, allergenDataComplete = false)
         assertTrue(catalogUpdates.tryEmit(demo.copy(recipes = listOf(unknown))))
         waitForText("Фото отсутствует")

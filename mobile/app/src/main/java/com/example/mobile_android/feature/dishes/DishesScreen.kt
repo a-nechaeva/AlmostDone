@@ -45,6 +45,7 @@ fun DishesScreen(
     view: DishesView,
     changeView: (DishesView) -> Unit,
     addPurchase: () -> Unit,
+    addPurchaseSet: (String) -> Unit = {},
     queryText: String = state.filters.query,
     filterSelection: DishFilters = state.filters,
     toggleAllergen: ((Allergen) -> Unit)? = null,
@@ -163,7 +164,7 @@ fun DishesScreen(
                             reset,
                         )
                     }
-                purchaseGraph(state, action, recipe, addPurchase, reset, dismiss)
+                purchaseGraph(state, action, recipe, addPurchase, reset, dismiss, addPurchaseSet)
             } else {
                 if (action.message != null) item { ActionMessage(action, dismiss) }
                 state.visible.groupBy(::dishGroup).toSortedMap().forEach { (group, matches) ->

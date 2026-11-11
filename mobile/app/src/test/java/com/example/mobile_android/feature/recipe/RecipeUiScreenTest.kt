@@ -95,7 +95,8 @@ class RecipeUiScreenTest {
         }
         scroll("Все продукты есть дома").assertIsDisplayed()
         compose.runOnIdle {
-            state.value = recipeUiState(pantry = DemoCatalog.initialPantry + PantryItem("hard-cheese", null))
+            // Неизвестно остаётся только при несовместимых единицах; без веса — достаточно.
+            state.value = recipeUiState(pantry = DemoCatalog.initialPantry + PantryItem("hard-cheese", Quantity(200.0, QuantityUnit.MILLILITER)))
         }
         text("Добавить в покупки").assertIsNotEnabled()
         scroll("Количество или единицы неизвестны").assertIsDisplayed()
