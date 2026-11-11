@@ -1,6 +1,7 @@
 package com.example.mobile_android.ui.components
 
 import android.graphics.BitmapFactory
+import android.util.Log
 import android.util.LruCache
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -23,6 +24,7 @@ import kotlinx.coroutines.withContext
 internal object RemoteImages {
     private const val MAX_SIDE = 800
     private const val MAX_BYTES = 8 * 1024 * 1024
+    private const val TAG = "RemoteImages"
 
     private val cache =
         object : LruCache<String, ImageBitmap>((Runtime.getRuntime().maxMemory() / 8).toInt()) {
@@ -63,7 +65,10 @@ internal object RemoteImages {
             connection.connectTimeout = 10_000
             connection.readTimeout = 15_000
             try {
-                if (connection.responseCode !in 200..299) return@runCatching null
+                if (connection.responseCode !in 200..299) {
+                    Log.w(TAG, "HTTP ${connection.responseCode} для $url")
+                    return@runCatching null
+                }
                 connection.inputStream.use { input ->
                     val out = java.io.ByteArrayOutputStream()
                     val buffer = ByteArray(16 * 1024)
@@ -78,8 +83,8 @@ internal object RemoteImages {
             } finally {
                 connection.disconnect()
             }
-        }.getOrNull() ?: return@withContext null
-        decode(bytes)
+        }.onFailure { Log.w(TAG, "Не удалось загрузить $url", it) }.getOrNull() ?: return@withContext null
+        decode(bytes).also { if (it == null) Log.w(TAG, "Не удалось декодировать $url") }
     }
 
     private fun decode(bytes: ByteArray): ImageBitmap? {

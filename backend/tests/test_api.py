@@ -267,3 +267,33 @@ def test_android_catalog(client):
         assert not staples & {i["ingredient_id"] for i in r["ingredients"]}
         assert set(r["allergens"]) <= {"MILK", "EGGS", "GLUTEN", "NUTS", "FISH", "SOY"}
         assert set(r["methods"]) <= {"STOVE", "OVEN", "MICROWAVE", "NO_COOK"}
+
+
+def test_recipe_photos_go_through_server(client, monkeypatch, tmp_path):
+    from app import photos
+
+    jpeg = b"\xff\xd8\xff\xe0" + b"\0" * 50
+    calls = []
+    monkeypatch.setattr(photos, "CACHE_DIR", tmp_path)
+    monkeypatch.setattr(photos, "download", lambda url: calls.append(url) or jpeg)
+    monkeypatch.setattr(photos.fetch, "__defaults__", (tmp_path,))
+    body = ok(client.get(f"{API}/catalog/android"))
+    recipe = body["recipes"][0]
+    assert recipe["photo"] == f"http://testserver{API}/recipe-photos/{recipe['id']}"
+    for _ in range(2):  # второй раз — из кэша, без скачивания
+        r = client.get(recipe["photo"])
+        assert r.status_code == 200 and r.headers["content-type"] == "image/jpeg" and r.content == jpeg
+    assert len(calls) == 1 and calls[0].startswith("https://")
+    assert client.get(f"{API}/recipe-photos/no-such-recipe").status_code == 404
+
+
+def test_recipe_photo_download_failure_is_502(client, monkeypatch, tmp_path):
+    from app import photos
+
+    def fail(url):
+        raise photos.PhotoUnavailable("timeout")
+
+    monkeypatch.setattr(photos, "download", fail)
+    monkeypatch.setattr(photos.fetch, "__defaults__", (tmp_path,))
+    recipe_id = ok(client.get(f"{API}/catalog/android"))["recipes"][0]["id"]
+    assert client.get(f"{API}/recipe-photos/{recipe_id}").status_code == 502

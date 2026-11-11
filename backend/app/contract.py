@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from typing import Any
 
 from dishgraph import Catalog, DishOption, Recipe
@@ -267,7 +267,12 @@ ANDROID_METHODS = {"stove": "STOVE", "oven": "OVEN", "microwave": "MICROWAVE", "
 ANDROID_MAX_SERVINGS = 12  # Recipe в приложении требует servings в 1..12
 
 
-def android_catalog(catalog: Catalog, demo_pantry: Iterable[str], version: str) -> dict[str, Any]:
+def android_catalog(
+    catalog: Catalog,
+    demo_pantry: Iterable[str],
+    version: str,
+    photo_url: Callable[[str], str] | None = None,
+) -> dict[str, Any]:
     """Каталог в формате доменных моделей Android (Ingredient, Recipe, PackageOffer).
 
     Нужен, пока приложение считает подбор само (локальный RecipeEngine). Особенности:
@@ -314,7 +319,8 @@ def android_catalog(catalog: Catalog, demo_pantry: Iterable[str], version: str) 
                 "dietary": {"vegetarian": None, "vegan": None,
                             "gluten_free": "gluten" not in m.allergens, "lactose_free": "milk" not in m.allergens},
                 "methods": [ANDROID_METHODS[x] for x in r.methods],
-                "photo": r.image_url or "",
+                # photo_url(id) — фото через наш сервер (см. photos.py), иначе исходная ссылка
+                "photo": (photo_url(r.id) if photo_url else r.image_url) if r.image_url else "",
             }
         )
     return {

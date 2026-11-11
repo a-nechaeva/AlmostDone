@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import uuid
+from urllib.parse import quote
 from collections.abc import Callable
 from typing import Any, Literal
 
@@ -33,7 +34,7 @@ from dishgraph import (
 )
 from dishgraph.recognition import MAX_IMAGE_BYTES, InvalidImage, RecognitionError, VisionProvider, recognize
 
-from . import catalog_source, contract
+from . import catalog_source, contract, photos
 from .config import Settings
 from .state import DEMO_USER_ID, RECOGNITION_TTL, SNAPSHOT_TTL, DemoState, RecognitionJob, Snapshot, iso, new_id, now
 
@@ -274,9 +275,23 @@ def create_app(settings: Settings | None = None, provider_factory: Callable[[], 
 
     @api.get("/catalog/android", tags=["service"],
              summary="Каталог в формате моделей Android-приложения (демо, не из контракта)")
-    def catalog_android() -> dict[str, Any]:
+    def catalog_android(request: Request) -> dict[str, Any]:
         demo = [c for c, q in DemoState.with_demo_pantry(catalog).pantry.items()]
-        return contract.android_catalog(catalog, demo, catalog_version)
+        # фото — через наш сервер, по тому адресу, по которому пришёл телефон (Wi-Fi или adb reverse)
+        base = str(request.base_url).rstrip("/") + API_PREFIX
+        return contract.android_catalog(catalog, demo, catalog_version, lambda rid: f"{base}/recipe-photos/{quote(rid)}")
+
+    @api.get("/recipe-photos/{recipe_id}", tags=["service"],
+             summary="Фото рецепта через сервер (демо, не из контракта)", response_class=Response)
+    def recipe_photo(recipe_id: str) -> Response:
+        recipe = next((r for r in catalog.recipes if r.id == recipe_id), None)
+        if recipe is None or not recipe.image_url:
+            raise ApiError(404, "not_found", "Фото рецепта не найдено")
+        try:
+            data, kind = photos.fetch(recipe.image_url)
+        except photos.PhotoUnavailable:
+            raise ApiError(502, "photo_unavailable", "Фото сейчас недоступно") from None
+        return Response(data, media_type=kind, headers={"Cache-Control": "public, max-age=86400"})
 
     @api.get("/me/state", tags=["profile"])
     def me_state() -> dict[str, Any]:
