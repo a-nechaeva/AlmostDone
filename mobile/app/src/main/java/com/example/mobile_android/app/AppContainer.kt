@@ -4,9 +4,14 @@ import android.app.Application
 import android.content.Context
 import androidx.room.Room
 import com.example.mobile_android.data.DemoCatalog
-import com.example.mobile_android.data.DemoCatalogRepository
 import com.example.mobile_android.data.local.*
+import com.example.mobile_android.data.remote.NetworkCatalogRepository
+import com.example.mobile_android.data.remote.ServerConnection
 import com.example.mobile_android.domain.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 import com.example.mobile_android.feature.receipt.ReceiptImporter
 import com.example.mobile_android.feature.shopping.ShoppingBudgetPlanWriter
 import com.yandex.authsdk.YandexAuthOptions
@@ -21,13 +26,21 @@ interface AppDependencies {
     val household: HouseholdRepository
     val preferences: PreferencesRepository
     val session: SessionRepository
+
+    /** Сервер «Почти готово»; null — работа только на встроенном демо-каталоге (тесты, превью). */
+    val server: ServerConnection?
+        get() = null
     val receiptImporter: ReceiptImporter? get() = null
     val budgetPlanWriter: ShoppingBudgetPlanWriter? get() = null
     val yandexAuth: YandexAuthSdk
 }
 
 class AppContainer(context: Context) : AppDependencies {
-    override val catalog: CatalogRepository = DemoCatalogRepository()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val network =
+        NetworkCatalogRepository(scope, context.applicationContext.householdPreferences, DemoCatalog.catalog)
+    override val catalog: CatalogRepository = network
+    override val server: ServerConnection = network
     private val database =
         Room.databaseBuilder(
                 context.applicationContext,
@@ -44,4 +57,18 @@ class AppContainer(context: Context) : AppDependencies {
     override val session: SessionRepository = localPreferences
     override val yandexAuth: YandexAuthSdk =
         YandexAuthSdk.create(YandexAuthOptions(context.applicationContext))
+
+    init {
+        network.onConnected = { catalog, demoPantry -> seedDemoPantry(catalog, demoPantry) }
+    }
+
+    /**
+     * Первое подключение к серверу: если в кладовке нет ни одного продукта из реального каталога,
+     * кладём демо-набор с сервера — по одной упаковке каждого продукта.
+     */
+    private suspend fun seedDemoPantry(catalog: Catalog, demoPantry: List<String>) {
+        val pantry = household.household.first().pantry
+        if (pantry.any { catalog.ingredient(it.ingredientId) != null }) return
+        demoPantry.forEach { id -> catalog.ingredient(id)?.let { household.addPantry(id, it.offer?.quantity) } }
+    }
 }

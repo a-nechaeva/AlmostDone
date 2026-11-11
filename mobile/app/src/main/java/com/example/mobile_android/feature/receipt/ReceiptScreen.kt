@@ -30,10 +30,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.mobile_android.app.AppDependencies
+import com.example.mobile_android.data.remote.ServerStatus
 import com.example.mobile_android.domain.Ingredient
 import com.example.mobile_android.ui.components.BrandTopBar
 import com.example.mobile_android.ui.components.PageHeading
 import java.io.IOException
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun ReceiptRoute(dependencies: AppDependencies, close: () -> Unit) {
@@ -47,15 +49,20 @@ internal fun ReceiptRoute(dependencies: AppDependencies, close: () -> Unit) {
                     dependencies.receiptImporter,
                     createSavedStateHandle(),
                     photos::discard,
+                    photoRecognizer = dependencies.server?.receiptRecognizer(),
                 )
             }
         }
     })
     val state by model.state.collectAsStateWithLifecycle()
     val photoRequest by model.photoRequest.collectAsStateWithLifecycle()
+    val kind by model.kind.collectAsStateWithLifecycle()
+    val server = dependencies.server
+    val serverStatus = server?.status?.collectAsStateWithLifecycle()?.value
+    val scope = rememberCoroutineScope()
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (model.finishPhotoRequest(ReceiptPhotoRequest.PICKER) && uri != null) {
-            model.readPhoto { photos.validate(uri) }
+            model.readImage { photos.jpeg(uri) }
         }
     }
     val camera = rememberLauncherForActivityResult(TakeReceiptPhoto()) { success ->
@@ -63,7 +70,7 @@ internal fun ReceiptRoute(dependencies: AppDependencies, close: () -> Unit) {
             val name = model.cameraFinished()
             if (name != null) {
                 if (success && model.state.value is ReceiptState.Capture)
-                    model.readPhoto { photos.consumeCapture(name) }
+                    model.readImage { photos.consumeCaptureJpeg(name) }
                 else photos.discard(name)
             }
         }
@@ -104,6 +111,10 @@ internal fun ReceiptRoute(dependencies: AppDependencies, close: () -> Unit) {
         edit = model::edit,
         confirm = model::confirm,
         photoPending = photoRequest != null,
+        kind = kind,
+        chooseKind = if (model.canChooseKind) model::chooseKind else null,
+        serverStatus = serverStatus,
+        connectServer = { address -> server?.let { scope.launch { it.connect(address) } } },
     )
 }
 
@@ -119,7 +130,14 @@ internal fun ReceiptScreen(
     edit: (Int, Ingredient, String) -> Unit,
     confirm: () -> Unit,
     photoPending: Boolean = false,
+    kind: ReceiptPhotoKind = ReceiptPhotoKind.RECEIPT,
+    /** null — выбора нет (демо-распознавание понимает только чек). */
+    chooseKind: ((ReceiptPhotoKind) -> Unit)? = null,
+    /** null — приложение без сервера (демо, тесты): карточки адреса нет. */
+    serverStatus: ServerStatus? = null,
+    connectServer: (String) -> Unit = {},
 ) {
+    val products = kind == ReceiptPhotoKind.PRODUCTS
     val review = state as? ReceiptState.Review
     val saving = review?.saving == true
     val back: () -> Unit = {
@@ -142,8 +160,8 @@ internal fun ReceiptScreen(
     Scaffold(
         topBar = {
             val title = when (state) {
-                is ReceiptState.Capture -> "Добавить по чеку"
-                ReceiptState.Reading -> "Фото чека"
+                is ReceiptState.Capture -> if (chooseKind != null) "Добавить по фото" else "Добавить по чеку"
+                ReceiptState.Reading -> if (products) "Фото продуктов" else "Фото чека"
                 is ReceiptState.Review -> "Проверить продукты"
                 is ReceiptState.Added -> "Добавление продуктов"
             }
@@ -157,14 +175,17 @@ internal fun ReceiptScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             when (state) {
-                is ReceiptState.Capture ->
-                    ReceiptCapture(state, takePhoto, choosePhoto, close, enabled = !photoPending)
+                is ReceiptState.Capture -> {
+                    if (serverStatus != null) ServerAddressCard(serverStatus, connectServer)
+                    ReceiptCapture(state, takePhoto, choosePhoto, close, enabled = !photoPending, kind, chooseKind)
+                }
                 ReceiptState.Reading -> {
-                    PageHeading("Читаем чек", "Ищем продукты и количество")
+                    if (products) PageHeading("Смотрим фото", "Ищем продукты — это до 20 секунд")
+                    else PageHeading("Читаем чек", "Ищем продукты и количество")
                     LinearProgressIndicator(Modifier.fillMaxWidth())
                     OutlinedButton(onClick = reset, modifier = Modifier.fillMaxWidth()) { Text("Отменить") }
                 }
-                is ReceiptState.Review -> ReceiptReview(state, toggle, { editing = it }, confirm)
+                is ReceiptState.Review -> ReceiptReview(state, toggle, { editing = it }, confirm, products)
                 is ReceiptState.Added -> {
                     PageHeading("Продукты добавлены домой", state.names.joinToString(", "))
                     Text("Запасы обновились. Можно заново проверить подбор блюд.")
@@ -182,10 +203,30 @@ private fun ReceiptCapture(
     choosePhoto: () -> Unit,
     close: () -> Unit,
     enabled: Boolean,
+    kind: ReceiptPhotoKind = ReceiptPhotoKind.RECEIPT,
+    chooseKind: ((ReceiptPhotoKind) -> Unit)? = null,
 ) {
     val issue = state.issue
+    val products = kind == ReceiptPhotoKind.PRODUCTS
+    if (chooseKind != null) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+                selected = !products,
+                onClick = { chooseKind(ReceiptPhotoKind.RECEIPT) },
+                label = { Text("Чек") },
+                enabled = enabled,
+            )
+            FilterChip(
+                selected = products,
+                onClick = { chooseKind(ReceiptPhotoKind.PRODUCTS) },
+                label = { Text("Продукты") },
+                enabled = enabled,
+            )
+        }
+    }
     if (issue == null) {
-        PageHeading("Сфотографируйте чек", "Целиком, при хорошем освещении")
+        if (products) PageHeading("Сфотографируйте продукты", "Холодильник, полку или пакет — чтобы были видны упаковки")
+        else PageHeading("Сфотографируйте чек", "Целиком, при хорошем освещении")
         Surface(
             Modifier.fillMaxWidth().height(248.dp),
             shape = MaterialTheme.shapes.extraLarge,
@@ -206,11 +247,12 @@ private fun ReceiptCapture(
         Text("Перед добавлением проверьте названия и количество.")
     } else {
         val (title, details) = when (issue) {
-            ReceiptPhotoIssue.NO_CAMERA -> "Камера недоступна" to "Выберите готовое фото чека."
+            ReceiptPhotoIssue.NO_CAMERA -> "Камера недоступна" to (if (products) "Выберите готовое фото." else "Выберите готовое фото чека.")
             ReceiptPhotoIssue.NO_PICKER -> "Выбор фото недоступен" to "Сделайте фото или добавьте продукты вручную."
             ReceiptPhotoIssue.ACCESS -> "Нет доступа к фото" to "Проверьте доступ или выберите другое фото."
-            ReceiptPhotoIssue.UNREADABLE -> "Чек не удалось прочитать" to "Попробуйте снять ближе и без бликов."
-            ReceiptPhotoIssue.EMPTY -> "В чеке не нашлось продуктов" to "Попробуйте другое фото."
+            ReceiptPhotoIssue.UNREADABLE -> (if (products) "Фото не удалось прочитать" else "Чек не удалось прочитать") to "Попробуйте снять ближе и без бликов."
+            ReceiptPhotoIssue.EMPTY -> (if (products) "На фото не нашлось продуктов" else "В чеке не нашлось продуктов") to "Попробуйте другое фото."
+            ReceiptPhotoIssue.SERVER -> "Сервер распознавания недоступен" to "Проверьте подключение к серверу и повторите."
         }
         PageHeading(title, details)
     }
@@ -233,9 +275,10 @@ private fun ReceiptReview(
     toggle: (Int, Boolean) -> Unit,
     edit: (Int) -> Unit,
     confirm: () -> Unit,
+    products: Boolean = false,
 ) {
-    PageHeading("Нашли в чеке", "Выберите, что добавить домой")
-    Text("Демо · позиции взяты из примера чека", style = MaterialTheme.typography.bodySmall)
+    PageHeading(if (products) "Нашли на фото" else "Нашли в чеке", "Выберите, что добавить домой")
+    if (state.demo) Text("Демо · позиции взяты из примера чека", style = MaterialTheme.typography.bodySmall)
     for (line in state.lines) {
         val ingredient = state.ingredient(line)
         val quantity = line.quantity(ingredient)

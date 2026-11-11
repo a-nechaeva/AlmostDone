@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-EQUIPMENT = ("microwave", "stove", "oven")
+EQUIPMENT = ("microwave", "stove", "oven")  # техника, которая может понадобиться рецепту
+COOKING_METHODS = (*EQUIPMENT, "no_cook")  # значения фильтра «что у меня есть» (как в контракте API)
 
 
 @dataclass(frozen=True)
@@ -27,7 +28,7 @@ class Ingredient:
 @dataclass(frozen=True)
 class RecipeItem:
     code: str  # код ингредиента
-    qty_g: float  # граммы на весь рецепт (на все порции)
+    qty_g: float | None  # граммы на весь рецепт (на все порции); None — количество не указано
     is_optional: bool = False  # «по вкусу»: не докупаем, не считаем в КБЖУ
 
 
@@ -43,6 +44,8 @@ class Recipe:
     needs_oven: bool = False
     steps: tuple[str, ...] = ()
     description: str | None = None
+    no_cook: bool = False  # «без готовки»: техника не нужна
+    image_url: str | None = None
 
     @property
     def required_items(self) -> tuple[RecipeItem, ...]:
@@ -53,6 +56,23 @@ class Recipe:
         """Какая техника нужна: подмножество {"microwave", "stove", "oven"}."""
         flags = {"microwave": self.needs_microwave, "stove": self.needs_stove, "oven": self.needs_oven}
         return frozenset(k for k, v in flags.items() if v)
+
+    @property
+    def methods(self) -> tuple[str, ...]:
+        """Способы готовки для API: ("no_cook",), нужная техника или () — нет сведений."""
+        return ("no_cook",) if self.no_cook else tuple(sorted(self.equipment))
+
+    def fits_equipment(self, available: frozenset[str]) -> bool:
+        """Можно ли приготовить с такой техникой.
+
+        «Без готовки» — всегда; известная техника — если вся она есть; нет сведений — только если
+        у пользователя есть вся техника (не обещаем, что блюдо получится в одной микроволновке).
+        """
+        if self.no_cook:
+            return True
+        if self.equipment:
+            return self.equipment <= available
+        return set(EQUIPMENT) <= available
 
 
 @dataclass(frozen=True)

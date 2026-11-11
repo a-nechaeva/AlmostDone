@@ -35,6 +35,8 @@ SELECT json_build_object(
             'needs_microwave', r.needs_microwave,
             'needs_stove',     r.needs_stove,
             'needs_oven',      r.needs_oven,
+            'no_cook',         r.no_cook,
+            'image_url',       r.image_url,
             'steps', COALESCE((SELECT json_agg(s.instruction ORDER BY s.step_no)
                                FROM recipe_steps s
                                WHERE s.recipe_id = r.id), '[]'::json),

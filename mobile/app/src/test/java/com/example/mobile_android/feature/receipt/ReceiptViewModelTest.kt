@@ -111,8 +111,38 @@ class ReceiptViewModelTest {
         assertEquals(ReceiptState.Added(listOf(cheese.name)), vm.state.value)
     }
 
+    @Test
+    fun photoGoesToServerRecognizerAndServerFailureIsNotUnreadablePhoto() = runTest(dispatcher) {
+        val sent = mutableListOf<ByteArray>()
+        var fail = true
+        val kinds = mutableListOf<ReceiptPhotoKind>()
+        val vm = model(photoRecognizer = { jpeg, kind ->
+            sent += jpeg
+            kinds += kind
+            if (fail) throw ReceiptServerException("offline")
+            listOf(ReceiptLine(1, "СЫР 200Г", "hard-cheese", "200", QuantityUnit.GRAM, true))
+        })
+        vm.readImage { byteArrayOf(1, 2, 3) }
+        runCurrent()
+        assertEquals(ReceiptState.Capture(ReceiptPhotoIssue.SERVER), vm.state.value)
+        fail = false
+        assertTrue(vm.canChooseKind)
+        vm.chooseKind(ReceiptPhotoKind.PRODUCTS)
+        vm.readImage { byteArrayOf(4) }
+        runCurrent()
+        val review = vm.state.value as ReceiptState.Review
+        assertEquals(listOf("СЫР 200Г"), review.lines.map { it.text })
+        assertTrue(review.lines.single().selected)
+        assertFalse(review.demo)
+        assertEquals(listOf(ReceiptPhotoKind.RECEIPT, ReceiptPhotoKind.PRODUCTS), kinds)
+        vm.chooseKind(ReceiptPhotoKind.RECEIPT) // на экране проверки вид фото уже не меняется
+        assertEquals(ReceiptPhotoKind.PRODUCTS, vm.kind.value)
+        assertEquals(listOf(listOf<Byte>(1, 2, 3), listOf<Byte>(4)), sent.map { it.toList() })
+    }
+
     private fun model(
         writer: ReceiptImporter? = null,
         recognizer: ReceiptRecognizer = DemoReceiptRecognizer,
-    ) = ReceiptViewModel(DemoCatalogRepository(), writer, SavedStateHandle(), {}, recognizer)
+        photoRecognizer: (suspend (ByteArray, ReceiptPhotoKind) -> List<ReceiptLine>)? = null,
+    ) = ReceiptViewModel(DemoCatalogRepository(), writer, SavedStateHandle(), {}, recognizer, photoRecognizer)
 }
