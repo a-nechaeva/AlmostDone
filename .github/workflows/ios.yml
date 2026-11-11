@@ -1,0 +1,177 @@
+name: iOS
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+  # Detect changed paths in the job so large pushes cannot hide iOS files.
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+
+concurrency:
+  group: ios-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: iOS changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      ios: ${{ steps.paths.outputs.ios }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Detect iOS changes
+        id: paths
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          if [[ ! "$BASE_SHA" =~ ^[0-9a-f]{40}$ || ! "$HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Expected a base and head commit SHA"
+            exit 1
+          fi
+
+          # PRs compare against their merge base. Pushes compare the two exact trees.
+          range="$BASE_SHA..$HEAD_SHA"
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+            range="$BASE_SHA...$HEAD_SHA"
+          fi
+          if git diff --quiet --no-ext-diff --no-renames "$range" -- ios/ .github/workflows/ios.yml .github/ios/; then
+            echo 'ios=false' >> "$GITHUB_OUTPUT"
+          else
+            status=$?
+            if [[ "$status" != 1 ]]; then
+              exit "$status"
+            fi
+            echo 'ios=true' >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    name: iOS Build
+    needs: changes
+    if: needs.changes.outputs.ios == 'true'
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      IOS_SUITE: build
+    steps: &ios-check-steps
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run iOS ${{ env.IOS_SUITE }}
+        id: check
+        shell: bash
+        run: |
+          mkdir -p .local/ios-ci/reports
+          bash .github/ios/check.sh "$IOS_SUITE" 2>&1 | tee .local/ios-ci/reports/check.log
+      - uses: actions/setup-python@v5
+        if: "!cancelled() && env.IOS_SUITE == 'screenshots' && steps.check.outcome != 'skipped'"
+        with:
+          python-version: '3.13'
+      - name: Compare screenshot
+        if: "!cancelled() && env.IOS_SUITE == 'screenshots' && steps.check.outcome != 'skipped'"
+        shell: bash
+        run: |
+          {
+            python3 -m pip install --only-binary=:all: Pillow==12.2.0 &&
+              python3 .github/ios/compare_screenshot.py .local/ios-ci/reports
+          } 2>&1 | tee .local/ios-ci/reports/compare.log
+      - name: iOS results and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-${{ env.IOS_SUITE }}-reports
+          path: .local/ios-ci/reports/
+          include-hidden-files: true
+          retention-days: 7
+      - name: Simulator app
+        if: success() && env.IOS_SUITE == 'build'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-simulator-app
+          path: .local/ios-ci/AlmostReady-simulator.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+
+  unit:
+    name: iOS Unit
+    needs: changes
+    if: needs.changes.outputs.ios == 'true'
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      IOS_SUITE: unit
+    steps: *ios-check-steps
+
+  ui:
+    name: iOS UI
+    needs: changes
+    if: needs.changes.outputs.ios == 'true'
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      IOS_SUITE: ui
+    steps: *ios-check-steps
+
+  screenshots:
+    name: iOS Screenshots
+    needs: changes
+    if: needs.changes.outputs.ios == 'true'
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      IOS_SUITE: screenshots
+    steps: *ios-check-steps
+
+  lint:
+    name: iOS Lint
+    needs: changes
+    if: needs.changes.outputs.ios == 'true'
+    runs-on: macos-15
+    timeout-minutes: 10
+    env:
+      IOS_SUITE: lint
+    steps: *ios-check-steps
+
+  merge-gate:
+    name: iOS Merge gate
+    needs: [changes, build, unit, ui, screenshots, lint]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require all applicable iOS checks
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          IOS_CHANGED: ${{ needs.changes.outputs.ios }}
+          BUILD: ${{ needs.build.result }}
+          UNIT: ${{ needs.unit.result }}
+          UI: ${{ needs.ui.result }}
+          SCREENSHOTS: ${{ needs.screenshots.result }}
+          LINT: ${{ needs.lint.result }}
+        run: |
+          case "$CHANGES:$IOS_CHANGED" in
+            success:true) expected=success ;;
+            success:false) expected=skipped ;;
+            *)
+              echo "::error::Unable to determine iOS changes (status=$CHANGES, iOS=$IOS_CHANGED)"
+              exit 1
+              ;;
+          esac
+          failed=0
+          for job in BUILD UNIT UI SCREENSHOTS LINT; do
+            if [[ "${!job}" != "$expected" ]]; then
+              echo "::error::$job was '${!job}', expected '$expected'"
+              failed=1
+            fi
+          done
+          exit "$failed"
