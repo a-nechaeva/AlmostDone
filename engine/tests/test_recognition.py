@@ -16,6 +16,7 @@ from dishgraph.recognition import (
     parse_mapping,
     parse_products,
     parse_response,
+    shortlist,
     recognize,
 )
 from dishgraph.recognition.cli import main as cli_main
@@ -485,3 +486,75 @@ def test_cli_with_fake_and_expected(tmp_path, capsys, monkeypatch):
     assert "верно: 1/2" in out and "пропущено: ['milk']" in out and "лишнее: ['cheese']" in out
     assert "точность 50%" in out and "полнота 50%" in out
     assert json.loads(report.read_text(encoding="utf-8"))["check.jpg"][0]["candidates"][0]["ingredient_id"] == "egg"
+
+
+# --- чек в два шага и короткий список -----------------------------------------------------
+
+def read(*items):
+    return json.dumps({"items": [dict(raw_name=r, name=n, **kw) for r, n, kw in items]}, ensure_ascii=False)
+
+
+def test_receipt_two_steps_with_shortlist(catalog, index):
+    provider = FakeProvider([
+        read(("МОЛ.ПАСТ.2,5% 1Л", "молоко", {"quantity": {"value": 1, "unit": "л"}}),
+             ("ТОМАТЫ ТЕПЛ.", "томаты", {"alt": ["помидор"]}),
+             ("ПАКЕТ МАЙКА", "пакет", {})),
+        matches((1, [("milk", 0.95)]), (2, [("tomato", 0.9)]), (3, [])),
+    ])
+    lines = recognize(JPEG, "receipt", catalog, provider, index)
+    read_prompt, mapping_prompt = provider.calls[0][2], provider.calls[1][2]
+    assert "кассового чека" in read_prompt and "→ milk" not in read_prompt  # шаг 1 — без каталога
+    assert provider.calls[1][0] == 0                                         # шаг 2 — без картинки
+    assert "1. молоко (на чеке: МОЛ.ПАСТ.2,5% 1Л)" in mapping_prompt
+    assert "→ milk" in mapping_prompt and "→ tomato" in mapping_prompt
+    assert "→ buckwheat" not in mapping_prompt                               # только короткий список
+    assert [(l.raw_name, l.best.code if l.best else None, l.status) for l in lines] == [
+        ("МОЛ.ПАСТ.2,5% 1Л", "milk", "matched"),
+        ("ТОМАТЫ ТЕПЛ.", "tomato", "matched"),
+        ("ПАКЕТ МАЙКА", None, "unmatched"),
+    ]
+    assert lines[0].suggested_quantity.to_dict() == {"value": 1000.0, "unit": "ml"}
+
+
+def test_receipt_old_format_answer_needs_one_request(catalog, index):
+    provider = FakeProvider([answer(item("ЯЙЦО С1 10ШТ", ("egg", 0.95)))])
+    (line,) = recognize(JPEG, "receipt", catalog, provider, index)
+    assert line.best.code == "egg" and len(provider.calls) == 1
+
+
+def test_receipt_vision_only_provider_uses_full_catalog(catalog, index):
+    class VisionOnly:
+        def __init__(self):
+            self.prompts = []
+
+        def complete(self, image, mime, prompt):
+            self.prompts.append(prompt)
+            return answer(item("ЯЙЦО С1 10ШТ", ("egg", 0.95)))
+
+    provider = VisionOnly()
+    (line,) = recognize(JPEG, "receipt", catalog, provider, index)
+    assert line.best.code == "egg" and "→ buckwheat" in provider.prompts[0]
+
+
+def test_receipt_mapping_failure_falls_back_to_search_by_decoded_name(catalog, index):
+    provider = FakeProvider([read(("МОЛ.ПАСТ.", "молоко", {})), "не JSON"])
+    (line,) = recognize(JPEG, "receipt", catalog, provider, index)
+    assert line.raw_name == "МОЛ.ПАСТ." and line.best.code == "milk" and line.status == "ambiguous"
+
+
+def test_nothing_in_shortlist_skips_mapping(catalog, index):
+    provider = FakeProvider([read(("ПАКЕТ МАЙКА", "пакет", {}))])
+    (line,) = recognize(JPEG, "receipt", catalog, provider, index)
+    assert line.status == "unmatched" and len(provider.calls) == 1
+
+
+def test_zero_confidence_candidate_means_no(catalog, index):
+    provider = FakeProvider([seen(("молоко", {"confidence": 0.9})), matches((1, [("sour_cream", 0.0)]))])
+    (line,) = recognize(JPEG, "products", catalog, provider, index)
+    assert "sour_cream" not in [c.code for c in line.candidates]
+
+
+def test_shortlist_searches_alts_and_words(catalog, index):
+    seen_items = parse_products(seen(("томаты черри", {"confidence": 0.9, "alt": ["помидор"]})))
+    assert seen_items[0].alts == ("помидор",)
+    assert "tomato" in shortlist(seen_items, index)

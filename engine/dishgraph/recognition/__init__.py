@@ -20,8 +20,23 @@ from .models import (
     RecognitionKind,
     RecognitionLine,
 )
-from .parse import SeenProduct, build_product_lines, extract_json, parse_mapping, parse_products, parse_response
-from .prompt import build_mapping_prompt, build_products_prompt, build_prompt, build_receipt_prompt
+from .parse import (
+    SeenProduct,
+    build_product_lines,
+    extract_json,
+    parse_mapping,
+    parse_products,
+    parse_receipt_lines,
+    parse_response,
+    shortlist,
+)
+from .prompt import (
+    build_mapping_prompt,
+    build_products_prompt,
+    build_prompt,
+    build_receipt_prompt,
+    build_receipt_read_prompt,
+)
 from .providers import FakeProvider, GigaChatProvider, VisionProvider
 from .service import detect_mime, recognize
 
@@ -43,10 +58,13 @@ __all__ = [
     "build_products_prompt",
     "build_prompt",
     "build_receipt_prompt",
+    "build_receipt_read_prompt",
     "detect_mime",
     "extract_json",
     "parse_mapping",
     "parse_products",
+    "parse_receipt_lines",
     "parse_response",
     "recognize",
+    "shortlist",
 ]
