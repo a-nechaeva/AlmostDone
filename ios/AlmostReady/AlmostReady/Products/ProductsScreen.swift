@@ -12,25 +12,25 @@ struct ProductsScreen: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 8) {
+                if isSearching {
+                    searchResults
+                } else {
+                    productsAtHome
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+        }
+        .scrollDismissesKeyboard(.never)
+        // Search results and pantry rows share IDs but have different actions.
+        .id(isSearching)
+        .safeAreaInset(edge: .top, spacing: 0) {
             searchBar
                 .padding(.horizontal, 20)
                 .padding(.vertical, 8)
-
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 8) {
-                    if isSearching {
-                        searchResults
-                    } else {
-                        productsAtHome
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 12)
-            }
-            .scrollDismissesKeyboard(.never)
-            // Search results and pantry rows share IDs but have different actions.
-            .id(isSearching)
+                .background(Color(.demoBackground))
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             dishesLink
@@ -171,7 +171,6 @@ struct ProductsScreen: View {
         .controlSize(.large)
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
-        .background(Color(.demoBackground))
     }
 
     private func closeSearch() {

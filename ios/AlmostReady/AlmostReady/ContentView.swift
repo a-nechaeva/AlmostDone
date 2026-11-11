@@ -13,7 +13,7 @@ struct ContentView: View {
                         dishPath.removeAll()
                         selection = .dishes
                     }
-                    .safeAreaInset(edge: .bottom, spacing: 0) {
+                    .floatingTabBarInset {
                         if searchFocus != .products { tabBar }
                     }
                 }
@@ -21,7 +21,7 @@ struct ContentView: View {
             tab(.dishes) {
                 NavigationStack(path: $dishPath) {
                     DishesScreen(searchFocus: $searchFocus, onOpenProducts: openProducts)
-                        .safeAreaInset(edge: .bottom, spacing: 0) {
+                        .floatingTabBarInset {
                             if searchFocus != .dishes { tabBar }
                         }
                         .navigationDestination(for: Recipe.ID.self) { id in
@@ -32,13 +32,13 @@ struct ContentView: View {
             tab(.shopping) {
                 NavigationStack {
                     ShoppingScreen(onOpenTab: selectTab)
-                        .safeAreaInset(edge: .bottom, spacing: 0) { tabBar }
+                        .floatingTabBarInset { tabBar }
                 }
             }
             tab(.profile) {
                 NavigationStack {
                     ProfileScreen(onOpenProducts: openProducts)
-                        .safeAreaInset(edge: .bottom, spacing: 0) { tabBar }
+                        .floatingTabBarInset { tabBar }
                 }
             }
         }

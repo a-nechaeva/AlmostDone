@@ -70,15 +70,6 @@ struct ShoppingScreen: View {
                 }
             case .purchased(let item):
                 purchasedPage(item)
-                    .safeAreaInset(edge: .bottom, spacing: 0) {
-                        if onOpenTab != nil {
-                            FloatingTabBar(selection: .shopping) { tab in
-                                guard tab != .shopping else { return }
-                                tabAfterDismissal = tab
-                                presentation = nil
-                            }
-                        }
-                    }
             }
         }
     }
@@ -200,6 +191,15 @@ struct ShoppingScreen: View {
                 }
                 .buttonStyle(ShoppingActionStyle())
                 .padding(.top, 16)
+            }
+            .floatingTabBarInset {
+                if onOpenTab != nil {
+                    FloatingTabBar(selection: .shopping) { tab in
+                        guard tab != .shopping else { return }
+                        tabAfterDismissal = tab
+                        presentation = nil
+                    }
+                }
             }
             .navigationTitle("Покупки")
             .navigationBarTitleDisplayMode(.inline)

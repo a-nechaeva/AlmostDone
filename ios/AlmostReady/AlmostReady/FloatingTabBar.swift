@@ -99,3 +99,14 @@ struct FloatingTabBar: View {
             : Color(red: 250.0 / 255, green: 229.0 / 255, blue: 220.0 / 255)
     }
 }
+
+extension View {
+    @ViewBuilder
+    func floatingTabBarInset<Bar: View>(@ViewBuilder content: () -> Bar) -> some View {
+        if #available(iOS 26.0, *) {
+            safeAreaBar(edge: .bottom, spacing: 0, content: content)
+        } else {
+            safeAreaInset(edge: .bottom, spacing: 0, content: content)
+        }
+    }
+}

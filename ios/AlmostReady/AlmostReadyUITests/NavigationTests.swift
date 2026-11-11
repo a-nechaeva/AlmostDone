@@ -57,6 +57,13 @@ final class NavigationTests: XCTestCase {
         XCTAssertEqual(centers, centers.sorted())
         XCTAssertEqual(tabs.filter(\.isSelected).map(\.identifier), ["tabs.products"])
 
+        let lastProduct = app.buttons["products.remove.olive-oil"]
+        let openDishes = app.buttons["products.dishes"]
+        XCTAssertTrue(lastProduct.isHittable)
+        XCTAssertTrue(openDishes.isHittable)
+        XCTAssertLessThanOrEqual(lastProduct.frame.maxY, openDishes.frame.minY)
+        XCTAssertLessThanOrEqual(openDishes.frame.maxY, productsTab.frame.minY)
+
         dishesTab.tap()
         XCTAssertTrue(app.navigationBars["Блюда"].waitForExistence(timeout: 10))
         shoppingTab.tap()
