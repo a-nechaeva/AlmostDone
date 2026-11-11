@@ -136,7 +136,7 @@ class ServerSessionRepositoryTest {
         var clock = 1_000L
         var rejections = 0
         var refreshCalls = 0
-        val repository = repository(store, HttpTransport { request ->
+        val transport = HttpTransport { request ->
             when (request.url.encodedPath) {
                 "/api/v1/me/state" -> state()
                 "/api/v1/pantry" ->
@@ -153,7 +153,8 @@ class ServerSessionRepositoryTest {
                 }
                 else -> error("Unexpected request")
             }
-        }) { clock }
+        }
+        val repository = repository(store, transport) { clock }
         assertEquals("test-session", repository.sessionKey.first())
         val request = ApiRequest("pantry")
         val first = async { runCatching { repository.execute(request) } }
