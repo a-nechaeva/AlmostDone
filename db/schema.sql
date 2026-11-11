@@ -107,7 +107,9 @@ CREATE TABLE recipes (
     needs_oven      BOOLEAN NOT NULL DEFAULT false,
     no_cook         BOOLEAN NOT NULL DEFAULT false,
     image_url       TEXT,
-    author_id       INT              -- NULL = базовый рецепт (видят все), иначе личный рецепт автора
+    author_id       INT,             -- NULL = базовый рецепт (видят все), иначе личный рецепт автора
+    CONSTRAINT recipes_no_cook_no_equipment
+        CHECK (NOT no_cook OR (NOT needs_stove AND NOT needs_oven AND NOT needs_microwave))  -- холодное блюдо не требует техники
 );
 CREATE INDEX recipes_time_idx   ON recipes (cook_time_min);
 CREATE INDEX recipes_author_idx ON recipes (author_id);
@@ -203,11 +205,13 @@ SELECT r.id AS recipe_id,
        ROUND(SUM(i.kcal    * ri.qty_g / 100) / r.servings, 1) AS kcal,
        ROUND(SUM(i.protein * ri.qty_g / 100) / r.servings, 1) AS protein,
        ROUND(SUM(i.fat     * ri.qty_g / 100) / r.servings, 1) AS fat,
-       ROUND(SUM(i.carbs   * ri.qty_g / 100) / r.servings, 1) AS carbs
+       ROUND(SUM(i.carbs   * ri.qty_g / 100) / r.servings, 1) AS carbs,
+       -- false: нет обязательных продуктов или у обязательного qty_g IS NULL (КБЖУ неполное)
+       (COUNT(ri.recipe_id) > 0
+        AND COUNT(*) FILTER (WHERE ri.recipe_id IS NOT NULL AND ri.qty_g IS NULL) = 0) AS complete
 FROM recipes r
-JOIN recipe_ingredients ri ON ri.recipe_id = r.id
-JOIN ingredients i         ON i.id = ri.ingredient_id
-WHERE NOT ri.is_optional
+LEFT JOIN recipe_ingredients ri ON ri.recipe_id = r.id AND NOT ri.is_optional
+LEFT JOIN ingredients i         ON i.id = ri.ingredient_id
 GROUP BY r.id, r.servings;
 
 CREATE VIEW recipe_allergens AS
