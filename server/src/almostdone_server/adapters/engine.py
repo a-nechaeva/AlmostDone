@@ -42,6 +42,11 @@ class DishgraphGateway:
                 # same required-only composition into its strict input model.
                 # Preserve all original optional rows for API presentation.
                 required = [item for item in raw["items"] if not item.get("is_optional")]
+                # New engine versions accept unknown required quantities and
+                # estimate a package when absent. The REST contract requires
+                # unknown availability/metrics instead, even if stock is present.
+                if any(item.get("qty_g") is None for item in required):
+                    raise ValueError("Required ingredient quantity is unknown")
                 loaded = self.engine.catalog_from_dict({"ingredients": [self.ingredients[item["code"]] for item in required],
                                                         "recipes": [{**raw, "items": required}]})
                 loaded_recipes.append(loaded.recipes[0])

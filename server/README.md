@@ -14,9 +14,16 @@ python -m venv server/.venv
 .\server\.venv\Scripts\python.exe -m uvicorn almostdone_server.main:create_app --factory --host 127.0.0.1 --port 8000
 ```
 
-Для PostgreSQL задайте `ALMOSTDONE_DATABASE_URL` и примените миграцию
-`001_server_state` по [инструкции БД](../db/README.md). Пользователи, сессии и
-данные сохраняются после перезапуска. Без этой переменной используются память
+Для PostgreSQL задайте `ALMOSTDONE_DATABASE_URL` и один раз примените миграцию
+из корня репозитория:
+
+```sh
+psql --dbname "postgresql://USER:PASSWORD@HOST:5432/DATABASE" -v ON_ERROR_STOP=1 -f db/migrations/001_server_state.sql
+```
+
+При создании БД через актуальный `db/schema.sql` миграция уже включена.
+Пользователи, сессии и данные сохраняются после перезапуска.
+Без `ALMOSTDONE_DATABASE_URL` используются память
 и демонстрационный каталог. Остальные настройки — в [.env.example](.env.example).
 
 - Swagger UI: <http://127.0.0.1:8000/docs>.

@@ -45,7 +45,10 @@ def test_unknown_recipe_quantity_is_not_replaced_with_a_server_estimate():
 @pytest.mark.parametrize("flags,equipment,included", [
     ({"needs_stove": True}, ["stove"], True),
     ({"needs_stove": True}, ["oven"], False),
-    ({"needs_stove": False}, [], True),
+    ({"needs_stove": False}, [], False),
+    ({"needs_stove": False}, ["no_cook"], False),
+    ({"needs_stove": False}, ["stove", "oven", "microwave"], True),
+    ({"needs_stove": False, "no_cook": True}, [], True),
 ])
 def test_equipment_filter_is_decided_by_ready_engine(flags, equipment, included):
     data = custom_catalog()
