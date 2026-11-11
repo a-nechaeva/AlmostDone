@@ -62,7 +62,11 @@ fun matchRecipe(
             uncertain += need.ingredientId
         } else if (entries.isEmpty()) {
             missing += need
-        } else if (entries.any { it.quantity == null || it.quantity.unit != need.quantity.unit }) {
+        } else if (entries.any { it.quantity == null }) {
+            // Продукт дома без количества считается достаточным (договорённость команды, как на
+            // сервере: ready, докупка 0).
+            continue
+        } else if (entries.any { it.quantity!!.unit != need.quantity.unit }) {
             uncertain += need.ingredientId
         } else {
             val available = entries.sumOf { it.quantity!!.value }
@@ -107,7 +111,9 @@ fun shoppingQuote(catalog: Catalog, household: Household): ShoppingQuote {
             val existing = household.pantry.filter { it.ingredientId == need.ingredientId }
             when {
                 need.quantity == null -> need
-                existing.any { it.quantity == null || it.quantity.unit != need.quantity.unit } ->
+                // Продукт дома без количества считается достаточным — докупать нечего.
+                existing.any { it.quantity == null } -> null
+                existing.any { it.quantity!!.unit != need.quantity.unit } ->
                     Shortage(need.ingredientId, null)
                 else -> {
                     val left = need.quantity.value - existing.sumOf { it.quantity!!.value }
@@ -194,4 +200,67 @@ fun suggestSinglePurchase(
                 .thenBy { it.ingredient.id }
         )
         .firstOrNull()
+}
+
+/** Набор покупок для графа: какие упаковки купить и какие блюда это откроет. */
+data class PurchaseSet(val items: List<PurchaseItem>, val priceKopecks: Long, val recipeIds: List<String>) {
+    val key: String
+        get() = items.joinToString("+") { it.ingredient.id }
+}
+
+data class PurchaseItem(val ingredient: Ingredient, val quantity: Quantity, val priceKopecks: Long)
+
+/**
+ * Наборы из 1–[maxItems] покупок, как узлы графа движка: блюда группируются по набору
+ * недостающих продуктов. Набор открывает и блюда, которым нужна только его часть, если купленных
+ * упаковок хватает. Берутся только подходящие блюда с известными количествами и ценами.
+ * Сверху — наборы, открывающие больше блюд, затем дешевле.
+ */
+fun purchaseSets(
+    catalog: Catalog,
+    matches: List<RecipeMatch>,
+    maxItems: Int = 3,
+    limit: Int = 5,
+): List<PurchaseSet> {
+    val candidates =
+        matches.filter { match ->
+            match.dietary.status == Suitability.ALLOWED &&
+                match.uncertainQuantityIds.isEmpty() &&
+                match.missing.size in 1..maxItems &&
+                match.missing.all { s ->
+                    quotePackage(s.quantity, catalog.ingredient(s.ingredientId)?.offer) != null
+                }
+        }
+    return candidates
+        .groupBy { match -> match.missing.map { it.ingredientId }.toSet() }
+        .mapNotNull { (ids, exact) ->
+            val items =
+                ids.sorted().map { id ->
+                    val need = exact.mapNotNull { m -> m.missing.first { it.ingredientId == id }.quantity }
+                    val ingredient = catalog.ingredient(id)!!
+                    val (quantity, price) =
+                        quotePackage(need.maxBy { it.value }, ingredient.offer) ?: return@mapNotNull null
+                    PurchaseItem(ingredient, quantity, price)
+                }
+            val bought = items.associate { it.ingredient.id to it.quantity }
+            val unlocked =
+                candidates
+                    .filter { match ->
+                        match.missing.all { s ->
+                            val q = bought[s.ingredientId]
+                            q != null && s.quantity != null && s.quantity.unit == q.unit &&
+                                s.quantity.value <= q.value
+                        }
+                    }
+                    .map { it.recipe.id }
+            val total = sumMoney(items.map { it.priceKopecks }) ?: return@mapNotNull null
+            PurchaseSet(items, total, unlocked)
+        }
+        .sortedWith(
+            compareByDescending<PurchaseSet> { it.recipeIds.size }
+                .thenBy { it.priceKopecks }
+                .thenBy { it.items.size }
+                .thenBy { it.key }
+        )
+        .take(limit)
 }

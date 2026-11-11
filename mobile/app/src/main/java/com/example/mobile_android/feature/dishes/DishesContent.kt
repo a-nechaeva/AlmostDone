@@ -65,6 +65,7 @@ fun DishesContent(
                     view = view,
                     changeView = model::viewChanged,
                     addPurchase = model::addPurchase,
+                    addPurchaseSet = model::addPurchaseSet,
                     queryText = query,
                     filterSelection = filters,
                     toggleAllergen = model::toggleAllergen,

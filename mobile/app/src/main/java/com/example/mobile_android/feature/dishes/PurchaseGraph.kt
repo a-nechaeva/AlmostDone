@@ -13,6 +13,8 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.mobile_android.domain.PurchaseSet
+import com.example.mobile_android.domain.RecipeMatch
 import com.example.mobile_android.feature.common.ActionState
 import com.example.mobile_android.ui.*
 import com.example.mobile_android.ui.components.*
@@ -40,8 +42,17 @@ fun LazyListScope.purchaseGraph(
     addPurchase: () -> Unit,
     reset: () -> Unit,
     dismiss: () -> Unit,
+    addSet: (String) -> Unit = {},
 ) {
     val suggestion = state.suggestion
+    // Наборы покупок (1–3 продукта); одиночная покупка уже показана отдельным блоком.
+    val sets = state.purchaseSets.filter { suggestion == null || it.key != suggestion.ingredient.id }
+    if (suggestion == null && sets.isNotEmpty()) {
+        item { Text("Что докупить, чтобы открыть блюда", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        item { ActionMessage(action, dismiss) }
+        purchaseSetItems(sets, state.visible, action, recipe, addSet)
+        return
+    }
     if (suggestion == null) {
         if (state.visible.isNotEmpty())
             item {
@@ -156,4 +167,73 @@ fun LazyListScope.purchaseGraph(
             }
         }
     }
+    if (sets.isNotEmpty()) {
+        item { Text("Другие наборы покупок", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        purchaseSetItems(sets, state.visible, action, recipe, addSet)
+    }
 }
+
+private fun LazyListScope.purchaseSetItems(
+    sets: List<PurchaseSet>,
+    visible: List<RecipeMatch>,
+    action: ActionState,
+    recipe: (String) -> Unit,
+    addSet: (String) -> Unit,
+) {
+    val byId = visible.associateBy { it.recipe.id }
+    items(sets, key = { "set-${it.key}" }) { set ->
+        Surface(
+            shape = MaterialTheme.shapes.large,
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Icon(Icons.Outlined.ShoppingBag, null, tint = MaterialTheme.colorScheme.primary)
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            set.items.joinToString(" + ") { it.ingredient.name },
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            "≈${money(set.priceKopecks)} · откроет блюд: ${set.recipeIds.size}",
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+                set.items.forEach {
+                    Text(
+                        "${it.ingredient.name}: ${quantityLabel(it.quantity)} · ≈${money(it.priceKopecks)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                val shown = set.recipeIds.mapNotNull(byId::get).take(MAX_SET_RECIPES)
+                shown.forEach { match ->
+                    TextButton(onClick = { recipe(match.recipe.id) }, contentPadding = PaddingValues(0.dp)) {
+                        Text(
+                            "→ ${match.recipe.title} · ${match.recipe.minutes} мин",
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+                if (set.recipeIds.size > shown.size)
+                    Text(
+                        "и ещё ${set.recipeIds.size - shown.size}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                OutlinedButton(
+                    onClick = { addSet(set.key) },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    enabled = !action.pending,
+                ) {
+                    Text("Добавить в покупки")
+                }
+            }
+        }
+    }
+}
+
+private const val MAX_SET_RECIPES = 4

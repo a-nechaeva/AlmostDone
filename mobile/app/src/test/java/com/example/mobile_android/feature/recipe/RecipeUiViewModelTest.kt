@@ -42,9 +42,13 @@ class RecipeUiViewModelTest {
         assertEquals(23000L, ready(vm).match!!.purchaseKopecks)
         h.setPantry("hard-cheese", Quantity(200.0, QuantityUnit.GRAM)); runCurrent()
         assertTrue(ready(vm).match!!.ready)
+        // Сыр дома без веса считается достаточным: рецепт готов, докупать нечего.
         h.setPantry("hard-cheese", null); runCurrent()
+        assertTrue(ready(vm).match!!.ready)
+        assertEquals(0L, ready(vm).match!!.purchaseKopecks)
+        // Неизвестно — только несовместимые единицы: в покупки не добавить.
+        h.setPantry("hard-cheese", Quantity(200.0, QuantityUnit.MILLILITER)); runCurrent()
         assertEquals(setOf("hard-cheese"), ready(vm).match!!.uncertainQuantityIds)
-        assertNull(ready(vm).match!!.purchaseKopecks)
         assertFalse(ready(vm).canAddToShopping)
         vm.addToShopping(); runCurrent()
         assertEquals(0, h.shoppingCalls)

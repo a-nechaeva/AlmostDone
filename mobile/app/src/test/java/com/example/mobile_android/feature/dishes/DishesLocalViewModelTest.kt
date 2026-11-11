@@ -76,29 +76,66 @@ class DishesLocalViewModelTest {
         collect(model)
         runCurrent()
 
+        // Без исключённых аллергенов неполные сведения о них не мешают подбору.
         assertEquals(
-            listOf(
-                DishGroup.READY,
-                DishGroup.BUY_ONE,
-                DishGroup.BUY_TWO,
-                DishGroup.BUY_THREE,
-                DishGroup.ABOVE_LIMIT,
-                DishGroup.DIET_UNKNOWN,
-                DishGroup.QUANTITY_UNKNOWN,
+            mapOf(
+                "ready" to DishGroup.READY,
+                "one" to DishGroup.BUY_ONE,
+                "two" to DishGroup.BUY_TWO,
+                "three" to DishGroup.BUY_THREE,
+                "four" to DishGroup.ABOVE_LIMIT,
+                "unknown-allergens" to DishGroup.READY,
+                // i6 дома без количества — достаточно, не хватает только i2
+                "unknown-quantity" to DishGroup.BUY_ONE,
             ),
-            model.result.visible.map(::dishGroup),
+            model.result.visible.associate { it.recipe.id to dishGroup(it) },
         )
-        assertEquals(
-            listOf("Сведения об аллергенах неполные"),
-            dishWarnings(model.result.visible[5]),
-        )
-        assertNull(model.result.visible[1].purchaseKopecks)
+        assertNull(model.result.visible.first { it.recipe.id == "one" }.purchaseKopecks)
         model.availabilityChanged(Availability.NOW)
         runCurrent()
-        assertEquals(listOf("ready"), model.result.visible.map { it.recipe.id })
+        assertEquals(setOf("ready", "unknown-allergens"), model.result.visible.map { it.recipe.id }.toSet())
         model.availabilityChanged(Availability.BUY)
         runCurrent()
-        assertEquals(listOf("one", "two", "three"), model.result.visible.map { it.recipe.id })
+        assertEquals(
+            setOf("one", "two", "three", "unknown-quantity"),
+            model.result.visible.map { it.recipe.id }.toSet(),
+        )
+
+        // С исключённым аллергеном неполные сведения — «требуют проверки», в «Сейчас» не попадают.
+        // Кунжута в блюде нет, но сведения неполные — подтвердить нельзя.
+        model.toggleAllergen(Allergen.SESAME)
+        model.availabilityChanged(Availability.ALL)
+        runCurrent()
+        val unknown = model.result.visible.first { it.recipe.id == "unknown-allergens" }
+        assertEquals(DishGroup.DIET_UNKNOWN, dishGroup(unknown))
+        assertEquals(listOf("Сведения об аллергенах неполные"), dishWarnings(unknown))
+        model.availabilityChanged(Availability.NOW)
+        runCurrent()
+        assertFalse(model.result.visible.any { it.recipe.id == "unknown-allergens" })
+    }
+
+    @Test
+    fun graphPurchaseSetIsAddedToShoppingAsWholePackages() = runTest {
+        household.values.value =
+            Household(pantry = DemoCatalog.initialPantry.filter { it.ingredientId != "tomatoes" })
+        val model = model()
+        collect(model)
+        runCurrent()
+        assertEquals("hard-cheese+tomatoes", model.result.purchaseSets.first().key)
+        model.availabilityChanged(Availability.NOW)
+        runCurrent()
+        assertTrue(model.result.purchaseSets.isEmpty())
+        model.availabilityChanged(Availability.ALL)
+        runCurrent()
+        model.addPurchaseSet("hard-cheese+tomatoes")
+        runCurrent()
+        assertEquals(
+            listOf(
+                ManualPurchase("hard-cheese", Quantity(200.0, QuantityUnit.GRAM)),
+                ManualPurchase("tomatoes", Quantity(500.0, QuantityUnit.GRAM)),
+            ),
+            household.values.value.manualPurchases,
+        )
     }
 
     @Test
@@ -181,15 +218,21 @@ class DishesLocalViewModelTest {
         val model = model(catalog)
         collect(model)
         runCurrent()
-        assertEquals(setOf("180", "181"), model.result.suggestion?.recipeIds)
+        // Без исключённых аллергенов блюдо с неполными сведениями участвует в подсказке.
+        assertEquals(setOf("180", "181", "incomplete"), model.result.suggestion?.recipeIds)
         val incomplete = model.result.visible.first { it.recipe.id == "incomplete" }
         assertEquals(Suitability.ALLOWED, incomplete.dietary.status)
-        assertEquals(DishGroup.DIET_UNKNOWN, dishGroup(incomplete))
+        assertEquals(DishGroup.BUY_ONE, dishGroup(incomplete))
 
         model.maxMinutesChanged(180)
         runCurrent()
-        assertEquals(setOf("180"), model.result.suggestion?.recipeIds)
+        assertEquals(setOf("180", "incomplete"), model.result.suggestion?.recipeIds)
         model.maxMinutesChanged(ANY_MINUTES)
+        runCurrent()
+        assertEquals(setOf("180", "181", "incomplete"), model.result.suggestion?.recipeIds)
+
+        // С исключённым аллергеном — только блюда с полными сведениями.
+        model.toggleAllergen(Allergen.SESAME)
         runCurrent()
         assertEquals(setOf("180", "181"), model.result.suggestion?.recipeIds)
     }
