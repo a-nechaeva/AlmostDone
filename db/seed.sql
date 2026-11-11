@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict PhCplU7JRVsq7KHHj49df9aiTDFuUrlvkcbEag3Oav1Bc7LG38dKa5e1YP0peaZ
+\restrict LZWAAwHY9R11wgpYsH9lWfNR3mcYbrMbMjc774V50nDqPiG1EBdZXCQ8lAzhtHm
 
 -- Dumped from database version 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1)
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1)
@@ -107,6 +107,14 @@ COPY public.diets (id, kind, name, description) FROM stdin;
 COPY public.diet_excluded_allergens (diet_id, allergen_id) FROM stdin;
 15	5
 16	7
+18	2
+18	3
+18	4
+18	7
+18	10
+18	11
+18	12
+18	13
 \.
 
 
@@ -122,6 +130,7 @@ COPY public.diet_excluded_categories (diet_id, category_id) FROM stdin;
 13	4
 13	5
 13	13
+9	12
 \.
 
 
@@ -1139,6 +1148,7 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 133	Содовый хлеб	Хлеб на соде и пахте без дрожжей и без расстойки. От замеса до духовки — три минуты.	8	45	f	f	t	https://theunitools.com/recipes/soda-bread.jpg	\N	f
 134	Чёрный ризотто	Ризотто с каракатицей и её чернилами. Чернила вливают в конце, иначе они дадут горечь.	4	50	f	t	f	https://theunitools.com/recipes/crni-rizot.jpg	\N	f
 135	Загорски штрукли	Тонкое тесто с творожной начинкой, отваренное и запечённое под сливками.	6	45	f	t	t	https://theunitools.com/recipes/zagorski-strukli.jpg	\N	f
+140	Сырное фондю	Грюйер и вашрен, растопленные в белом вине с крахмалом. Кислота вина не даёт сыру свернуться.	4	20	f	t	f	https://theunitools.com/recipes/fondue-moitie-moitie.jpg	\N	f
 137	Форикол	Баранина с капустой, слоями, с целым перцем горошком. Всего четыре ингредиента и два часа времени.	6	130	f	t	f	https://theunitools.com/recipes/farikal.jpg	\N	f
 138	Мидии по-мариньерски	Мидии, приготовленные на пару в белом вине с сельдереем и луком. Пять минут под крышкой и не дольше.	4	15	f	t	f	https://theunitools.com/recipes/moules-marinieres.jpg	\N	f
 139	Фламандская карбонада	Говядина, томлённая в тёмном пиве с луком и ломтем хлеба с горчицей, который загущает соус.	6	180	f	t	t	https://theunitools.com/recipes/carbonade-flamande.jpg	\N	f
@@ -1159,7 +1169,6 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 155	Сильпанчо	Отбивная в панировке размером с тарелку, поверх риса и картофеля, с яйцом и сырым салатом.	4	30	f	t	f	https://theunitools.com/recipes/silpancho.jpg	\N	f
 156	Энсебольядо	Суп из тунца с юккой и маринованным луком. В Эквадоре его едят на завтрак и считают средством от похмелья.	4	40	f	t	f	https://theunitools.com/recipes/encebollado.jpg	\N	f
 157	Льяпингачос	Картофельные лепёшки с сыром внутри, жаренные на ачиоте, с арахисовым соусом.	4	30	f	t	f	https://theunitools.com/recipes/llapingachos.jpg	\N	f
-140	Сырное фондю	Грюйер и вашрен, растопленные в белом вине с крахмалом. Кислота вина не даёт сыру свернуться.	4	20	f	f	f	https://theunitools.com/recipes/fondue-moitie-moitie.jpg	\N	t
 159	Иракская долма	Виноградные листья и овощи, фаршированные рисом с мясом, уложенные слоями и сваренные под гнётом.	6	75	f	t	f	https://theunitools.com/recipes/dolma-iraqi.jpg	\N	f
 160	Мансаф	Баранина в соусе из ферментированного сушёного йогурта джамид, на рисе и лепёшке. Национальное блюдо Иордании.	8	150	f	t	f	https://theunitools.com/recipes/mansaf.jpg	\N	f
 161	Маклюба	Рис с мясом и жареными овощами, сваренный в одной кастрюле и перевёрнутый на блюдо целиком.	6	90	f	t	f	https://theunitools.com/recipes/maqluba.jpg	\N	f
@@ -1169,6 +1178,7 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 165	Чорба-фрик	Суп с зелёной подкопчённой пшеницей фрик, бараниной и мятой. Первое блюдо на столе в Рамадан.	6	70	f	t	f	https://theunitools.com/recipes/chorba-frik.jpg	\N	f
 166	Цеппелинай	Крупные картофельные клёцки с мясной начинкой, названные в честь дирижаблей. Со шкварками и сметаной.	4	40	f	t	f	https://theunitools.com/recipes/cepelinai.jpg	\N	f
 167	Шалтибарщяй	Холодный свекольный суп на кефире, ярко-розовый, с огурцом, укропом и варёной картошкой отдельно.	4	40	f	t	f	https://theunitools.com/recipes/saltibarsciai.jpg	\N	f
+158	Масгуф	Речная рыба, распластанная и запечённая стоя у открытого огня. Багдадское блюдо с берегов Тигра.	4	75	f	t	f	https://theunitools.com/recipes/masgouf.jpg	\N	f
 170	Мульгипудер	Картофельно-перловая каша со шкварками. Эстонское блюдо, признанное национальным символом.	4	80	f	t	f	https://theunitools.com/recipes/mulgipuder.jpg	\N	f
 172	Драники	Картофельные оладьи из тёртого сырого картофеля, жаренные до хрустящей корки, со сметаной.	4	25	f	t	f	https://theunitools.com/recipes/draniki.jpg	\N	f
 174	Мохинга	Рисовая лапша в густом рыбном бульоне на банановом стволе. Завтрак и неофициальное национальное блюдо Мьянмы.	6	80	f	t	f	https://theunitools.com/recipes/mohinga.jpg	\N	f
@@ -1182,13 +1192,13 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 182	Ньяма-чома	Козлятина, медленно зажаренная над углями крупными кусками, с кача́мбари и угали.	6	90	f	t	f	https://theunitools.com/recipes/nyama-choma.jpg	\N	f
 183	Сукума-вики	Тушёная листовая капуста с луком и помидорами. Ежедневный гарнир к угали по всей Восточной Африке.	4	20	f	t	f	https://theunitools.com/recipes/sukuma-wiki.jpg	\N	f
 184	Ваакье	Рис с чёрными бобами, сваренный с листьями сорго, которые красят его в бордовый цвет.	6	80	f	t	f	https://theunitools.com/recipes/waakye.jpg	\N	f
-158	Масгуф	Речная рыба, распластанная и запечённая стоя у открытого огня. Багдадское блюдо с берегов Тигра.	4	75	f	f	f	https://theunitools.com/recipes/masgouf.jpg	\N	t
 171	Кама	Десерт из смеси обжаренных зерновых мук на кефире. Эстонский завтрак и летний десерт разом.	4	31	f	f	f	https://theunitools.com/recipes/kama.jpg	\N	t
 185	Банку с тиляпией	Ферментированное кукурузно-маниоковое тесто, вымешанное до гладкости, с жареной рыбой и острым перечным соусом.	4	45	f	t	f	https://theunitools.com/recipes/banku-with-tilapia.jpg	\N	f
 186	Тьебуджен	Рис, сваренный в томатном бульоне от рыбы, с фаршированной зеленью рыбой и овощами. Национальное блюдо Сенегала.	6	90	f	t	f	https://theunitools.com/recipes/thieboudienne.jpg	\N	f
 187	Ясса с курицей	Курица, маринованная в лимоне, под горой карамелизованного лука с горчицей.	4	75	f	t	f	https://theunitools.com/recipes/yassa-poulet.jpg	\N	f
 188	Бобóти	Запеканка из пряного фарша с сухофруктами под яично-молочной заливкой. Национальное блюдо ЮАР.	6	60	f	t	t	https://theunitools.com/recipes/bobotie.jpg	\N	f
 189	Чакалака	Острая овощная закуска из моркови, перца и фасоли с карри. К брааю, к пап или сама по себе.	6	20	f	t	f	https://theunitools.com/recipes/chakalaka.jpg	\N	f
+192	Потица	Дрожжевой рулет с ореховой начинкой, свёрнутый в кольцо. Словенская выпечка к каждому празднику.	12	60	f	f	t	https://theunitools.com/recipes/potica.jpg	\N	f
 191	Кьётсупа	Прозрачный суп из баранины с корнеплодами и перловкой. Один горшок, четыре продукта, три часа.	6	150	f	t	f	https://theunitools.com/recipes/kjotsupa.jpg	\N	f
 193	Йота	Густой суп из квашеной репы или капусты с фасолью, картофелем и копчёностями.	6	90	f	t	f	https://theunitools.com/recipes/jota.jpg	\N	f
 194	Босански лонац	Мясо и овощи, уложенные слоями в глиняный горшок и томившиеся четыре часа без помешивания.	6	240	f	f	t	https://theunitools.com/recipes/bosanski-lonac.jpg	\N	f
@@ -1207,11 +1217,11 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 209	Лагман	Тянутая вручную лапша с мясо-овощной подливой ваджа. Дунганское блюдо, ставшее общим для Центральной Азии.	4	40	f	t	f	https://theunitools.com/recipes/lagman.jpg	\N	f
 210	Курутоб	Слоёная лепёшка фатир, размоченная в разведённом сушёном курте, под жареным луком и овощами.	4	20	f	t	f	https://theunitools.com/recipes/kurutob.jpg	\N	f
 211	Таджикский оши палав	Плов с бараниной, жёлтой морковью и целой головкой чеснока, признанный ЮНЕСКО наследием.	6	90	f	t	f	https://theunitools.com/recipes/oshi-plov-tajik.jpg	\N	f
-192	Потица	Дрожжевой рулет с ореховой начинкой, свёрнутый в кольцо. Словенская выпечка к каждому празднику.	12	60	f	f	f	https://theunitools.com/recipes/potica.jpg	\N	t
 212	Кабули палав	Рис с бараниной под слоем карамелизованной моркови, изюма и миндаля. Национальное блюдо Афганистана.	6	110	f	t	f	https://theunitools.com/recipes/kabuli-pulao.jpg	\N	f
 213	Афганское манту	Пельмени на пару с говядиной и луком, под чесночным йогуртом и соусом из жёлтого гороха.	5	45	f	t	f	https://theunitools.com/recipes/mantu-afghan.jpg	\N	f
 214	Фаттуш	Салат из овощей и зелени с обжаренными кусочками лепёшки и сумахом.	4	10	f	t	f	https://theunitools.com/recipes/fattoush.jpg	\N	f
 215	Киббе в противне	Два слоя булгура с мясом и прослойка из фарша с орехами, запечённые в противне.	8	45	f	t	t	https://theunitools.com/recipes/kibbeh-bil-sanieh.jpg	\N	f
+222	Шорше илиш	Хилса в соусе из молотой горчицы, приготовленная на пару. Главная рыба Бенгалии.	4	25	f	t	f	https://theunitools.com/recipes/shorshe-ilish.jpg	\N	f
 220	Занзибарский пилау	Рис с говядиной на пряностях острова: гвоздика, кардамон, корица и чёрный перец без всякой куркумы.	6	75	f	t	f	https://theunitools.com/recipes/zanzibar-pilau.jpg	\N	f
 223	Бхуна кхичури	Рис с чечевицей, обжаренные до закладки воды. Бенгальская еда дождливого дня.	5	45	f	t	f	https://theunitools.com/recipes/bhuna-khichuri.jpg	\N	f
 224	Лаап	Рубленое мясо с обжаренной рисовой мукой, травами и лаймом. Национальное блюдо Лаоса.	4	20	f	t	f	https://theunitools.com/recipes/larb-lao.jpg	\N	f
@@ -1227,11 +1237,13 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 238	Таве коси	Ягнёнок, запечённый под густым йогуртовым соусом с яйцом и рисом. Национальное блюдо Албании.	6	90	f	t	t	https://theunitools.com/recipes/tave-kosi.jpg	\N	f
 239	Бюрек со шпинатом	Пирог из тонкого теста со шпинатом и брынзой, слоями, залитыми маслом.	8	45	f	t	f	https://theunitools.com/recipes/byrek-me-spinaq.jpg	\N	f
 240	Плацинда	Плоский пирог из вытянутого теста с брынзой, тыквой или яблоками, жаренный на сухой сковороде.	6	30	f	t	f	https://theunitools.com/recipes/placinta.jpg	\N	f
-222	Шорше илиш	Хилса в соусе из молотой горчицы, приготовленная на пару. Главная рыба Бенгалии.	4	25	f	f	f	https://theunitools.com/recipes/shorshe-ilish.jpg	\N	t
 225	Там мак хунг	Салат из зелёной папайи, растёртый в ступке. Лаосская версия — с ферментированной рыбой падэк.	4	35	f	f	f	https://theunitools.com/recipes/tam-mak-hoong.jpg	\N	t
 242	Копчёная шейка с бобами	Копчёная свиная шейка, вымоченная и отваренная, с бобами в сливочном соусе. Национальное блюдо Люксембурга.	4	100	f	t	f	https://theunitools.com/recipes/judd-mat-gaardebounen.jpg	\N	f
 246	Кабса	Рис с курицей на пряном бульоне с сушёным лаймом и томатом. Главное блюдо саудовского стола.	6	75	f	t	f	https://theunitools.com/recipes/kabsa.jpg	\N	f
+249	Бинт ас-сахн	Многослойный сдобный хлеб, промазанный топлёным маслом, залитый мёдом и чернушкой.	8	35	f	f	t	https://theunitools.com/recipes/bint-al-sahn.jpg	\N	f
 248	Сальта	Мясное рагу, поданное кипящим в каменном горшке, под взбитой пеной из пажитника хульба.	4	90	f	t	f	https://theunitools.com/recipes/saltah.jpg	\N	f
+268	Парагвайский суп	Плотная кукурузная запеканка с сыром и луком, которую вопреки названию едят вилкой.	8	50	f	f	t	https://theunitools.com/recipes/sopa-paraguaya.jpg	\N	f
+270	Флия	Слоёный пирог из жидкого теста, наливаемого по одному слою под раскалённой крышкой саче.	8	90	f	f	t	https://theunitools.com/recipes/flia.jpg	\N	f
 254	Ндоле	Горькие листья с арахисовой пастой, мясом и креветками. Национальное блюдо Камеруна.	6	75	f	t	f	https://theunitools.com/recipes/ndole.jpg	\N	f
 255	Пуле DG	Жареная курица с обжаренным подорожником и овощами. Блюдо, названное «курица директора».	5	45	f	t	f	https://theunitools.com/recipes/poulet-dg.jpg	\N	f
 256	Атьеке с рыбой	Ферментированная маниоковая крупа на пару с жареной рыбой и острым луковым салатом.	4	30	f	t	f	https://theunitools.com/recipes/attieke-poisson.jpg	\N	f
@@ -1246,9 +1258,6 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 266	Панамский санкочо	Куриный суп с корнем ньяме и травой кулантро. Панамское средство от похмелья и от простуды.	6	90	f	t	f	https://theunitools.com/recipes/sancocho-panameno.jpg	\N	f
 267	Панамская ропа вьеха	Говядина волокнами в томатном соусе с оливками и каперсами, панамской школы — суше кубинской.	5	120	f	t	f	https://theunitools.com/recipes/ropa-vieja-panamena.jpg	\N	f
 269	Чипа	Хлебные колечки из маниоковой муки с сыром, без пшеницы и без дрожжей.	8	25	f	f	t	https://theunitools.com/recipes/chipa.jpg	\N	f
-249	Бинт ас-сахн	Многослойный сдобный хлеб, промазанный топлёным маслом, залитый мёдом и чернушкой.	8	35	f	f	f	https://theunitools.com/recipes/bint-al-sahn.jpg	\N	t
-268	Парагвайский суп	Плотная кукурузная запеканка с сыром и луком, которую вопреки названию едят вилкой.	8	50	f	f	f	https://theunitools.com/recipes/sopa-paraguaya.jpg	\N	t
-270	Флия	Слоёный пирог из жидкого теста, наливаемого по одному слою под раскалённой крышкой саче.	8	90	f	f	f	https://theunitools.com/recipes/flia.jpg	\N	t
 271	Таве Эльбасани	Ягнёнок с рисом под йогуртовым соусом, запечённый в глиняной форме до румяной корки.	6	95	f	t	t	https://theunitools.com/recipes/tave-elbasani.jpg	\N	f
 273	Качамак	Кукурузная каша с картофелем, вымешанная с сыром и каймаком до тягучести.	4	45	f	t	f	https://theunitools.com/recipes/kacamak.jpg	\N	f
 274	Эма датши	Зелёный перец чили, тушённый в сыре. Национальное блюдо Бутана, где чили — овощ, а не приправа.	4	20	f	t	f	https://theunitools.com/recipes/ema-datshi.jpg	\N	f
@@ -1403,6 +1412,8 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 484	Эру	Камерунское рагу из мелко нарезанной листовой зелени с водяным листом и пальмовым маслом.	6	70	f	t	f	https://theunitools.com/recipes/eru.jpg	\N	f
 198	Ламингтоны	Кубики бисквита, обмакнутые в шоколадную глазурь и обвалянные в кокосовой стружке.	12	30	f	f	t	https://theunitools.com/recipes/lamingtons.jpg	\N	f
 486	Клефтико	Баранина, запечённая пять часов в закрытой глиняной посуде без единой капли воды.	6	300	f	f	t	https://theunitools.com/recipes/kleftiko.jpg	\N	f
+195	Боснийский бурек	Спираль из тончайшего вытянутого теста с мясной начинкой. В Боснии буреком называют только мясной.	6	45	f	f	t	https://theunitools.com/recipes/burek-bosanski.jpg	\N	f
+361	Гата	Слоёная сдоба с сухой сладкой начинкой хориз из муки, масла и сахара.	10	40	f	f	t	https://theunitools.com/recipes/gata.jpg	\N	f
 489	Имарет	Мальтийские ромбы из теста с финиковой начинкой на анисе, обжаренные во фритюре.	12	40	f	t	f	https://theunitools.com/recipes/imqaret.jpg	\N	f
 490	Фергесе	Албанская запеканка из перца, помидоров и творожного сыра, поданная в глиняной сковороде.	4	35	f	t	t	https://theunitools.com/recipes/fergese.jpg	\N	f
 491	Баллокуме	Кукурузное печенье из Эльбасана, взбитое вручную в деревянной посуде на весенний праздник.	14	25	f	f	t	https://theunitools.com/recipes/ballokume.jpg	\N	f
@@ -1411,9 +1422,7 @@ COPY public.recipes (id, title, description, servings, cook_time_min, needs_micr
 498	Хуушуур	Монгольские жареные чебуреки с бараниной, плоские и хрустящие, к Наадаму.	6	35	f	t	f	https://theunitools.com/recipes/khuushuur.jpg	\N	f
 499	Сутэй цай	Монгольский солёный чай с молоком и маслом, который варят, а не заваривают.	6	25	f	t	f	https://theunitools.com/recipes/suutei-tsai.jpg	\N	f
 501	Болани	Афганская лепёшка с картофельной или луковой начинкой, обжаренная на сухой сковороде.	6	30	f	t	f	https://theunitools.com/recipes/bolani.jpg	\N	f
-361	Гата	Слоёная сдоба с сухой сладкой начинкой хориз из муки, масла и сахара.	10	40	f	f	f	https://theunitools.com/recipes/gata.jpg	\N	t
 128	Шопский салат	Помидоры, огурцы и перец под шапкой тёртой брынзы. Овощи режут крупно, брынзу натирают мелко.	4	10	f	f	f	https://theunitools.com/recipes/shopska-salata.jpg	\N	t
-195	Боснийский бурек	Спираль из тончайшего вытянутого теста с мясной начинкой. В Боснии буреком называют только мясной.	6	45	f	f	f	https://theunitools.com/recipes/burek-bosanski.jpg	\N	t
 121	Пол самбол	Кокосовая стружка, растёртая с чили, луком и лаймом. Готовится за пять минут и подаётся ко всему.	6	15	f	f	f	https://theunitools.com/recipes/pol-sambol.jpg	\N	t
 29	Севиче	Сырая рыба в соке лайма с луком и перцем ахи. Маринуется минуты, а не часы — иначе получается варёная.	4	22	f	f	f	https://theunitools.com/recipes/ceviche.jpg	\N	t
 14	Хориатики	Деревенский салат без листьев: помидоры, огурец, лук, оливки и целый кусок феты сверху.	4	10	f	f	f	https://theunitools.com/recipes/horiatiki-salata.jpg	\N	t
@@ -2679,6 +2688,7 @@ COPY public.ingredient_allergens (ingredient_id, allergen_id) FROM stdin;
 825	8
 836	6
 851	3
+6	5
 \.
 
 
@@ -3585,6 +3595,15 @@ COPY public.recipe_cooking_methods (recipe_id, method_id) FROM stdin;
 418	3
 455	3
 461	3
+192	3
+249	3
+268	3
+270	3
+158	1
+222	1
+195	3
+361	3
+140	1
 \.
 
 
@@ -3745,6 +3764,7 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 22	77	150.00	f
 22	17	20.00	f
 22	3	12.00	f
+24	9	50.00	f
 22	149	400.00	f
 22	1	110.00	f
 22	7	60.00	f
@@ -3759,7 +3779,6 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 23	71	400.00	f
 24	771	500.00	f
 24	5	50.00	f
-24	9	10.50	f
 25	683	200.00	f
 25	45	200.00	f
 25	660	100.00	f
@@ -5230,10 +5249,13 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 233	107	800.00	f
 233	97	200.00	f
 233	8	500.00	f
+1	103	3.00	f
 233	378	80.00	f
 233	69	40.00	f
 233	1	110.00	f
 233	3	15.00	f
+2	294	1000.00	f
+4	68	1000.00	f
 233	23	119.00	f
 233	2	\N	t
 234	161	600.00	f
@@ -5365,15 +5387,12 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 249	2	6.09	f
 324	40	\N	t
 324	47	\N	t
-1	103	100.00	f
-2	294	250.00	f
 2	49	100.00	f
 3	57	150.00	f
 3	241	100.00	f
 3	158	100.00	f
 4	6	120.00	f
 4	49	100.00	f
-4	68	250.00	f
 4	183	100.00	f
 5	177	100.00	f
 5	797	100.00	f
@@ -5533,6 +5552,7 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 270	2	12.17	f
 271	401	1000.00	f
 271	19	200.00	f
+24	2	3.00	f
 271	5	200.00	f
 271	6	60.00	f
 271	7	100.00	f
@@ -5566,9 +5586,8 @@ COPY public.recipe_ingredients (recipe_id, ingredient_id, qty_g, is_optional) FR
 23	143	100.00	f
 23	133	100.00	f
 24	6	120.00	f
-24	231	100.00	f
-24	2	100.00	f
 276	514	200.00	f
+24	231	10.00	f
 276	24	201.00	f
 276	606	300.00	f
 276	11	160.00	f
@@ -10322,5 +10341,5 @@ SELECT pg_catalog.setval('public.users_id_seq', 2, true);
 -- PostgreSQL database dump complete
 --
 
-\unrestrict PhCplU7JRVsq7KHHj49df9aiTDFuUrlvkcbEag3Oav1Bc7LG38dKa5e1YP0peaZ
+\unrestrict LZWAAwHY9R11wgpYsH9lWfNR3mcYbrMbMjc774V50nDqPiG1EBdZXCQ8lAzhtHm
 

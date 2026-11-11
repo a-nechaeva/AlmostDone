@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict h0em0T8Oh9dnjulGgdFcgCoshApRg3csNVlfJp0s9NwlxuawE8biML2xLh3mGyg
+\restrict ayXTx04zUpRH81jCpST8BZQgOVkXQ719cZ6LDOu1XoiPc3fULHtYUp97AvPKRtC
 
 -- Dumped from database version 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1)
 -- Dumped by pg_dump version 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1)
@@ -893,6 +893,20 @@ CREATE UNIQUE INDEX diets_name_uq ON public.diets USING btree (lower(name));
 
 
 --
+-- Name: favorite_ingredients_ing_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX favorite_ingredients_ing_idx ON public.favorite_ingredients USING btree (ingredient_id);
+
+
+--
+-- Name: favorite_recipes_recipe_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX favorite_recipes_recipe_idx ON public.favorite_recipes USING btree (recipe_id);
+
+
+--
 -- Name: ingredient_aliases_uq; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -904,6 +918,13 @@ CREATE UNIQUE INDEX ingredient_aliases_uq ON public.ingredient_aliases USING btr
 --
 
 CREATE UNIQUE INDEX ingredients_name_uq ON public.ingredients USING btree (lower(name));
+
+
+--
+-- Name: recipe_cooking_methods_method_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX recipe_cooking_methods_method_idx ON public.recipe_cooking_methods USING btree (method_id);
 
 
 --
@@ -925,6 +946,13 @@ CREATE INDEX recipes_author_idx ON public.recipes USING btree (author_id);
 --
 
 CREATE INDEX recipes_time_idx ON public.recipes USING btree (cook_time_min);
+
+
+--
+-- Name: user_allergens_allergen_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX user_allergens_allergen_idx ON public.user_allergens USING btree (allergen_id);
 
 
 --
@@ -1176,5 +1204,5 @@ ALTER TABLE ONLY public.users
 -- PostgreSQL database dump complete
 --
 
-\unrestrict h0em0T8Oh9dnjulGgdFcgCoshApRg3csNVlfJp0s9NwlxuawE8biML2xLh3mGyg
+\unrestrict ayXTx04zUpRH81jCpST8BZQgOVkXQ719cZ6LDOu1XoiPc3fULHtYUp97AvPKRtC
 
