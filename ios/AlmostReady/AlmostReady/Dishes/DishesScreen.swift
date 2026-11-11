@@ -49,5 +49,6 @@ struct DishesScreen: View {
             }
             .padding(.vertical, 4)
         }
+        .accessibilityIdentifier("dishes.recipe.\(recipe.id)")
     }
 }

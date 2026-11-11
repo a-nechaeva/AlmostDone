@@ -22,6 +22,26 @@
       selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier="Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv="YES">
+      <Testables>
+         <TestableReference skipped="NO">
+            <BuildableReference
+               BuildableIdentifier="primary"
+               BlueprintIdentifier="8F01A870F64A43B701000005"
+               BuildableName="AlmostReadyTests.xctest"
+               BlueprintName="AlmostReadyTests"
+               ReferencedContainer="container:AlmostReady.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference skipped="NO">
+            <BuildableReference
+               BuildableIdentifier="primary"
+               BlueprintIdentifier="8F01A870F64A43B702000005"
+               BuildableName="AlmostReadyUITests.xctest"
+               BlueprintName="AlmostReadyUITests"
+               ReferencedContainer="container:AlmostReady.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+      </Testables>
    </TestAction>
    <LaunchAction buildConfiguration="Debug"
       selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB"

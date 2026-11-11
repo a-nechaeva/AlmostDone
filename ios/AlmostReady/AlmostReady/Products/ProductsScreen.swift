@@ -20,6 +20,7 @@ struct ProductsScreen: View {
                     .foregroundStyle(colorScheme == .dark ? Color.black : Color.white)
                     .frame(maxWidth: .infinity)
             }
+            .accessibilityIdentifier("products.dishes")
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
             .padding()
