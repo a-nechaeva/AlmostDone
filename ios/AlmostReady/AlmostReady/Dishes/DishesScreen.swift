@@ -18,9 +18,10 @@ struct DishesScreen: View {
     }
 
     @Environment(DemoStore.self) private var store
-    @Environment(\.dismiss) private var dismiss
     @State private var query = ""
     @State private var filter = Filter.all
+    let searchFocus: FocusState<AppTab?>.Binding
+    let onOpenProducts: () -> Void
 
     var body: some View {
         let availability = DishesAvailability(
@@ -38,7 +39,7 @@ struct DishesScreen: View {
                     ContentUnavailableView {
                         Label("Нет подходящих блюд", systemImage: "fork.knife")
                     } actions: {
-                        Button("К продуктам") { dismiss() }
+                        Button("К продуктам", action: onOpenProducts)
                             .buttonStyle(.borderedProminent)
                     }
                 } else {
@@ -71,6 +72,11 @@ struct DishesScreen: View {
                 Text("Демоданные")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+        }
+        .onDisappear {
+            if searchFocus.wrappedValue == .dishes {
+                searchFocus.wrappedValue = nil
             }
         }
     }
@@ -106,9 +112,7 @@ struct DishesScreen: View {
     }
 
     private var productsLink: some View {
-        Button {
-            dismiss()
-        } label: {
+        Button(action: onOpenProducts) {
             Text("К продуктам")
                 .font(.subheadline.weight(.medium))
                 .frame(minHeight: 44)
@@ -121,6 +125,9 @@ struct DishesScreen: View {
                 .foregroundStyle(.secondary)
                 .accessibilityHidden(true)
             TextField("Найти блюдо", text: $query)
+                .focused(searchFocus, equals: .dishes)
+                .submitLabel(.done)
+                .onSubmit { searchFocus.wrappedValue = nil }
         }
         .font(.subheadline)
         .padding(.horizontal, 16)
@@ -185,7 +192,7 @@ struct DishesScreen: View {
                 .accessibilityAddTraits(.isHeader)
 
                 ForEach(entries) { entry in
-                    NavigationLink(value: Route.recipe(entry.recipe.id)) {
+                    NavigationLink(value: entry.recipe.id) {
                         DishCard(entry: entry)
                     }
                     .buttonStyle(.plain)

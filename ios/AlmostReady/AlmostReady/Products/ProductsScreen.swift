@@ -4,10 +4,11 @@ struct ProductsScreen: View {
     @Environment(DemoStore.self) private var store
     @Environment(\.colorScheme) private var colorScheme
     @State private var query = ""
-    @FocusState private var isSearchFocused: Bool
+    let searchFocus: FocusState<AppTab?>.Binding
+    let onOpenDishes: () -> Void
 
     private var isSearching: Bool {
-        isSearchFocused || !query.isEmpty
+        searchFocus.wrappedValue == .products || !query.isEmpty
     }
 
     var body: some View {
@@ -43,7 +44,7 @@ struct ProductsScreen: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .onDisappear(perform: closeSearch)
+        .onDisappear(perform: dismissKeyboard)
     }
 
     private var searchBar: some View {
@@ -53,10 +54,10 @@ struct ProductsScreen: View {
                     .foregroundStyle(.secondary)
                     .accessibilityHidden(true)
                 TextField("Добавить продукт", text: $query)
-                    .focused($isSearchFocused)
+                    .focused(searchFocus, equals: .products)
                     .autocorrectionDisabled()
                     .submitLabel(.done)
-                    .onSubmit { isSearchFocused = false }
+                    .onSubmit(dismissKeyboard)
                     .accessibilityIdentifier("products.search")
                     .frame(minHeight: 48)
             }
@@ -159,7 +160,7 @@ struct ProductsScreen: View {
     }
 
     private var dishesLink: some View {
-        NavigationLink(value: Route.dishes) {
+        Button(action: onOpenDishes) {
             Text("Подобрать блюда")
                 .foregroundStyle(colorScheme == .dark ? Color.black : Color.white)
                 .frame(maxWidth: .infinity)
@@ -174,7 +175,13 @@ struct ProductsScreen: View {
     }
 
     private func closeSearch() {
-        isSearchFocused = false
+        dismissKeyboard()
         query = ""
+    }
+
+    private func dismissKeyboard() {
+        if searchFocus.wrappedValue == .products {
+            searchFocus.wrappedValue = nil
+        }
     }
 }

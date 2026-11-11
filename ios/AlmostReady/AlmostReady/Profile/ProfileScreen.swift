@@ -24,6 +24,7 @@ struct ProfileScreen: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("profile.nutrition")
 
                 if let onOpenProducts {
                     Button(action: onOpenProducts) {
@@ -34,6 +35,7 @@ struct ProfileScreen: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("profile.products")
                 }
 
                 Text("Оценки стоимости и КБЖУ могут быть неполными.\nПри ограничениях питания проверяйте состав.")
