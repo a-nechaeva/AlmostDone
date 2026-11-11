@@ -1,0 +1,53 @@
+name: almostdone
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: koma
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-almostdone}
+      POSTGRES_DB: almostdone
+    volumes:
+      - ./init-db.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
+      - ../db/schema.sql:/almostdone-init/schema.sql:ro
+      - ../db/seed.sql:/almostdone-init/seed.sql:ro
+      - pgdata:/var/lib/postgresql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U koma -d almostdone"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    environment:
+      ALMOSTDONE_DATABASE_URL: postgresql://koma:${POSTGRES_PASSWORD:-almostdone}@db:5432/almostdone
+    command: ["python", "-m", "almostdone_server.migrate"]
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    environment:
+      ALMOSTDONE_DATABASE_URL: postgresql://koma:${POSTGRES_PASSWORD:-almostdone}@db:5432/almostdone
+      GIGACHAT_CA_BUNDLE_FILE: /app/engine/certs/russian_trusted_root_ca.pem
+    env_file:
+      - path: ./.env
+        required: false
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:

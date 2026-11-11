@@ -4,41 +4,38 @@ FastAPI-сервер приложения. Контракт: [OpenAPI 3.1](../do
 базовый путь — `/api/v1`. Защищённые методы используют Bearer-токен;
 для изменения данных применяются `If-Match` и `Idempotency-Key` согласно контракту.
 
-## Запуск через Docker
+## Запуск через Docker Compose
 
-На Ubuntu нужны Docker Engine с запущенным сервисом и плагин Docker Compose
-(команда `docker compose`). Все команды ниже выполняются из корня репозитория.
-Python и PostgreSQL на хосте устанавливать не нужно.
+Нужны запущенный Docker Engine (или Docker Desktop) и Docker Compose.
+Все команды выполняются из корня репозитория.
 
-При первом запуске создайте файл настроек:
+При первом запуске создайте настройки (существующий `.env` не перезаписывайте):
 
 ```bash
 cp server/.env.example server/.env
 ```
 
-В `server/.env` заполните `ALMOSTDONE_YANDEX_CLIENT_ID` для входа через Яндекс,
-а для распознавания фото — `GIGACHAT_CREDENTIALS` и `GIGACHAT_MODEL`.
-Без этих настроек соответствующие функции недоступны.
-Адрес БД и путь сертификата внутри контейнера уже задаёт Compose.
+Для распознавания фото заполните `GIGACHAT_CREDENTIALS` и `GIGACHAT_MODEL`
+в `server/.env`. Без ключей распознавание недоступно. Client ID Яндекса уже
+задан в Dockerfile. Адрес PostgreSQL и путь сертификата задаёт Compose.
 
-Соберите и запустите сервер с PostgreSQL:
+Сборка и запуск API вместе с PostgreSQL:
 
 ```bash
-docker compose up -d --build
+docker compose -f server/docker-compose.yml up -d --build
 ```
 
 Новая БД получает схему и данные из `db/schema.sql` и `db/seed.sql`.
-Для существующей БД сервис `migrate` автоматически применяет недостающие
-миграции перед запуском API. При ошибке миграции API не запускается.
-Пользователи, сессии, кладовая и избранное хранятся в томе PostgreSQL
-и сохраняются после перезапуска контейнеров.
+Сервис `migrate` автоматически применяет недостающие миграции перед запуском API.
+При ошибке миграции API не запускается. Пользователи, сессии, кладовая и избранное
+хранятся в томе PostgreSQL и сохраняются после перезапуска контейнеров.
 
 ### Проверка запуска
 
 ```bash
-docker compose ps -a
-docker compose logs migrate
-docker compose logs --tail=100 api
+docker compose -f server/docker-compose.yml ps -a
+docker compose -f server/docker-compose.yml logs migrate
+docker compose -f server/docker-compose.yml logs --tail=100 api
 curl --fail http://localhost:8000/api/v1/health
 ```
 
@@ -46,7 +43,7 @@ curl --fail http://localhost:8000/api/v1/health
 В логах мигратора — `Migrations ready`, API — `Application startup complete`.
 Healthcheck проверяет процесс; работу БД дополнительно проверьте через приложение:
 войдите, добавьте продукт и рецепт в избранное, выполните
-`docker compose restart api` и убедитесь, что вход и данные сохранились.
+`docker compose -f server/docker-compose.yml restart api` и убедитесь, что вход и данные сохранились.
 
 - Swagger UI: <http://localhost:8000/docs>.
 - OpenAPI: <http://localhost:8000/openapi.json>.
@@ -57,22 +54,22 @@ Healthcheck проверяет процесс; работу БД дополни�
 После получения обновлений репозитория:
 
 ```bash
-docker compose up -d --build
+docker compose -f server/docker-compose.yml up -d --build
 ```
 
 Повторная проверка миграций (уже применённые версии пропускаются):
 
 ```bash
-docker compose run --rm migrate
+docker compose -f server/docker-compose.yml run --rm migrate
 ```
 
 Остановка с сохранением базы:
 
 ```bash
-docker compose down
+docker compose -f server/docker-compose.yml down
 ```
 
-Не добавляйте `-v`, если хотите сохранить данные: `docker compose down -v`
+Не добавляйте `-v`, если хотите сохранить данные: `docker compose -f server/docker-compose.yml down -v`
 удаляет том с базой.
 
 ### Подключение Android

@@ -44,12 +44,12 @@
 
 ```bash
 cp server/.env.example server/.env
-# Заполните настройки входа и распознавания в server/.env.
-docker compose up -d --build
+docker compose -f server/docker-compose.yml up -d --build
 ```
 
 Файл `server/.env` создайте один раз; при обновлении сохраняйте свои настройки.
 Миграции БД выполняются автоматически перед запуском API.
+Данные сохраняются в томе PostgreSQL. Документация API: <http://localhost:8000/docs>.
 Проверка запуска и команды управления описаны в [README сервера](server/README.md).
 
 ## Команда
