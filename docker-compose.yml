@@ -23,6 +23,18 @@ services:
       timeout: 3s
       retries: 30
 
+  migrate:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    environment:
+      ALMOSTDONE_DATABASE_URL: postgresql://koma:${POSTGRES_PASSWORD:-almostdone}@db:5432/almostdone
+    command: ["python", "-m", "almostdone_server.migrate"]
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+
   api:
     build:
       context: .
@@ -38,6 +50,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
 volumes:
   pgdata:

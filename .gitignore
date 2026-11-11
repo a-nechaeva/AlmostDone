@@ -206,6 +206,8 @@ cython_debug/
 tempCodeRunnerFile.py
 
 # Local development files
+/.idea/
+/.codex/
 /.local/
 /server/.local/
 /.agents/

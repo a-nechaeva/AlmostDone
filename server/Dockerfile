@@ -14,6 +14,7 @@ COPY server/ server/
 COPY docs/api/openapi.yaml docs/api/openapi.yaml
 # дамп — для запуска без базы: ALMOSTDONE_CATALOG=/app/db/seed.sql
 COPY db/seed.sql db/seed.sql
+COPY db/migrations/ db/migrations/
 
 # editable-установка сервера: пути к контракту и данным считаются от /app, как в репозитории
 RUN pip install "./engine[llm]" -e "./server[postgres]"

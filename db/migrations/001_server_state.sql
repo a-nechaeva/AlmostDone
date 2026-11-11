@@ -1,12 +1,6 @@
--- Apply once to an existing database after schema.sql OR seed.sql, if migration
--- 001_server_state is not recorded yet. New schema.sql already includes this DDL.
-BEGIN;
-SET LOCAL search_path = public, pg_catalog;
-
-CREATE TABLE api_schema_migrations (
-    version TEXT PRIMARY KEY,
-    applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+-- Run through python -m almostdone_server.migrate after creating the base schema.
+-- The runner owns the transaction and migration journal. New schema.sql already
+-- includes these tables and records 001_server_state, so the runner skips it.
 
 -- Provider subject is opaque and case-sensitive. Never store OAuth tokens here.
 CREATE TABLE user_identities (
@@ -105,6 +99,3 @@ CREATE TABLE recognition_imports (
     imported_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX recognition_imports_user_idx ON recognition_imports (user_id);
-
-INSERT INTO api_schema_migrations (version) VALUES ('001_server_state');
-COMMIT;
