@@ -5,15 +5,15 @@ import com.example.mobile_android.data.remote.ServerConnection
 import kotlinx.coroutines.CancellationException
 
 /**
- * Распознавание чека на сервере (POST /api/v1/recognitions) → строки экрана проверки.
+ * Распознавание фото чека или продуктов на сервере (POST /api/v1/recognitions) → строки экрана проверки.
  *
  * Количество приходит уже в единицах приложения (граммы; не видно на фото — одна упаковка).
  * Отмечены только уверенные совпадения (matched), сомнительные пользователь отмечает сам.
  */
-internal fun ServerConnection.receiptRecognizer(): suspend (ByteArray) -> List<ReceiptLine> = { jpeg ->
+internal fun ServerConnection.receiptRecognizer(): suspend (ByteArray, ReceiptPhotoKind) -> List<ReceiptLine> = { jpeg, kind ->
     val lines =
         try {
-            recognize(RecognitionKind.RECEIPT, jpeg)
+            recognize(if (kind == ReceiptPhotoKind.PRODUCTS) RecognitionKind.PRODUCTS else RecognitionKind.RECEIPT, jpeg)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (e: Exception) {
