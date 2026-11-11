@@ -2916,6 +2916,11 @@ components:
           description: Непрозрачный canonical ID. Не преобразовывать в число и не разбирать.
         name:
           type: string
+        nutrition_per_100g:
+          anyOf:
+          - $ref: '#/components/schemas/IngredientNutrition'
+          - type: 'null'
+          description: КБЖУ на 100 г продукта. При неполных данных — null.
         allowed_units:
           type: array
           items:
@@ -2937,6 +2942,7 @@ components:
       required:
       - id
       - name
+      - nutrition_per_100g
       - allowed_units
       - is_favorite
       - allergens
@@ -3360,6 +3366,28 @@ components:
       - state_version
       - items
       - page
+      additionalProperties: false
+    IngredientNutrition:
+      type: object
+      description: КБЖУ на 100 г ингредиента. Калории — ккал; белки, жиры и углеводы — граммы.
+      properties:
+        kcal:
+          type: number
+          minimum: 0
+        protein_g:
+          type: number
+          minimum: 0
+        fat_g:
+          type: number
+          minimum: 0
+        carbs_g:
+          type: number
+          minimum: 0
+      required:
+      - kcal
+      - protein_g
+      - fat_g
+      - carbs_g
       additionalProperties: false
     Nutrition:
       type: object
@@ -4351,6 +4379,10 @@ components:
                 type: string
               name:
                 type: string
+              nutrition_per_100g:
+                anyOf:
+                - $ref: '#/components/schemas/IngredientNutrition'
+                - type: 'null'
               unit:
                 type: string
                 enum:
@@ -4379,6 +4411,7 @@ components:
             required:
             - id
             - name
+            - nutrition_per_100g
             - unit
             - allergens
             - allergen_data_complete

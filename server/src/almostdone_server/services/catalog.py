@@ -2,6 +2,7 @@
 import copy
 import hashlib
 import json
+import math
 from decimal import Decimal, ROUND_HALF_UP
 
 from ..errors import APIError, invalid
@@ -85,9 +86,21 @@ class Catalog:
                                                    for code in ingredient_ids) else "incomplete",
                 "sources": [self.source]}
 
+    def ingredient_nutrition(self, ingredient_id):
+        ingredient = self.ingredient(ingredient_id)
+        fields = {'kcal': 'kcal', 'protein_g': 'protein', 'fat_g': 'fat', 'carbs_g': 'carbs'}
+        try:
+            nutrition = {target: float(ingredient[source]) for target, source in fields.items()}
+        except (KeyError, TypeError, ValueError, OverflowError):
+            return None
+        if any(not math.isfinite(value) or value < 0 for value in nutrition.values()):
+            return None
+        return nutrition
+
     def ingredient_body(self, ingredient_id, user):
         ing, offer = self.ingredient(ingredient_id), self.offer(ingredient_id)
         return {"id": ingredient_id, "name": ing["name"],
+                "nutrition_per_100g": self.ingredient_nutrition(ingredient_id),
                 "allowed_units": ing.get("allowed_units", [ing.get("display_unit", "g")]),
                 "is_favorite": ingredient_id in user["favorites"]["ingredients"],
                 "allergens": self.allergen_assessment([ingredient_id]), "offers": [offer] if offer else []}
@@ -118,6 +131,7 @@ class Catalog:
             ingredients.append({"id": code, "name": ing["name"], "unit": ing.get("display_unit", "g"),
                                 "allergens": sorted(ing.get("allergens", [])),
                                 "allergen_data_complete": bool(ing.get("allergen_data_complete", False)),
+                                "nutrition_per_100g": self.ingredient_nutrition(code),
                                 "offer": {"quantity": offer["quantity"], "price": offer["price"]}
                                 if offer and offer["price"] else None})
         items = []
