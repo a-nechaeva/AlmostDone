@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from decimal import Decimal
 
 from ..errors import StorageUnavailable, StorageSchemaError, StorageConflict, StorageValueError
-from .records import MemoryRecords, Transaction
+from .records import Transaction
 
 
 FOOD_DIETS = {"vegetarian": "Вегетарианство", "vegan": "Веганство"}
@@ -20,19 +20,16 @@ class PostgresStore:
         from psycopg.rows import dict_row
 
         self.psycopg, self.row_factory, self.dsn = psycopg, dict_row, dsn
-        # The existing schema has no session, replay or state-version tables.
-        # Keep those records process-local until a separate schema change is agreed.
-        self.runtime = MemoryRecords()
+        from .postgres_records import PostgresRecords
+        self.runtime = PostgresRecords()
 
     @contextmanager
     def transaction(self):
         try:
-            # The inner SQL transaction must commit before publishing runtime writes.
-            with self.runtime.transaction() as records:
-                with self.psycopg.connect(self.dsn, row_factory=self.row_factory, connect_timeout=5) as connection:
-                    connection.execute("SET LOCAL lock_timeout = '5s'")
-                    connection.execute("SET LOCAL statement_timeout = '15s'")
-                    yield Transaction(records, connection)
+            with self.psycopg.connect(self.dsn, row_factory=self.row_factory, connect_timeout=5) as connection:
+                connection.execute("SET LOCAL lock_timeout = '5s'")
+                connection.execute("SET LOCAL statement_timeout = '15s'")
+                yield Transaction(connection, connection)
         except self.psycopg.OperationalError:
             # This includes deadlocks, lock timeouts and statement timeouts.
             # They are temporary storage failures, mapped to HTTP 503 by the API.
@@ -48,6 +45,38 @@ class PostgresStore:
             "ON CONFLICT (login) DO UPDATE SET login=EXCLUDED.login RETURNING id,password_hash",
             (login, password_marker),
         ).fetchone()
+
+    def oauth_identity(self, db, provider, subject, login, marker):
+        # The same verified identity must serialize even when no account exists yet.
+        db.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s,0))", (provider + ':' + subject,))
+        row = db.execute("SELECT user_id FROM user_identities WHERE provider=%s AND provider_subject=%s",
+                         (provider, subject)).fetchone()
+        if row:
+            return str(row["user_id"])
+        # Preserve IDs and user data for accounts created before user_identities.
+        row = self.identity(db, login, marker)
+        if row["password_hash"] != marker:
+            from ..errors import APIError
+            raise APIError(409, "context_changed", "Логин занят другой учётной записью")
+        db.execute("INSERT INTO user_identities(user_id,provider,provider_subject) VALUES (%s,%s,%s)",
+                   (row["id"], provider, subject))
+        return str(row["id"])
+
+    def api_state(self, db, user_id):
+        # user() already holds the account lock: every API command uses the same
+        # lock order (user, then dependent state/session rows) across processes.
+        db.execute("INSERT INTO user_api_state(user_id) VALUES (%s) ON CONFLICT DO NOTHING", (user_id,))
+        return db.execute("SELECT state_version,diabetes,pantry_display,state_hash FROM user_api_state WHERE user_id=%s",
+                          (user_id,)).fetchone()
+
+    def save_api_state(self, db, user_id, state, state_hash):
+        from psycopg.types.json import Jsonb
+        db.execute("""
+            INSERT INTO user_api_state(user_id,state_version,diabetes,pantry_display,state_hash)
+            VALUES (%s,%s,%s,%s,%s) ON CONFLICT (user_id) DO UPDATE
+            SET state_version=EXCLUDED.state_version,diabetes=EXCLUDED.diabetes,
+                pantry_display=EXCLUDED.pantry_display,state_hash=EXCLUDED.state_hash,updated_at=clock_timestamp()
+        """, (user_id, state["version"], state["preferences"]["diabetes"], Jsonb(state["pantry"]), state_hash))
 
     def user(self, db, user_id):
         uid = int(user_id)

@@ -23,7 +23,7 @@ class RecommendationService:
                         "visible_total": len(visible), "hidden_total": len(hidden),
                         "unknown_total": sum(d["recipe"]["suitability"]["status"] == "unknown" for d in visible),
                         "details": visible if body["visibility"] == "visible" else hidden, "limit": body["limit"],
-                        "engine_options": [option for detail, option in matches if option is not None and
+                        "engine_options": [self.catalog.gateway.serialize_option(option) for detail, option in matches if option is not None and
                                            (detail["recipe"]["suitability"]["status"] != "hidden") == (body["visibility"] == "visible")]}
             sid = self.runtime.put_object(db, uid, "snapshot", snapshot, 600)
             _, expires = self.runtime.get_object(db, sid, uid, "snapshot")
@@ -36,7 +36,8 @@ class RecommendationService:
             if oid == "recommendations_graph":
                 result = {k: snapshot[k] for k in ("request_id", "state_version", "catalog_version", "servings", "filters", "visibility")}
                 return {**result, "snapshot_id": sid, "expires_at": iso(expires),
-                        "graph": self.catalog.graph(snapshot["details"], snapshot["engine_options"])}
+                        "graph": self.catalog.graph(snapshot["details"], [self.catalog.gateway.restore_option(value)
+                                                                          for value in snapshot["engine_options"]])}
             return self.snapshot_page(db, uid, user, sid, snapshot, expires, params.get('cursor'))
         if oid in ("purchases_single_purchase", "purchases_budget"):
             return self.catalog.purchases(user, body, oid.endswith('single_purchase'))

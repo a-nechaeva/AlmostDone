@@ -1,5 +1,6 @@
 """Translate catalogue records to dishgraph models and delegate calculations."""
 import importlib
+from dataclasses import asdict
 from types import SimpleNamespace
 
 from ..errors import APIError
@@ -81,6 +82,15 @@ class DishgraphGateway:
     def build_graph(self, options):
         self.require_engine()
         return self.engine.build_graph(options, self.engine_catalog)
+
+    def serialize_option(self, option):
+        return {"recipe_id": option.recipe.id, "missing_g": dict(option.missing_g),
+                "metrics": asdict(option.metrics)}
+
+    def restore_option(self, value):
+        return self.engine.DishOption(recipe=self.engine_catalog.recipe(value["recipe_id"]),
+                                      missing_g=value["missing_g"],
+                                      metrics=self.engine.DishMetrics(**value["metrics"]))
 
     def single_purchases(self, options):
         return self.engine.best_single_purchases(options, self.engine_catalog)

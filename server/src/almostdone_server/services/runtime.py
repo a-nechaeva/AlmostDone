@@ -8,6 +8,7 @@ from ..errors import APIError
 class RuntimeService:
     def __init__(self, store):
         self.records = store.runtime
+        self.persistent = store.persistent
 
     def replay(self, db, user_id, scope, key, fingerprint):
         row = self.records.get(db.runtime, "replays", (user_id, scope, key))
@@ -51,6 +52,9 @@ class RuntimeService:
 
     def purge(self, db):
         now = time.time()
+        if self.persistent:
+            self.records.purge_resources(db.runtime, now)
+            return
         for key, row in self.records.items(db.runtime, "objects"):
             if row["expires"] <= now:
                 if row["kind"] == "snapshot":
