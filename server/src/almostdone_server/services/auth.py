@@ -23,6 +23,8 @@ class AuthService:
     def identity_user(self, db, provider, subject):
         fingerprint = digest(json.dumps([provider, subject], ensure_ascii=False))
         login, marker = "oauth_" + fingerprint[:26], "!oauth-only:" + fingerprint
+        if self.store.persistent:
+            return self.store.oauth_identity(db, provider, subject, login, marker)
         row = self.store.identity(db, login, marker)
         if row["password_hash"] != marker:
             raise APIError(409, "context_changed", "Логин занят другой учётной записью")
@@ -48,10 +50,7 @@ class AuthService:
         return row
 
     def revoke_family(self, db, family):
-        for key, row in self.records.items(db.runtime, "sessions"):
-            if row["family"] == family:
-                row["revoked"] = True
-                self.records.put(db.runtime, "sessions", key, row)
+        self.records.revoke_family(db.runtime, family)
 
     def login(self, provider_name, payload, validate_result):
         provider = self.providers.get(provider_name)
@@ -74,8 +73,13 @@ class AuthService:
     def refresh(self, token, validate_result):
         result = None
         with self.store.transaction() as db:
-            found = next(((key, row) for key, row in self.records.items(db.runtime, "sessions")
-                          if row["refresh_hash"] == digest(token)), None)
+            found = self.records.session_by_refresh(db.runtime, digest(token))
+            if found:
+                # Serialize refresh, logout and mutations on the same user lock.
+                # Re-read AFTER acquiring it: another worker may have rotated or
+                # revoked the token while this request was waiting.
+                self.states.load(db, found[1]["user_id"])
+                found = self.records.session_by_refresh(db.runtime, digest(token))
             if found:
                 key, row = found
                 if row["used"]:
@@ -93,6 +97,9 @@ class AuthService:
 
     def purge(self, db):
         now = time.time()
+        if self.store.persistent:
+            self.records.purge_sessions(db.runtime, now)
+            return
         for key, row in self.records.items(db.runtime, "sessions"):
             if row["access_until"] <= now and row["refresh_until"] <= now:
                 self.records.delete(db.runtime, "sessions", key)

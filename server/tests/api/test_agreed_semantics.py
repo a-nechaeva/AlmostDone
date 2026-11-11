@@ -16,7 +16,11 @@ def test_unweighed_stock_uses_native_engine_semantics_and_portions():
             client.post("/api/v1/me/pantry/add", json={"ingredient_id": code, "quantity": None}, headers=mutation(client, headers))
         card = check(app, client.get("/api/v1/recipes/rice_tomato?servings=2", headers=headers), "RecipeDetail")["recipe"]
         assert card["availability"] == {"status": "ready", "missing_count": 0, "unknown_quantity_ids": ["rice", "tomato"]}
-        check(app, client.get("/api/v1/recipes/rice_tomato?servings=12", headers=headers), "Error", 503)
+        unavailable = check(app, client.get("/api/v1/recipes/rice_tomato?servings=12", headers=headers), "RecipeDetail")
+        assert unavailable["recipe"]["servings"] == 12
+        assert unavailable["recipe"]["availability"]["status"] == "unknown"
+        assert unavailable["recipe"]["buy_cost"] is None
+        assert all(item["required"] is None for item in unavailable["ingredients"])
         body = {"request_id": str(uuid4()), "servings": 2, "filters": {**FILTERS, "mode": "now"}, "visibility": "visible", "limit": 20}
         page = check(app, client.post("/api/v1/recommendations", json=body, headers=headers), "RecommendationPage", 201)
         assert [c["id"] for c in page["items"]] == ["rice_tomato"]
@@ -31,13 +35,20 @@ def test_unknown_recipe_quantity_is_not_replaced_with_a_server_estimate():
     with TestClient(app) as client:
         headers = auth(app)
         client.post("/api/v1/me/pantry/add", json={"ingredient_id": "rice", "quantity": None}, headers=mutation(client, headers))
-        check(app, client.get("/api/v1/recipes/rice_tomato", headers=headers), "Error", 503)
+        detail = check(app, client.get("/api/v1/recipes/rice_tomato", headers=headers), "RecipeDetail")
+        assert detail["ingredients"][0]["required"] is None
+        assert detail["ingredients"][0]["availability"] == "unknown"
+        assert detail["ingredients"][0]["shortage"] is None
+        assert detail["recipe"]["availability"]["status"] == "unknown"
 
 
 @pytest.mark.parametrize("flags,equipment,included", [
     ({"needs_stove": True}, ["stove"], True),
     ({"needs_stove": True}, ["oven"], False),
-    ({"needs_stove": False}, [], True),
+    ({"needs_stove": False}, [], False),
+    ({"needs_stove": False}, ["no_cook"], False),
+    ({"needs_stove": False}, ["stove", "oven", "microwave"], True),
+    ({"needs_stove": False, "no_cook": True}, [], True),
 ])
 def test_equipment_filter_is_decided_by_ready_engine(flags, equipment, included):
     data = custom_catalog()

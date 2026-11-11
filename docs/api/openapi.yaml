@@ -67,75 +67,6 @@ paths:
                 minimum: 1
               description: Секунды до повтора; для 503 может отсутствовать.
       security: []
-  /auth/vk:
-    post:
-      operationId: auth_vk
-      summary: Обмен доказательства входа vk
-      tags:
-      - auth
-      x-issues:
-      - 8
-      - 17
-      - 21
-      responses:
-        '200':
-          description: Успешно
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Session'
-        '401':
-          description: 'Неизвестная/истёкшая/отозванная сессия; WWW-Authenticate: Bearer.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          headers:
-            WWW-Authenticate:
-              schema:
-                type: string
-        '422':
-          description: 'validation_error: ошибки полей, неизвестный canonical ID, повтор line_id или некорректное
-            количество.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '429':
-          description: 'rate_limited: повторять после Retry-After.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          headers:
-            Retry-After:
-              schema:
-                type: integer
-                minimum: 1
-              description: Секунды до повтора; для 503 может отсутствовать.
-        '503':
-          description: 'service_unavailable: временная недоступность каталога/движка/провайдера/OCR.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          headers:
-            Retry-After:
-              schema:
-                type: integer
-                minimum: 1
-              description: Секунды до повтора; для 503 может отсутствовать.
-      description: 'Flow и поля SDK требуют согласования. Сервер проверяет код у провайдера и его
-        client/redirect/PKCE binding; client_id и секрет провайдера — конфигурация backend. Identity=(provider,
-        subject). Email не объединяет аккаунты. Серверные сессии изолированы по внутреннему user_id. Коды
-        и токены не логировать.'
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/VkExchange'
   /auth/yandex:
     post:
       operationId: auth_yandex
@@ -4560,30 +4491,6 @@ components:
       additionalProperties: false
       description: 'Предложение: opaque серверные токены, access 15 минут, refresh 30 дней с ротацией.
         Не OAuth-токены провайдера.'
-    VkExchange:
-      type: object
-      properties:
-        authorization_code:
-          type: string
-          minLength: 1
-        redirect_uri:
-          type: string
-          format: uri
-        code_verifier:
-          type: string
-          minLength: 43
-          maxLength: 128
-        device_id:
-          type: string
-          minLength: 1
-      required:
-      - authorization_code
-      - redirect_uri
-      - code_verifier
-      - device_id
-      additionalProperties: false
-      description: 'Поля для code+PKCE; сверить с выбранной версией SDK VK ID
-        до интеграции.'
     YandexExchange:
       type: object
       properties:

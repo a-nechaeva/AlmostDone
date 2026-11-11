@@ -32,6 +32,16 @@ class MemoryRecords:
     def items(data, collection):
         return list(copy.deepcopy(data.get(collection, {})).items())
 
+    def session_by_refresh(self, data, refresh_hash):
+        return next(((key, row) for key, row in self.items(data, "sessions")
+                     if row["refresh_hash"] == refresh_hash), None)
+
+    def revoke_family(self, data, family):
+        for key, row in self.items(data, "sessions"):
+            if row["family"] == family:
+                row["revoked"] = True
+                self.put(data, "sessions", key, row)
+
 
 class Transaction:
     def __init__(self, runtime, connection=None):

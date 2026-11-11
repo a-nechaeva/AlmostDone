@@ -33,18 +33,25 @@ def test_auth_required_and_provider_not_faked(app, client):
     assert client.get("/api/v1/me", headers={"Authorization": "Bearer fabricated"}).status_code == 401
 
 
-def test_provider_identity_is_not_merged_between_providers(tmp_path):
+def test_yandex_identity_is_stable_and_users_are_isolated():
     class Provider:
         def exchange(self, payload):
-            return "same-provider-subject"
+            return payload["oauth_token"]
 
-    app = create_app(auth_providers={"vk": Provider(), "yandex": Provider()})
+    app = create_app(auth_providers={"yandex": Provider()})
     with TestClient(app) as client:
-        payload = {"authorization_code": "code", "redirect_uri": "https://example.com/cb", "code_verifier": "x" * 43}
-        vk = check(app, client.post("/api/v1/auth/vk", json={**payload, "device_id": "device"}), "Session")
-        yandex = check(app, client.post("/api/v1/auth/yandex", json={"oauth_token": "synthetic-token"}), "Session")
-        assert vk["user_id"] != yandex["user_id"]
+        first = check(app, client.post("/api/v1/auth/yandex", json={"oauth_token": "first-user"}), "Session")
+        repeated = check(app, client.post("/api/v1/auth/yandex", json={"oauth_token": "first-user"}), "Session")
+        other = check(app, client.post("/api/v1/auth/yandex", json={"oauth_token": "other-user"}), "Session")
+        assert first["user_id"] == repeated["user_id"]
+        assert first["user_id"] != other["user_id"]
         assert "no-store" in client.post("/api/v1/auth/yandex", json={"oauth_token": "synthetic-token"}).headers["cache-control"]
+
+
+def test_vk_login_is_not_available(app, client):
+    assert "/auth/vk" not in app.state.contract.spec["paths"]
+    assert "VkExchange" not in app.state.contract.spec["components"]["schemas"]
+    check(app, client.post("/api/v1/auth/vk", json={}), "Error", 404)
 
 
 def test_pantry_add_set_zero_delete_unknown_and_replay(app, client):
@@ -152,10 +159,13 @@ def test_search_synonyms_cursor_and_favorites(app, client):
     check(app, client.get("/api/v1/me/favorites/ingredients", params={"limit": 1, "cursor": cursor}, headers=headers), "Error", 409)
 
 
-def test_unweighed_stock_uses_engine_and_unsupported_portion_scaling_is_rejected(app, client):
+def test_unweighed_stock_uses_engine_and_unsupported_portions_remain_unknown(app, client):
     headers = auth(app)
     client.post("/api/v1/me/pantry/add", json={"ingredient_id": "rice", "quantity": None}, headers=mutation(client, headers))
-    check(app, client.get("/api/v1/recipes/rice_tomato?servings=4", headers=headers), "Error", 503)
+    unscaled = check(app, client.get("/api/v1/recipes/rice_tomato?servings=4", headers=headers), "RecipeDetail")
+    assert unscaled["recipe"]["servings"] == 4
+    assert unscaled["recipe"]["availability"]["status"] == "unknown"
+    assert unscaled["recipe"]["buy_cost"] is None
     detail = check(app, client.get("/api/v1/recipes/rice_tomato?servings=2", headers=headers), "RecipeDetail")
     assert detail["recipe"]["availability"]["unknown_quantity_ids"] == ["rice"]
     assert detail["ingredients"][0]["availability"] == "enough"

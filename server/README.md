@@ -1,14 +1,12 @@
 # AlmostDone REST API
 
-Контракт API: [OpenAPI 3.1](../docs/api/openapi.yaml).
-
-Базовый путь — `/api/v1`. Контракт описывает авторизацию, профиль, продукты пользователя, избранное, каталог, рекомендации и распознавание.
-
-Для защищённых методов используется `Authorization: Bearer <access_token>`. Заголовки `If-Match` и `Idempotency-Key` передаются для операций, где они указаны в контракте.
+FastAPI-сервер приложения. Контракт: [OpenAPI 3.1](../docs/api/openapi.yaml),
+базовый путь — `/api/v1`. Защищённые методы используют Bearer-токен;
+для изменения данных применяются `If-Match` и `Idempotency-Key` согласно контракту.
 
 ## Запуск
 
-Нужен Python 3.12 или новее. Пример для Windows PowerShell из корня репозитория:
+Нужен Python 3.12 или новее. Из корня репозитория в Windows PowerShell:
 
 ```powershell
 python -m venv server/.venv
@@ -16,9 +14,25 @@ python -m venv server/.venv
 .\server\.venv\Scripts\python.exe -m uvicorn almostdone_server.main:create_app --factory --host 127.0.0.1 --port 8000
 ```
 
-Без `ALMOSTDONE_DATABASE_URL` сервер использует данные в памяти и демонстрационный каталог. Для подключения к существующей PostgreSQL задайте эту переменную окружения перед запуском. Остальные параметры перечислены в [.env.example](.env.example).
+### Миграции PostgreSQL
 
-### Демо на ноутбуке без PostgreSQL (macOS)
+Каждый разработчик, использующий существующую БД, применяет новые файлы из
+`db/migrations/` по порядку номеров перед запуском обновлённого сервера.
+Сейчас нужна `001_server_state.sql`. Из корня репозитория, от владельца схемы:
+
+```sh
+psql --dbname "postgresql://USER:PASSWORD@HOST:5432/DATABASE" -v ON_ERROR_STOP=1 -f db/migrations/001_server_state.sql
+```
+
+Замените `USER`, `PASSWORD`, `HOST` и `DATABASE` своими параметрами.
+Каждая миграция выполняется один раз; применённые версии записаны в
+`api_schema_migrations`. При создании БД через актуальный `db/schema.sql`
+миграция уже включена. Для подключения сервера задайте `ALMOSTDONE_DATABASE_URL`.
+Пользователи, сессии и данные сохраняются после перезапуска.
+Без `ALMOSTDONE_DATABASE_URL` используются память
+и демонстрационный каталог. Остальные настройки — в [.env.example](.env.example).
+
+### Демо без PostgreSQL
 
 Каталог читается прямо из дампа базы `db/seed.sql` (`ALMOSTDONE_CATALOG=../db/seed.sql`), ключ GigaChat — из `engine/.env` (в git не попадает):
 
@@ -32,12 +46,22 @@ export ALMOSTDONE_CATALOG=../db/seed.sql ALMOSTDONE_YANDEX_CLIENT_ID=de795e46d25
 
 Телефон по USB: `adb reverse tcp:8000 tcp:8000`, приложение собирается с `-PalmostReadyApiBaseUrl=http://127.0.0.1:8000`. Пользователи и сессии в этом режиме хранятся в памяти и сбрасываются при перезапуске.
 
-Приложение берёт каталог из `GET /api/v1/catalog`, а фото рецептов — из `GET /api/v1/recipes/{id}/photo`: сайт с фото стоит за Cloudflare и из мобильной сети недоступен, поэтому сервер скачивает фото сам и кэширует во временной папке. Все `photo_url` в ответах API указывают на этот адрес.
+Каталог доступен через `GET /api/v1/catalog`, фото — через
+`GET /api/v1/recipes/{id}/photo`. Сервер скачивает и кэширует фото;
+ссылки в карточках указывают на сервер.
 
 Docker: `docker compose up -d --build` из корня (сервер + PostgreSQL с `db/seed.sql`), ключи — в `server/.env`.
+Новая БД получает схему и данные автоматически; для существующей применяется миграция выше.
 
 После запуска:
 
 - Swagger UI: <http://127.0.0.1:8000/docs>.
-- OpenAPI JSON: <http://127.0.0.1:8000/openapi.json>.
+- OpenAPI: <http://127.0.0.1:8000/openapi.json>.
 - Проверка процесса: <http://127.0.0.1:8000/api/v1/health>.
+
+## Неполные данные каталога
+
+Нерассчитываемые рецепты доступны по ID и в подборе `mode=all` с неизвестными
+оценками (`null`); в `now` и `buy_1_3` они не включаются. Необязательные
+ингредиенты сохраняются в карточке и предупреждениях об аллергенах, но не
+участвуют в расчётах. Сервер не подставляет отсутствующие данные.

@@ -41,5 +41,6 @@ def graph(catalog, details, options):
             raise unsupported("graph_package_transitions")
         edges.append({**base, "kind": "extends", "add_cost": money(kopecks(edge["add_cost"])),
                       "add": [catalog.shopping_item(item["code"], item["packs"], item["cost"]) for item in edge["add"]]})
+    represented = {option.recipe.id for option in supported}
     return {"scope": "snapshot", "nodes": nodes, "edges": edges,
-            "unrepresented_recipe_ids": [option.recipe.id for option in options if option.level > 3]}
+            "unrepresented_recipe_ids": [detail["recipe"]["id"] for detail in details if detail["recipe"]["id"] not in represented]}

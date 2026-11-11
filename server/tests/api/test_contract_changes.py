@@ -70,15 +70,20 @@ def test_graph_that_requires_package_repair_is_explicitly_unsupported():
         assert result['error']['details'][0]['field'] == 'graph_package_transitions'
 
 
-def test_optional_allergen_warning_is_not_reimplemented_in_server():
+def test_optional_allergen_warning_does_not_reject_or_hide_the_recipe():
     data = custom_catalog()
     for ingredient in data['ingredients']:
         ingredient['allergen_data_complete'] = True
     data['recipes'][0]['items'].append({'code': 'cheese', 'qty_g': 20, 'is_optional': True})
     app = create_app(catalog_data=data)
     with TestClient(app) as client:
-        result = check(app, client.get('/api/v1/recipes/rice_tomato', params={'exclude_allergens': 'milk'}, headers=auth(app)), 'Error', 503)
-        assert result['error']['details'][0]['field'] == 'optional_allergen_warnings'
+        result = check(app, client.get('/api/v1/recipes/rice_tomato', params={'exclude_allergens': 'milk'}, headers=auth(app)), 'RecipeDetail')
+        assert result['recipe']['suitability']['status'] == 'allowed'
+        reason, = result['recipe']['suitability']['reasons']
+        assert reason['code'] == 'skip_optional'
+        assert reason['ingredient_ids'] == ['cheese']
+        assert reason['restriction_ids'] == ['milk']
+        assert result['recipe']['allergens']['contains'] == ['milk']
 
 
 def test_false_equipment_flags_do_not_invent_no_cook():

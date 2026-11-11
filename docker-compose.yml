@@ -11,7 +11,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-almostdone}
       POSTGRES_DB: almostdone
     volumes:
-      - ./db/seed.sql:/docker-entrypoint-initdb.d/01-seed.sql:ro  # загружается один раз, при пустой базе
+      - ./server/init-db.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
+      - ./db/schema.sql:/almostdone-init/schema.sql:ro
+      - ./db/seed.sql:/almostdone-init/seed.sql:ro
       - pgdata:/var/lib/postgresql
     ports:
       - "5432:5432"

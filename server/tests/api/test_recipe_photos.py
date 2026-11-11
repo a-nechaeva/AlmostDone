@@ -81,3 +81,28 @@ def test_recipe_cards_point_photos_at_server(app):
     assert {item["id"]: item["photo_url"] for item in page.json()["items"]}["rice_tomato"] == expected
     assert detail.status_code == 200, detail.text
     assert detail.json()["recipe"]["photo_url"] == expected
+
+
+@pytest.mark.parametrize("missing_field", ["qty_g", "package_price"])
+def test_partial_recipe_keeps_detail_and_photo_without_blocking_catalog(missing_field, downloads):
+    data = custom_catalog()
+    data["recipes"][0]["image_url"] = PHOTO
+    if missing_field == "qty_g":
+        data["recipes"][0]["items"][0]["qty_g"] = None
+    else:
+        data["ingredients"][0]["package_price"] = None
+    app = create_app(catalog_data=data)
+    with TestClient(app) as client:
+        headers = auth(app)
+        exported = check(app, client.get("/api/v1/catalog", headers=headers), "AppCatalog")
+        assert [recipe["id"] for recipe in exported["recipes"]] == ["tomato_cheese"]
+        detail = check(app, client.get("/api/v1/recipes/rice_tomato", headers=headers), "RecipeDetail")
+        assert detail["recipe"]["availability"]["status"] == "unknown"
+        assert detail["recipe"]["buy_cost"] is None
+        assert detail["shopping_items"] == []
+        response = client.get("/api/v1/recipes/rice_tomato/photo")
+        assert response.status_code == 200 and response.content == png()
+        request = {"request_id": str(uuid4()), "filters": FILTERS, "visibility": "visible", "limit": 20, "servings": 2}
+        page = check(app, client.post("/api/v1/recommendations", json=request, headers=headers), "RecommendationPage", 201)
+        assert {recipe["id"] for recipe in page["items"]} == {"rice_tomato", "tomato_cheese"}
+    assert downloads == [PHOTO]

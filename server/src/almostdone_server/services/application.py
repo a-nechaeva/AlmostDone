@@ -48,7 +48,7 @@ class ApplicationService:
             result = Result({"status": "ok", "api_version": "v1"})
             validate_result(result)
             return result
-        if oid in ("auth_vk", "auth_yandex"):
+        if oid == "auth_yandex":
             return self.auth.login(oid[5:], body, validate_result)
         if oid == "auth_refresh":
             return self.auth.refresh(body["refresh_token"], validate_result)

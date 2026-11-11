@@ -69,9 +69,35 @@ def test_unconvertible_stock_is_not_sent_to_engine_as_unlimited_presence():
     assert error.value.details[0]["field"] == "pantry_unit_conversion:rice"
 
 
-def test_incomplete_allergen_data_is_not_evaluated_by_server_rules():
+def test_incomplete_allergen_data_is_reported_without_rejecting_the_recipe():
     catalog, user = make_catalog(custom_catalog()), default_user()
     user["preferences"]["excluded_allergens"] = ["milk"]
-    with pytest.raises(APIError) as error:
-        catalog.detail("tomato_cheese", user, 2)
-    assert error.value.details[0]["field"] == "incomplete_allergen_data"
+    detail, _ = catalog.detail("tomato_cheese", user, 2)
+    assert detail["recipe"]["allergens"]["completeness"] == "incomplete"
+    assert detail["recipe"]["suitability"]["status"] == "hidden"
+    assert any(reason["code"] == "incomplete_allergen_data" for reason in detail["recipe"]["suitability"]["reasons"])
+
+
+@pytest.mark.parametrize("quantity_present", [True, False])
+def test_unknown_required_quantity_never_reaches_engine_calculations(monkeypatch, quantity_present):
+    data = custom_catalog()
+    item = data["recipes"][0]["items"][0]
+    if quantity_present:
+        item["qty_g"] = None
+    else:
+        item.pop("qty_g")
+    catalog = make_catalog(data)
+    user = default_user()
+    user["pantry"]["rice"] = None
+    assert "rice_tomato" in catalog.gateway.unsupported_recipes
+
+    def unexpected_calculation(*args, **kwargs):
+        raise AssertionError("Unknown required quantities must not be estimated by the engine")
+
+    monkeypatch.setattr(catalog.gateway.engine, "dish_option", unexpected_calculation)
+    detail, option = catalog.detail("rice_tomato", user, 2)
+    assert option is None
+    assert detail["recipe"]["availability"]["status"] == "unknown"
+    assert detail["recipe"]["nutrition_per_serving"] is None
+    assert detail["recipe"]["buy_cost"] is None
+    assert detail["shopping_items"] == []
