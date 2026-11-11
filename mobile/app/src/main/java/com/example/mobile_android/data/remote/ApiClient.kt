@@ -87,22 +87,22 @@ internal class ApiClient(
             request.ifMatch?.let { put("If-Match", it) }
             request.idempotencyKey?.let { put("Idempotency-Key", it) }
         }
+        val http = HttpRequest(
+            url,
+            request.method,
+            headers,
+            request.jsonBody,
+            request.upload?.let {
+                MultipartContent(it.fields, it.fileField, it.filename, it.contentType, it.bytes)
+            },
+        )
         val response = try {
-            transport.execute(
-                HttpRequest(
-                    url,
-                    request.method,
-                    headers,
-                    request.jsonBody,
-                    request.upload?.let {
-                        MultipartContent(it.fields, it.fileField, it.filename, it.contentType, it.bytes)
-                    },
-                )
-            )
-        } catch (e: InterruptedIOException) {
-            throw ApiNetworkException(timedOut = true)
-        } catch (e: IOException) {
-            throw ApiNetworkException(timedOut = false)
+            send(http)
+        } catch (e: ApiNetworkException) {
+            // Соединение из пула, которое сервер уже закрыл по простою, обрывается до ответа.
+            // Автоповторы OkHttp выключены ради неидемпотентных запросов; GET повторить безопасно.
+            if (e.timedOut || request.method != ApiMethod.GET) throw e
+            send(http)
         }
         if (response.status !in 200..299) {
             val error = runCatching { parseError(JSONObject(response.body.orEmpty())) }.getOrNull()
@@ -111,6 +111,14 @@ internal class ApiClient(
         val json = if (response.status == 204) null
             else runCatching { JSONObject(response.body.orEmpty()) }.getOrElse { throw ApiProtocolException() }
         return ApiResponse(response.status, json, response.etag, response.retryAfter)
+    }
+
+    private suspend fun send(request: HttpRequest): HttpResponse = try {
+        transport.execute(request)
+    } catch (e: InterruptedIOException) {
+        throw ApiNetworkException(timedOut = true)
+    } catch (e: IOException) {
+        throw ApiNetworkException(timedOut = false)
     }
 
     private fun parseError(json: JSONObject): ApiError {

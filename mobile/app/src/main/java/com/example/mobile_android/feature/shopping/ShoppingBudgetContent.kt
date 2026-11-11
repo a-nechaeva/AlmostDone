@@ -42,6 +42,7 @@ internal fun ShoppingBudgetContent(
     listState: LazyListState = rememberLazyListState(),
 ) {
     val keyboard = LocalSoftwareKeyboardController.current
+    val demo = LocalDemoData.current
     val request = {
         keyboard?.hide()
         submit()
@@ -52,7 +53,7 @@ internal fun ShoppingBudgetContent(
         contentPadding = PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        item {
+        if (demo) item {
             Text(
                 "Демо · фиксированный пример, без расчёта плана",
                 style = MaterialTheme.typography.bodySmall,
@@ -131,7 +132,7 @@ internal fun ShoppingBudgetContent(
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         CircularProgressIndicator()
-                        Text("Загружаем демонстрационный план…")
+                        Text(if (demo) "Загружаем демонстрационный план…" else "Подбираем покупки…")
                     }
                 }
             ShoppingBudgetResult.Error ->

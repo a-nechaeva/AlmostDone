@@ -427,6 +427,7 @@ fun PantryScreen(
 
 @Composable
 private fun PantryDemoNotice() {
+    if (!LocalDemoData.current) return
     Text(
         "Демо · локальный каталог и продукты на устройстве",
         style = MaterialTheme.typography.bodySmall,

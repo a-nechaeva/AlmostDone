@@ -9,10 +9,11 @@
 from __future__ import annotations
 
 import hashlib
-import ssl
 import tempfile
 import urllib.request
 from pathlib import Path
+
+from .tls import default_context
 
 MAX_BYTES = 8 * 1024 * 1024
 TIMEOUT = 20
@@ -33,21 +34,11 @@ def media_type(data: bytes) -> str | None:
     return None
 
 
-def _ssl_context() -> ssl.SSLContext:
-    # Python с python.org на macOS не видит системные сертификаты — берём certifi, если он есть
-    try:
-        import certifi
-
-        return ssl.create_default_context(cafile=certifi.where())
-    except ImportError:
-        return ssl.create_default_context()
-
-
 def download(url: str) -> bytes:
     """Скачать фото по ссылке из каталога. Подменяется в тестах."""
     request = urllib.request.Request(url, headers={"User-Agent": "AlmostDone-server"})
     try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT, context=_ssl_context()) as response:  # noqa: S310 — ссылки только из каталога
+        with urllib.request.urlopen(request, timeout=TIMEOUT, context=default_context()) as response:  # noqa: S310 — ссылки только из каталога
             data = response.read(MAX_BYTES + 1)
     except Exception as e:  # noqa: BLE001 — любая сетевая ошибка → «фото недоступно»
         raise PhotoUnavailable(str(e)) from e
