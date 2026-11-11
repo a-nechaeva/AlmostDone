@@ -33,4 +33,52 @@ final class NavigationTests: XCTestCase {
         dishes.buttons.firstMatch.tap()
         XCTAssertTrue(products.waitForExistence(timeout: 10))
     }
+
+    @MainActor
+    func testSearchAddAndRemoveCheese() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-AppleLanguages", "(ru)", "-AppleLocale", "ru_RU"]
+        app.launch()
+
+        let search = app.textFields["products.search"]
+        let addCheese = app.buttons["products.add.cheese"]
+        let homeCheese = app.staticTexts["products.home.cheese"]
+        let removeCheese = app.buttons["products.remove.cheese"]
+        let cancel = app.buttons["products.search.cancel"]
+        let dishes = app.descendants(matching: .any)["products.dishes"].firstMatch
+        let keyboard = app.keyboards.firstMatch
+
+        XCTAssertTrue(search.waitForExistence(timeout: 10))
+        XCTAssertFalse(homeCheese.exists)
+        search.tap()
+        XCTAssertTrue(keyboard.waitForExistence(timeout: 5))
+        XCTAssertTrue(cancel.isHittable)
+        XCTAssertTrue(dishes.isHittable)
+        XCTAssertLessThanOrEqual(cancel.frame.maxY, keyboard.frame.minY)
+        XCTAssertLessThanOrEqual(dishes.frame.maxY, keyboard.frame.minY)
+
+        search.typeText("том")
+        XCTAssertTrue(app.staticTexts["products.search.empty"].waitForExistence(timeout: 5))
+        XCTAssertFalse(addCheese.exists)
+        cancel.tap()
+        XCTAssertTrue(keyboard.waitForNonExistence(timeout: 5))
+
+        search.tap()
+        search.typeText("сыр")
+        XCTAssertEqual(search.value as? String, "сыр")
+        XCTAssertTrue(addCheese.waitForExistence(timeout: 5))
+        addCheese.tap()
+        XCTAssertTrue(homeCheese.waitForExistence(timeout: 5))
+        XCTAssertEqual(removeCheese.label, "Удалить продукт «Сыр»")
+        removeCheese.tap()
+        XCTAssertTrue(homeCheese.waitForNonExistence(timeout: 5))
+
+        search.tap()
+        search.typeText("сыр")
+        XCTAssertEqual(search.value as? String, "сыр")
+        XCTAssertTrue(addCheese.waitForExistence(timeout: 5))
+        cancel.tap()
+        XCTAssertTrue(app.staticTexts["Яйца"].waitForExistence(timeout: 5))
+    }
 }
