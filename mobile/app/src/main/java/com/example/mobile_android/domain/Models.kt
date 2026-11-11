@@ -27,6 +27,8 @@ enum class Allergen(val label: String) {
     EGGS("Яйца"),
     GLUTEN("Злаки с глютеном"),
     NUTS("Орехи"),
+    PEANUTS("Арахис"),
+    SESAME("Кунжут"),
     FISH("Рыба"),
     SOY("Соя"),
 }

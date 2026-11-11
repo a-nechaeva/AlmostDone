@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-internal data class ReceiptLine(
+data class ReceiptLine(
     val id: Int,
     val text: String,
     val ingredientId: String?,
@@ -53,7 +53,14 @@ internal class UnknownReceiptPantryQuantity(val ingredientId: String) : IllegalS
 internal enum class ReceiptPhotoRequest { CAMERA, PICKER }
 
 /** Что на фото: кассовый чек или сами продукты (холодильник, стол, пакет). */
-internal enum class ReceiptPhotoKind { RECEIPT, PRODUCTS }
+enum class ReceiptPhotoKind {
+    RECEIPT,
+    PRODUCTS;
+
+    /** Значение `RecognitionKind` из контракта API. */
+    internal val apiKind: String
+        get() = if (this == RECEIPT) "receipt" else "products"
+}
 
 internal enum class ReceiptPhotoIssue { NO_CAMERA, NO_PICKER, ACCESS, UNREADABLE, EMPTY, SERVER }
 

@@ -277,6 +277,8 @@ internal fun DishFilters.activeLabels(): List<String> = buildList {
                 Allergen.GLUTEN -> "Без глютена"
                 Allergen.EGGS -> "Без яиц"
                 Allergen.NUTS -> "Без орехов"
+                Allergen.PEANUTS -> "Без арахиса"
+                Allergen.SESAME -> "Без кунжута"
                 Allergen.FISH -> "Без рыбы"
                 Allergen.SOY -> "Без сои"
             }

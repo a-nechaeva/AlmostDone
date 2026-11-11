@@ -13,9 +13,19 @@ class ApiRequest(
     json: JSONObject? = null,
     val ifMatch: String? = null,
     val idempotencyKey: String? = null,
+    val upload: UploadFile? = null,
 ) {
     internal val jsonBody = json?.toString()
 }
+
+/** Файл для multipart-запроса (например, `POST /recognitions`). */
+class UploadFile(
+    val fields: Map<String, String>,
+    val fileField: String = "file",
+    val filename: String,
+    val contentType: String,
+    val bytes: ByteArray,
+)
 
 class ApiResponse internal constructor(
     val status: Int,
@@ -78,7 +88,17 @@ internal class ApiClient(
             request.idempotencyKey?.let { put("Idempotency-Key", it) }
         }
         val response = try {
-            transport.execute(HttpRequest(url, request.method, headers, request.jsonBody))
+            transport.execute(
+                HttpRequest(
+                    url,
+                    request.method,
+                    headers,
+                    request.jsonBody,
+                    request.upload?.let {
+                        MultipartContent(it.fields, it.fileField, it.filename, it.contentType, it.bytes)
+                    },
+                )
+            )
         } catch (e: InterruptedIOException) {
             throw ApiNetworkException(timedOut = true)
         } catch (e: IOException) {

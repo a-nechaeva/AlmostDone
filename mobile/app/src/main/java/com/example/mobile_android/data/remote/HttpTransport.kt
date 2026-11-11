@@ -9,6 +9,7 @@ import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.HttpUrl
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
@@ -21,7 +22,19 @@ internal class HttpRequest(
     val method: ApiMethod,
     val headers: Map<String, String>,
     val body: String?,
+    val multipart: MultipartContent? = null,
 )
+
+/** Бинарная multipart/form-data часть (например, фото чека). Байты и подписи не логируются. */
+internal class MultipartContent(
+    val fields: Map<String, String>,
+    val fileField: String,
+    val filename: String,
+    val contentType: String,
+    val bytes: ByteArray,
+) {
+    override fun toString() = "MultipartContent(fields=$fields, file=$filename, $contentType, ${bytes.size} bytes)"
+}
 
 internal class HttpResponse(
     val status: Int,
@@ -43,7 +56,16 @@ internal class OkHttpTransport : HttpTransport {
         .build()
 
     override suspend fun execute(request: HttpRequest): HttpResponse = suspendCancellableCoroutine { continuation ->
-        val body = request.body?.toRequestBody("application/json".toMediaType()) ?: when (request.method) {
+        val body = request.multipart?.let { part ->
+            MultipartBody.Builder().setType(MultipartBody.FORM).apply {
+                part.fields.forEach { (name, value) -> addFormDataPart(name, value) }
+                addFormDataPart(
+                    part.fileField,
+                    part.filename,
+                    part.bytes.toRequestBody(part.contentType.toMediaType()),
+                )
+            }.build()
+        } ?: request.body?.toRequestBody("application/json".toMediaType()) ?: when (request.method) {
             ApiMethod.POST, ApiMethod.PATCH, ApiMethod.PUT -> ByteArray(0).toRequestBody()
             else -> null
         }

@@ -33,6 +33,7 @@ import androidx.navigation.*
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import com.example.mobile_android.R
+import com.example.mobile_android.app.AppContainer
 import com.example.mobile_android.app.AppDependencies
 import com.example.mobile_android.app.LocalFeatureDependencies
 import com.example.mobile_android.feature.auth.*
@@ -92,7 +93,7 @@ fun AppRoot(container: AppDependencies) {
         if (sessionKey != null) {
             navigationState.SaveableStateProvider(sessionKey) {
                 ApplicationNavigation(
-                    container as? LocalFeatureDependencies,
+                    featureDependencies(container, sessionKey),
                     session::signOut,
                     action,
                     session.actions::dismiss,
@@ -112,6 +113,14 @@ fun AppRoot(container: AppDependencies) {
         }
     }
 }
+
+/**
+ * Зависимости экранов: настоящее приложение получает изолированные данные текущей сессии,
+ * тестовые host'ы передают свои [LocalFeatureDependencies] напрямую.
+ */
+private fun featureDependencies(container: AppDependencies, sessionKey: String): LocalFeatureDependencies? =
+    (container as? AppContainer)?.sessionFeatures(sessionKey)
+        ?: container as? LocalFeatureDependencies
 
 @Composable
 private fun ApplicationNavigation(
