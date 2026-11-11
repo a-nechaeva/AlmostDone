@@ -3,27 +3,17 @@ import SwiftUI
 struct ContentView: View {
     @State private var selection = AppTab.products
     @State private var dishPath: [Recipe.ID] = []
-    @FocusState private var searchFocus: AppTab?
 
     var body: some View {
         TabView(selection: $selection) {
             tab(.products) {
                 NavigationStack {
-                    ProductsScreen(searchFocus: $searchFocus) {
-                        dishPath.removeAll()
-                        selection = .dishes
-                    }
-                    .floatingTabBarInset {
-                        if searchFocus != .products { tabBar }
-                    }
+                    ProductsScreen(onOpenDishes: openDishes, tabBar: tabBar)
                 }
             }
             tab(.dishes) {
                 NavigationStack(path: $dishPath) {
-                    DishesScreen(searchFocus: $searchFocus, onOpenProducts: openProducts)
-                        .floatingTabBarInset {
-                            if searchFocus != .dishes { tabBar }
-                        }
+                    DishesScreen(onOpenProducts: openProducts, tabBar: tabBar)
                         .navigationDestination(for: Recipe.ID.self) { id in
                             RecipeScreen(recipeID: id)
                         }
@@ -32,7 +22,6 @@ struct ContentView: View {
             tab(.shopping) {
                 NavigationStack {
                     ShoppingScreen(onOpenTab: selectTab)
-                        .floatingTabBarInset { tabBar }
                 }
             }
             tab(.profile) {
@@ -44,7 +33,7 @@ struct ContentView: View {
         }
     }
 
-    private var tabBar: some View {
+    private var tabBar: FloatingTabBar {
         FloatingTabBar(selection: selection, onSelect: selectTab)
     }
 
@@ -57,6 +46,11 @@ struct ContentView: View {
 
     private func openProducts() {
         selection = .products
+    }
+
+    private func openDishes() {
+        dishPath.removeAll()
+        selection = .dishes
     }
 
     private func selectTab(_ tab: AppTab) {

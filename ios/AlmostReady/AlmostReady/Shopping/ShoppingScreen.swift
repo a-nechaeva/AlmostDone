@@ -47,6 +47,12 @@ struct ShoppingScreen: View {
                     .padding(.top, 28)
             }
         }
+        .floatingTabBarInset {
+            if let onOpenTab {
+                FloatingTabBar(selection: .shopping, onSelect: onOpenTab)
+                    .accessibilityHidden(presentation != nil)
+            }
+        }
         .navigationTitle("Покупки")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

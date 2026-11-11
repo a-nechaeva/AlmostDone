@@ -20,8 +20,9 @@ struct DishesScreen: View {
     @Environment(DemoStore.self) private var store
     @State private var query = ""
     @State private var filter = Filter.all
-    let searchFocus: FocusState<AppTab?>.Binding
+    @FocusState private var isSearchFocused: Bool
     let onOpenProducts: () -> Void
+    let tabBar: FloatingTabBar
 
     var body: some View {
         let availability = DishesAvailability(
@@ -64,6 +65,9 @@ struct DishesScreen: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
         }
+        .floatingTabBarInset {
+            if !isSearchFocused { tabBar }
+        }
         .background(Color(.demoBackground).ignoresSafeArea())
         .navigationTitle("Блюда")
         .navigationBarTitleDisplayMode(.inline)
@@ -74,11 +78,7 @@ struct DishesScreen: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .onDisappear {
-            if searchFocus.wrappedValue == .dishes {
-                searchFocus.wrappedValue = nil
-            }
-        }
+        .onDisappear { isSearchFocused = false }
     }
 
     private func pantryHeader(showsProductsLink: Bool) -> some View {
@@ -125,9 +125,9 @@ struct DishesScreen: View {
                 .foregroundStyle(.secondary)
                 .accessibilityHidden(true)
             TextField("Найти блюдо", text: $query)
-                .focused(searchFocus, equals: .dishes)
+                .focused($isSearchFocused)
                 .submitLabel(.done)
-                .onSubmit { searchFocus.wrappedValue = nil }
+                .onSubmit { isSearchFocused = false }
         }
         .font(.subheadline)
         .padding(.horizontal, 16)

@@ -4,11 +4,12 @@ struct ProductsScreen: View {
     @Environment(DemoStore.self) private var store
     @Environment(\.colorScheme) private var colorScheme
     @State private var query = ""
-    let searchFocus: FocusState<AppTab?>.Binding
+    @FocusState private var isSearchFocused: Bool
     let onOpenDishes: () -> Void
+    let tabBar: FloatingTabBar
 
     private var isSearching: Bool {
-        searchFocus.wrappedValue == .products || !query.isEmpty
+        isSearchFocused || !query.isEmpty
     }
 
     var body: some View {
@@ -26,14 +27,17 @@ struct ProductsScreen: View {
         .scrollDismissesKeyboard(.never)
         // Search results and pantry rows share IDs but have different actions.
         .id(isSearching)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            dishesLink
+        }
+        .floatingTabBarInset {
+            if !isSearchFocused { tabBar }
+        }
         .safeAreaInset(edge: .top, spacing: 0) {
             searchBar
                 .padding(.horizontal, 20)
                 .padding(.vertical, 8)
-                .background(Color(.demoBackground))
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            dishesLink
+                .background(Color(.demoBackground), ignoresSafeAreaEdges: [])
         }
         .background(Color(.demoBackground).ignoresSafeArea())
         .navigationTitle("Мои продукты")
@@ -54,7 +58,7 @@ struct ProductsScreen: View {
                     .foregroundStyle(.secondary)
                     .accessibilityHidden(true)
                 TextField("Добавить продукт", text: $query)
-                    .focused(searchFocus, equals: .products)
+                    .focused($isSearchFocused)
                     .autocorrectionDisabled()
                     .submitLabel(.done)
                     .onSubmit(dismissKeyboard)
@@ -179,8 +183,6 @@ struct ProductsScreen: View {
     }
 
     private func dismissKeyboard() {
-        if searchFocus.wrappedValue == .products {
-            searchFocus.wrappedValue = nil
-        }
+        isSearchFocused = false
     }
 }
