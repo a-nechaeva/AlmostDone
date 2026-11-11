@@ -7,6 +7,8 @@ import com.example.mobile_android.data.DemoCatalog
 import com.example.mobile_android.data.DemoCatalogRepository
 import com.example.mobile_android.data.local.*
 import com.example.mobile_android.domain.*
+import com.example.mobile_android.feature.receipt.ReceiptImporter
+import com.example.mobile_android.feature.shopping.ShoppingBudgetPlanWriter
 import com.yandex.authsdk.YandexAuthOptions
 import com.yandex.authsdk.YandexAuthSdk
 
@@ -19,6 +21,8 @@ interface AppDependencies {
     val household: HouseholdRepository
     val preferences: PreferencesRepository
     val session: SessionRepository
+    val receiptImporter: ReceiptImporter? get() = null
+    val budgetPlanWriter: ShoppingBudgetPlanWriter? get() = null
     val yandexAuth: YandexAuthSdk
 }
 
@@ -31,8 +35,10 @@ class AppContainer(context: Context) : AppDependencies {
                 "household.db",
             )
             .build()
-    override val household: HouseholdRepository =
-        RoomHouseholdRepository(database, catalog, DemoCatalog.initialPantry)
+    private val roomHousehold = RoomHouseholdRepository(database, catalog, DemoCatalog.initialPantry)
+    override val household: HouseholdRepository = roomHousehold
+    override val receiptImporter: ReceiptImporter = roomHousehold
+    override val budgetPlanWriter: ShoppingBudgetPlanWriter = roomHousehold
     private val localPreferences = LocalPreferences(context.applicationContext.householdPreferences)
     override val preferences: PreferencesRepository = localPreferences
     override val session: SessionRepository = localPreferences

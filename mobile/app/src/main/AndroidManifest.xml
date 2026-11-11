@@ -12,6 +12,15 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Mobile_android">
+        <provider
+            android:name=".feature.receipt.ReceiptFileProvider"
+            android:authorities="${applicationId}.receipt"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/receipt_file_paths" />
+        </provider>
         <activity
             android:name=".MainActivity"
             android:exported="true"

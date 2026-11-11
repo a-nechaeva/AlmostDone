@@ -246,6 +246,7 @@ private fun FavoritesBody(
                         true,
                         { recipe(match.recipe.id) },
                         { if (!pending) favorite(match.recipe.id, false) },
+                        favoriteEnabled = !pending,
                     )
                 }
                 if (state.recipes.isNotEmpty()) item {

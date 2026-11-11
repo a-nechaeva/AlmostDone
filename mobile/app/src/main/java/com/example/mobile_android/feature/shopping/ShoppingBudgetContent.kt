@@ -2,7 +2,9 @@ package com.example.mobile_android.feature.shopping
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -37,6 +39,7 @@ internal fun ShoppingBudgetContent(
     undoPlan: () -> Unit = {},
     write: BudgetPlanWriteState = BudgetPlanWriteState(),
     shoppingBusy: Boolean = false,
+    listState: LazyListState = rememberLazyListState(),
 ) {
     val keyboard = LocalSoftwareKeyboardController.current
     val request = {
@@ -45,6 +48,7 @@ internal fun ShoppingBudgetContent(
     }
     LazyColumn(
         modifier.fillMaxSize().imePadding().testTag("shopping-ui-budget"),
+        state = listState,
         contentPadding = PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
