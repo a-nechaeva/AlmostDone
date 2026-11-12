@@ -6,6 +6,8 @@ struct ServerProductsTab: View {
     @State private var model: PantryModel
     @State private var draft: PantryDraft?
     @State private var isEditorPresented = false
+    @State private var photoImport: PhotoImportModel?
+    @State private var isPhotoImportPresented = false
     let onOpenDishes: () -> Void
 
     init(repository: ProductsRepository, isSearchPresented: Binding<Bool>, onOpenDishes: @escaping () -> Void) {
@@ -24,6 +26,13 @@ struct ServerProductsTab: View {
                         isSearchPresented = true
                     }
                     .accessibilityIdentifier("products.search.open")
+                    Button("Добавить по фото", systemImage: "camera") {
+                        if photoImport?.hasPendingImport != true {
+                            photoImport = PhotoImportModel(pantry: model)
+                        }
+                        isPhotoImportPresented = true
+                    }
+                    .accessibilityIdentifier("products.photo.open")
                     if snapshot.items.isEmpty {
                         Text("Список пуст. Найдите продукт, чтобы добавить его")
                             .foregroundStyle(.secondary)
@@ -64,6 +73,14 @@ struct ServerProductsTab: View {
                     openEditor(.add(ingredient), snapshot: snapshot)
                 }
             }
+        }
+        .fullScreenCover(
+            isPresented: $isPhotoImportPresented,
+            onDismiss: {
+                if photoImport?.hasPendingImport != true { photoImport = nil }
+            }
+        ) {
+            if let photoImport { PhotoImportScreen(model: photoImport) }
         }
         .sheet(isPresented: $isEditorPresented) {
             if let editorDraft {
