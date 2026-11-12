@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct ServerProfileScreen: View {
+    @Environment(FavoritesStore.self) private var favorites: FavoritesStore?
+    @State private var isFavoritesPresented = false
     @State private var model: ServerProfileModel
     private let onOpenProducts: (() -> Void)?
     private let onNutritionPresentationChange: (Bool) -> Void
@@ -22,6 +24,19 @@ struct ServerProfileScreen: View {
         ) {
             account
         } actions: {
+            if favorites != nil {
+                Button {
+                    isFavoritesPresented = true
+                } label: {
+                    ProfileMenuRow(
+                        title: "Избранное",
+                        subtitle: "Сохранённые блюда и ингредиенты",
+                        icon: "heart"
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("profile.favorites")
+            }
             Button(role: .destructive) {
                 Task {
                     guard model.repository.session.isCurrent(model.repository.account) else { return }
@@ -37,8 +52,13 @@ struct ServerProfileScreen: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .task { await model.loadProfile() }
-        .onChange(of: model.editorID != nil) { _, isPresented in
+        .onChange(of: model.editorID != nil || isFavoritesPresented) { _, isPresented in
             onNutritionPresentationChange(isPresented)
+        }
+        .navigationDestination(isPresented: $isFavoritesPresented) {
+            if let favorites {
+                FavoritesScreen(favorites: favorites)
+            }
         }
         .navigationDestination(isPresented: nutritionPresentation) {
             ServerProfileNutritionScreen(model: model)

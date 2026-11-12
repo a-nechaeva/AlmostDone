@@ -38,11 +38,27 @@ struct ServerRoot: View {
         Group {
             switch destination {
             case .session: ServerSessionScreen()
-            case .products: ContentView()
+            case .products:
+                if let account = session.account {
+                    ServerAccountRoot(session: session, account: account)
+                }
             }
         }
         .id(session.account?.id)
         .environment(session)
+    }
+}
+
+private struct ServerAccountRoot: View {
+    @State private var favorites: FavoritesStore
+
+    init(session: SessionStore, account: AccountSession) {
+        _favorites = State(initialValue: FavoritesStore(session: session, account: account))
+    }
+
+    var body: some View {
+        ContentView()
+            .environment(favorites)
     }
 }
 

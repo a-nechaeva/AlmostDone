@@ -69,6 +69,7 @@ private struct DemoRecipeScreen: View {
 }
 
 private struct ServerRecipeScreen: View {
+    @Environment(FavoritesStore.self) private var favorites: FavoritesStore?
     @State private var model: RecipeScreenModel
 
     init(repository: RecipeRepository) {
@@ -93,6 +94,15 @@ private struct ServerRecipeScreen: View {
                     presentation: presentation, photo: model.photo, servingsModel: model,
                     ingredientNutrition: model.ingredientNutrition
                 )
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        FavoriteButton(
+                            category: .recipes,
+                            entry: FavoriteEntry(id: presentation.id, name: presentation.title)
+                        )
+                    }
+                }
+                .task { await favorites?.load(.recipes) }
                 .task(id: presentation.servings?.count) {
                     await model.loadIngredientNutrition()
                 }

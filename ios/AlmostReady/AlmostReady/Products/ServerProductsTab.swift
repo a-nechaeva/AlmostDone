@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ServerProductsTab: View {
+    @Environment(FavoritesStore.self) private var favorites: FavoritesStore?
     @Environment(\.floatingTabBarHeight) private var tabBarHeight
     @Binding var isSearchPresented: Bool
     @State private var model: PantryModel
@@ -38,12 +39,18 @@ struct ServerProductsTab: View {
                             .foregroundStyle(.secondary)
                     }
                     ForEach(snapshot.items) { item in
-                        Button {
-                            openEditor(.edit(item), snapshot: snapshot)
-                        } label: {
-                            PantryItemLabel(item: item, model: model)
+                        HStack {
+                            Button {
+                                openEditor(.edit(item), snapshot: snapshot)
+                            } label: {
+                                PantryItemLabel(item: item, model: model)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.borderless)
+                            .accessibilityIdentifier("products.home.\(item.id)")
+                            FavoriteButton(category: .ingredients, entry: FavoriteEntry(id: item.id, name: item.name))
                         }
-                        .accessibilityIdentifier("products.home.\(item.id)")
                     }
                 }
                 if model.isLoading {
@@ -65,6 +72,7 @@ struct ServerProductsTab: View {
             }
             .refreshable { await model.reload() }
             .task { await model.reloadIfNeeded() }
+            .task { await favorites?.load(.ingredients) }
             .navigationDestination(isPresented: $isSearchPresented) {
                 ServerProductsSearchScreen(
                     repository: model.repository, hasPendingAdd: hasPendingAdd, onResumeAdd: resumeAdd
@@ -108,6 +116,7 @@ struct ServerProductsTab: View {
 }
 
 private struct ServerProductsSearchScreen: View {
+    @Environment(FavoritesStore.self) private var favorites: FavoritesStore?
     @State private var model: IngredientSearchModel
     @FocusState private var searchFocused: Bool
     let hasPendingAdd: Bool
@@ -149,14 +158,25 @@ private struct ServerProductsSearchScreen: View {
                     .accessibilityIdentifier("products.search.empty")
             case .results(let ingredients):
                 ForEach(ingredients) { ingredient in
-                    Button {
-                        searchFocused = false
-                        onSelect(ingredient)
-                    } label: {
-                        IngredientSuggestionLabel(ingredient: ingredient)
+                    HStack {
+                        Button {
+                            searchFocused = false
+                            onSelect(ingredient)
+                        } label: {
+                            IngredientSuggestionLabel(ingredient: ingredient)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.borderless)
+                        .disabled(hasPendingAdd)
+                        .accessibilityIdentifier("products.add.\(ingredient.id)")
+                        FavoriteButton(
+                            category: .ingredients,
+                            entry: FavoriteEntry(
+                                id: ingredient.id, name: ingredient.name, allowedUnits: ingredient.allowedUnits
+                            )
+                        )
                     }
-                    .disabled(hasPendingAdd)
-                    .accessibilityIdentifier("products.add.\(ingredient.id)")
                 }
                 if model.isLoadingMore {
                     ProgressView("Ищем продукты")
@@ -175,6 +195,7 @@ private struct ServerProductsSearchScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
         .defaultFocus($searchFocused, true)
+        .task { await favorites?.load(.ingredients) }
         .task(id: requestID) {
             // Avoid sending a request for every keystroke.
             guard (try? await Task.sleep(for: .milliseconds(250))) != nil else { return }
