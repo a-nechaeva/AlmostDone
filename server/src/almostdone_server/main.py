@@ -4,6 +4,7 @@ from pathlib import Path
 
 from .adapters.engine import DishgraphGateway
 from .services.catalog import Catalog
+from .services.catalog_cache import CatalogCache
 from .repositories.catalog import JsonCatalogRepository, SeedCatalogRepository, MemoryCatalogRepository, PostgresCatalogRepository
 from .integrations.yandex import YandexProvider
 from .api.contract import Contract, PROJECT_ROOT
@@ -31,16 +32,22 @@ def create_app(*, store=None, catalog_data=None, contract_path=None,
             catalog_repository = JsonCatalogRepository(catalog_path)
     else:
         catalog_repository = MemoryCatalogRepository(catalog_data)
-    engine = DishgraphGateway()
-    catalog = Catalog(catalog_repository, engine)
+    if isinstance(catalog_repository, PostgresCatalogRepository):
+        def validate_catalog(candidate):
+            candidate.validate_export(contract.catalog_validation)
+
+        catalog = CatalogCache(catalog_repository, DishgraphGateway, validate_catalog)
+    else:
+        catalog = Catalog(catalog_repository, DishgraphGateway())
+    engine = catalog.gateway
     if recognizer is None:
         if recognition_provider is not None:
             from .adapters.recognition import EngineRecognizer
-            recognizer = EngineRecognizer(engine, recognition_provider)
+            recognizer = EngineRecognizer(engine, recognition_provider, catalog=catalog)
         elif os.environ.get("GIGACHAT_CREDENTIALS") and os.environ.get("GIGACHAT_MODEL"):
             from dishgraph.recognition import GigaChatProvider
             from .adapters.recognition import EngineRecognizer
-            recognizer = EngineRecognizer(engine, GigaChatProvider(timeout=30))
+            recognizer = EngineRecognizer(engine, GigaChatProvider(timeout=30), catalog=catalog)
     if auth_providers is None:
         client_id = os.environ.get("ALMOSTDONE_YANDEX_CLIENT_ID")
         auth_providers = {"yandex": YandexProvider(client_id)} if client_id else {}

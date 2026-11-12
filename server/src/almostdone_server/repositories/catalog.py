@@ -3,6 +3,7 @@ import copy
 import json
 import re
 from pathlib import Path
+from contextlib import asynccontextmanager, aclosing
 
 
 class PostgresCatalogRepository:
@@ -12,6 +13,26 @@ class PostgresCatalogRepository:
     def load(self):
         with self.store.transaction() as db:
             return load_catalog(db)
+
+    def revision(self):
+        with self.store.transaction() as db:
+            return db.execute('SELECT revision FROM public.catalog_revision WHERE singleton').fetchone()['revision']
+
+    def load_versioned(self):
+        with self.store.transaction() as db:
+            data = load_catalog(db)
+            revision = db.execute('SELECT revision FROM public.catalog_revision WHERE singleton').fetchone()['revision']
+            return data, revision
+
+    @asynccontextmanager
+    async def listen(self):
+        # A dedicated socket sleeps until PostgreSQL sends a committed change.
+        async with await self.store.psycopg.AsyncConnection.connect(
+                self.store.dsn, autocommit=True, connect_timeout=5,
+                keepalives_idle=30, keepalives_interval=10, keepalives_count=3) as connection:
+            await connection.execute('LISTEN almostdone_catalog_changed')
+            async with aclosing(connection.notifies()) as notifications:
+                yield notifications
 
 
 class JsonCatalogRepository:

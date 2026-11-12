@@ -6,9 +6,10 @@ from ..services.ports import RecognitionFailure
 
 
 class EngineRecognizer:
-    """Connect the team's dishgraph.recognition module to the REST Recognizer interface."""
-    def __init__(self, gateway, provider):
+    """Connect dishgraph.recognition module to the REST Recognizer interface."""
+    def __init__(self, gateway, provider, *, catalog=None):
         self.gateway, self.provider = gateway, provider
+        self.catalog = catalog
 
     def recognize(self, image, kind):
         from dishgraph.recognition import InvalidImage, RecognitionError, recognize
@@ -28,7 +29,8 @@ class EngineRecognizer:
         if callable(getattr(self.provider, "complete_text", None)):
             provider.complete_text = guarded(self.provider.complete_text)
         try:
-            lines = recognize(image, kind, self.gateway.lookup_catalog, provider, self.gateway.search_index)
+            gateway = self.catalog.gateway if self.catalog is not None else self.gateway
+            lines = recognize(image, kind, gateway.lookup_catalog, provider, gateway.search_index)
         except InvalidImage:
             raise APIError(415, "unsupported_media_type", "Изображение не поддерживается") from None
         except RecognitionError:

@@ -27,12 +27,32 @@ def create_http_app(contract, service, rate_limiter=None):
                 await asyncio.sleep(60)
 
         worker = asyncio.create_task(cleanup())
+        async def refresh_catalog():
+            while True:
+                try:
+                    async with service.catalog.listen() as notifications:
+                        # Subscribe first, then catch changes made before startup
+                        # or while disconnected. No revision polling while idle.
+                        await run_in_threadpool(service.catalog.refresh)
+                        async for _ in notifications:
+                            await run_in_threadpool(service.catalog.refresh)
+                    raise ConnectionError('Catalogue notification stream ended')
+                except Exception:
+                    logging.getLogger(__name__).warning('Catalogue refresh failed; keeping previous snapshot')
+                    await asyncio.sleep(5)
+
+        refresher = (asyncio.create_task(refresh_catalog())
+                     if callable(getattr(service.catalog, 'listen', None)) else None)
         try:
             yield
         finally:
             worker.cancel()
             with suppress(asyncio.CancelledError):
                 await worker
+            if refresher is not None:
+                refresher.cancel()
+                with suppress(asyncio.CancelledError):
+                    await refresher
 
     app = FastAPI(title=contract.spec["info"]["title"], lifespan=lifespan)
     app.state.service = service

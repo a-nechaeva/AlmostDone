@@ -1,4 +1,5 @@
 import copy
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -7,6 +8,7 @@ import yaml
 from jsonschema import Draft202012Validator, FormatChecker
 
 from ..errors import APIError, invalid
+from ..services.catalog import ExportValidation
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 
@@ -18,6 +20,13 @@ class Contract:
         self.operations = {operation["operationId"]: (path, method, operation)
                            for path, methods in self.spec["paths"].items()
                            for method, operation in methods.items()}
+        # A Contract is loaded once. Compile the catalogue schema and its version
+        # once too; a new Contract carries a new binding when the schema changes.
+        schema = self.operations['catalog_export'][2]['responses']['200']['content']['application/json']['schema']
+        root = copy.deepcopy({**schema, 'components': self.spec['components']})
+        version = hashlib.sha256(json.dumps(root, sort_keys=True, allow_nan=False).encode()).hexdigest()
+        self.catalog_validation = ExportValidation(
+            version, lambda body: self._validate_root(root, body, response=True))
 
     def resolve(self, schema):
         if "$ref" not in schema:
@@ -29,6 +38,9 @@ class Contract:
 
     def validate(self, schema, value, *, response=False):
         root = {**schema, "components": self.spec["components"]}
+        self._validate_root(root, value, response=response)
+
+    def _validate_root(self, root, value, *, response=False):
         errors = list(Draft202012Validator(root, format_checker=FormatChecker()).iter_errors(value))
         # JSON Schema's number type also accepts non-finite Python floats. JSON does not.
         try:
@@ -78,7 +90,9 @@ class Contract:
     def response(self, operation_id, status, body):
         response = self.operations[operation_id][2]["responses"].get(str(status))
         if response and "content" in response:
-            self.validate(response["content"]["application/json"]["schema"], body, response=True)
+            schema = response["content"]["application/json"]["schema"]
+            # Arbitrary bodies have no snapshot provenance: always validate them.
+            self.validate(schema, body, response=True)
 
     def openapi(self):
         result = copy.deepcopy(self.spec)

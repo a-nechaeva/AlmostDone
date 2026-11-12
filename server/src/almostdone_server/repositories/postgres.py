@@ -32,6 +32,7 @@ class PostgresStore:
                     'auth_sessions', 'auth_tokens', 'user_api_state', 'api_idempotency',
                     'api_resources', 'recognition_imports', 'user_all_diets',
                     'user_recipe_visibility', 'recipe_categories', 'recipe_allergens',
+                    'catalog_revision',
                 ):
                     connection.execute(f'SELECT * FROM public.{table} LIMIT 0')
                 applied = {row[0] for row in connection.execute(
