@@ -4,18 +4,21 @@ struct ShoppingScreen: View {
     @Environment(\.floatingTabBarHeight) private var tabBarHeight
 
     private enum Presentation: Identifiable {
-        case budget
+        case budget(ShoppingRecommendationKind)
+        case transfer
         case purchased(ShoppingItem)
 
         var id: String {
             switch self {
-            case .budget: "budget"
+            case .budget(let kind): kind.rawValue
+            case .transfer: "transfer"
             case .purchased(let item): "purchased.\(item.id)"
             }
         }
     }
 
     @State private var shopping: ShoppingState
+    @State private var server: ServerShoppingModel?
     @State private var presentation: Presentation?
     @State private var tabAfterDismissal: AppTab?
     private let onOpenTab: ((AppTab) -> Void)?
@@ -23,10 +26,12 @@ struct ShoppingScreen: View {
 
     init(
         items: [ShoppingItem] = [ShoppingDemoPlan.cheese],
+        repository: ShoppingRepository? = nil,
         onOpenTab: ((AppTab) -> Void)? = nil,
         onCoverChange: @escaping (Bool) -> Void = { _ in }
     ) {
         _shopping = State(initialValue: ShoppingState(items: items))
+        _server = State(initialValue: repository.map { ServerShoppingModel(repository: $0) })
         self.onOpenTab = onOpenTab
         self.onCoverChange = onCoverChange
     }
@@ -35,7 +40,7 @@ struct ShoppingScreen: View {
         ShoppingPage {
             RootScreenTitle(tab: .shopping)
 
-            if shopping.items.isEmpty {
+            if items.isEmpty {
                 ShoppingEmptyState(
                     title: "Список пока пуст",
                     message: "Подберите покупки на свой бюджет.",
@@ -44,7 +49,7 @@ struct ShoppingScreen: View {
                 )
                 .padding(.top, 100)
             } else {
-                Text("Из выбранных рецептов")
+                Text(server == nil ? "Из выбранных рецептов" : "Список покупок")
                     .shoppingFont(14, lineHeight: 20)
                     .foregroundStyle(ShoppingColor.secondary)
                     .padding(.top, 8)
@@ -52,9 +57,20 @@ struct ShoppingScreen: View {
                     .padding(.top, 36)
                 total
                     .padding(.top, 32)
+                if let server, server.markedCount > 0 {
+                    Button("Перенести купленное в запасы") { presentation = .transfer }
+                        .buttonStyle(ShoppingActionStyle(isSecondary: true))
+                        .padding(.top, 24)
+                }
                 Button("Подобрать покупки под бюджет", action: showBudget)
                     .buttonStyle(ShoppingActionStyle())
                     .padding(.top, 53)
+            }
+            if server != nil {
+                Button("Подобрать одиночную покупку") { presentation = .budget(.singlePurchase) }
+                    .buttonStyle(ShoppingActionStyle(isSecondary: true))
+                    .padding(.top, 28)
+            } else if !items.isEmpty {
                 demoSuggestion
                     .padding(.top, 28)
             }
@@ -66,27 +82,38 @@ struct ShoppingScreen: View {
         .rootScreenHeader()
         .fullScreenCover(item: $presentation, onDismiss: openTabAfterDismissal) { destination in
             switch destination {
-            case .budget:
+            case .budget(let kind):
                 NavigationStack {
                     ShoppingBudgetScreen(
-                        input: $shopping.budgetInput,
-                        hasDemoPlan: shopping.hasDemoPlan
+                        input: budgetInput,
+                        hasDemoPlan: shopping.hasDemoPlan,
+                        server: server,
+                        kind: kind
                     ) {
-                        shopping.addDemoPlan()
+                        if server == nil { shopping.addDemoPlan() }
                         presentation = nil
                     }
                 }
+            case .transfer:
+                purchasedPage(nil)
             case .purchased(let item):
                 purchasedPage(item)
             }
         }
     }
 
+    private var items: [ShoppingItem] { server?.items ?? shopping.items }
+
+    private var budgetInput: Binding<String> {
+        guard let server else { return $shopping.budgetInput }
+        return Binding(get: { server.budgetInput }, set: { server.budgetInput = $0 })
+    }
+
     private var shoppingList: some View {
         LazyVStack(spacing: 10) {
-            ForEach(shopping.items) { item in
+            ForEach(items) { item in
                 Button {
-                    if let changed = shopping.setPurchased(!item.isPurchased, id: item.id), changed.isPurchased {
+                    if let changed = setPurchased(!item.isPurchased, id: item.id), changed.isPurchased {
                         presentation = .purchased(changed)
                     }
                 } label: {
@@ -101,7 +128,7 @@ struct ShoppingScreen: View {
                                 .shoppingFont(12, lineHeight: 17)
                                 .foregroundStyle(ShoppingColor.secondary)
                             if let price = item.estimatedPrice {
-                                Text("≈\(shoppingRubles(price))")
+                                Text(priceLabel(price))
                                     .shoppingFont(16, weight: .bold, lineHeight: 22)
                                     .foregroundStyle(ShoppingColor.accent)
                                     .padding(.top, 20)
@@ -115,6 +142,7 @@ struct ShoppingScreen: View {
                     .contentShape(.rect(cornerRadius: 24))
                 }
                 .buttonStyle(.plain)
+                .disabled(server?.isSelectionLocked == true)
                 .accessibilityValue(item.isPurchased ? Text("Куплено") : Text("К покупке"))
                 .accessibilityHint(item.isPurchased ? Text("Снять отметку") : Text("Отметить покупку"))
                 .accessibilityIdentifier("shopping.item.\(item.id)")
@@ -128,14 +156,18 @@ struct ShoppingScreen: View {
                 .shoppingFont(14, lineHeight: 20)
                 .foregroundStyle(ShoppingColor.secondary)
 
-            if let amount = shopping.estimatedRemainingTotal {
+            if let amount = ShoppingState(items: items).estimatedRemainingTotal {
                 Text(shoppingRubles(amount))
                     .shoppingFont(32, weight: .bold, lineHeight: 45)
                     .padding(.top, 12)
-                Text("Цены примерные, за упаковку. В магазине могут отличаться.")
-                    .shoppingFont(12, lineHeight: 17)
-                    .foregroundStyle(ShoppingColor.secondary)
-                    .padding(.top, 3)
+                Text(
+                    server == nil
+                        ? "Цены примерные, за упаковку. В магазине могут отличаться."
+                        : "Сумма за упаковки, которые осталось купить. В магазине могут отличаться."
+                )
+                .shoppingFont(12, lineHeight: 17)
+                .foregroundStyle(ShoppingColor.secondary)
+                .padding(.top, 3)
             } else {
                 Text("Для части покупок цена неизвестна.")
                     .shoppingFont(14, lineHeight: 20)
@@ -168,40 +200,38 @@ struct ShoppingScreen: View {
         .accessibilityElement(children: .combine)
     }
 
-    private func purchasedPage(_ item: ShoppingItem) -> some View {
+    private func purchasedPage(_ item: ShoppingItem?) -> some View {
         NavigationStack {
             ShoppingPage {
-                ShoppingHeading(title: "Покупка отмечена", subtitle: "\(item.name) · \(item.quantity)")
-                HStack(alignment: .top, spacing: 14) {
-                    purchaseMark(isPurchased: true)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Куплено")
-                            .shoppingFont(14, weight: .medium, lineHeight: 20)
-                        if let price = item.estimatedPrice {
-                            Text("≈\(shoppingRubles(price)) за упаковку")
-                                .shoppingFont(12, lineHeight: 17)
-                                .foregroundStyle(ShoppingColor.secondary)
-                        }
+                if let item {
+                    ShoppingHeading(title: "Покупка отмечена", subtitle: "\(item.name) · \(item.quantity)")
+                    purchaseSummary(item)
+                        .padding(.top, 46)
+                } else {
+                    ShoppingHeading(title: "Купленные продукты")
+                }
+
+                if let server {
+                    ShoppingTransferControls(model: server) { presentation = nil }
+                        .padding(.top, 32)
+                } else {
+                    ShoppingNotice(
+                        title: "Готово",
+                        message: "Покупка отмечена в списке. Продукты дома можно изменить отдельно."
+                    )
+                    .padding(.top, 40)
+                }
+
+                if let item {
+                    Button("Вернуть в список") {
+                        _ = setPurchased(false, id: item.id)
+                        presentation = nil
                     }
+                    .buttonStyle(ShoppingActionStyle(isSecondary: true))
+                    .accessibilityHint("Снимает отметку о покупке")
+                    .disabled(server?.isSelectionLocked == true)
+                    .padding(.top, 50)
                 }
-                .padding(.vertical, 13)
-                .frame(minHeight: 64, alignment: .topLeading)
-                .accessibilityElement(children: .combine)
-                .padding(.top, 46)
-
-                ShoppingNotice(
-                    title: "Готово",
-                    message: "Покупка отмечена в списке. Продукты дома можно изменить отдельно."
-                )
-                .padding(.top, 40)
-
-                Button("Вернуть в список") {
-                    shopping.setPurchased(false, id: item.id)
-                    presentation = nil
-                }
-                .buttonStyle(ShoppingActionStyle(isSecondary: true))
-                .accessibilityHint("Снимает отметку о покупке")
-                .padding(.top, 50)
 
                 Button(onOpenTab == nil ? "К списку покупок" : "Мои продукты") {
                     closePurchase(opening: onOpenTab == nil ? .shopping : .products)
@@ -220,6 +250,33 @@ struct ShoppingScreen: View {
             }
             .rootScreenHeader()
         }
+    }
+
+    private func purchaseSummary(_ item: ShoppingItem) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            purchaseMark(isPurchased: true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Куплено")
+                    .shoppingFont(14, weight: .medium, lineHeight: 20)
+                if let price = item.estimatedPrice {
+                    Text(server == nil ? "≈\(shoppingRubles(price)) за упаковку" : shoppingRubles(price))
+                        .shoppingFont(12, lineHeight: 17)
+                        .foregroundStyle(ShoppingColor.secondary)
+                }
+            }
+        }
+        .padding(.vertical, 13)
+        .frame(minHeight: 64, alignment: .topLeading)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func priceLabel(_ price: Decimal) -> String {
+        server == nil ? "≈\(shoppingRubles(price))" : shoppingRubles(price)
+    }
+
+    private func setPurchased(_ isPurchased: Bool, id: String) -> ShoppingItem? {
+        if let server { return server.setPurchased(isPurchased, id: id) }
+        return shopping.setPurchased(isPurchased, id: id)
     }
 
     private func purchaseMark(isPurchased: Bool) -> some View {
@@ -241,7 +298,7 @@ struct ShoppingScreen: View {
     }
 
     private func showBudget() {
-        presentation = .budget
+        presentation = .budget(.budget)
     }
 
     private func closePurchase(opening tab: AppTab) {

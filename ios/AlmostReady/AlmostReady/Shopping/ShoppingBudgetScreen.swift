@@ -5,6 +5,7 @@ import SwiftUI
 struct ShoppingBudgetScreen: View {
     private enum ScrollTarget {
         case budgetField
+        case serverResults
     }
 
     @Environment(\.dismiss) private var dismiss
@@ -13,17 +14,31 @@ struct ShoppingBudgetScreen: View {
     @State private var result: ShoppingBudgetResult?
     @Binding var input: String
     let hasDemoPlan: Bool
+    var server: ServerShoppingModel? = nil
+    var kind: ShoppingRecommendationKind = .budget
     let onFinishPlan: () -> Void
 
     var body: some View {
         ScrollViewReader { scroll in
             let submitBudget = { submit(scroll: scroll) }
             ShoppingPage {
-                ShoppingHeading(title: "Сколько потратим?", subtitle: "Покажем пример покупок на ваш бюджет")
+                if server == nil {
+                    ShoppingHeading(title: "Сколько потратим?", subtitle: "Покажем пример покупок на ваш бюджет")
+                } else {
+                    ShoppingHeading(title: kind == .budget ? "Сколько потратим?" : "Одиночная покупка")
+                }
                 budgetField(onSubmit: submitBudget)
                     .padding(.top, 48)
                 presets
                     .padding(.top, 40)
+                if let server {
+                    Stepper(
+                        "Порций: \(server.servings)",
+                        value: Binding(get: { server.servings }, set: { server.servings = $0 }),
+                        in: 1...12
+                    )
+                    .padding(.top, 24)
+                }
                 ShoppingNotice(
                     title: "Примерные цены",
                     message: "Показываем стоимость упаковок. Фактическая сумма зависит от магазина.",
@@ -31,13 +46,24 @@ struct ShoppingBudgetScreen: View {
                 )
                 .padding(.top, 38)
 
-                Button("Подобрать план", action: submitBudget)
-                    .buttonStyle(ShoppingActionStyle())
-                    .padding(.top, 60)
+                if !showsRetry {
+                    Button(submitTitle, action: submitBudget)
+                        .buttonStyle(ShoppingActionStyle())
+                        .disabled(isLoading)
+                        .padding(.top, 60)
+                }
+
+                if let server {
+                    ShoppingServerResults(
+                        model: server, kind: kind, onAdd: onFinishPlan, onRetry: submitBudget
+                    )
+                    .padding(.top, 24)
+                    .id(ScrollTarget.serverResults)
+                }
             }
         }
         .scrollDismissesKeyboard(.interactively)
-        .navigationTitle("План покупок")
+        .navigationTitle(kind == .budget ? "План покупок" : "Одиночная покупка")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
@@ -57,6 +83,8 @@ struct ShoppingBudgetScreen: View {
             )
         }
         .onChange(of: input) { _, _ in error = nil }
+        .onChange(of: server?.revision) { _, _ in server?.discardRecommendation() }
+        .onDisappear { server?.discardRecommendation() }
     }
 
     private func budgetField(onSubmit: @escaping () -> Void) -> some View {
@@ -76,8 +104,8 @@ struct ShoppingBudgetScreen: View {
                 .shoppingCard(cornerRadius: 16)
                 .accessibilityIdentifier("shopping.budget.input")
 
-            if let error {
-                Text(errorMessage(error))
+            if let validationError {
+                Text(errorMessage(validationError))
                     .font(.footnote)
                     .foregroundStyle(ShoppingColor.accent)
                     .accessibilityIdentifier("shopping.budget.error")
@@ -126,7 +154,41 @@ struct ShoppingBudgetScreen: View {
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
+    private var validationError: ShoppingBudgetError? {
+        if let server, case .invalidBudget(let error) = server.recommendation { return error }
+        return error
+    }
+
+    private var isLoading: Bool {
+        guard let server, case .loading = server.recommendation else { return false }
+        return true
+    }
+
+    private var showsRetry: Bool {
+        guard let server, case .unavailable = server.recommendation else { return false }
+        return true
+    }
+
+    private var submitTitle: LocalizedStringKey {
+        kind == .budget ? "Подобрать план" : "Подобрать покупку"
+    }
+
     private func submit(scroll: ScrollViewProxy) {
+        if let server {
+            Task {
+                guard let id = await server.loadRecommendation(kind), server.isCurrentRecommendation(id) else { return }
+                switch server.recommendation {
+                case .invalidBudget(let error):
+                    showBudgetError(error, scroll: scroll)
+                case .result, .unavailable:
+                    isEditingBudget = false
+                    scroll.scrollTo(ScrollTarget.serverResults, anchor: .top)
+                default:
+                    break
+                }
+            }
+            return
+        }
         switch ShoppingBudgetResult.evaluate(input) {
         case .success(let evaluation):
             error = nil
@@ -134,9 +196,13 @@ struct ShoppingBudgetScreen: View {
             result = evaluation
         case .failure(let validationError):
             error = validationError
-            scroll.scrollTo(ScrollTarget.budgetField, anchor: .top)
-            AccessibilityNotification.Announcement(String(localized: errorMessage(validationError))).post()
+            showBudgetError(validationError, scroll: scroll)
         }
+    }
+
+    private func showBudgetError(_ error: ShoppingBudgetError, scroll: ScrollViewProxy) {
+        scroll.scrollTo(ScrollTarget.budgetField, anchor: .top)
+        AccessibilityNotification.Announcement(String(localized: errorMessage(error))).post()
     }
 
     private func errorMessage(_ error: ShoppingBudgetError) -> LocalizedStringResource {
