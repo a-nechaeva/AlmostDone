@@ -3,33 +3,11 @@ import SwiftUI
 import UIKit
 
 struct DishesScreen: View {
-    private enum Filter: CaseIterable {
-        case all
-        case ready
-        case needsShopping
-
-        var title: LocalizedStringKey {
-            switch self {
-            case .all: "Все"
-            case .ready: "Сейчас"
-            case .needsShopping: "Докупить 1–3"
-            }
-        }
-
-        var minimumWidth: CGFloat {
-            switch self {
-            case .all: 66
-            case .ready: 94
-            case .needsShopping: 156
-            }
-        }
-    }
-
     @Environment(DemoStore.self) private var store
     @Environment(\.floatingTabBarHeight) private var tabBarHeight
     @ScaledMetric(relativeTo: .headline) private var sectionTitleSize = 18.0
     @State private var query = ""
-    @State private var filter = Filter.all
+    @State private var filter = DishesFilter.all
     @FocusState.Binding var isSearchFocused: Bool
     let onOpenProducts: () -> Void
 
@@ -53,10 +31,7 @@ struct DishesScreen: View {
                             .buttonStyle(.borderedProminent)
                     }
                 } else {
-                    VStack(alignment: .leading, spacing: 8) {
-                        searchField
-                        filters
-                    }
+                    DishesControls(query: $query, filter: $filter, isSearchFocused: $isSearchFocused)
 
                     if ready.isEmpty && needsShopping.isEmpty {
                         ContentUnavailableView {
@@ -73,7 +48,7 @@ struct DishesScreen: View {
                         let shoppingSections = Dictionary(grouping: needsShopping) { $0.missingIngredients.count }
                         ForEach(shoppingSections.keys.sorted(), id: \.self) { count in
                             dishSection(
-                                "Докупить \(productCount(count))",
+                                "Докупить \(dishesProductCount(count))",
                                 entries: shoppingSections[count, default: []]
                             )
                         }
@@ -113,7 +88,7 @@ struct DishesScreen: View {
     }
 
     private var pantryCount: some View {
-        Label("\(productCount(store.productIDs.count)) дома", systemImage: "refrigerator")
+        Label("\(dishesProductCount(store.productIDs.count)) дома", systemImage: "refrigerator")
             .font(.subheadline)
             .foregroundStyle(.secondary)
     }
@@ -126,71 +101,6 @@ struct DishesScreen: View {
                 .contentShape(.rect)
         }
         .accessibilityLabel("Изменить продукты дома")
-    }
-
-    private func productCount(_ count: Int) -> String {
-        let unit: String
-        switch (count % 100, count % 10) {
-        case (11...14, _): unit = "продуктов"
-        case (_, 1): unit = "продукт"
-        case (_, 2...4): unit = "продукта"
-        default: unit = "продуктов"
-        }
-        return "\(count) \(unit)"
-    }
-
-    private var searchField: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
-                .accessibilityHidden(true)
-            TextField(
-                "Найти блюдо",
-                text: $query,
-                prompt: Text("Найти блюдо").foregroundColor(Color(uiColor: .label).opacity(0.6))
-            )
-            .focused($isSearchFocused)
-            .submitLabel(.done)
-            .onSubmit { isSearchFocused = false }
-        }
-        .font(.subheadline)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .frame(minHeight: 48)
-        .background(Color(uiColor: .secondarySystemGroupedBackground), in: .rect(cornerRadius: 16))
-    }
-
-    private var filters: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 8) { filterButtons }
-            VStack(alignment: .leading, spacing: 0) { filterButtons }
-        }
-    }
-
-    private var filterButtons: some View {
-        ForEach(Filter.allCases, id: \.self) { option in
-            let isSelected = option == filter
-            Button {
-                filter = option
-            } label: {
-                Text(option.title)
-                    .font(.footnote.weight(isSelected ? .semibold : .regular))
-                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 6)
-                    .frame(minWidth: option.minimumWidth, minHeight: 36)
-                    .background(
-                        isSelected
-                            ? Color.accentColor.opacity(0.14) : Color(uiColor: .secondarySystemGroupedBackground),
-                        in: .capsule
-                    )
-                    .frame(minHeight: 44)
-                    .contentShape(.rect)
-            }
-            .buttonStyle(.plain)
-            .accessibilityAddTraits(isSelected ? .isSelected : [])
-        }
     }
 
     private func matchingSearch(_ entries: [DishesAvailability.Entry]) -> [DishesAvailability.Entry] {
@@ -220,7 +130,9 @@ struct DishesScreen: View {
 
                 VStack(spacing: 12) {
                     ForEach(entries) { entry in
-                        NavigationLink(value: entry.recipe.id) {
+                        NavigationLink(
+                            value: RecipeRequest(id: entry.recipe.id, servings: nil, excludedAllergenIDs: [])
+                        ) {
                             DishCard(entry: entry)
                         }
                         .buttonStyle(.plain)
