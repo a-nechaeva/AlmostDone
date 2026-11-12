@@ -48,6 +48,8 @@ final class PantryDraft: Identifiable {
         }
     }
 
+    nonisolated deinit {}
+
     var isAdding: Bool {
         if case .add = kind { return true }
         return false
@@ -124,6 +126,8 @@ final class PantryModel {
     init(repository: ProductsRepository) {
         self.repository = repository
     }
+
+    nonisolated deinit {}
 
     func reloadIfNeeded() async {
         let known = repository.session.revision?.stateVersion ?? 0

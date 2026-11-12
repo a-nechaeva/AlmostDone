@@ -101,6 +101,9 @@ final class ProductsRepository {
         self.account = account
     }
 
+    // The iOS 26.2 Swift runtime can crash when SwiftUI releases objects with an implicit MainActor deinit.
+    nonisolated deinit {}
+
     var isCurrent: Bool { session.isCurrent(account) }
 
     func search(_ query: String, cursor: String? = nil) async throws -> IngredientSearchPage {

@@ -28,6 +28,8 @@ final class IngredientSearchModel {
         self.repository = repository
     }
 
+    nonisolated deinit {}
+
     func restart() {
         requestID = UUID()
         nextCursor = nil
