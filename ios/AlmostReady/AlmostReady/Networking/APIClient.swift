@@ -199,7 +199,12 @@ nonisolated struct APIClient: Sendable {
         result.setValue(request.headers.bearerToken.map { "Bearer \($0)" }, forHTTPHeaderField: "Authorization")
         result.setValue(request.headers.ifMatch, forHTTPHeaderField: "If-Match")
         result.setValue(request.headers.idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
-        if let body = request.jsonBody {
+        if let multipart = request.multipartBody {
+            guard request.jsonBody == nil else { throw APIClientError.invalidRequest }
+            let boundary = "AlmostReady-\(UUID().uuidString)"
+            result.httpBody = try Self.encode(multipart, boundary: boundary)
+            result.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        } else if let body = request.jsonBody {
             do {
                 result.httpBody = try JSONEncoder().encode(body)
             } catch {
@@ -208,6 +213,31 @@ nonisolated struct APIClient: Sendable {
             result.setValue("application/json", forHTTPHeaderField: "Content-Type")
         }
         return result
+    }
+
+    private static func encode(_ body: APIRequest.MultipartBody, boundary: String) throws -> Data {
+        let file = body.file
+        let mediaTypeCharacters = unreserved.union(CharacterSet(charactersIn: "/"))
+        guard
+            ([file.field, file.name] + body.fields.keys).allSatisfy({
+                !$0.isEmpty && $0.unicodeScalars.allSatisfy(unreserved.contains)
+            }), !file.contentType.isEmpty, file.contentType.unicodeScalars.allSatisfy(mediaTypeCharacters.contains)
+        else { throw APIClientError.invalidRequest }
+
+        var data = Data()
+        for (name, value) in body.fields.sorted(by: { $0.key < $1.key }) {
+            data.append(
+                contentsOf: "--\(boundary)\r\nContent-Disposition: form-data; name=\"\(name)\"\r\n\r\n\(value)\r\n".utf8
+            )
+        }
+        data.append(
+            contentsOf:
+                "--\(boundary)\r\nContent-Disposition: form-data; name=\"\(file.field)\"; filename=\"\(file.name)\"\r\n"
+                .utf8)
+        data.append(contentsOf: "Content-Type: \(file.contentType)\r\n\r\n".utf8)
+        data.append(file.data)
+        data.append(contentsOf: "\r\n--\(boundary)--\r\n".utf8)
+        return data
     }
 
     private static func encode(_ value: String) throws -> String {

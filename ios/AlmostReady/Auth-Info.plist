@@ -8,6 +8,8 @@
 	<string>$(ALMOSTREADY_API_BASE_URL)</string>
 	<key>AlmostReadyYandexClientID</key>
 	<string>$(ALMOSTREADY_YANDEX_CLIENT_ID)</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Камера нужна, чтобы фотографировать чеки и продукты для добавления в запасы.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

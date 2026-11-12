@@ -230,7 +230,7 @@ final class PantryModel {
         }
     }
 
-    private func install(_ updated: PantrySnapshot) throws {
+    func install(_ updated: PantrySnapshot) throws {
         let knownVersion = repository.session.revision?.stateVersion ?? 0
         let displayedVersion = snapshot?.revision.stateVersion ?? 0
         guard updated.revision.stateVersion >= max(knownVersion, displayedVersion) else {
