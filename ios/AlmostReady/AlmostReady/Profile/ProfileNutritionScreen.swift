@@ -7,43 +7,45 @@ struct ProfileNutritionScreen: View {
     let onCancel: () -> Void
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Text("Предпочтения питания")
-                    .font(.largeTitle.bold())
-                    .accessibilityAddTraits(.isHeader)
-                foodTypes
-                allergensLink
-                restrictions
-                dietTableLink
-                ProfileNotice(
-                    title: "Проверяйте сведения",
-                    message: "Сведения о составе могут быть неполными."
-                )
-                VStack(spacing: 4) {
-                    ProfileSaveButton(action: onSave)
-                    Button(action: onCancel) {
-                        Text("Отмена")
-                            .frame(maxWidth: .infinity, minHeight: 44)
-                            .contentShape(Rectangle())
-                    }
+        ProfileForm(title: "Питание и аллергены") {
+            ProfileHeading(title: "Предпочтения питания")
+            foodTypes
+                .padding(.top, 42)
+            allergensLink
+                .padding(.top, 30)
+            restrictions
+                .padding(.top, 34)
+            dietTableLink
+                .padding(.top, 32)
+            ProfileNotice(
+                title: "Проверяйте сведения",
+                message: "Сведения о составе могут быть неполными. Проверяйте состав продуктов."
+            )
+            .padding(.top, 32)
+            VStack(spacing: 4) {
+                ProfileSaveButton(title: "Сохранить предпочтения", action: onSave)
+                Button(action: onCancel) {
+                    Text("Отмена")
+                        .padding(.vertical, 8)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .contentShape(Rectangle())
                 }
             }
-            .padding(20)
+            .padding(.top, 28)
         }
-        .background(Color(.demoBackground))
-        .navigationTitle("Питание и аллергены")
-        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var foodTypes: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 14) {
             Text("Тип питания")
-                .font(.headline)
+                .font(.callout.bold())
                 .accessibilityAddTraits(.isHeader)
-            ForEach(ProfileFoodType.allCases, id: \.self) { type in
-                ProfileChoiceRow(title: type.title, isSelected: draft.foodType == type, isSingleChoice: true) {
-                    draft.foodType = type
+
+            VStack(spacing: 4) {
+                ForEach(ProfileFoodType.allCases, id: \.self) { type in
+                    ProfileChoiceRow(title: type.title, isSelected: draft.foodType == type, isSingleChoice: true) {
+                        draft.foodType = type
+                    }
                 }
             }
         }
@@ -100,44 +102,41 @@ private struct ProfileAllergensScreen: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Что исключить?")
-                        .font(.largeTitle.bold())
-                        .accessibilityAddTraits(.isHeader)
-                    Text("Выберите нужные аллергены")
-                        .foregroundStyle(.secondary)
-                }
+        ProfileForm(title: "Аллергены") {
+            ProfileHeading(title: "Что исключить?")
+            Text("Выберите нужные аллергены")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 8)
 
-                VStack(spacing: 4) {
-                    ForEach(ProfileAllergen.allCases, id: \.self) { allergen in
-                        ProfileChoiceRow(title: allergen.title, isSelected: selection.contains(allergen)) {
-                            if selection.remove(allergen) == nil { selection.insert(allergen) }
-                        }
+            VStack(spacing: 6) {
+                ForEach(ProfileAllergen.allCases, id: \.self) { allergen in
+                    ProfileChoiceRow(title: allergen.title, isSelected: selection.contains(allergen)) {
+                        if selection.remove(allergen) == nil { selection.insert(allergen) }
                     }
                 }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    ProfileSaveButton(title: "Сохранить выбор") {
-                        onSave(selection)
-                        dismiss()
-                    }
-                    Text("Чтобы применить выбор, сохраните настройки питания")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-
-                ProfileNotice(
-                    title: "Сведения могут быть неполными",
-                    message: "Отсутствие записи об аллергене не подтверждает его отсутствие."
-                )
             }
-            .padding(20)
+            .padding(.top, 36)
+
+            ProfileSaveButton(title: "Сохранить выбор") {
+                onSave(selection)
+                dismiss()
+            }
+            .padding(.top, 50)
+
+            Text("Чтобы применить выбор, сохраните настройки питания")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 8)
+
+            ProfileNotice(
+                title: "Сведения могут быть неполными",
+                message: "Отсутствие записи об аллергене не подтверждает его отсутствие."
+            )
+            .padding(.top, 18)
         }
-        .background(Color(.demoBackground))
-        .navigationTitle("Аллергены")
-        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -152,39 +151,62 @@ private struct ProfileDietTableScreen: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Text("Диетический стол")
-                    .font(.largeTitle.bold())
-                    .accessibilityAddTraits(.isHeader)
+        ProfileForm(title: "Диетический стол") {
+            ProfileHeading(title: "Диетический стол")
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Название из назначения")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    TextField("Название из назначения", text: $name, prompt: Text("Не выбран"))
-                        .padding(.horizontal, 16)
-                        .frame(minHeight: 56)
-                        .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 16))
-                }
-
-                ProfileNotice(
-                    title: "Соответствие не подтверждено",
-                    message: "Рецепты пока не проверяются на соответствие диетическому столу."
-                )
-                Text("Чтобы применить выбор, сохраните настройки питания")
-                    .font(.subheadline)
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Название из назначения")
+                    .font(.footnote.weight(.medium))
                     .foregroundStyle(.secondary)
-                ProfileSaveButton {
-                    onSave(name.trimmingCharacters(in: .whitespacesAndNewlines))
-                    dismiss()
-                }
+                    .accessibilityHidden(true)
+                TextField("Название из назначения", text: $name, prompt: Text("Не выбран"), axis: .vertical)
+                    .font(.callout)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .frame(minHeight: 56)
+                    .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 16))
             }
-            .padding(20)
+            .padding(.top, 68)
+
+            ProfileNotice(
+                title: "Соответствие не подтверждено",
+                message: "Рецепты пока не проверяются на соответствие диетическому столу."
+            )
+            .padding(.top, 62)
+
+            Text("Чтобы применить выбор, сохраните настройки питания")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(minHeight: 60, alignment: .topLeading)
+                .padding(.top, 32)
+
+            ProfileSaveButton {
+                onSave(name.trimmingCharacters(in: .whitespacesAndNewlines))
+                dismiss()
+            }
+            .padding(.top, 42)
+        }
+    }
+}
+
+private struct ProfileForm<Content: View>: View {
+    let title: String
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                content
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            .padding(.bottom, 40)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.demoBackground))
-        .navigationTitle("Диетический стол")
+        .background(Color(.demoBackground).ignoresSafeArea())
+        .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
     }
 }
