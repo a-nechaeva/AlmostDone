@@ -1,10 +1,10 @@
 name: REST API
 on:
   pull_request:
-    paths: ['server/**', 'engine/**', 'db/**', 'docs/api/**', '.github/workflows/server.yml']
+    paths: ['server/**', 'engine/**', 'db/**', 'docs/api/**', 'deploy/**', '.github/workflows/server*.yml']
   push:
     branches: [main]
-    paths: ['server/**', 'engine/**', 'db/**', 'docs/api/**', '.github/workflows/server.yml']
+    paths: ['server/**', 'engine/**', 'db/**', 'docs/api/**', 'deploy/**', '.github/workflows/server*.yml']
 permissions:
   contents: read
 concurrency:
@@ -55,3 +55,38 @@ jobs:
       - name: Test engine
         working-directory: engine
         run: python -m pytest tests -q
+      - name: Test deployment
+        run: python -m unittest discover -s deploy
+
+  runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      POSTGRES_PASSWORD: test-only-password
+      ALMOSTREADY_IMAGE: almostready-api:${{ github.sha }}
+      ALMOSTREADY_ENV_FILE: ${{ github.workspace }}/server/.env.example
+      ALMOSTREADY_CADDYFILE: ${{ github.workspace }}/deploy/Caddyfile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build production image and check readiness against temporary PostgreSQL
+        shell: bash
+        run: |
+          export ALMOSTREADY_STATUS_DIR="$RUNNER_TEMP/deploy-status"
+          mkdir -p "$ALMOSTREADY_STATUS_DIR"
+          docker compose -f server/docker-compose.yml up -d --wait --wait-timeout 120 db
+          docker network create --subnet 172.30.232.0/28 almostdone_edge
+          docker volume create almostdone_caddy_data
+          docker volume create almostdone_caddy_config
+          compose=(docker compose -f deploy/compose.yml)
+          config=$("${compose[@]}" config --format json)
+          PYTHONPATH=deploy python3 -c 'import json, sys; from deploy import validate_ports; validate_ports(json.load(sys.stdin)["services"])' <<<"$config"
+          caddy_image=$(jq -er '.services.caddy.image' <<<"$config")
+          docker run --rm --network none --mount "type=bind,source=$ALMOSTREADY_CADDYFILE,target=/etc/caddy/Caddyfile,readonly" "$caddy_image" caddy validate --config /etc/caddy/Caddyfile
+          docker build -f server/Dockerfile --build-arg "ALMOSTDONE_DEPLOY_REVISION=$GITHUB_SHA" -t "$ALMOSTREADY_IMAGE" .
+          "${compose[@]}" run --rm --no-deps -T migrate
+          "${compose[@]}" up -d --no-deps --no-build --wait --wait-timeout 120 api
+          revision=$(curl -fsS --max-time 10 -o "$RUNNER_TEMP/readiness.json" -w '%header{x-almostready-revision}' http://127.0.0.1:8000/api/v1/health/ready)
+          [[ "$revision" == "$GITHUB_SHA" ]]
+          jq -e '.status == "ok"' "$RUNNER_TEMP/readiness.json"

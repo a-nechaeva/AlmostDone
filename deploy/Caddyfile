@@ -1,0 +1,22 @@
+{
+	default_sni 51.250.76.77
+}
+
+https://51.250.76.77 {
+	tls {
+		issuer acme https://acme-v02.api.letsencrypt.org/directory {
+			profile shortlived
+		}
+	}
+
+	handle /_deploy/status.json {
+		rewrite * /status.json
+		root * /deploy-status
+		header Cache-Control "no-store"
+		file_server
+	}
+
+	handle {
+		reverse_proxy api:8000
+	}
+}

@@ -1,0 +1,9 @@
+[Unit]
+Description=Check for a tested AlmostReady API revision every 10 minutes
+
+[Timer]
+OnBootSec=10min
+OnUnitInactiveSec=10min
+
+[Install]
+WantedBy=timers.target
