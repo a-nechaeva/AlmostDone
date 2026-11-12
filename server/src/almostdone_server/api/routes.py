@@ -1,5 +1,6 @@
 """Thin contract-driven REST routes: parse, invoke, serialize."""
 import json
+import os
 from urllib.parse import quote
 
 from fastapi import APIRouter, Request
@@ -63,6 +64,7 @@ async def recipe_photo(service, recipe_id):
 def create_router(contract, service):
     router = APIRouter(prefix="/api/v1")
     controller = Controller(contract, service)
+    revision = os.environ.get("ALMOSTDONE_DEPLOY_REVISION")
 
     def endpoint(operation_id):
         async def handle(request: Request):
@@ -74,6 +76,8 @@ def create_router(contract, service):
                 controller.handle, operation_id, body, parameters, dict(request.headers))
             if status == 204:
                 return Response(status_code=status, headers=headers)
+            if operation_id == "readiness_get" and revision:
+                headers["X-AlmostReady-Revision"] = revision
             return JSONResponse(proxy_photo_urls(data, str(request.base_url)), status_code=status, headers=headers)
         return handle
 

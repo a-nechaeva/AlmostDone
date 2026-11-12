@@ -1,0 +1,56 @@
+name: almostdone
+
+services:
+  migrate:
+    image: ${ALMOSTREADY_IMAGE:?}
+    pull_policy: never
+    environment:
+      ALMOSTDONE_DATABASE_URL: postgresql://koma:${POSTGRES_PASSWORD:?}@db:5432/almostdone
+    command: ["python", "-m", "almostdone_server.migrate"]
+
+  api:
+    image: ${ALMOSTREADY_IMAGE:?}
+    pull_policy: never
+    restart: unless-stopped
+    env_file: ${ALMOSTREADY_ENV_FILE:?}
+    environment:
+      ALMOSTDONE_DATABASE_URL: postgresql://koma:${POSTGRES_PASSWORD:?}@db:5432/almostdone
+      GIGACHAT_CA_BUNDLE_FILE: /app/engine/certs/russian_trusted_root_ca.pem
+      FORWARDED_ALLOW_IPS: 172.30.232.2
+    ports:
+      - "127.0.0.1:8000:8000"
+    networks:
+      default: {}
+      edge:
+        ipv4_address: 172.30.232.3
+
+  caddy:
+    image: caddy:2.11.9-alpine
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:80:80"
+      - "0.0.0.0:443:443"
+    volumes:
+      - ${ALMOSTREADY_CADDYFILE:?}:/etc/caddy/Caddyfile:ro
+      - ${ALMOSTREADY_STATUS_DIR:?}:/deploy-status:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      edge:
+        ipv4_address: 172.30.232.2
+
+networks:
+  default:
+    external: true
+    name: almostdone_default
+  edge:
+    external: true
+    name: almostdone_edge
+
+volumes:
+  caddy_data:
+    external: true
+    name: almostdone_caddy_data
+  caddy_config:
+    external: true
+    name: almostdone_caddy_config
