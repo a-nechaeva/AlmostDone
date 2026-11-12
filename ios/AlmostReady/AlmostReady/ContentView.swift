@@ -54,19 +54,8 @@ struct ContentView: View {
             }
             tab(.profile) {
                 NavigationStack {
-                    if let session {
-                        VStack(spacing: 16) {
-                            serverPlaceholder(.profile)
-                            Button("Выйти", role: .destructive) {
-                                Task { _ = try? await session.signOut() }
-                            }
-                            .buttonStyle(.bordered)
-                            .accessibilityIdentifier("profile.signOut")
-                        }
-                    } else {
-                        ProfileScreen(onOpenProducts: openProducts) { isPresented in
-                            isNutritionPresented = isPresented
-                        }
+                    ProfileScreen(onOpenProducts: openProducts) { isPresented in
+                        isNutritionPresented = isPresented
                     }
                 }
             }

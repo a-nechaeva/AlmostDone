@@ -190,7 +190,7 @@ private struct ProfileDietTableScreen: View {
     }
 }
 
-private struct ProfileForm<Content: View>: View {
+struct ProfileForm<Content: View>: View {
     let title: String
     @ViewBuilder let content: Content
 

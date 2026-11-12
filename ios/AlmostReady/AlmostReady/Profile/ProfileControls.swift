@@ -156,6 +156,25 @@ struct ProfileSaveButton: View {
     }
 }
 
+struct ProfileRetryControl<Content: View>: View {
+    let deadline: Date?
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        if let deadline {
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                if context.date < deadline {
+                    Text("Повтор будет доступен после \(deadline.formatted(date: .omitted, time: .standard))")
+                        .font(.footnote)
+                }
+                content.disabled(context.date < deadline)
+            }
+        } else {
+            content
+        }
+    }
+}
+
 private func profileActionColor(in colorScheme: ColorScheme) -> Color {
     colorScheme == .dark ? .accentColor : Color(red: 0.714, green: 0.298, blue: 0.208)
 }
