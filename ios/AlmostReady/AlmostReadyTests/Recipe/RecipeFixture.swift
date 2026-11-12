@@ -45,11 +45,10 @@ enum RecipeFixture {
 
     static func detail(
         _ request: URLRequest, id: String = RecipeFixture.id, title: String = "Рис с томатами",
-        hasPhoto: Bool = true, hasEstimates: Bool = true, ready: Bool = false
+        hasPhoto: Bool = true, hasEstimates: Bool = true, ready: Bool = false, defaultServings: Int = 2,
+        riceRequired: Int = 300
     ) throws -> (Data, URLResponse) {
-        let servings =
-            request.url.flatMap { URLComponents(url: $0, resolvingAgainstBaseURL: false) }?
-            .queryItems?.first { $0.name == "servings" }?.value.flatMap(Int.init) ?? 2
+        let servings = query(request, named: "servings").first.flatMap(Int.init) ?? defaultServings
         let nutrition: [String: Double] =
             ready
             ? ["kcal": 0, "protein_g": 0, "fat_g": 0, "carbs_g": 0]
@@ -94,9 +93,9 @@ enum RecipeFixture {
         let ingredients: [[String: Any]] = [
             [
                 "ingredient_id": "rice", "name": "Рис",
-                "required": ["value": 300, "unit": "g"] as [String: Any],
-                "available": ["value": ready ? 300 : 100, "unit": "g"] as [String: Any],
-                "shortage": ["value": ready ? 0 : 200, "unit": "g"] as [String: Any],
+                "required": ["value": riceRequired, "unit": "g"] as [String: Any],
+                "available": ["value": ready ? riceRequired : 100, "unit": "g"] as [String: Any],
+                "shortage": ["value": ready ? 0 : riceRequired - 100, "unit": "g"] as [String: Any],
                 "availability": ready ? "enough" : "missing", "optional": false,
                 "original_amount": "100 г", "offer": nullable
             ],
@@ -143,6 +142,11 @@ enum RecipeFixture {
             ],
             etag: #""state-7""#
         )
+    }
+
+    static func query(_ request: URLRequest, named name: String) -> [String] {
+        let items = request.url.flatMap { URLComponents(url: $0, resolvingAgainstBaseURL: false) }?.queryItems ?? []
+        return items.filter { $0.name == name }.compactMap(\.value)
     }
 
     static func photo(

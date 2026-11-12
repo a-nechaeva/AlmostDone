@@ -1,6 +1,8 @@
 import Foundation
 
 struct RecipeRequest: Hashable {
+    static let servingsRange = 1...12
+
     let id: String
     let servings: Int?
     let excludedAllergenIDs: [String]
@@ -23,9 +25,13 @@ struct RecipeRepository {
     let account: AccountSession
     let request: RecipeRequest
 
-    func detail() async throws -> RecipeDetailDTO {
-        let response = try await session.json(RecipeDetailDTO.self, for: request.detailRequest, account: account)
-        guard response.value.recipe.id == request.id else {
+    func detail(servings: Int?) async throws -> RecipeDetailDTO {
+        let detail = RecipeRequest(id: request.id, servings: servings, excludedAllergenIDs: request.excludedAllergenIDs)
+        let response = try await session.json(RecipeDetailDTO.self, for: detail.detailRequest, account: account)
+        let recipe = response.value.recipe
+        guard recipe.id == request.id, RecipeRequest.servingsRange.contains(recipe.servings),
+            servings == nil || servings == recipe.servings
+        else {
             throw APIClientError.invalidResponse(response.metadata)
         }
         return response.value

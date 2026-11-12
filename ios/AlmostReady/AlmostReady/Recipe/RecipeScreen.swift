@@ -86,26 +86,94 @@ private struct ServerRecipeScreen: View {
                 ContentUnavailableView {
                     Label("Не удалось загрузить рецепт", systemImage: "exclamationmark.circle")
                 } actions: {
-                    if let retryAfter {
-                        TimelineView(.explicit([.now, retryAfter])) { _ in
-                            retryButton.disabled(Date.now < retryAfter)
-                        }
-                    } else {
-                        retryButton
-                    }
+                    RecipeRetryButton(retryAfter: retryAfter, retry: model.retry)
                 }
-            case .loaded(let presentation, let photo):
-                RecipeDetailsScreen(presentation: presentation, photo: photo)
+            case .loaded(let presentation):
+                RecipeDetailsScreen(presentation: presentation, photo: model.photo, servingsModel: model)
             }
         }
-        .task(id: model.attempt) {
-            await model.load()
+        .task(id: model.attempt) { [attempt = model.attempt] in
+            await model.load(attempt: attempt)
+        }
+        .task(id: model.photoURL) { [url = model.photoURL] in
+            await model.loadPhoto(for: url)
+        }
+    }
+}
+
+private struct RecipeRetryButton: View {
+    let retryAfter: Date?
+    let retry: () -> Void
+
+    var body: some View {
+        if let retryAfter {
+            TimelineView(.explicit([.now, retryAfter])) { _ in
+                button.disabled(Date.now < retryAfter)
+            }
+        } else {
+            button
         }
     }
 
-    private var retryButton: some View {
-        Button("Повторить") { model.retry() }
+    private var button: some View {
+        Button("Повторить", action: retry)
             .buttonStyle(.bordered)
+    }
+}
+
+private struct RecipeServingsControl: View {
+    let model: RecipeScreenModel
+    let confirmedServings: RecipePresentation.Servings
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let retryAfter = model.servingsUpdate?.retryAfter {
+                TimelineView(.explicit([.now, retryAfter])) { _ in
+                    buttons.disabled(Date.now < retryAfter)
+                }
+            } else {
+                buttons
+            }
+
+            switch model.servingsUpdate {
+            case .loading(let servings):
+                let target = RecipePresentation.Servings(count: servings).accusativeDescription
+                ProgressView("Рассчитываем на \(target)…")
+                    .font(.caption)
+            case .failed(let servings, let retryAfter):
+                let target = RecipePresentation.Servings(count: servings).accusativeDescription
+                Text("Не удалось пересчитать на \(target)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                RecipeRetryButton(retryAfter: retryAfter, retry: model.retry)
+            case nil:
+                EmptyView()
+            }
+        }
+    }
+
+    private var buttons: some View {
+        HStack(spacing: 12) {
+            button(symbol: "minus", label: "Уменьшить число порций", delta: -1)
+            Text(confirmedServings.description)
+                .font(.subheadline.weight(.medium))
+                .monospacedDigit()
+            button(symbol: "plus", label: "Увеличить число порций", delta: 1)
+        }
+    }
+
+    private func button(symbol: String, label: String, delta: Int) -> some View {
+        let selectedServings = model.selectedServings ?? confirmedServings.count
+        return Button {
+            model.changeServings(by: delta)
+        } label: {
+            Image(systemName: symbol)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.bordered)
+        .accessibilityLabel(label)
+        .disabled(!RecipeRequest.servingsRange.contains(selectedServings + delta))
     }
 }
 
@@ -115,6 +183,7 @@ private struct RecipeDetailsScreen: View {
     @State private var showsSteps = false
     let presentation: RecipePresentation
     let photo: RecipePhoto
+    var servingsModel: RecipeScreenModel? = nil
 
     var body: some View {
         ScrollView {
@@ -130,6 +199,11 @@ private struct RecipeDetailsScreen: View {
                 availability
                 RecipeMetrics(presentation: presentation)
                     .padding(.top, 20)
+
+                if let servingsModel, let servings = presentation.servings {
+                    RecipeServingsControl(model: servingsModel, confirmedServings: servings)
+                        .padding(.top, 20)
+                }
 
                 ingredients
                     .padding(.top, 28)

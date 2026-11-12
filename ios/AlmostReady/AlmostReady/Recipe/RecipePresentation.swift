@@ -22,9 +22,11 @@ struct RecipePresentation {
 
         var description: String { "\(count) \(unit)" }
 
-        var ingredientCaption: String {
+        var ingredientCaption: String { "На \(accusativeDescription)" }
+
+        var accusativeDescription: String {
             let unit = RecipePresentation.countedUnit(count, one: "порцию", few: "порции", many: "порций")
-            return "На \(count) \(unit)"
+            return "\(count) \(unit)"
         }
     }
 
