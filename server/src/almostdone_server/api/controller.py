@@ -30,7 +30,11 @@ class Controller:
             expected_version=version, idempotency_key=key,
         )
         status = next(int(code) for code in operation["responses"] if str(code).startswith("2"))
-        result = self.service.execute(command, lambda result: self.contract.response(operation_id, status, result.data))
+        if operation_id == 'catalog_export':
+            # Validate the canonical snapshot before making the response copy.
+            result = self.service.execute(command, catalog_validation=self.contract.catalog_validation)
+        else:
+            result = self.service.execute(command, lambda result: self.contract.response(operation_id, status, result.data))
         response_headers = {}
         if operation_id not in ("health_get", "readiness_get"):
             response_headers = {"Cache-Control": "no-store", "X-Storage-Mode": self.service.store.mode,

@@ -4,7 +4,10 @@ import hashlib
 import json
 import math
 import unicodedata
+from threading import Lock
 from decimal import Decimal, ROUND_HALF_UP
+from dataclasses import dataclass
+from typing import Callable
 
 from ..errors import APIError, invalid
 from .ports import CatalogRepository, EngineGateway
@@ -28,6 +31,12 @@ def unsupported(capability):
                               "message": "Расчёт не реализован в engine; сервер не подменяет его своим алгоритмом"}])
 
 
+@dataclass(frozen=True)
+class ExportValidation:
+    schema_version: str
+    validate: Callable[[dict], None]
+
+
 class Catalog:
     """Read catalogue records from a repository and coordinate their use."""
     def __init__(self, repository: CatalogRepository, gateway: EngineGateway):
@@ -40,6 +49,10 @@ class Catalog:
         self.source = {"name": data.get("source_name", "Каталог сервера"), "url": None, "observed_at": None}
         self.demo = data.get("demo", False)
         self.gateway.configure(self.data)
+        self._export_lock = Lock()
+        self._export_version = None
+        self._exported_data = None
+        self._export_validated_schema = None
 
     def require_engine(self):
         self.gateway.require_engine()
@@ -128,7 +141,32 @@ class Catalog:
         raw = self.recipes.get(recipe_id)
         return raw.get("photo_url", raw.get("image_url")) or None if raw else None
 
-    def export(self):
+    def export(self, *, validation=None):
+        # A Catalog is a versioned snapshot, shared by all users. Return an
+        # independent copy so URL rewriting/callers cannot alter the cached body.
+        self.require_engine()
+        return copy.deepcopy(self._prepare_export(validation))
+
+    def validate_export(self, validation):
+        """Validate this snapshot's private export before publishing the snapshot."""
+        self.require_engine()
+        self._prepare_export(validation)
+
+    def _prepare_export(self, validation):
+        with self._export_lock:
+            if self._exported_data is None or self._export_version != self.version:
+                candidate = self._build_export()
+                if validation is not None:
+                    validation.validate(candidate)
+                self._exported_data = candidate
+                self._export_version = self.version
+                self._export_validated_schema = validation.schema_version if validation is not None else None
+            elif validation is not None and self._export_validated_schema != validation.schema_version:
+                validation.validate(self._exported_data)
+                self._export_validated_schema = validation.schema_version
+            return self._exported_data
+
+    def _build_export(self):
         """The whole catalogue for a client that matches recipes on the device.
 
         Quantities use each ingredient's display unit, as everywhere else in the API. Basic
