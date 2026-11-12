@@ -32,11 +32,22 @@ struct FloatingTabBar: View {
     let onSelect: (AppTab) -> Void
 
     var body: some View {
-        tabButtons
-            .background(surfaceColor, in: .rect(cornerRadius: 28))
-            .shadow(color: .black.opacity(0.09), radius: 24, y: 6)
+        surface
             .padding(.horizontal, 20)
             .padding(.bottom, 4)
+    }
+
+    @ViewBuilder
+    private var surface: some View {
+        let shape = RoundedRectangle(cornerRadius: 28)
+        if #available(iOS 26.0, *) {
+            tabButtons
+                .glassEffect(.regular, in: shape)
+        } else {
+            tabButtons
+                .background(surfaceColor, in: shape)
+                .shadow(color: .black.opacity(0.09), radius: 24, y: 6)
+        }
     }
 
     private var surfaceColor: Color {
@@ -96,7 +107,12 @@ struct FloatingTabBar: View {
 }
 
 extension View {
+    @ViewBuilder
     func floatingTabBarInset<Bar: View>(@ViewBuilder content: () -> Bar) -> some View {
-        safeAreaInset(edge: .bottom, spacing: 0, content: content)
+        if #available(iOS 26.0, *) {
+            safeAreaBar(edge: .bottom, spacing: 0, content: content)
+        } else {
+            safeAreaInset(edge: .bottom, spacing: 0, content: content)
+        }
     }
 }
