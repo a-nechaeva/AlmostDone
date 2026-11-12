@@ -39,7 +39,8 @@ class ServerCatalogRepositoryTest {
             "ingredients":[{"ingredient_id":"milk","quantity":{"value":2000,"unit":"ml"}},
                            {"ingredient_id":"oats","quantity":{"value":400,"unit":"g"}}],
             "nutrition_per_serving":{"kcal":210.4,"protein_g":7.6,"fat_g":5.2,"carbs_g":30.1},
-            "allergens":["gluten","milk"],"allergen_data_complete":true,"methods":["stove"]},
+            "allergens":["gluten","milk"],"allergen_data_complete":true,"methods":["stove"],
+            "dietary_facts":{"vegetarian":true,"vegan":false,"gluten_free":false,"lactose_free":null}},
            {"id":"2","title":"Неизвестная единица","photo_url":null,"servings":2,"minutes":5,"steps":[],
             "ingredients":[{"ingredient_id":"oats","quantity":{"value":2,"unit":"pcs"}}],
             "nutrition_per_serving":{"kcal":1,"protein_g":0,"fat_g":0,"carbs_g":0},
@@ -47,7 +48,8 @@ class ServerCatalogRepositoryTest {
            {"id":"3","title":"Яичница","photo_url":null,"servings":1,"minutes":5,"steps":[],
             "ingredients":[{"ingredient_id":"egg","quantity":{"value":2,"unit":"pcs"}}],
             "nutrition_per_serving":{"kcal":150,"protein_g":12,"fat_g":10,"carbs_g":1},
-            "allergens":["eggs","mustard"],"allergen_data_complete":true,"methods":["no_cook"]}]}
+            "allergens":["eggs","mustard"],"allergen_data_complete":true,"methods":["no_cook"],
+            "dietary_facts":{"vegetarian":true,"vegan":false,"gluten_free":true,"lactose_free":true}}]}
         """.trimIndent()
 
     @Test
@@ -72,7 +74,12 @@ class ServerCatalogRepositoryTest {
         assertEquals("http://127.0.0.1:8000/api/v1/recipes/1/photo", porridge.photo)
         assertEquals(setOf(Allergen.GLUTEN, Allergen.MILK), porridge.allergens)
         assertTrue(porridge.allergenDataComplete)
+        // Факты диет берутся с сервера, а не выводятся из аллергенов:
+        // по аллергену milk вышло бы lactoseFree=false, но сервер честно отдал null.
         assertEquals(false, porridge.dietaryFacts.glutenFree)
+        assertEquals(true, porridge.dietaryFacts.vegetarian)
+        assertEquals(false, porridge.dietaryFacts.vegan)
+        assertNull(porridge.dietaryFacts.lactoseFree)
         assertEquals(setOf(CookingMethod.STOVE), porridge.methods)
         assertEquals(210, porridge.nutritionPerServing!!.kcal)
 
@@ -82,9 +89,26 @@ class ServerCatalogRepositoryTest {
         // аллерген, которого нет в приложении, — данные неполные
         val eggs = catalog.recipe("3")!!
         assertFalse(eggs.allergenDataComplete)
-        assertNull(eggs.dietaryFacts.glutenFree)
+        // факты диет всё равно берём с сервера: яйцо — не веганское, но вегетарианское
+        assertEquals(true, eggs.dietaryFacts.glutenFree)
+        assertEquals(true, eggs.dietaryFacts.vegetarian)
+        assertEquals(false, eggs.dietaryFacts.vegan)
         assertEquals("", eggs.photo)
         assertEquals(setOf(CookingMethod.NO_COOK), eggs.methods)
+    }
+
+    @Test
+    fun fallsBackToAllergenDerivedFactsWithoutServerField() {
+        // Старый сервер без dietary_facts: веганство остаётся неизвестным,
+        // «без глютена/лактозы» выводятся из аллергенов при полных данных.
+        val legacy = JSONObject(body).apply {
+            getJSONArray("recipes").getJSONObject(0).remove("dietary_facts")
+        }
+        val porridge = parseServerCatalog(legacy).recipe("1")!!
+        assertNull(porridge.dietaryFacts.vegan)
+        assertNull(porridge.dietaryFacts.vegetarian)
+        assertEquals(false, porridge.dietaryFacts.glutenFree)
+        assertEquals(false, porridge.dietaryFacts.lactoseFree)
     }
 
     @Test

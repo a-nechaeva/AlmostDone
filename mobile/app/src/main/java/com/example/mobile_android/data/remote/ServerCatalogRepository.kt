@@ -117,14 +117,10 @@ private fun parseRecipe(item: JSONObject, known: Map<String, Ingredient>): Recip
             ),
         allergens = allergens,
         allergenDataComplete = complete,
-        // Без полных данных об аллергенах «без глютена/лактозы» не обещаем.
-        dietaryFacts =
-            DietaryFacts(
-                vegetarian = null,
-                vegan = null,
-                glutenFree = if (complete) "gluten" !in codes else null,
-                lactoseFree = if (complete) "milk" !in codes else null,
-            ),
+        // Предпочитаем посчитанные сервером факты диет; без них «без глютена/лактозы»
+        // выводим из аллергенов (и только при полных данных), а вегетарианство
+        // и веганство честно оставляем неизвестными — выдумывать нельзя.
+        dietaryFacts = parseDietaryFacts(item, complete, codes),
         methods =
             item.getJSONArray("methods").strings().mapNotNull { method ->
                 CookingMethod.entries.find { it.name.equals(method, ignoreCase = true) }
@@ -154,5 +150,27 @@ private fun parseIngredientNutrition(json: JSONObject?): Nutrition? {
 }
 
 private fun JSONArray.objects(): List<JSONObject> = List(length()) { getJSONObject(it) }
+
+/** Факты диет с сервера (`dietary_facts`); для старых серверов без поля — вывод из аллергенов. */
+private fun parseDietaryFacts(item: JSONObject, allergenDataComplete: Boolean, allergenCodes: List<String>): DietaryFacts {
+    val facts = item.optJSONObject("dietary_facts")
+    if (facts != null) {
+        return DietaryFacts(
+            vegetarian = facts.nullableBoolean("vegetarian"),
+            vegan = facts.nullableBoolean("vegan"),
+            glutenFree = facts.nullableBoolean("gluten_free"),
+            lactoseFree = facts.nullableBoolean("lactose_free"),
+        )
+    }
+    return DietaryFacts(
+        vegetarian = null,
+        vegan = null,
+        glutenFree = if (allergenDataComplete) "gluten" !in allergenCodes else null,
+        lactoseFree = if (allergenDataComplete) "milk" !in allergenCodes else null,
+    )
+}
+
+private fun JSONObject.nullableBoolean(key: String): Boolean? =
+    if (has(key) && !isNull(key)) getBoolean(key) else null
 
 private fun JSONArray.strings(): List<String> = List(length()) { getString(it) }

@@ -57,3 +57,57 @@ def test_dump_gives_the_same_records_as_postgres_loader(tmp_path):
 def test_project_seed_loads():
     data = SeedCatalogRepository(SERVER_ROOT.parent / "db/seed.sql").load()
     assert len(data["recipes"]) > 100 and len(data["ingredients"]) > 100
+
+
+DIET_DUMP = DUMP + """
+COPY public.diets (id, kind, name, description) FROM stdin;
+1\tpevzner\tСтол №1\t\\N
+12\tdiet\tВегетарианство\t\\N
+13\tdiet\tВеганство\t\\N
+16\tdiet\tБезлактозная\t\\N
+\\.
+
+COPY public.ingredient_categories (ingredient_id, category_id) FROM stdin;
+2\t5
+\\.
+
+COPY public.diet_excluded_categories (diet_id, category_id) FROM stdin;
+1\t5
+13\t5
+\\.
+
+COPY public.diet_excluded_allergens (diet_id, allergen_id) FROM stdin;
+16\t1
+\\.
+"""
+
+
+def test_dump_loads_ingredient_diet_exclusions(tmp_path):
+    path = tmp_path / "seed.sql"
+    path.write_text(DIET_DUMP, encoding="utf-8")
+    data = SeedCatalogRepository(path).load()
+    ingredients = {i["code"]: i for i in data["ingredients"]}
+    # Категория «молочные» исключена веганством, аллерген «молоко» — безлактозной диетой;
+    # правило певзнеровского стола (kind != 'diet') игнорируется.
+    assert ingredients["milk"]["diet_exclusions"] == ["lactose_free", "vegan"]
+    assert ingredients["salt"]["diet_exclusions"] == []
+
+
+def test_project_seed_marks_animal_ingredients_for_vegan_diet():
+    data = SeedCatalogRepository(SERVER_ROOT.parent / "db/seed.sql").load()
+    ingredients = {i["name"]: i for i in data["ingredients"]}
+    egg = ingredients["Яйцо куриное"]
+    assert "vegan" in egg["diet_exclusions"] and "vegetarian" not in egg["diet_exclusions"]
+    guanciale = ingredients["Гуанчале"]
+    assert "vegetarian" in guanciale["diet_exclusions"] and "vegan" in guanciale["diet_exclusions"]
+
+
+def test_export_from_seed_hides_carbonara_for_vegan():
+    from almostdone_server.adapters.engine import DishgraphGateway
+    from almostdone_server.services.catalog import Catalog
+
+    catalog = Catalog(SeedCatalogRepository(SERVER_ROOT.parent / "db/seed.sql"), DishgraphGateway())
+    exported = catalog.export()
+    carbonara = next(r for r in exported["recipes"] if r["title"] == "Спагетти карбонара")
+    assert carbonara["dietary_facts"]["vegan"] is False
+    assert carbonara["dietary_facts"]["vegetarian"] is False

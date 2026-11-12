@@ -114,3 +114,42 @@ def test_false_equipment_flags_do_not_invent_no_cook():
     with TestClient(app) as client:
         detail = check(app, client.get('/api/v1/recipes/tomato_cheese', headers=auth(app)), 'RecipeDetail')
         assert detail['recipe']['methods'] == []
+
+
+def test_catalog_export_carries_curated_dietary_facts():
+    app = create_app()
+    with TestClient(app) as client:
+        exported = check(app, client.get('/api/v1/catalog', headers=auth(app)), 'AppCatalog')
+    facts = {recipe['id']: recipe['dietary_facts'] for recipe in exported['recipes']}
+    assert facts['rice_tomato'] == {'vegetarian': True, 'vegan': True,
+                                    'gluten_free': True, 'lactose_free': True}
+    assert facts['tomato_cheese'] == {'vegetarian': None, 'vegan': False,
+                                      'gluten_free': None, 'lactose_free': False}
+
+
+def test_catalog_export_computes_dietary_facts_from_ingredient_diet_data():
+    data = custom_catalog()
+    for recipe in data['recipes']:
+        recipe.pop('dietary_facts')
+    for ingredient in data['ingredients']:
+        ingredient['diet_exclusions'] = ['lactose_free', 'vegan'] if ingredient['code'] == 'cheese' else []
+    app = create_app(catalog_data=data)
+    with TestClient(app) as client:
+        exported = check(app, client.get('/api/v1/catalog', headers=auth(app)), 'AppCatalog')
+    facts = {recipe['id']: recipe['dietary_facts'] for recipe in exported['recipes']}
+    assert facts['rice_tomato'] == {'vegetarian': True, 'vegan': True,
+                                    'gluten_free': True, 'lactose_free': True}
+    assert facts['tomato_cheese'] == {'vegetarian': True, 'vegan': False,
+                                      'gluten_free': True, 'lactose_free': False}
+
+
+def test_catalog_export_marks_dietary_facts_unknown_without_diet_data():
+    data = custom_catalog()
+    for recipe in data['recipes']:
+        recipe.pop('dietary_facts')
+    app = create_app(catalog_data=data)
+    with TestClient(app) as client:
+        exported = check(app, client.get('/api/v1/catalog', headers=auth(app)), 'AppCatalog')
+    assert all(recipe['dietary_facts'] == {'vegetarian': None, 'vegan': None,
+                                           'gluten_free': None, 'lactose_free': None}
+               for recipe in exported['recipes'])
