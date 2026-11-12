@@ -2,13 +2,19 @@ import SwiftUI
 
 struct ProfileScreen: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.floatingTabBarHeight) private var tabBarHeight
     @ScaledMetric(relativeTo: .title2) private var accountNameSize = 22.0
     @ScaledMetric(relativeTo: .title2) private var avatarLabelSize = 24.0
     @State private var nutrition = ProfileNutritionEditor()
     private let onOpenProducts: (() -> Void)?
+    private let onNutritionPresentationChange: (Bool) -> Void
 
-    init(onOpenProducts: (() -> Void)? = nil) {
+    init(
+        onOpenProducts: (() -> Void)? = nil,
+        onNutritionPresentationChange: @escaping (Bool) -> Void = { _ in }
+    ) {
         self.onOpenProducts = onOpenProducts
+        self.onNutritionPresentationChange = onNutritionPresentationChange
     }
 
     var body: some View {
@@ -56,8 +62,12 @@ struct ProfileScreen: View {
             .padding(.top, 12)
             .padding(.bottom, 20)
         }
+        .safeAreaPadding(.bottom, tabBarHeight)
         .rootScreenHeader()
         .background(Color(.demoBackground).ignoresSafeArea())
+        .onChange(of: nutrition.isEditing) { _, isPresented in
+            onNutritionPresentationChange(isPresented)
+        }
         .navigationDestination(isPresented: nutritionPresentation) {
             ProfileNutritionScreen(
                 draft: $nutrition.draft,
