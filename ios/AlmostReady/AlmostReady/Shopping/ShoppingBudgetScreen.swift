@@ -21,19 +21,19 @@ struct ShoppingBudgetScreen: View {
             ShoppingPage {
                 ShoppingHeading(title: "Сколько потратим?", subtitle: "Покажем пример покупок на ваш бюджет")
                 budgetField(onSubmit: submitBudget)
-                    .padding(.top, 46)
+                    .padding(.top, 48)
                 presets
-                    .padding(.top, 36)
+                    .padding(.top, 40)
                 ShoppingNotice(
                     title: "Примерные цены",
                     message: "Показываем стоимость упаковок. Фактическая сумма зависит от магазина.",
                     isWarning: true
                 )
-                .padding(.top, 36)
+                .padding(.top, 38)
 
                 Button("Подобрать план", action: submitBudget)
                     .buttonStyle(ShoppingActionStyle())
-                    .padding(.top, 56)
+                    .padding(.top, 60)
             }
         }
         .scrollDismissesKeyboard(.interactively)
@@ -62,13 +62,14 @@ struct ShoppingBudgetScreen: View {
     private func budgetField(onSubmit: @escaping () -> Void) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Бюджет, ₽")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+                .shoppingFont(13, weight: .medium, lineHeight: 18)
+                .foregroundStyle(ShoppingColor.secondary)
                 .accessibilityHidden(true)
             TextField("Бюджет, ₽", text: $input, prompt: Text("Введите сумму"))
                 .keyboardType(.decimalPad)
                 .focused($isEditingBudget)
                 .onSubmit(onSubmit)
+                .shoppingFont(16, lineHeight: 22)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 .frame(minHeight: 56)
@@ -78,7 +79,7 @@ struct ShoppingBudgetScreen: View {
             if let error {
                 Text(errorMessage(error))
                     .font(.footnote)
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(ShoppingColor.accent)
                     .accessibilityIdentifier("shopping.budget.error")
             }
         }
@@ -88,38 +89,41 @@ struct ShoppingBudgetScreen: View {
     private var presets: some View {
         ViewThatFits(in: .horizontal) {
             HStack(spacing: 8) {
-                presetButtons
+                preset(200, preferredWidth: 104)
+                preset(500, preferredWidth: 104)
+                preset(1_000)
             }
             VStack(alignment: .leading, spacing: 4) {
-                presetButtons
+                preset(200)
+                preset(500)
+                preset(1_000)
             }
         }
     }
 
-    private var presetButtons: some View {
-        ForEach([200, 500, 1_000], id: \.self) { amount in
-            let isSelected = input == String(amount)
-            Button {
-                input = String(amount)
-                isEditingBudget = false
-            } label: {
-                Text(shoppingRubles(Decimal(amount)))
-                    .font(.footnote.weight(isSelected ? .bold : .regular))
-                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 9)
-                    .frame(maxWidth: .infinity)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .background(
-                        isSelected ? Color.accentColor.opacity(0.14) : Color(.secondarySystemGroupedBackground),
-                        in: .capsule
-                    )
-                    .frame(minHeight: 44)
-                    .contentShape(.rect)
-            }
-            .buttonStyle(.plain)
-            .accessibilityAddTraits(isSelected ? .isSelected : [])
+    private func preset(_ amount: Int, preferredWidth: CGFloat? = nil) -> some View {
+        let isSelected = input == String(amount)
+        return Button {
+            input = String(amount)
+            isEditingBudget = false
+        } label: {
+            Text(shoppingRubles(Decimal(amount)))
+                .shoppingFont(13, weight: isSelected ? .bold : .medium, lineHeight: 18)
+                .foregroundStyle(isSelected ? ShoppingColor.accent : ShoppingColor.secondary)
+                .fixedSize()
+                .padding(.horizontal, 16)
+                .padding(.vertical, 6)
+                .frame(minWidth: preferredWidth, maxWidth: .infinity, minHeight: 36)
+                .fixedSize(horizontal: preferredWidth != nil, vertical: false)
+                .background(
+                    isSelected ? ShoppingColor.accentSurface : Color(.secondarySystemGroupedBackground),
+                    in: .capsule
+                )
+                .frame(minHeight: 48)
+                .contentShape(.rect)
         }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private func submit(scroll: ScrollViewProxy) {
@@ -166,7 +170,7 @@ private struct ShoppingBudgetResultScreen: View {
                 ) {
                     dismiss()
                 }
-                .padding(.top, 100)
+                .padding(.top, 116)
             }
         }
         .navigationTitle("План покупок")
@@ -180,32 +184,35 @@ private struct ShoppingBudgetResultScreen: View {
         return VStack(alignment: .leading, spacing: 0) {
             ShoppingHeading(title: "В пределах бюджета", subtitle: "Бюджет \(shoppingRubles(budget))")
             ShoppingNotice(
-                title: "Демоплан · ≈\(price) · ещё два блюда",
-                message: "Останется примерно \(remainder)."
+                title: "Демоплан · ≈\(price) → ещё 2 блюда",
+                message: "Останется примерно \(remainder)"
             )
-            .padding(.top, 38)
+            .padding(.top, 40)
 
             HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("\(ShoppingDemoPlan.cheese.name) · \(ShoppingDemoPlan.cheese.quantity)")
-                        .font(.subheadline.weight(.medium))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(ShoppingDemoPlan.cheese.name) · \(ShoppingDemoPlan.packageWeight)")
+                        .shoppingFont(15, weight: .medium, lineHeight: 21)
                     Text("≈\(price) за упаковку")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .shoppingFont(12, lineHeight: 17)
+                        .foregroundStyle(ShoppingColor.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 Image(systemName: "checkmark")
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(ShoppingColor.secondary)
+                    .frame(width: 20, height: 20)
                     .accessibilityHidden(true)
             }
-            .padding(16)
-            .shoppingCard()
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .shoppingCard(cornerRadius: 18)
             .accessibilityElement(children: .combine)
             .padding(.top, 28)
 
             Text("Что станет доступно")
-                .font(.headline.bold())
+                .shoppingFont(18, weight: .bold, lineHeight: 25)
                 .accessibilityAddTraits(.isHeader)
                 .padding(.top, 36)
                 .padding(.bottom, 16)
@@ -227,11 +234,11 @@ private struct ShoppingBudgetResultScreen: View {
 
             Button(hasDemoPlan ? "К списку покупок" : "Добавить план в покупки", action: onFinishPlan)
                 .buttonStyle(ShoppingActionStyle())
-                .padding(.top, 48)
+                .padding(.top, 52)
             Text("Блюда — отдельные варианты приготовления.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.top, 24)
+                .shoppingFont(12, lineHeight: 17)
+                .foregroundStyle(ShoppingColor.secondary)
+                .padding(.top, 30)
         }
     }
 
@@ -248,18 +255,19 @@ private struct ShoppingBudgetResultScreen: View {
                 .resizable()
                 .scaledToFill()
                 .frame(width: 100, height: 100)
-                .clipShape(.rect(cornerRadius: 20))
+                .clipShape(.rect(cornerRadius: 22))
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.headline.bold())
+                    .lineSpacing(2)
+                    .shoppingFont(18, weight: .bold, lineHeight: 24)
                 Text(details)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .shoppingFont(13, lineHeight: 18)
+                    .foregroundStyle(ShoppingColor.secondary)
                 Text("Нужен сыр · ≈\(price) докупить")
-                    .font(.caption)
-                    .foregroundStyle(Color.accentColor)
+                    .shoppingFont(12, weight: .medium, lineHeight: 16)
+                    .foregroundStyle(ShoppingColor.accent)
             }
             .fixedSize(horizontal: false, vertical: true)
         }
