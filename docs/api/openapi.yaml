@@ -4478,6 +4478,31 @@ components:
                   type: string
               allergen_data_complete:
                 type: boolean
+              dietary_facts:
+                type: object
+                properties:
+                  vegetarian:
+                    anyOf:
+                    - type: boolean
+                    - type: 'null'
+                  vegan:
+                    anyOf:
+                    - type: boolean
+                    - type: 'null'
+                  gluten_free:
+                    anyOf:
+                    - type: boolean
+                    - type: 'null'
+                  lactose_free:
+                    anyOf:
+                    - type: boolean
+                    - type: 'null'
+                required:
+                - vegetarian
+                - vegan
+                - gluten_free
+                - lactose_free
+                additionalProperties: false
               methods:
                 type: array
                 items:
@@ -4498,6 +4523,7 @@ components:
             - nutrition_per_serving
             - allergens
             - allergen_data_complete
+            - dietary_facts
             - methods
             additionalProperties: false
       required:

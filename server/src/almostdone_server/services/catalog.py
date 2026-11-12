@@ -39,6 +39,8 @@ class ExportValidation:
 
 class Catalog:
     """Read catalogue records from a repository and coordinate their use."""
+    DIET_FACT_KEYS = ("vegetarian", "vegan", "gluten_free", "lactose_free")
+
     def __init__(self, repository: CatalogRepository, gateway: EngineGateway):
         data = repository.load()
         self.gateway = gateway
@@ -166,6 +168,31 @@ class Catalog:
                 self._export_validated_schema = validation.schema_version
             return self._exported_data
 
+    def dietary_facts(self, raw):
+        """Per-diet suitability flags for on-device matching.
+
+        A recipe-level "dietary_facts" record (curated data, e.g. the demo
+        catalogue) wins. Otherwise the flag is computed from the required
+        ingredients' diet exclusions: False when any required ingredient is
+        excluded by the diet, True when every required ingredient carries diet
+        data and none is excluded, None when diet data is missing. Optional
+        ingredients only produce skip warnings, so they never set False.
+        """
+        explicit = raw.get("dietary_facts")
+        if explicit is not None:
+            return {key: explicit.get(key) if explicit.get(key) in (True, False) else None
+                    for key in self.DIET_FACT_KEYS}
+        required = [item["code"] for item in raw.get("items", []) if not item.get("is_optional")]
+        facts = {}
+        for key in self.DIET_FACT_KEYS:
+            if any(key in self.ingredients[code].get("diet_exclusions", ()) for code in required):
+                facts[key] = False
+            elif all("diet_exclusions" in self.ingredients[code] for code in required):
+                facts[key] = True
+            else:
+                facts[key] = None
+        return facts
+
     def _build_export(self):
         """The whole catalogue for a client that matches recipes on the device.
 
@@ -202,6 +229,7 @@ class Catalog:
                                           "fat_g": metrics.fat, "carbs_g": metrics.carbs},
                 "allergens": allergens["contains"],
                 "allergen_data_complete": allergens["completeness"] == "complete",
+                "dietary_facts": self.dietary_facts(self.recipes[recipe.id]),
                 "methods": list(recipe.methods)})
         return {"catalog_version": self.version, "ingredients": ingredients, "recipes": items}
 

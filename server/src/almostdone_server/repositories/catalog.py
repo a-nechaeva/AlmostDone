@@ -5,6 +5,11 @@ import re
 from pathlib import Path
 from contextlib import asynccontextmanager, aclosing
 
+from .postgres import FLAG_DIETS, FOOD_DIETS
+
+# Diet names (as stored in public.diets) mapped to the API keys clients use.
+DIET_KEYS_BY_NAME = {name: key for key, name in {**FOOD_DIETS, **FLAG_DIETS}.items()}
+
 
 class PostgresCatalogRepository:
     def __init__(self, store):
@@ -60,7 +65,7 @@ class SeedDump:
     COPY = re.compile(r"COPY public\.(\w+) \(([^)]*)\) FROM stdin;")
     ESCAPES = {"\\n": "\n", "\\t": "\t", "\\r": "\r", "\\\\": "\\"}
     INTEGERS = {"id", "servings", "cook_time_min", "recipe_id", "ingredient_id", "allergen_id", "step_no",
-                "duration_min", "author_id"}
+                "duration_min", "author_id", "category_id", "diet_id"}
     BOOLEANS = {"is_staple", "needs_microwave", "needs_stove", "needs_oven", "no_cook", "is_optional"}
 
     def __init__(self, path):
@@ -99,6 +104,20 @@ class SeedDump:
             rows = [{"ingredient_id": r["ingredient_id"], "code": codes[r["allergen_id"]]}
                     for r in t.get("ingredient_allergens", [])]
             return sorted(rows, key=lambda r: (r["ingredient_id"], r["code"]))
+        if sql.startswith("SELECT DISTINCT ic.ingredient_id,d.name FROM ingredient_categories"):
+            diets = {r["id"]: r["name"] for r in t.get("diets", []) if r.get("kind") == "diet"}
+            rows = {(r["ingredient_id"], diets[x["diet_id"]])
+                    for r in t.get("ingredient_categories", [])
+                    for x in t.get("diet_excluded_categories", [])
+                    if x["category_id"] == r["category_id"] and x["diet_id"] in diets}
+            return [{"ingredient_id": ingredient_id, "name": name} for ingredient_id, name in sorted(rows)]
+        if sql.startswith("SELECT DISTINCT ia.ingredient_id,d.name FROM ingredient_allergens"):
+            diets = {r["id"]: r["name"] for r in t.get("diets", []) if r.get("kind") == "diet"}
+            rows = {(r["ingredient_id"], diets[x["diet_id"]])
+                    for r in t.get("ingredient_allergens", [])
+                    for x in t.get("diet_excluded_allergens", [])
+                    if x["allergen_id"] == r["allergen_id"] and x["diet_id"] in diets}
+            return [{"ingredient_id": ingredient_id, "name": name} for ingredient_id, name in sorted(rows)]
         if sql.startswith("SELECT * FROM recipes WHERE author_id IS NULL"):
             return sorted((r for r in t["recipes"] if r.get("author_id") is None), key=lambda r: r["id"])
         if sql.startswith("SELECT * FROM recipe_ingredients"):
@@ -129,6 +148,20 @@ def load_catalog(db):
         ingredients[row["ingredient_id"]]["aliases"].append(row["alias"])
     for row in db.execute("SELECT ia.ingredient_id,a.code FROM ingredient_allergens ia JOIN allergens a ON a.id=ia.allergen_id ORDER BY ia.ingredient_id,a.code"):
         ingredients[row["ingredient_id"]]["allergens"].append(row["code"])
+    for item in ingredients.values():
+        item["diet_exclusions"] = set()
+    for row in db.execute("SELECT DISTINCT ic.ingredient_id,d.name FROM ingredient_categories ic "
+                          "JOIN diet_excluded_categories x ON x.category_id=ic.category_id "
+                          "JOIN diets d ON d.id=x.diet_id WHERE d.kind='diet'"):
+        if row["name"] in DIET_KEYS_BY_NAME:
+            ingredients[row["ingredient_id"]]["diet_exclusions"].add(DIET_KEYS_BY_NAME[row["name"]])
+    for row in db.execute("SELECT DISTINCT ia.ingredient_id,d.name FROM ingredient_allergens ia "
+                          "JOIN diet_excluded_allergens x ON x.allergen_id=ia.allergen_id "
+                          "JOIN diets d ON d.id=x.diet_id WHERE d.kind='diet'"):
+        if row["name"] in DIET_KEYS_BY_NAME:
+            ingredients[row["ingredient_id"]]["diet_exclusions"].add(DIET_KEYS_BY_NAME[row["name"]])
+    for item in ingredients.values():
+        item["diet_exclusions"] = sorted(item["diet_exclusions"])
     recipes = {}
     for row in db.execute("SELECT * FROM recipes WHERE author_id IS NULL ORDER BY id"):
         item = dict(row)
