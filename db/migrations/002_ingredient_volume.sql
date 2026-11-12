@@ -1,12 +1,6 @@
--- Nullable density supports ml without assuming that every food has water density.
 ALTER TABLE public.ingredients ADD COLUMN grams_per_ml numeric(8,4)
     CHECK (grams_per_ml > 0 AND grams_per_ml < 'Infinity'::numeric);
-COMMENT ON COLUMN public.ingredients.grams_per_ml IS
-    'Mass in grams per ml; NULL means volume conversion is not supported.';
 
--- Approximate food-composition densities, FAO/INFOODS v2 (2012), pp. 7, 9, 12.
--- https://www.fao.org/4/ap815e/ap815e.pdf
--- Existing recipe/pack masses and display units are unchanged.
 UPDATE public.ingredients AS i SET grams_per_ml = d.grams_per_ml
 FROM (VALUES
     ('ing_94735c5d0f98f9bb', 0.92),

@@ -160,7 +160,9 @@ def catalogue_database(database):
             admin.execute(sql.SQL("DROP DATABASE {} WITH (FORCE)").format(sql.Identifier(name)))
 
 
-def test_volume_migration_preserves_catalogue_and_user_state(catalogue_database):
+def test_volume_migration_preserves_catalogue_and_user_state(catalogue_database, tmp_path):
+    # Exercise the volume migration independently of later catalogue changes.
+    (tmp_path / "002_ingredient_volume.sql").write_bytes((MIGRATIONS_DIR / "002_ingredient_volume.sql").read_bytes())
     dsn = catalogue_database
     with psycopg.connect(dsn) as connection:
         connection.execute("UPDATE ingredients SET kcal=0,protein=0,fat=0,carbs=0 WHERE id=12")
@@ -183,8 +185,8 @@ def test_volume_migration_preserves_catalogue_and_user_state(catalogue_database)
             return {table: sorted(row[0] for row in connection.execute(sql.SQL(
                 "SELECT row_to_json(t)::text FROM public.{} t").format(sql.Identifier(table)))) for table in protected}
         before = snapshot()
-    first = run_migrations(dsn)
-    assert first.applied == ("002_ingredient_volume", "003_catalog_revision")
+    first = run_migrations(dsn, tmp_path)
+    assert first.applied == ("002_ingredient_volume",)
     with psycopg.connect(dsn) as connection:
         assert snapshot() == before
         assert connection.execute("SELECT kcal,protein,fat,carbs FROM ingredients WHERE id=12").fetchone() == (0, 0, 0, 0)
@@ -194,7 +196,7 @@ def test_volume_migration_preserves_catalogue_and_user_state(catalogue_database)
         assert connection.execute("SELECT grams_per_ml FROM ingredients WHERE id=12").fetchone()[0] is not None
         # A repeated deployment must not reset new edits or reload the snapshot.
         connection.execute("UPDATE ingredients SET kcal=1 WHERE id=12")
-    assert run_migrations(dsn).applied == ()
+    assert run_migrations(dsn, tmp_path).applied == ()
     with psycopg.connect(dsn) as connection:
         assert connection.execute("SELECT kcal FROM ingredients WHERE id=12").fetchone()[0] == 1
         assert snapshot() == before
