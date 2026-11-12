@@ -46,7 +46,7 @@ enum RecipeFixture {
     static func detail(
         _ request: URLRequest, id: String = RecipeFixture.id, title: String = "Рис с томатами",
         hasPhoto: Bool = true, hasEstimates: Bool = true, ready: Bool = false, defaultServings: Int = 2,
-        riceRequired: Int = 300
+        riceRequired: Int = 300, stateVersion: Int = 7
     ) throws -> (Data, URLResponse) {
         let servings = query(request, named: "servings").first.flatMap(Int.init) ?? defaultServings
         let nutrition: [String: Double] =
@@ -127,20 +127,20 @@ enum RecipeFixture {
                 [
                     "key": "rice:rice-default", "ingredient_id": "rice", "package_id": "rice-default", "name": "Рис",
                     "package_quantity": ["value": 500, "unit": "g"] as [String: Any],
-                    "package_count": 1, "total_price": buyCost
+                    "package_count": 1, "total_price": hasEstimates ? buyCost as Any : nullable
                 ]
             ]
         return try SessionFixture.response(
             request,
             body: [
-                "state_version": 7,
+                "state_version": stateVersion,
                 "catalog_version": "fixture-catalog",
                 "recipe": card,
                 "ingredients": ingredients,
                 "steps": steps,
                 "shopping_items": shoppingItems
             ],
-            etag: #""state-7""#
+            etag: #""state-\#(stateVersion)""#
         )
     }
 

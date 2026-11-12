@@ -173,8 +173,8 @@ struct RecipePresentation {
         }
         purchases = detail.shoppingItems.map {
             Purchase(
-                id: $0.key, name: $0.name, packages: "\($0.packageCount) × \(Self.quantity($0.packageQuantity))",
-                price: $0.totalPrice.map { Self.money($0) } ?? "Цена неизвестна"
+                id: $0.key, name: $0.name, packages: $0.quantityLabel,
+                price: $0.totalPrice.map { shoppingRubles($0.rubles) } ?? "Цена неизвестна"
             )
         }
         costCaption = "Докупка"

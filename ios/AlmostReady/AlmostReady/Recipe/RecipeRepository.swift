@@ -26,6 +26,10 @@ struct RecipeRepository {
     let request: RecipeRequest
 
     func detail(servings: Int?) async throws -> RecipeDetailDTO {
+        try await detailSnapshot(servings: servings).detail
+    }
+
+    func detailSnapshot(servings: Int?) async throws -> (detail: RecipeDetailDTO, revision: AccountRevision) {
         let detail = RecipeRequest(id: request.id, servings: servings, excludedAllergenIDs: request.excludedAllergenIDs)
         let response = try await session.json(RecipeDetailDTO.self, for: detail.detailRequest, account: account)
         let recipe = response.value.recipe
@@ -34,7 +38,8 @@ struct RecipeRepository {
         else {
             throw APIClientError.invalidResponse(response.metadata)
         }
-        return response.value
+        let revision = try AccountRevision(etag: response.metadata.etag, stateVersion: response.value.stateVersion)
+        return (response.value, revision)
     }
 
     func photo() async throws -> APIResponse<Data> {

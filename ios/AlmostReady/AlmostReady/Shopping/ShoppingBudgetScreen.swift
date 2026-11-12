@@ -14,7 +14,7 @@ struct ShoppingBudgetScreen: View {
     @State private var result: ShoppingBudgetResult?
     @Binding var input: String
     let hasDemoPlan: Bool
-    var server: ServerShoppingModel? = nil
+    var server: ServerShoppingRecommendationModel? = nil
     var kind: ShoppingRecommendationKind = .budget
     let onFinishPlan: () -> Void
 

@@ -21,17 +21,29 @@ struct ShoppingTransferControls: View {
                     .accessibilityIdentifier("shopping.transfer.status")
             }
 
-            Button(buttonTitle) {
-                Task { await model.confirmTransfer() }
+            if model.storageUnavailable {
+                Text("Не удалось сохранить список покупок.").font(.footnote)
             }
-            .buttonStyle(ShoppingActionStyle())
-            .disabled(model.transferState == .transferring)
-            .accessibilityIdentifier("shopping.transfer.confirm")
+
+            if model.transferState == .expired {
+                Button("Оставить позиции в покупках") {
+                    model.dismissExpiredTransfer()
+                    if model.transferState == .idle { onComplete() }
+                }
+                .buttonStyle(ShoppingActionStyle(isSecondary: true))
+            } else {
+                Button(buttonTitle) {
+                    Task { await model.confirmTransfer() }
+                }
+                .buttonStyle(ShoppingActionStyle())
+                .disabled(model.transferState == .transferring)
+                .accessibilityIdentifier("shopping.transfer.confirm")
+            }
 
             if model.transferState == .needsConfirmation || model.transferState == .revisionUnavailable {
                 Button("Изменить выбор") {
                     model.cancelReconciledTransfer()
-                    onComplete()
+                    if model.transferState == .idle { onComplete() }
                 }
                 .buttonStyle(ShoppingActionStyle(isSecondary: true))
             }
@@ -57,6 +69,8 @@ struct ShoppingTransferControls: View {
             "Не удалось проверить текущую версию запасов. Выбранные позиции сохранены."
         case .retry:
             "Не удалось подтвердить перенос. Повторите эту же операцию."
+        case .expired:
+            "Срок повтора истёк. Сверьте покупки с «Моими продуктами» перед новым переносом."
         case .invalidSelection:
             "Не удалось объединить выбранные количества. Проверьте отметки в списке покупок."
         case .rejected:

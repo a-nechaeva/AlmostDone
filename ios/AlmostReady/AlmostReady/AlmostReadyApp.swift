@@ -51,14 +51,17 @@ struct ServerRoot: View {
 
 private struct ServerAccountRoot: View {
     @State private var favorites: FavoritesStore
+    @State private var shopping: ServerShoppingModel
 
     init(session: SessionStore, account: AccountSession) {
         _favorites = State(initialValue: FavoritesStore(session: session, account: account))
+        _shopping = State(initialValue: session.shoppingModel(for: account))
     }
 
     var body: some View {
         ContentView()
             .environment(favorites)
+            .environment(shopping)
     }
 }
 
