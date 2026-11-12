@@ -16,6 +16,7 @@ from .users import UserService
 from .runtime import RuntimeService
 from .state import UserStateService
 from .health import readiness
+from .dietary import DietaryService
 
 
 class ApplicationService:
@@ -25,8 +26,9 @@ class ApplicationService:
         self.states = UserStateService(store, catalog)
         pagination = Pagination(self.runtime, catalog)
         self.auth = AuthService(store, auth_providers or {}, self.states)
-        self.users = UserService(catalog, pagination)
-        self.catalogue = CatalogService(catalog, pagination)
+        self.dietary = DietaryService(store)
+        self.users = UserService(catalog, pagination, self.dietary)
+        self.catalogue = CatalogService(catalog, pagination, self.dietary)
         self.recommendations = RecommendationService(self.runtime, catalog, pagination)
         self.recognition = RecognitionService(self.runtime, catalog, self.users, recognizer, validate_recognition_line)
 
@@ -84,7 +86,12 @@ class ApplicationService:
                 data = None
             else:
                 service = self.use_case(oid)
-                data = service.execute(db, uid, user, session, oid, body, params)
+                execution_user = user
+                if oid in ('recipes_get', 'recommendations_create', 'recommendations_page',
+                           'recommendations_graph', 'purchases_budget', 'purchases_single_purchase',
+                           'favorites_recipes'):
+                    execution_user = {**user, '_dietary': self.dietary.context(db, uid)}
+                data = service.execute(db, uid, execution_user, session, oid, body, params)
             if oid in MUTATIONS and user != before:
                 user["version"] += 1
                 self.states.save(db, uid, user)

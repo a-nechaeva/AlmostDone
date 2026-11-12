@@ -7,22 +7,22 @@ from .models import ALLERGENS
 
 
 class UserService:
-    def __init__(self, catalog, pagination):
-        self.catalog, self.pagination = catalog, pagination
+    def __init__(self, catalog, pagination, dietary=None):
+        self.catalog, self.pagination, self.dietary = catalog, pagination, dietary
 
     def pantry(self, user):
         return {"state_version": user["version"], "items": [
             {"ingredient_id": i, "name": self.catalog.ingredients[i]["name"], "quantity": q}
             for i, q in sorted(user["pantry"].items())]}
 
-    def profile(self, uid, user):
+    def profile(self, uid, user, supported=()):
         preferences = user["preferences"]
         unsupported = ([preferences["food_type"]] if preferences["food_type"] != "any" else [])
         unsupported += [name for name in ("gluten_free", "lactose_free", "diabetes") if preferences[name]]
         if preferences["diet_table_id"]:
             unsupported.append(preferences["diet_table_id"])
         return {"user_id": uid, "display_name": None, "preferences": preferences,
-                "unsupported_restrictions": unsupported, "state_version": user["version"]}
+                "unsupported_restrictions": [item for item in unsupported if item not in supported], "state_version": user["version"]}
 
     def add(self, user, ingredient_id, quantity):
         self.catalog.validate_quantity(ingredient_id, quantity)
@@ -50,9 +50,9 @@ class UserService:
             if prefs["diet_table_id"] is not None and prefs["diet_table_id"] not in {f"pevzner_{i}" for i in range(1, 16)}:
                 raise invalid("Неизвестный диетический стол", "preferences.diet_table_id")
             user["preferences"] = copy.deepcopy(prefs)
-            return self.profile(uid, user)
+            return self.profile(uid, user, self.dietary.supported(db) if self.dietary else ())
         if oid == "profile_get":
-            return self.profile(uid, user)
+            return self.profile(uid, user, self.dietary.supported(db) if self.dietary else ())
         if oid == "pantry_get":
             return self.pantry(user)
         if oid == "pantry_add":
@@ -91,7 +91,8 @@ class UserService:
             identifiers = sorted(user["favorites"][kind])
             items = [self.catalog.ingredient_body(i, user) if kind == "ingredients" else self.catalog.detail(i, user)[0]["recipe"]
                      for i in identifiers]
-            paged, page = self.pagination.paginate(db, uid, user, oid, params, items)
+            paged, page = self.pagination.paginate(db, uid, user, oid, params, items,
+                                                     user.get("_dietary", {}).get("version", "") if kind == "recipes" else "")
             result = {"state_version": user["version"], "items": paged, "page": page}
             if kind == "ingredients":
                 result["catalog_version"] = self.catalog.version

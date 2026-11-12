@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from almostdone_server.main import create_app
+from ..support.application import create_app
 
 
 def test_all_contract_operations_have_routes_and_runtime_docs(app, client):
@@ -161,13 +161,14 @@ def test_search_synonyms_cursor_and_favorites(app, client):
     check(app, client.get("/api/v1/me/favorites/ingredients", params={"limit": 1, "cursor": cursor}, headers=headers), "Error", 409)
 
 
-def test_unweighed_stock_uses_engine_and_unsupported_portions_remain_unknown(app, client):
+def test_unweighed_stock_and_scaled_portions_use_engine(app, client):
     headers = auth(app)
     client.post("/api/v1/me/pantry/add", json={"ingredient_id": "rice", "quantity": None}, headers=mutation(client, headers))
     unscaled = check(app, client.get("/api/v1/recipes/rice_tomato?servings=4", headers=headers), "RecipeDetail")
     assert unscaled["recipe"]["servings"] == 4
-    assert unscaled["recipe"]["availability"]["status"] == "unknown"
-    assert unscaled["recipe"]["buy_cost"] is None
+    assert unscaled["recipe"]["availability"]["status"] == "missing"
+    assert unscaled["ingredients"][0]["required"] == {"value": 400, "unit": "g"}
+    assert unscaled["recipe"]["buy_cost"] is not None
     detail = check(app, client.get("/api/v1/recipes/rice_tomato?servings=2", headers=headers), "RecipeDetail")
     assert detail["recipe"]["availability"]["unknown_quantity_ids"] == ["rice"]
     assert detail["ingredients"][0]["availability"] == "enough"
@@ -203,13 +204,20 @@ def test_profile_is_saved_but_unsupported_medical_calculation_is_rejected(app, c
     check(app, client.get("/api/v1/recipes/tomato_cheese", headers=headers), "Error", 503)
 
 
-def test_single_purchases_use_engine_and_exact_budget_is_explicitly_unavailable(app, client):
+def test_single_purchases_and_budget_plan_use_engine(app, client):
     headers = auth(app)
     client.post("/api/v1/me/pantry/add", json={"ingredient_id": "tomato", "quantity": {"value": 1000, "unit": "g"}}, headers=mutation(client, headers))
     body = {"request_id": str(uuid4()), "servings": 2, "filters": FILTERS, "budget": {"minor_units": 100000, "currency": "RUB"}}
     single = check(app, client.post("/api/v1/recommendations/single-purchase", json=body, headers=headers), "SinglePurchaseResult")
     assert single["options"][0]["shopping_item"]["total_price"]["minor_units"] == 10000
-    check(app, client.post("/api/v1/recommendations/budget", json=body, headers=headers), "Error", 503)
+    before = client.get("/api/v1/me/state", headers=headers).json()
+    plan = check(app, client.post("/api/v1/recommendations/budget", json=body, headers=headers), "PurchaseResult")
+    assert plan["status"] == "found"
+    assert plan["shopping_items"]
+    assert plan["unlocked_recipe_ids"]
+    assert plan["total_cost"]["minor_units"] <= body["budget"]["minor_units"]
+    assert sum(item["total_price"]["minor_units"] for item in plan["shopping_items"]) == plan["total_cost"]["minor_units"]
+    assert client.get("/api/v1/me/state", headers=headers).json() == before
 
 
 class RecognitionFake:

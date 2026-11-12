@@ -7,7 +7,7 @@ import pytest
 
 from ..support.catalog import custom_catalog, make_catalog
 from almostdone_server.errors import APIError
-from almostdone_server.repositories.memory import Store
+from ..support.memory import Store
 from almostdone_server.services.application import ApplicationService
 from almostdone_server.services.commands import Command
 
@@ -86,3 +86,10 @@ def test_recipe_service_delegates_calculation_to_existing_engine(application, mo
     result = service.execute(Command("recipes_get", parameters={"recipe_id": recipe_id, "servings": 2}, access_token=token))
     assert result.data["recipe"]["id"] == recipe_id
     assert len(calls) == 1
+
+
+def test_server_factory_requires_an_explicit_database(monkeypatch):
+    from almostdone_server.main import create_app as create_server_app
+    monkeypatch.delenv("ALMOSTDONE_DATABASE_URL", raising=False)
+    with pytest.raises(RuntimeError, match="ALMOSTDONE_DATABASE_URL is required"):
+        create_server_app()

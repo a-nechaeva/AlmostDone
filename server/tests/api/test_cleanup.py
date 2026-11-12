@@ -5,8 +5,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from almostdone_server.errors import APIError, StorageUnavailable
-from almostdone_server.main import create_app
-from almostdone_server.repositories.memory import Store
+from ..support.application import create_app
+from ..support.memory import Store
 
 
 @pytest.mark.parametrize("failure", [APIError(503, "service_unavailable", "Unavailable"), StorageUnavailable("Unavailable")])

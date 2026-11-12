@@ -2,7 +2,7 @@
 import copy
 import hashlib
 import json
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 from ..errors import APIError
 from .models import default_user
@@ -22,7 +22,11 @@ class UserStateService:
             factor = ingredient.get("grams_per_ml" if quantity["unit"] == "ml" else "grams_per_piece")
         if not factor:
             raise APIError(409, "unit_conflict", "Нет коэффициента перевода в граммы")
-        return Decimal(str(quantity["value"])) * Decimal(str(factor))
+        grams = Decimal(str(quantity["value"])) * Decimal(str(factor))
+        # PostgreSQL stores mass to 0.01 g; retain the original ml in API metadata.
+        if quantity["unit"] == "ml":
+            grams = grams.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        return grams
 
     def load(self, db, user_id):
         stored = self.store.user(db, user_id)

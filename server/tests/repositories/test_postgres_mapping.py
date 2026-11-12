@@ -7,7 +7,7 @@ import pytest
 
 from almostdone_server.errors import StorageUnavailable, StorageValueError
 from almostdone_server.repositories.postgres import PostgresStore, Transaction
-from almostdone_server.repositories.records import MemoryRecords
+from ..support.memory import MemoryRecords
 from almostdone_server.services.models import default_user
 from almostdone_server.services.state import UserStateService
 

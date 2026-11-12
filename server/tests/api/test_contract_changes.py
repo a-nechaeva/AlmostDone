@@ -3,7 +3,7 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from almostdone_server.main import create_app
+from ..support.application import create_app
 from ..support.http import FILTERS, auth, check, mutation
 from ..support.catalog import custom_catalog
 
@@ -52,6 +52,27 @@ def test_single_purchase_returns_multiple_options_and_multiple_packages():
         assert all(option['shopping_item']['package_count'] == 3 for option in response['options'])
         assert response['servings'] == 2
         assert response['options'][0]['shopping_item']['ingredient_id'] == 'rice'
+
+
+def test_single_purchase_keeps_affordable_recipes_when_other_recipes_are_too_expensive():
+    data = custom_catalog()
+    expensive = copy.deepcopy(data['recipes'][0])
+    expensive['id'] = 'expensive_rice'
+    expensive['items'][0]['qty_g'] = 2500
+    data['recipes'].append(expensive)
+    app = create_app(catalog_data=data)
+    with TestClient(app) as client:
+        headers = auth(app)
+        client.post('/api/v1/me/pantry/add', json={'ingredient_id': 'tomato', 'quantity': {'value': 2000, 'unit': 'g'}}, headers=mutation(client, headers))
+        body = {'request_id': str(uuid4()), 'servings': 2, 'filters': FILTERS,
+                'budget': {'minor_units': 10000, 'currency': 'RUB'}}
+        response = check(app, client.post('/api/v1/recommendations/single-purchase', json=body, headers=headers), 'SinglePurchaseResult')
+        assert response['status'] == 'found'
+        option, = response['options']
+        assert option['shopping_item']['ingredient_id'] == 'rice'
+        assert option['shopping_item']['package_count'] == 1
+        assert option['shopping_item']['total_price']['minor_units'] == 10000
+        assert option['unlocked_recipe_ids'] == ['rice_tomato']
 
 
 def test_graph_that_requires_package_repair_is_explicitly_unsupported():

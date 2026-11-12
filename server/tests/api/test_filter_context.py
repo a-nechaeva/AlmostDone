@@ -29,3 +29,20 @@ def test_ready_engine_filters_and_unsupported_restrictions(app, client, mode, re
     else:
         page = check(app, response, 'RecommendationPage', 201)
         assert [card['id'] for card in page['items']] == ['tomato_cheese']
+
+
+def test_database_rule_change_invalidates_recommendation_snapshot(app, client, monkeypatch):
+    headers = auth(app)
+    decisions = {'rice_tomato': {'hidden': False, 'restrictions': [], 'skip_optional': []}}
+    monkeypatch.setattr(app.state.service.store, 'dietary_visibility', lambda db, uid: decisions)
+    request = {'request_id': str(uuid4()), 'servings': 2, 'filters': FILTERS,
+               'visibility': 'visible', 'limit': 1}
+    first = client.post('/api/v1/recommendations', json=request, headers=headers)
+    assert first.status_code == 201, first.text
+    snapshot = first.json()
+    state = client.get('/api/v1/me/state', headers=headers).json()
+    decisions['rice_tomato']['hidden'] = True
+    response = client.get('/api/v1/recommendations/' + snapshot['snapshot_id'],
+                          params={'cursor': snapshot['page']['next_cursor']}, headers=headers)
+    assert response.status_code == 409, response.text
+    assert client.get('/api/v1/me/state', headers=headers).json() == state

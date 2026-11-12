@@ -100,7 +100,7 @@ def load_catalog(db):
     ingredients = {}
     for row in db.execute("SELECT * FROM ingredients ORDER BY id"):
         item = dict(row)
-        for field in ("package_g", "package_price", "kcal", "protein", "fat", "carbs", "grams_per_piece"):
+        for field in ("package_g", "package_price", "kcal", "protein", "fat", "carbs", "grams_per_piece", "grams_per_ml"):
             item[field] = float(item[field]) if item.get(field) is not None else None
         item["aliases"], item["allergens"] = [], []
         ingredients[item["id"]] = item
@@ -122,7 +122,6 @@ def load_catalog(db):
             recipes[row["recipe_id"]]["steps"].append(row["instruction"])
             recipes[row["recipe_id"]]["step_details"].append({"number": row["step_no"], "text": row["instruction"],
                                                            "minutes": row["duration_min"]})
-    # Numeric database keys are opaque strings at the API boundary.
     for item in recipes.values():
         item["id"] = str(item["id"])
     return {"source_name": "Каталог PostgreSQL", "ingredients": list(ingredients.values()), "recipes": list(recipes.values())}

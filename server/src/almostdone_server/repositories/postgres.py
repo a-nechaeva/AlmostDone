@@ -30,7 +30,8 @@ class PostgresStore:
                     'cooking_methods', 'recipe_cooking_methods', 'diet_excluded_allergens',
                     'diet_excluded_categories', 'diet_excluded_methods', 'user_identities',
                     'auth_sessions', 'auth_tokens', 'user_api_state', 'api_idempotency',
-                    'api_resources', 'recognition_imports',
+                    'api_resources', 'recognition_imports', 'user_all_diets',
+                    'user_recipe_visibility', 'recipe_categories', 'recipe_allergens',
                 ):
                     connection.execute(f'SELECT * FROM public.{table} LIMIT 0')
                 applied = {row[0] for row in connection.execute(
@@ -103,6 +104,41 @@ class PostgresStore:
             SET state_version=EXCLUDED.state_version,diabetes=EXCLUDED.diabetes,
                 pantry_display=EXCLUDED.pantry_display,state_hash=EXCLUDED.state_hash,updated_at=clock_timestamp()
         """, (user_id, state["version"], state["preferences"]["diabetes"], Jsonb(state["pantry"]), state_hash))
+
+    @staticmethod
+    def _diet_ids(db):
+        names = {name: key for key, name in {**FOOD_DIETS, **FLAG_DIETS}.items()}
+        result = {}
+        for row in db.execute('SELECT id, kind, name FROM diets'):
+            if row['kind'] == 'diet' and row['name'] in names:
+                result[row['name']] = names[row['name']]
+            elif row['kind'] == 'pevzner':
+                match = re.fullmatch(r'Стол №\s*(\d+)', row['name'])
+                if match and 1 <= int(match[1]) <= 15:
+                    result[row['name']] = 'pevzner_' + str(int(match[1]))
+        return result
+
+    def dietary_support(self, db):
+        return set(self._diet_ids(db).values())
+
+    def dietary_visibility(self, db, user_id):
+        active = db.execute('SELECT EXISTS(SELECT 1 FROM user_all_diets WHERE user_id=%s) AS active',
+                            (int(user_id),)).fetchone()['active']
+        if not active:
+            return None
+        diet_ids = self._diet_ids(db)
+        rows = db.execute("""
+            SELECT v.recipe_id, v.is_hidden, v.violated_diets,
+                   ARRAY(SELECT i.code FROM ingredients i
+                         WHERE i.name = ANY(v.skip_optional) ORDER BY i.code) AS skip_optional_ids
+            FROM user_recipe_visibility v WHERE v.user_id = %s
+        """, (int(user_id),))
+        return {str(row['recipe_id']): {
+            'hidden': row['is_hidden'],
+            'restrictions': sorted(diet_ids[name] for name in row['violated_diets'] if name in diet_ids),
+            'diet_violation': bool(row['violated_diets']),
+            'skip_optional': list(row['skip_optional_ids']),
+        } for row in rows}
 
     def user(self, db, user_id):
         uid = int(user_id)

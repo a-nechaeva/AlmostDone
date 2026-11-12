@@ -3,6 +3,7 @@ import copy
 import hashlib
 import json
 import math
+import unicodedata
 from decimal import Decimal, ROUND_HALF_UP
 
 from ..errors import APIError, invalid
@@ -51,9 +52,20 @@ class Catalog:
             raise invalid("Неизвестный ингредиент", "ingredient_id", "unknown_ingredient")
         return self.ingredients[ingredient_id]
 
+    def allowed_units(self, ingredient_id):
+        ingredient = self.ingredient(ingredient_id)
+        if "allowed_units" in ingredient:
+            return ingredient["allowed_units"]
+        units = ["g"]
+        for unit, field in (("ml", "grams_per_ml"), ("pcs", "grams_per_piece")):
+            factor = ingredient.get(field)
+            if factor is not None and math.isfinite(float(factor)) and float(factor) > 0:
+                units.append(unit)
+        return units
+
     def validate_quantity(self, ingredient_id, quantity):
         ingredient = self.ingredient(ingredient_id)
-        if quantity is not None and quantity["unit"] not in ingredient.get("allowed_units", [ingredient.get("display_unit", "g")]):
+        if quantity is not None and quantity["unit"] not in self.allowed_units(ingredient_id):
             raise APIError(409, "unit_conflict", "Единица не поддерживается для этого ингредиента")
 
     def grams(self, ingredient_id, quantity):
@@ -101,7 +113,7 @@ class Catalog:
         ing, offer = self.ingredient(ingredient_id), self.offer(ingredient_id)
         return {"id": ingredient_id, "name": ing["name"],
                 "nutrition_per_100g": self.ingredient_nutrition(ingredient_id),
-                "allowed_units": ing.get("allowed_units", [ing.get("display_unit", "g")]),
+                "allowed_units": self.allowed_units(ingredient_id),
                 "is_favorite": ingredient_id in user["favorites"]["ingredients"],
                 "allergens": self.allergen_assessment([ingredient_id]), "offers": [offer] if offer else []}
 
@@ -157,9 +169,12 @@ class Catalog:
         # never turn a partially supported catalogue into a global 503.
         self.require_engine()
         prefs = user["preferences"]
-        if prefs["food_type"] != "any" or any(prefs[key] for key in ("gluten_free", "lactose_free", "diabetes", "diet_table_id")):
-            # The engine cannot verify these restrictions; 503 avoids claiming
-            # that an unverified recipe satisfies the user's dietary profile.
+        selected = ([prefs["food_type"]] if prefs["food_type"] != "any" else [])
+        selected += [key for key in ("gluten_free", "lactose_free", "diabetes") if prefs[key]]
+        if prefs["diet_table_id"]:
+            selected.append(prefs["diet_table_id"])
+        supported = user.get('_dietary', {}).get('supported', ())
+        if any(key not in supported for key in selected):
             raise unsupported("dietary_restrictions")
         banned = set(prefs["excluded_allergens"]) | set(extra_allergens)
         stock = {}
@@ -173,7 +188,7 @@ class Catalog:
 
     def can_calculate(self, recipe_id, servings):
         raw = self.recipes[recipe_id]
-        return (recipe_id not in self.gateway.unsupported_recipes and servings == raw["servings"]
+        return (recipe_id not in self.gateway.unsupported_recipes
                 and all(self.quantity(item["code"], self.ingredients[item["code"]].get("package_g")) is not None
                         for item in raw["items"] if not item.get("is_optional")))
 
@@ -186,27 +201,28 @@ class Catalog:
             # An API-valid record need not satisfy the engine's stricter model.
             # Preserve it with nullable metrics instead of rejecting the request.
             return partial_catalog.present(self, recipe_id, user, servings, banned), None
-        option, visible = self.gateway.detail(recipe_id, stock, banned)
+        option, visible = self.gateway.detail(recipe_id, stock, banned, servings)
         return self.present(option, user, visible, banned), option
 
     def present(self, option, user, visible=True, banned=()):
         recipe, metrics, missing = option.recipe, option.metrics, option.missing_g
         raw = self.recipes[recipe.id]
+        factor = option.portions / recipe.servings
         ingredients = [{"ingredient_id": item["code"], "name": self.ingredients[item["code"]]["name"],
-                        "required": self.quantity(item["code"], item.get("qty_g")), "available": user["pantry"].get(item["code"]),
+                        "required": self.quantity(item["code"], item["qty_g"] * factor) if item.get("qty_g") is not None else None, "available": user["pantry"].get(item["code"]),
                         "shortage": self.quantity(item["code"], missing.get(item["code"], 0)) if item.get("qty_g") is not None else None,
                         "availability": "optional" if item.get("is_optional") else "missing" if item["code"] in missing else "enough",
                         "optional": item.get("is_optional", False), "original_amount": item.get("original_amount"), "offer": self.offer(item["code"])}
                        for item in raw["items"]]
         card = {"id": recipe.id, "title": recipe.title, "photo_url": raw.get("photo_url", raw.get("image_url")),
-                "servings": recipe.servings, "minutes": metrics.cook_time_min,
+                "servings": option.portions, "minutes": metrics.cook_time_min,
                 "nutrition_per_serving": {"kcal": metrics.kcal, "protein_g": metrics.protein,
                                           "fat_g": metrics.fat, "carbs_g": metrics.carbs},
                 "nutrition_source": self.source, "buy_cost": money(kopecks(metrics.buy_cost)),
                 "availability": {"status": "missing" if option.level else "ready", "missing_count": option.level,
                                  "unknown_quantity_ids": sorted(item.code for item in recipe.required_items
                                                                 if item.code in user["pantry"] and user["pantry"][item.code] is None)},
-                "suitability": partial_catalog.suitability(self, raw, banned),
+                "suitability": partial_catalog.suitability(self, raw, banned, user.get("_dietary")),
                 "allergens": self.allergen_assessment([item["code"] for item in raw["items"]]),
                 "is_favorite": recipe.id in user["favorites"]["recipes"],
                 "methods": ["no_cook"] if raw.get("no_cook") else sorted(recipe.equipment)}
@@ -221,20 +237,22 @@ class Catalog:
                 "total_price": money(kopecks(cost))}
 
     def matches(self, user, filters, servings=2):
-        if filters["q"].strip():
-            # The engine has ingredient search, but no recipe-title filter.
-            # Return 503 rather than ignoring a valid search constraint.
-            raise unsupported("recipe_title_search")
+        def normalize_title(value):
+            return " ".join(unicodedata.normalize("NFKC", value).casefold().replace("ё", "е").split())
+        query = normalize_title(filters["q"])
+        selected = {recipe_id for recipe_id, recipe in self.recipes.items()
+                    if query in normalize_title(recipe["title"])}
         stock, banned = self.prepare(user, filters["exclude_allergens"])
-        calculable = {recipe_id for recipe_id in self.recipes if self.can_calculate(recipe_id, servings)}
+        calculable = {recipe_id for recipe_id in selected if self.can_calculate(recipe_id, servings)}
         arguments = {"max_missing": 0 if filters["mode"] == "now" else 3 if filters["mode"] == "buy_1_3" else len(self.ingredients),
                      "max_minutes": filters["max_minutes"], "max_kcal": filters["max_kcal_per_serving"],
                      "equipment": set(filters["equipment"]) - {"no_cook"},
-                     "hidden": set(self.recipes) - calculable}
-        options, visible_ids = self.gateway.reachable(stock, banned, arguments)
+                     "hidden": set(self.recipes) - calculable, "servings": servings}
+        dietary_hidden = {rid for rid, item in user.get('_dietary', {}).get('recipes', {}).items() if item['hidden']}
+        options, visible_ids = self.gateway.reachable(stock, banned, arguments, dietary_hidden)
         result = [(self.present(option, user, option.recipe.id in visible_ids, banned), option) for option in options
                   if filters["mode"] != "buy_1_3" or option.level > 0]
-        for recipe_id in self.recipes.keys() - calculable:
+        for recipe_id in selected - calculable:
             detail = partial_catalog.present(self, recipe_id, user, servings, banned)
             if partial_catalog.matches_filters(detail, filters):
                 result.append((detail, None))
@@ -246,20 +264,27 @@ class Catalog:
         return graph(self, details, options)
 
     def purchases(self, user, body, single):
-        if not single:
-            # The engine exposes a greedy plan, while the API promises an exact
-            # maximum. Return 503 until the engine implements that guarantee.
-            raise unsupported("exact_budget_optimization")
         matches = self.matches(user, body["filters"], body["servings"])
         options = [option for detail, option in matches if option is not None and detail["recipe"]["suitability"]["status"] == "allowed"]
         unpriced = sorted(detail["recipe"]["id"] for detail, option in matches if option is None
                           and detail["recipe"]["suitability"]["status"] == "allowed")
-        suggestions = self.gateway.single_purchases(options)
+        if not single:
+            plan = self.gateway.budget_purchases(options, body["budget"]["minor_units"])
+            items = [self.shopping_item(code, count, count * self.ingredients[code]["package_price"])
+                     for code, count in sorted(plan.items.items())]
+            return {"request_id": body["request_id"], "state_version": user["version"],
+                    "catalog_version": self.version, "servings": body["servings"],
+                    "unpriced_recipe_ids": unpriced, "semantics": "alternatives",
+                    "shopping_items": items, "unlocked_recipe_ids": list(plan.unlocked),
+                    "total_cost": money(kopecks(plan.total_cost)) if items else None,
+                    "status": "found" if items else "insufficient_data" if unpriced else "no_plan"}
         budget = body["budget"]["minor_units"]
-        if any(kopecks(suggestion.price) > budget for suggestion in suggestions):
-            # The engine does not optimize single purchases under a budget.
-            # Return 503 rather than claiming its unconstrained result is valid.
-            raise unsupported("budget_constrained_single_purchase")
+        # Filter individual recipes before the engine groups them by ingredient:
+        # an expensive recipe must not inflate an otherwise affordable purchase.
+        affordable = [option for option in options if option.level == 1
+                      and all(kopecks(self.gateway.shopping_requirement(code, grams)[1]) <= budget
+                              for code, grams in option.missing_g.items())]
+        suggestions = self.gateway.single_purchases(affordable)
         return {"request_id": body["request_id"], "state_version": user["version"], "catalog_version": self.version,
                 "servings": body["servings"], "unpriced_recipe_ids": unpriced, "semantics": "alternatives",
                 "options": [{"shopping_item": self.shopping_item(s.code, s.packs, s.price),
@@ -268,8 +293,8 @@ class Catalog:
 
 
 class CatalogService:
-    def __init__(self, catalog, pagination):
-        self.catalog, self.pagination = catalog, pagination
+    def __init__(self, catalog, pagination, dietary=None):
+        self.catalog, self.pagination, self.dietary = catalog, pagination, dietary
 
     def execute(self, db, uid, user, session, oid, body, params):
         if oid in ("catalog_allergens", "catalog_dietary_options"):
@@ -283,6 +308,10 @@ class CatalogService:
                         for field, label in (("gluten_free", "Без глютена"), ("lactose_free", "Без лактозы"), ("diabetes", "Диабет"))]
                      + [{"id": f"pevzner_{i}", "name": f"Стол {i}", "support": "unsupported",
                          "profile_binding": {"field": "diet_table_id", "value": f"pevzner_{i}"}} for i in range(1, 16)])
+            if oid == 'catalog_dietary_options':
+                supported = self.dietary.supported(db) if self.dietary else {'any'}
+                for item in items:
+                    item['support'] = 'supported' if item['id'] in supported else 'unsupported'
             return {'catalog_version': self.catalog.version, 'items': items}
         if oid == "catalog_search":
             q = params["q"].casefold().strip().replace("ё", "е")

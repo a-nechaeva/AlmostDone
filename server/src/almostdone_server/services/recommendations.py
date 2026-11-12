@@ -20,6 +20,7 @@ class RecommendationService:
             snapshot = {"request_id": body["request_id"], "state_version": user["version"],
                         "catalog_version": self.catalog.version, "visibility": body["visibility"],
                         "servings": body["servings"], "filters": copy.deepcopy(body["filters"]),
+                        "dietary_version": user.get("_dietary", {}).get("version"),
                         "visible_total": len(visible), "hidden_total": len(hidden),
                         "unknown_total": sum(d["recipe"]["suitability"]["status"] == "unknown" for d in visible),
                         "details": visible if body["visibility"] == "visible" else hidden, "limit": body["limit"],
@@ -31,7 +32,8 @@ class RecommendationService:
         if oid in ("recommendations_page", "recommendations_graph"):
             sid = params["snapshot_id"]
             snapshot, expires = self.runtime.get_object(db, sid, uid, "snapshot")
-            if snapshot["state_version"] != user["version"] or snapshot["catalog_version"] != self.catalog.version:
+            if (snapshot["state_version"] != user["version"] or snapshot["catalog_version"] != self.catalog.version
+                    or snapshot.get("dietary_version") != user.get("_dietary", {}).get("version")):
                 raise APIError(409, "context_changed", "Состояние снимка устарело")
             if oid == "recommendations_graph":
                 result = {k: snapshot[k] for k in ("request_id", "state_version", "catalog_version", "servings", "filters", "visibility")}
@@ -46,6 +48,6 @@ class RecommendationService:
     def snapshot_page(self, db, uid, user, sid, snapshot, expires, cursor=None):
         details, page = self.pagination.paginate(db, uid, user, "snapshot:" + sid,
                                      {"limit": snapshot["limit"], "cursor": cursor}, snapshot["details"])
-        body = {k: v for k, v in snapshot.items() if k not in ("details", "limit", "filters", "engine_options")}
+        body = {k: v for k, v in snapshot.items() if k not in ("details", "limit", "filters", "engine_options", "dietary_version")}
         return {**body, "snapshot_id": sid, "expires_at": iso(expires),
                 "items": [d["recipe"] for d in details], "page": page}
