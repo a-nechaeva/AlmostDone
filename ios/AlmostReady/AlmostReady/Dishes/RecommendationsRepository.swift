@@ -1,9 +1,16 @@
 import Foundation
 
 nonisolated struct RecommendationRequest: Encodable, Sendable {
+    enum Visibility: String, Codable, Sendable {
+        case visible, hidden
+    }
+
     nonisolated struct Filters: Encodable, Sendable {
         let query: String
         let mode: DishesFilter
+        let maxMinutes: Int?
+        let maxKcalPerServing: Decimal?
+        let equipment: [String]
         let excludedAllergenIDs: [String]
 
         private enum CodingKeys: String, CodingKey {
@@ -18,9 +25,9 @@ nonisolated struct RecommendationRequest: Encodable, Sendable {
             var container = encoder.container(keyedBy: CodingKeys.self)
             try container.encode(query, forKey: .query)
             try container.encode(mode, forKey: .mode)
-            try container.encodeNil(forKey: .maxMinutes)
-            try container.encodeNil(forKey: .maxKcalPerServing)
-            try container.encode(["stove", "oven", "microwave", "no_cook"], forKey: .equipment)
+            try container.encode(maxMinutes, forKey: .maxMinutes)
+            try container.encode(maxKcalPerServing, forKey: .maxKcalPerServing)
+            try container.encode(equipment, forKey: .equipment)
             try container.encode(excludedAllergenIDs, forKey: .excludedAllergenIDs)
         }
     }
@@ -28,7 +35,7 @@ nonisolated struct RecommendationRequest: Encodable, Sendable {
     let requestID: UUID
     let servings: Int
     let filters: Filters
-    let visibility = "visible"
+    let visibility: Visibility
     let limit = 20
 
     private enum CodingKeys: String, CodingKey {
@@ -53,7 +60,7 @@ nonisolated struct RecommendationPage: Decodable, Sendable {
     let stateVersion: Int
     let catalogVersion: String
     let servings: Int
-    let visibility: String
+    let visibility: RecommendationRequest.Visibility
     let visibleTotal: Int
     let hiddenTotal: Int
     let unknownTotal: Int
@@ -128,6 +135,12 @@ final class RecommendationsRepository {
             for: APIRequest(
                 path: ["recommendations", snapshotID], query: [URLQueryItem(name: "cursor", value: cursor)])
         )
+    }
+
+    func allergens() async throws -> [ProfileAllergenOption] {
+        let response = try await fetch(
+            ProfileDictionary<ProfileAllergenOption>.self, for: APIRequest(path: ["allergens"]))
+        return response.value.items
     }
 
     func missingProducts(

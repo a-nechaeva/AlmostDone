@@ -27,7 +27,8 @@ enum DishesFixture {
     static func page(
         _ request: URLRequest, from creation: URLRequest? = nil, requestID: String? = nil,
         snapshotID: String? = nil, version: Int = 7, catalogVersion: String = "catalog-1",
-        items: [[String: Any]], cursor: String? = nil, visibleTotal: Int? = nil, unknownTotal: Int = 0
+        items: [[String: Any]], cursor: String? = nil, visibleTotal: Int? = nil, hiddenTotal: Int = 2,
+        unknownTotal: Int = 0
     ) throws -> (Data, URLResponse) {
         let body = try body(creation ?? request)
         let createdID = try XCTUnwrap(body["request_id"] as? String)
@@ -39,10 +40,10 @@ enum DishesFixture {
                 "state_version": version,
                 "catalog_version": catalogVersion,
                 "expires_at": "2026-11-10T12:10:00Z",
-                "visibility": "visible",
+                "visibility": try XCTUnwrap(body["visibility"] as? String),
                 "servings": try XCTUnwrap(body["servings"] as? Int),
                 "visible_total": visibleTotal ?? items.count,
-                "hidden_total": 2,
+                "hidden_total": hiddenTotal,
                 "unknown_total": unknownTotal,
                 "items": items,
                 "page": ["next_cursor": cursor as Any? ?? NSNull(), "has_more": cursor != nil]

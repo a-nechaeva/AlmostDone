@@ -9,16 +9,20 @@ struct DishesSnapshot {
     }
 
     let firstPage: RecommendationPage
-    let excludedAllergenIDs: [String]
+    let context: ServerDishesModel.Context
     private(set) var items: [RecommendationCard]
     private(set) var nextCursor: String?
 
-    init(page: RecommendationPage, excludedAllergenIDs: [String]) {
+    init(page: RecommendationPage, context: ServerDishesModel.Context) {
         firstPage = page
-        self.excludedAllergenIDs = excludedAllergenIDs
+        var context = context
+        context.stateVersion = page.stateVersion
+        self.context = context
         items = page.items
         nextCursor = page.page.nextCursor
     }
+
+    var excludedAllergenIDs: [String] { context.advancedFilters.excludedAllergenIDs.sorted() }
 
     var groups: [Group: [RecommendationCard]] {
         Dictionary(grouping: items) { card in
@@ -43,10 +47,21 @@ struct DishesSnapshot {
 @MainActor
 @Observable
 final class ServerDishesModel {
-    nonisolated struct Context: Equatable, Sendable {
-        let query: String
-        let filter: DishesFilter
-        let stateVersion: Int?
+    nonisolated struct Context: Hashable, Sendable {
+        var query = ""
+        var filter = DishesFilter.all
+        var advancedFilters = DishesAdvancedFilters()
+        var servings = 2
+        var stateVersion: Int?
+
+        var requestFilters: RecommendationRequest.Filters {
+            .init(
+                query: query, mode: filter,
+                maxMinutes: advancedFilters.maxMinutes, maxKcalPerServing: advancedFilters.maxKcalPerServing,
+                equipment: advancedFilters.equipmentIDs,
+                excludedAllergenIDs: advancedFilters.excludedAllergenIDs.sorted()
+            )
+        }
     }
 
     enum Phase {
@@ -55,37 +70,59 @@ final class ServerDishesModel {
         case failed
     }
 
-    var query = ""
-    var filter = DishesFilter.all
+    var query: String
+    var filter: DishesFilter
+    private(set) var advancedFilters: DishesAdvancedFilters
     private(set) var isLoadingMore = false
     private(set) var pageLoadFailed = false
 
     let repository: RecommendationsRepository
+    let visibility: RecommendationRequest.Visibility
     private let servings: Int
-    private let excludedAllergenIDs: [String]
+    private let minimumStateVersion: Int?
     private var activeContext: Context?
     private var activeRequestID: UUID?
     private var state = Phase.loading
     @ObservationIgnored private var snapshotTask: Task<Void, Never>?
 
-    init(repository: RecommendationsRepository, servings: Int = 2, excludedAllergenIDs: [String] = []) {
+    init(
+        repository: RecommendationsRepository, initialContext: Context = .init(),
+        visibility: RecommendationRequest.Visibility = .visible
+    ) {
         self.repository = repository
-        self.servings = servings
-        self.excludedAllergenIDs = excludedAllergenIDs
+        self.visibility = visibility
+        query = initialContext.query
+        filter = initialContext.filter
+        advancedFilters = initialContext.advancedFilters
+        servings = initialContext.servings
+        minimumStateVersion = initialContext.stateVersion
     }
 
     nonisolated deinit {}
 
     var context: Context {
         let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let revision = repository.session.revision?.stateVersion
+        let minimum = minimumStateVersion.map { max($0, revision ?? $0) }
         return Context(
-            query: String(term.unicodeScalars.prefix(200)), filter: filter,
-            stateVersion: repository.session.revision?.stateVersion
+            query: String(term.unicodeScalars.prefix(200)).trimmingCharacters(in: .whitespacesAndNewlines),
+            filter: filter,
+            advancedFilters: advancedFilters, servings: servings,
+            stateVersion: minimum ?? revision
         )
     }
 
     var phase: Phase {
         activeContext == context && repository.session.isCurrent(repository.account) ? state : .loading
+    }
+
+    func apply(_ filters: DishesAdvancedFilters) {
+        guard advancedFilters != filters else { return }
+        advancedFilters = filters
+        activeContext = nil
+        activeRequestID = nil
+        snapshotTask?.cancel()
+        snapshotTask = nil
     }
 
     func loadIfNeeded(for context: Context) async {
@@ -155,8 +192,7 @@ final class ServerDishesModel {
         pageLoadFailed = false
 
         let request = RecommendationRequest(
-            requestID: requestID, servings: servings,
-            filters: .init(query: context.query, mode: context.filter, excludedAllergenIDs: excludedAllergenIDs)
+            requestID: requestID, servings: context.servings, filters: context.requestFilters, visibility: visibility
         )
         let task = Task {
             defer {
@@ -174,8 +210,7 @@ final class ServerDishesModel {
             let response = try await repository.create(request)
             guard canPublish(for: context, requestID: requestID) else { return }
             try validate(response, requestID: requestID, minimumVersion: context.stateVersion ?? 0)
-            state = .loaded(
-                DishesSnapshot(page: response.value, excludedAllergenIDs: request.filters.excludedAllergenIDs))
+            state = .loaded(DishesSnapshot(page: response.value, context: context))
         } catch {
             guard canPublish(for: context, requestID: requestID) else { return }
             state = .failed
@@ -192,8 +227,11 @@ final class ServerDishesModel {
     ) throws {
         let page = response.value
         guard page.requestID == requestID, !page.snapshotID.isEmpty, !page.catalogVersion.isEmpty,
-            page.stateVersion >= minimumVersion, page.visibility == "visible",
-            page.servings == servings, page.items.allSatisfy({ $0.servings == page.servings }),
+            page.stateVersion >= minimumVersion, page.visibility == visibility,
+            page.servings == servings,
+            page.items.allSatisfy({
+                $0.servings == page.servings && ($0.suitability.status == .hidden) == (visibility == .hidden)
+            }),
             page.page.hasMore == (page.page.nextCursor != nil)
         else { throw APIClientError.invalidResponse(response.metadata) }
 
