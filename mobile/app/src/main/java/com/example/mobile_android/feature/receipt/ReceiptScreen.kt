@@ -305,7 +305,8 @@ private fun ReceiptReview(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Column(Modifier.padding(12.dp)) {
-                val selectable = !state.saving && quantity != null
+                // Без продукта из каталога строку выбрать нельзя; неизвестный вес не блокирует.
+                val selectable = !state.saving && ingredient != null
                 Row(
                     Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(
                         value = line.selected,
@@ -324,6 +325,10 @@ private fun ReceiptReview(
                         )
                         Text(line.text, style = MaterialTheme.typography.bodySmall)
                         if (quantity != null) Text("${line.amount} ${quantity.unit.label}")
+                        else if (ingredient != null) {
+                            Text("Количество неизвестно — добавится без веса",
+                                style = MaterialTheme.typography.bodySmall)
+                        }
                     }
                 }
                 TextButton(onClick = { edit(line.id) }, enabled = !state.saving) {
@@ -341,7 +346,7 @@ private fun ReceiptReview(
     ) {
         Text(if (state.saving) "Добавляем…" else "Добавить выбранное ($selected)")
     }
-    Text("Проверьте названия и количество перед подтверждением.")
+    Text("Проверьте названия и количество перед подтверждением. Без количества продукт добавится без веса.")
 }
 
 @Composable

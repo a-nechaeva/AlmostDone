@@ -250,7 +250,7 @@ def test_recognition_import_confirmation_replay_and_owner(tmp_path):
         assert client.post("/api/v1/recognition-imports", json=body, headers=mutation(client, headers)).status_code == 409
 
 
-def test_receipt_requires_quantity_and_invalid_image_is_rejected(app, client):
+def test_receipt_import_allows_unknown_quantity_and_invalid_image_is_rejected(app, client):
     headers = auth(app)
     for kind in ("receipt", "products"):
         response = client.post("/api/v1/recognitions", data={"kind": kind},
@@ -261,8 +261,28 @@ def test_receipt_requires_quantity_and_invalid_image_is_rejected(app, client):
                         files={"file": ("screenshot.png", png(), "image/png")},
                         headers={**headers, "Idempotency-Key": str(uuid4())})
     check(app, valid, "Error", 503)
-    body = {"recognition_id": "missing", "kind": "receipt", "items": [{"line_id": "line-1", "ingredient_id": "rice", "quantity": None}]}
-    check(app, client.post("/api/v1/recognition-imports", json=body, headers=mutation(client, headers)), "Error", 422)
+    # Неизвестный вес — явный null, как и для products; чужая/неизвестная задача всё ещё 404.
+    body = {"recognition_id": "missing", "kind": "receipt",
+            "items": [{"line_id": "line-1", "ingredient_id": "rice", "quantity": None}]}
+    check(app, client.post("/api/v1/recognition-imports", json=body, headers=mutation(client, headers)),
+          "Error", 404)
+
+
+def test_receipt_import_with_null_quantity_adds_product_without_weight(tmp_path):
+    recognizer = RecognitionFake()
+    app = create_app(recognizer=recognizer)
+    with TestClient(app) as client:
+        headers = auth(app)
+        uploaded = client.post("/api/v1/recognitions", data={"kind": "receipt"},
+                               files={"file": ("receipt.png", png(), "image/png")},
+                               headers={**headers, "Idempotency-Key": str(uuid4())})
+        result = check(app, uploaded, "Recognition", 202)
+        body = {"recognition_id": result["id"], "kind": "receipt",
+                "items": [{"line_id": "line-1", "ingredient_id": "rice", "quantity": None}]}
+        imported = check(app, client.post("/api/v1/recognition-imports", json=body,
+                                          headers=mutation(client, headers)), "ImportResult")
+        assert imported["pantry"][0]["ingredient_id"] == "rice"
+        assert imported["pantry"][0]["quantity"] is None
 
 
 def test_without_engine_no_server_search_or_calculation_fallback_is_used(app, client):

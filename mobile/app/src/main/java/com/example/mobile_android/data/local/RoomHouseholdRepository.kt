@@ -159,14 +159,15 @@ class RoomHouseholdRepository(
         add(id, quantity)
     }
 
-    override suspend fun add(quantities: Map<String, Quantity>) {
+    override suspend fun add(quantities: Map<String, Quantity?>) {
         shoppingTransaction { catalog, before, _ ->
             require(quantities.isNotEmpty())
-            val unknown = before.pantry.firstOrNull { it.quantity == null && it.ingredientId in quantities }
+            // К неизвестному остатку нельзя прибавить число, но добавить «без веса» можно.
+            val unknown = before.pantry.firstOrNull { it.quantity == null && quantities[it.ingredientId] != null }
             if (unknown != null) throw UnknownReceiptPantryQuantity(unknown.ingredientId)
             quantities.forEach { (id, quantity) ->
                 validateIngredient(catalog, id, quantity)
-                require(quantity.value > 0)
+                require(quantity == null || quantity.value > 0)
             }
             quantities.forEach { (id, quantity) -> add(id, quantity) }
         }

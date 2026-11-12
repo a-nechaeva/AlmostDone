@@ -4767,8 +4767,8 @@ components:
       - ingredient_id
       - quantity
       additionalProperties: false
-      description: Только выбранные и подтверждённые canonical-позиции. Для receipt количество обязательно
-        и >0. Для products пользователь может явно подтвердить неизвестное количество как null.
+      description: Только выбранные и подтверждённые canonical-позиции. Количество положительное
+        либо явный null — «продукт есть, вес неизвестен»; null допустим и для receipt, и для products.
     RecognitionImport:
       type: object
       properties:
@@ -4792,20 +4792,6 @@ components:
       additionalProperties: false
       description: kind должен совпадать с сохранённой задачей. line_id относится к её результату и не
         повторяется.
-      allOf:
-      - if:
-          properties:
-            kind:
-              const: receipt
-          required:
-          - kind
-        then:
-          properties:
-            items:
-              items:
-                properties:
-                  quantity:
-                    $ref: '#/components/schemas/PositiveQuantity'
     ImportResult:
       type: object
       properties:

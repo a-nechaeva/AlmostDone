@@ -161,10 +161,10 @@ class ServerHouseholdRepository(
     }
 
     /** Импорт чека без серверного распознавания (демо-строки): складываем через pantry_add. */
-    override suspend fun add(quantities: Map<String, Quantity>) {
+    override suspend fun add(quantities: Map<String, Quantity?>) {
         require(quantities.isNotEmpty())
         quantities.forEach { (id, quantity) ->
-            require(quantity.value > 0)
+            require(quantity == null || quantity.value > 0)
             addPantry(id, quantity)
         }
     }
