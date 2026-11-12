@@ -62,21 +62,26 @@ enum ShoppingBudgetResult: Hashable {
     case unavailable(budget: Decimal)
 
     static func evaluate(_ input: String) -> Result<Self, ShoppingBudgetError> {
-        let amount = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !amount.isEmpty else { return .failure(.empty) }
-
-        let pattern = #"^(?:[0-9]+|[0-9]{1,3}(?:[ \u00A0\u202F\u2009][0-9]{3})+)(?:[,.][0-9]{1,2})?$"#
-        guard amount.range(of: pattern, options: .regularExpression) != nil else { return .failure(.invalid) }
-
-        let parts = amount.split(whereSeparator: { $0 == "," || $0 == "." })
-        guard let rubles = Int(parts[0].filter { !$0.isWhitespace }) else { return .failure(.invalid) }
-        let fraction = parts.dropFirst().first ?? ""
-        let kopecks = Int(fraction) ?? 0
-        let budget = Decimal(rubles) + Decimal(kopecks) / (fraction.count == 1 ? 10 : 100)
-        guard budget > 0 else { return .failure(.zero) }
-
-        return .success(budget >= ShoppingDemoPlan.price ? .example(budget: budget) : .unavailable(budget: budget))
+        shoppingBudgetAmount(input).flatMap { budget in
+            guard budget > 0 else { return .failure(.zero) }
+            return .success(budget >= ShoppingDemoPlan.price ? .example(budget: budget) : .unavailable(budget: budget))
+        }
     }
+}
+
+func shoppingBudgetAmount(_ input: String) -> Result<Decimal, ShoppingBudgetError> {
+    let amount = input.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !amount.isEmpty else { return .failure(.empty) }
+
+    let pattern = #"^(?:[0-9]+|[0-9]{1,3}(?:[ \u00A0\u202F\u2009][0-9]{3})+)(?:[,.][0-9]{1,2})?$"#
+    guard amount.range(of: pattern, options: .regularExpression) != nil else { return .failure(.invalid) }
+
+    let parts = amount.split(whereSeparator: { $0 == "," || $0 == "." })
+    guard let rubles = Int(parts[0].filter { !$0.isWhitespace }) else { return .failure(.invalid) }
+    let fraction = parts.dropFirst().first ?? ""
+    let kopecks = Int(fraction) ?? 0
+    let budget = Decimal(rubles) + Decimal(kopecks) / (fraction.count == 1 ? 10 : 100)
+    return .success(budget)
 }
 
 func shoppingRubles(_ amount: Decimal) -> String {

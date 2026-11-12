@@ -43,8 +43,15 @@ struct ContentView: View {
             }
             tab(.shopping) {
                 NavigationStack {
-                    if session != nil {
-                        serverPlaceholder(.shopping)
+                    if let session {
+                        if let account = session.account {
+                            ShoppingScreen(
+                                repository: ShoppingRepository(session: session, account: account),
+                                onOpenTab: selectTab
+                            ) { isPresented in
+                                isShoppingCoverPresented = isPresented
+                            }
+                        }
                     } else {
                         ShoppingScreen(onOpenTab: selectTab) { isPresented in
                             isShoppingCoverPresented = isPresented
