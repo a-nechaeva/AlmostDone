@@ -1,6 +1,9 @@
 import SwiftUI
 
 struct ProfileScreen: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @ScaledMetric(relativeTo: .title2) private var accountNameSize = 22.0
+    @ScaledMetric(relativeTo: .title2) private var avatarLabelSize = 24.0
     @State private var nutrition = ProfileNutritionEditor()
     private let onOpenProducts: (() -> Void)?
 
@@ -10,40 +13,44 @@ struct ProfileScreen: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 0) {
                 RootScreenTitle(tab: .profile)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 demoAccount
-                    .padding(.vertical, 24)
+                    .padding(.vertical, 52)
 
-                Button {
-                    nutrition.open()
-                } label: {
-                    ProfileMenuRow(
-                        title: "Питание и аллергены",
-                        subtitle: "Предпочтения и ограничения",
-                        icon: "leaf"
-                    )
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("profile.nutrition")
-
-                if let onOpenProducts {
-                    Button(action: onOpenProducts) {
+                VStack(spacing: 12) {
+                    Button {
+                        nutrition.open()
+                    } label: {
                         ProfileMenuRow(
-                            title: "Мои продукты",
-                            subtitle: "Что есть дома",
-                            icon: "refrigerator"
+                            title: "Питание и аллергены",
+                            subtitle: "Предпочтения и предупреждения",
+                            icon: "leaf"
                         )
                     }
                     .buttonStyle(.plain)
-                    .accessibilityIdentifier("profile.products")
+                    .accessibilityIdentifier("profile.nutrition")
+
+                    if let onOpenProducts {
+                        Button(action: onOpenProducts) {
+                            ProfileMenuRow(
+                                title: "Мои продукты",
+                                subtitle: "Что есть дома",
+                                icon: "refrigerator"
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("profile.products")
+                    }
                 }
 
                 Text("Оценки стоимости и КБЖУ могут быть неполными.\nПри ограничениях питания проверяйте состав.")
-                    .font(.subheadline)
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
-                    .padding(.top, 24)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 44)
             }
             .padding(.horizontal, 20)
             .padding(.top, 12)
@@ -74,24 +81,28 @@ struct ProfileScreen: View {
     private var demoAccount: some View {
         HStack(spacing: 20) {
             Text("А")
-                .font(.title2.bold())
+                .font(.system(size: avatarLabelSize, weight: .bold))
                 .foregroundStyle(Color.accentColor)
-                .frame(width: 64, height: 64)
-                .background(Color.accentColor.opacity(0.12), in: .rect(cornerRadius: 24))
+                .padding(12)
+                .frame(minWidth: 64, minHeight: 64)
+                .background(
+                    colorScheme == .dark
+                        ? Color.accentColor.opacity(0.12) : Color(red: 0.980, green: 0.898, blue: 0.863),
+                    in: .rect(cornerRadius: 24)
+                )
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Демо-профиль")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
                 Text("Алексей")
-                    .font(.title2.bold())
+                    .font(.system(size: accountNameSize, weight: .bold))
                 Text("Логин: alex")
-                    .font(.subheadline)
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
             }
+            .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .combine)
+        .accessibilityLabel("Демо-профиль, Алексей, логин alex")
     }
 }
 
