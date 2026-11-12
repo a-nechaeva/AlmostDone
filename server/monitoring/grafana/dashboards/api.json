@@ -4,7 +4,7 @@
                  "to":  "now",
                  "from":  "now-1h"
              },
-    "version":  5,
+    "version":  1,
     "panels":  [
                    {
                        "fieldConfig":  {
@@ -416,41 +416,6 @@
                    {
                        "fieldConfig":  {
                                            "defaults":  {
-
-                                                        },
-                                           "overrides":  [
-
-                                                         ]
-                                       },
-                       "id":  7,
-                       "gridPos":  {
-                                       "y":  24,
-                                       "w":  8,
-                                       "h":  8,
-                                       "x":  16
-                                   },
-                       "datasource":  {
-                                          "type":  "prometheus",
-                                          "uid":  "prometheus"
-                                      },
-                       "title":  "Firing alerts",
-                       "targets":  [
-                                       {
-                                           "legendFormat":  "{{check}} {{alertname}}",
-                                           "expr":  "ALERTS{alertstate=\"firing\"}",
-                                           "refId":  "A",
-                                           "instant":  true,
-                                           "format":  "table"
-                                       }
-                                   ],
-                       "type":  "table",
-                       "options":  {
-
-                                   }
-                   },
-                   {
-                       "fieldConfig":  {
-                                           "defaults":  {
                                                             "min":  0,
                                                             "unit":  "s"
                                                         },
@@ -543,7 +508,7 @@
                                                             "uid":  "-- Grafana --"
                                                         },
                                          "type":  "dashboard",
-                                         "name":  "Annotations \u0026 Alerts",
+                                         "name":  "Annotations",
                                          "enable":  true
                                      }
                                  ]

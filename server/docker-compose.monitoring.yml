@@ -3,15 +3,15 @@ name: almostdone-monitoring
 services:
   prometheus:
     image: prom/prometheus:v3.16.0
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - api
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.retention.time=30d
       - --storage.tsdb.retention.size=2GB
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus-data:/prometheus
     ports:
       - "127.0.0.1:9090:9090"
@@ -37,6 +37,11 @@ services:
       - "127.0.0.1:3000:3000"
     restart: unless-stopped
     logging: *monitoring-logging
+
+networks:
+  api:
+    external: true
+    name: almostdone_default
 
 volumes:
   prometheus-data:
