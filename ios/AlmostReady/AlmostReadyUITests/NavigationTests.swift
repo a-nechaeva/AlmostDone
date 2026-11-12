@@ -123,55 +123,107 @@ final class NavigationTests: XCTestCase {
         app.launchArguments = ["-AppleLanguages", "(ru)", "-AppleLocale", "ru_RU"]
         app.launch()
 
+        let openSearch = app.buttons["products.search.open"]
         let search = app.textFields["products.search"]
+        let searchTitle = app.staticTexts["products.search.title"]
+        let back = app.buttons["products.search.back"]
+        let clear = app.buttons["products.search.clear"]
         let addCheese = app.buttons["products.add.cheese"]
         let homeCheese = app.staticTexts["products.home.cheese"]
         let removeCheese = app.buttons["products.remove.cheese"]
-        let cancel = app.buttons["products.search.cancel"]
-        let dishes = app.descendants(matching: .any)["products.dishes"].firstMatch
+        let summary = app.staticTexts["products.summary"]
+        let noMatches = app.staticTexts["products.search.empty"]
         let keyboard = app.keyboards.firstMatch
 
-        XCTAssertTrue(search.waitForExistence(timeout: 10))
+        assertRootHeader(app, tab: "products", title: "Мои продукты")
+        XCTAssertTrue(app.buttons["products.dishes"].isHittable)
+        XCTAssertEqual(summary.label, "4 продукта · всё под рукой")
         XCTAssertFalse(homeCheese.exists)
+        XCTAssertTrue(openSearch.isHittable)
+        openSearch.tap()
+
+        XCTAssertTrue(searchTitle.waitForExistence(timeout: 5))
+        XCTAssertEqual(searchTitle.label, "Добавить продукт")
         search.tap()
         XCTAssertTrue(keyboard.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["root.title.products"].isHittable)
+        XCTAssertFalse(app.staticTexts["root.brand"].isHittable)
         XCTAssertFalse(app.buttons["tabs.products"].isHittable)
-        XCTAssertTrue(cancel.isHittable)
-        XCTAssertTrue(dishes.isHittable)
-        XCTAssertLessThanOrEqual(cancel.frame.maxY, keyboard.frame.minY)
-        XCTAssertLessThanOrEqual(dishes.frame.maxY, keyboard.frame.minY)
+        XCTAssertFalse(app.buttons["products.dishes"].isHittable)
+        XCTAssertTrue(back.isHittable)
+        XCTAssertLessThanOrEqual(back.frame.maxY, keyboard.frame.minY)
 
         search.typeText("том")
-        XCTAssertTrue(app.staticTexts["products.search.empty"].waitForExistence(timeout: 5))
+        XCTAssertTrue(noMatches.waitForExistence(timeout: 5))
         XCTAssertFalse(addCheese.exists)
-        cancel.tap()
-        XCTAssertTrue(keyboard.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(clear.isHittable)
+        XCTAssertLessThanOrEqual(clear.frame.maxY, keyboard.frame.minY)
+        clear.tap()
+        XCTAssertTrue(addCheese.waitForExistence(timeout: 5))
+        XCTAssertTrue(keyboard.exists)
 
-        search.tap()
         search.typeText("сыр")
         XCTAssertEqual(search.value as? String, "сыр")
-        XCTAssertTrue(addCheese.waitForExistence(timeout: 5))
-
-        dishes.tap()
-        assertRootHeader(app, tab: "dishes", title: "Что приготовим?")
-        XCTAssertTrue(keyboard.waitForNonExistence(timeout: 5))
-        app.buttons["tabs.products"].tap()
-        XCTAssertTrue(search.waitForExistence(timeout: 5))
-        XCTAssertEqual(search.value as? String, "сыр")
-        XCTAssertFalse(keyboard.exists)
         XCTAssertTrue(addCheese.isHittable)
+        XCTAssertLessThanOrEqual(addCheese.frame.maxY, keyboard.frame.minY)
+
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        attachment.name = "almostready-products-search"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+
         addCheese.tap()
+
         XCTAssertTrue(homeCheese.waitForExistence(timeout: 5))
+        XCTAssertTrue(keyboard.waitForNonExistence(timeout: 5))
+        assertRootHeader(app, tab: "products", title: "Мои продукты")
+        XCTAssertTrue(app.buttons["products.dishes"].isHittable)
+        XCTAssertEqual(summary.label, "5 продуктов · всё под рукой")
+
+        openSearch.tap()
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.tap()
+        XCTAssertTrue(keyboard.waitForExistence(timeout: 5))
+        search.typeText("сыр")
+        XCTAssertTrue(noMatches.waitForExistence(timeout: 5))
+        XCTAssertFalse(addCheese.exists)
+        back.tap()
+
+        XCTAssertTrue(keyboard.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(removeCheese.waitForExistence(timeout: 5))
         XCTAssertEqual(removeCheese.label, "Удалить продукт «Сыр»")
         removeCheese.tap()
         XCTAssertTrue(homeCheese.waitForNonExistence(timeout: 5))
+        XCTAssertEqual(summary.label, "4 продукта · всё под рукой")
 
+        openSearch.tap()
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
         search.tap()
+        XCTAssertTrue(keyboard.waitForExistence(timeout: 5))
         search.typeText("сыр")
         XCTAssertEqual(search.value as? String, "сыр")
         XCTAssertTrue(addCheese.waitForExistence(timeout: 5))
-        cancel.tap()
-        XCTAssertTrue(app.staticTexts["Яйца"].waitForExistence(timeout: 5))
+        back.tap()
+        assertRootHeader(app, tab: "products", title: "Мои продукты")
+    }
+
+    @MainActor
+    func testRemovingAllProductsShowsEmptyList() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launch()
+
+        assertRootHeader(app, tab: "products", title: "Мои продукты")
+        for id in ["eggs", "tomatoes", "pasta", "olive-oil"] {
+            let remove = app.buttons["products.remove.\(id)"]
+            XCTAssertTrue(remove.isHittable)
+            remove.tap()
+        }
+
+        XCTAssertTrue(app.staticTexts["products.home.empty"].isHittable)
+        XCTAssertEqual(app.staticTexts["products.summary"].label, "0 продуктов")
+        XCTAssertTrue(app.buttons["products.search.open"].isHittable)
+        XCTAssertTrue(app.buttons["products.dishes"].isHittable)
     }
 
     @MainActor

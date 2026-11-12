@@ -3,115 +3,98 @@ import SwiftUI
 struct ProductsScreen: View {
     @Environment(DemoStore.self) private var store
     @Environment(\.colorScheme) private var colorScheme
-    @State private var query = ""
-    @FocusState private var isSearchFocused: Bool
+    @ScaledMetric(relativeTo: .subheadline) private var labelSize = 14.0
     let onOpenDishes: () -> Void
     let tabBar: FloatingTabBar
 
-    private var isSearching: Bool {
-        isSearchFocused || !query.isEmpty
-    }
+    private var palette: ProductsPalette { ProductsPalette(colorScheme: colorScheme) }
 
     var body: some View {
-        VStack(spacing: 0) {
-            RootScreenTitle(tab: .products)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 20)
-                .padding(.top, 12)
+        let products = store.products
 
-            searchBar
-                .padding(.horizontal, 20)
-                .padding(.vertical, 8)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                RootScreenTitle(tab: .products)
 
-            ScrollView {
+                Text(summary(for: products.count))
+                    .font(.system(size: labelSize))
+                    .foregroundStyle(palette.secondaryText)
+                    .accessibilityIdentifier("products.summary")
+                    .padding(.top, 8)
+
+                searchLink
+                    .padding(.top, 24)
+
                 LazyVStack(alignment: .leading, spacing: 8) {
-                    if isSearching {
-                        searchResults
+                    if products.isEmpty {
+                        Text("Список пуст. Найдите продукт, чтобы добавить его")
+                            .font(.subheadline)
+                            .foregroundStyle(palette.secondaryText)
+                            .accessibilityIdentifier("products.home.empty")
                     } else {
-                        productsAtHome
+                        ForEach(products) { ingredient in
+                            productRow(ingredient)
+                        }
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 12)
+                .padding(.top, 28)
             }
-            .scrollDismissesKeyboard(.never)
-            // Search results and pantry rows share IDs but have different actions.
-            .id(isSearching)
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                dishesLink
-            }
-            .floatingTabBarInset {
-                if !isSearchFocused { tabBar }
-            }
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            .padding(.bottom, 12)
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            dishesLink
+        }
+        .floatingTabBarInset { tabBar }
         .rootScreenHeader()
         .background(Color(.demoBackground).ignoresSafeArea())
-        .onDisappear(perform: dismissKeyboard)
     }
 
-    private var searchBar: some View {
-        HStack(spacing: 12) {
+    private var searchLink: some View {
+        NavigationLink {
+            ProductsSearchScreen()
+        } label: {
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
+                    .frame(width: 20)
                     .accessibilityHidden(true)
-                TextField("Добавить продукт", text: $query)
-                    .focused($isSearchFocused)
-                    .autocorrectionDisabled()
-                    .submitLabel(.done)
-                    .onSubmit(dismissKeyboard)
-                    .accessibilityIdentifier("products.search")
-                    .frame(minHeight: 48)
+                Text("Добавить продукт")
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.horizontal, 16)
-            .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 18))
-
-            if isSearching {
-                Button(action: closeSearch) {
-                    Text("Отмена")
-                        .frame(minWidth: 44, minHeight: 44)
-                        .contentShape(Rectangle())
-                }
-                .accessibilityIdentifier("products.search.cancel")
-            }
+            .font(.system(size: labelSize))
+            .foregroundStyle(palette.secondaryText)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .frame(minHeight: 48)
+            .background(palette.card, in: .rect(cornerRadius: 18))
+            .contentShape(.rect(cornerRadius: 18))
         }
-    }
-
-    @ViewBuilder
-    private var productsAtHome: some View {
-        let products = store.products
-        Text("Продукты дома")
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
-            .accessibilityAddTraits(.isHeader)
-
-        if products.isEmpty {
-            Text("Список пуст. Найдите продукт, чтобы добавить его")
-                .foregroundStyle(.secondary)
-        } else {
-            ForEach(products) { ingredient in
-                productRow(ingredient)
-            }
-        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("products.search.open")
     }
 
     private func productRow(_ ingredient: Ingredient) -> some View {
         HStack(spacing: 12) {
             Image(systemName: "bag")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText)
                 .frame(width: 36, height: 36)
-                .background(Color(.tertiarySystemFill), in: .rect(cornerRadius: 12))
+                .background(palette.tile, in: .rect(cornerRadius: 12))
                 .accessibilityHidden(true)
 
             Text(ingredient.name)
+                .font(.system(size: labelSize, weight: .medium))
+                .foregroundStyle(palette.titleText)
                 .accessibilityIdentifier("products.home.\(ingredient.id)")
+
             Spacer(minLength: 0)
+
             Button(role: .destructive) {
                 store.productIDs.remove(ingredient.id)
             } label: {
                 Image(systemName: "minus.circle")
-                    .foregroundStyle(.secondary)
-                    .frame(minWidth: 44, minHeight: 44)
+                    .foregroundStyle(palette.secondaryText)
+                    .frame(width: 48, height: 48)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -119,68 +102,66 @@ struct ProductsScreen: View {
             .accessibilityIdentifier("products.remove.\(ingredient.id)")
         }
         .padding(.leading, 12)
-        .padding(.trailing, 6)
+        .padding(.trailing, 8)
+        .padding(.vertical, 4)
         .frame(minHeight: 56)
-        .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 18))
-    }
-
-    @ViewBuilder
-    private var searchResults: some View {
-        let results = ProductsSearch.matches(query, excluding: store.productIDs)
-        Text("Из каталога ингредиентов")
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
-            .accessibilityAddTraits(.isHeader)
-
-        if results.isEmpty {
-            Text("Нет продуктов для добавления по этому запросу")
-                .foregroundStyle(.secondary)
-                .accessibilityIdentifier("products.search.empty")
-        } else {
-            ForEach(results) { ingredient in
-                Button {
-                    store.productIDs.insert(ingredient.id)
-                    closeSearch()
-                } label: {
-                    HStack {
-                        Text(ingredient.name)
-                        Spacer(minLength: 12)
-                        Image(systemName: "plus")
-                            .foregroundStyle(.secondary)
-                            .accessibilityHidden(true)
-                    }
-                    .padding(.horizontal, 16)
-                    .frame(minHeight: 56)
-                    .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 18))
-                    .contentShape(.rect(cornerRadius: 18))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Добавить продукт «\(ingredient.name)»")
-                .accessibilityIdentifier("products.add.\(ingredient.id)")
-            }
-        }
+        .background(palette.card, in: .rect(cornerRadius: 18))
     }
 
     private var dishesLink: some View {
         Button(action: onOpenDishes) {
             Text("Подобрать блюда")
+                .font(.system(size: labelSize, weight: .bold))
                 .foregroundStyle(colorScheme == .dark ? Color.black : Color.white)
-                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity, minHeight: 48)
+                .background(palette.action, in: .rect(cornerRadius: 16))
+                .contentShape(.rect(cornerRadius: 16))
         }
+        .buttonStyle(.plain)
         .accessibilityIdentifier("products.dishes")
-        .buttonStyle(.borderedProminent)
-        .buttonBorderShape(.roundedRectangle(radius: 16))
-        .controlSize(.large)
         .padding(.horizontal, 20)
-        .padding(.vertical, 12)
+        .padding(.top, 12)
+        .padding(.bottom, 20)
+        .background(Color(.demoBackground))
     }
 
-    private func closeSearch() {
-        dismissKeyboard()
-        query = ""
+    private func summary(for count: Int) -> String {
+        let noun: String
+        switch (count % 10, count % 100) {
+        case (_, 11...14): noun = "продуктов"
+        case (1, _): noun = "продукт"
+        case (2...4, _): noun = "продукта"
+        default: noun = "продуктов"
+        }
+        let total = "\(count) \(noun)"
+        return count == 0 ? total : "\(total) · всё под рукой"
+    }
+}
+
+struct ProductsPalette {
+    let colorScheme: ColorScheme
+
+    var card: Color {
+        colorScheme == .dark ? Color(.secondarySystemGroupedBackground) : .white
     }
 
-    private func dismissKeyboard() {
-        isSearchFocused = false
+    var tile: Color {
+        colorScheme == .dark
+            ? Color(.tertiarySystemFill)
+            : Color(red: 238.0 / 255, green: 236.0 / 255, blue: 231.0 / 255)
+    }
+
+    var titleText: Color {
+        colorScheme == .dark ? .primary : Color(red: 32.0 / 255, green: 32.0 / 255, blue: 30.0 / 255)
+    }
+
+    var secondaryText: Color {
+        colorScheme == .dark ? .secondary : Color(red: 108.0 / 255, green: 107.0 / 255, blue: 102.0 / 255)
+    }
+
+    var action: Color {
+        colorScheme == .dark ? .accentColor : Color(red: 182.0 / 255, green: 76.0 / 255, blue: 53.0 / 255)
     }
 }
