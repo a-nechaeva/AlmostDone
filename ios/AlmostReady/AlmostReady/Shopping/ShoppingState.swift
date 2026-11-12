@@ -42,10 +42,11 @@ struct ShoppingState {
 
 enum ShoppingDemoPlan {
     static let price: Decimal = 230
+    static let packageWeight = "200 г"
     static let cheese = ShoppingItem(
         id: "hard-cheese",
         name: "Сыр твёрдый",
-        quantity: "Упаковка 200 г",
+        quantity: "Упаковка \(packageWeight)",
         estimatedPrice: price
     )
 }

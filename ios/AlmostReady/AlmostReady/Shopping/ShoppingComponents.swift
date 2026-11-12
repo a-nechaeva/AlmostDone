@@ -1,6 +1,32 @@
 import SwiftUI
 import UIKit
 
+enum ShoppingColor {
+    static let accent = adaptive(light: 0x9B3F2C, dark: 0xFFA385)
+    static let action = adaptive(light: 0xB64C35, dark: 0xFFA385)
+    static let accentSurface = adaptive(light: 0xFAE5DC, dark: 0x4B2D24)
+    static let secondary = adaptive(light: 0x6C6B66, dark: 0xBDB8AE)
+    static let outline = adaptive(light: 0x7D8178, dark: 0xA8A69C)
+    static let warning = adaptive(light: 0x855A18, dark: 0xFFC76E)
+    static let warningSurface = adaptive(light: 0xFAEED7, dark: 0x423422)
+    static let success = adaptive(light: 0x34694B, dark: 0x99D1AD)
+    static let successSurface = adaptive(light: 0xE7F1E8, dark: 0x26392C)
+
+    private static func adaptive(light: UInt32, dark: UInt32) -> Color {
+        Color(
+            uiColor: UIColor { traits in
+                let rgb = traits.userInterfaceStyle == .dark ? dark : light
+                return UIColor(
+                    red: CGFloat((rgb >> 16) & 0xFF) / 255,
+                    green: CGFloat((rgb >> 8) & 0xFF) / 255,
+                    blue: CGFloat(rgb & 0xFF) / 255,
+                    alpha: 1
+                )
+            }
+        )
+    }
+}
+
 struct ShoppingPage<Content: View>: View {
     @ViewBuilder let content: Content
 
@@ -23,14 +49,14 @@ struct ShoppingHeading: View {
     var subtitle: LocalizedStringKey?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .font(.largeTitle.bold())
+                .shoppingFont(30, weight: .bold, lineHeight: 36)
                 .accessibilityAddTraits(.isHeader)
             if let subtitle {
                 Text(subtitle)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .shoppingFont(14, lineHeight: 20)
+                    .foregroundStyle(ShoppingColor.secondary)
             }
         }
     }
@@ -42,55 +68,50 @@ struct ShoppingActionStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.subheadline.bold())
+            .shoppingFont(14, weight: .bold, lineHeight: 19)
             .multilineTextAlignment(.center)
-            .foregroundStyle(isSecondary ? Color.accentColor : colorScheme == .dark ? .black : .white)
+            .foregroundStyle(isSecondary ? ShoppingColor.accent : colorScheme == .dark ? .black : .white)
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .frame(maxWidth: .infinity, minHeight: 48)
             .background(
-                Color.accentColor.opacity(isSecondary ? 0.14 : 1),
+                isSecondary ? ShoppingColor.accentSurface : ShoppingColor.action,
                 in: .rect(cornerRadius: 16)
             )
+            .contentShape(.rect(cornerRadius: 16))
             .opacity(configuration.isPressed ? 0.75 : 1)
     }
 }
 
 struct ShoppingNotice: View {
-    @Environment(\.colorScheme) private var colorScheme
     let title: LocalizedStringKey
     let message: LocalizedStringKey
     var isWarning = false
 
-    private var tint: Color {
-        if isWarning {
-            return colorScheme == .dark
-                ? Color(red: 1, green: 0.78, blue: 0.43)
-                : Color(red: 0.49, green: 0.31, blue: 0.08)
-        }
-        return colorScheme == .dark
-            ? Color(red: 0.60, green: 0.82, blue: 0.68)
-            : Color(red: 0.20, green: 0.41, blue: 0.29)
-    }
-
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: 10) {
             Image(systemName: "info.circle")
-                .font(.headline)
+                .font(.system(size: 18))
+                .frame(width: 22, height: 22)
+                .padding(.top, 2)
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 8) {
                 Text(title)
-                    .font(.subheadline.bold())
+                    .shoppingFont(14, weight: .bold, lineHeight: 20)
                 Text(message)
-                    .font(.subheadline)
+                    .lineSpacing(3)
+                    .shoppingFont(13, lineHeight: 19)
             }
         }
-        .foregroundStyle(tint)
+        .foregroundStyle(isWarning ? ShoppingColor.warning : ShoppingColor.success)
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .padding(16)
-        .frame(minHeight: 100)
-        .background(tint.opacity(0.10), in: .rect(cornerRadius: 20))
+        .frame(minHeight: 100, alignment: .topLeading)
+        .background(
+            isWarning ? ShoppingColor.warningSurface : ShoppingColor.successSurface,
+            in: .rect(cornerRadius: 20)
+        )
         .accessibilityElement(children: .combine)
     }
 }
@@ -105,33 +126,51 @@ struct ShoppingEmptyState: View {
         VStack(spacing: 0) {
             Image(systemName: "bag")
                 .font(.system(size: 30))
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(ShoppingColor.accent)
                 .frame(width: 88, height: 88)
-                .background(Color.accentColor.opacity(0.14), in: .rect(cornerRadius: 28))
+                .background(ShoppingColor.accentSurface, in: .rect(cornerRadius: 28))
                 .accessibilityHidden(true)
 
             Text(title)
-                .font(.title2.bold())
+                .shoppingFont(24, weight: .bold, lineHeight: 34)
                 .accessibilityAddTraits(.isHeader)
                 .padding(.top, 28)
 
             Text(message)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .lineSpacing(4)
+                .shoppingFont(14, lineHeight: 21)
+                .foregroundStyle(ShoppingColor.secondary)
                 .frame(maxWidth: 310)
-                .padding(.top, 16)
+                .padding(.top, 18)
 
             Button(buttonTitle, action: action)
                 .buttonStyle(ShoppingActionStyle())
-                .padding(.top, 36)
+                .padding(.top, 38)
         }
         .multilineTextAlignment(.center)
         .frame(maxWidth: .infinity)
     }
 }
 
+private struct ShoppingFont: ViewModifier {
+    @ScaledMetric private var scale: CGFloat = 1
+    let size: CGFloat
+    let weight: Font.Weight
+    let lineHeight: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .font(.system(size: size * scale, weight: weight))
+            .frame(minHeight: lineHeight * scale)
+    }
+}
+
 extension View {
-    func shoppingCard(cornerRadius: CGFloat = 20) -> some View {
+    func shoppingFont(_ size: CGFloat, weight: Font.Weight = .regular, lineHeight: CGFloat) -> some View {
+        modifier(ShoppingFont(size: size, weight: weight, lineHeight: lineHeight))
+    }
+
+    func shoppingCard(cornerRadius: CGFloat) -> some View {
         background(Color(uiColor: .secondarySystemGroupedBackground), in: .rect(cornerRadius: cornerRadius))
     }
 }
