@@ -26,12 +26,12 @@ struct DishesScreen: View {
     }
 
     @Environment(DemoStore.self) private var store
+    @Environment(\.floatingTabBarHeight) private var tabBarHeight
     @ScaledMetric(relativeTo: .headline) private var sectionTitleSize = 18.0
     @State private var query = ""
     @State private var filter = Filter.all
-    @FocusState private var isSearchFocused: Bool
+    @FocusState.Binding var isSearchFocused: Bool
     let onOpenProducts: () -> Void
-    let tabBar: FloatingTabBar
 
     var body: some View {
         let availability = DishesAvailability(
@@ -83,9 +83,7 @@ struct DishesScreen: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
         }
-        .floatingTabBarInset {
-            if !isSearchFocused { tabBar }
-        }
+        .safeAreaPadding(.bottom, tabBarHeight)
         .rootScreenHeader()
         .background(Color(.demoBackground).ignoresSafeArea())
         .onDisappear { isSearchFocused = false }

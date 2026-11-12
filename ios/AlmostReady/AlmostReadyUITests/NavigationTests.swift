@@ -34,6 +34,18 @@ final class NavigationTests: XCTestCase {
         recipe.buttons.firstMatch.tap()
         XCTAssertTrue(dishes.waitForExistence(timeout: 10))
         XCTAssertTrue(dishesTab.isSelected)
+
+        let search = app.textFields.firstMatch
+        XCTAssertTrue(search.isHittable)
+        search.tap()
+        let keyboard = app.keyboards.firstMatch
+        XCTAssertTrue(keyboard.waitForExistence(timeout: 5))
+        XCTAssertTrue(dishesTab.waitForNonExistence(timeout: 5))
+        search.typeText("\n")
+        XCTAssertTrue(keyboard.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(dishesTab.waitForExistence(timeout: 5))
+        XCTAssertTrue(dishesTab.isHittable)
+        XCTAssertTrue(dishesTab.isSelected)
     }
 
     @MainActor
@@ -64,11 +76,33 @@ final class NavigationTests: XCTestCase {
         XCTAssertLessThanOrEqual(lastProduct.frame.maxY, openDishes.frame.minY)
         XCTAssertLessThanOrEqual(openDishes.frame.maxY, productsTab.frame.minY)
 
+        profileTab.tap()
+        assertRootHeader(app, tab: "profile", title: "Профиль")
+        XCTAssertEqual(tabs.filter(\.isSelected).map(\.identifier), ["tabs.profile"])
+        assertReachableAboveTabBar(
+            app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Оценки стоимости")).firstMatch,
+            tab: profileTab,
+            scrollView: app.scrollViews.firstMatch
+        )
+        productsTab.tap()
+        assertRootHeader(app, tab: "products", title: "Мои продукты")
+        XCTAssertEqual(tabs.filter(\.isSelected).map(\.identifier), ["tabs.products"])
+
         dishesTab.tap()
         assertRootHeader(app, tab: "dishes", title: "Что приготовим?")
+        assertReachableAboveTabBar(
+            app.descendants(matching: .any)["dishes.recipe.tomato-cheese-pasta"].firstMatch,
+            tab: dishesTab,
+            scrollView: app.scrollViews.firstMatch
+        )
         shoppingTab.tap()
         assertRootHeader(app, tab: "shopping", title: "Что докупить")
         XCTAssertTrue(shoppingTab.isSelected)
+        assertReachableAboveTabBar(
+            app.staticTexts["Пример одиночной покупки"],
+            tab: shoppingTab,
+            scrollView: app.scrollViews.firstMatch
+        )
 
         let openBudget = app.buttons["Подобрать покупки под бюджет"]
         if !openBudget.isHittable {
@@ -93,6 +127,11 @@ final class NavigationTests: XCTestCase {
         let purchasedShoppingTab = app.buttons["purchased.tabs.shopping"]
         XCTAssertTrue(purchasedShoppingTab.isHittable)
         XCTAssertTrue(purchasedShoppingTab.isSelected)
+        assertReachableAboveTabBar(
+            app.buttons["Мои продукты"],
+            tab: purchasedShoppingTab,
+            scrollView: app.scrollViews.firstMatch
+        )
         app.buttons["purchased.tabs.profile"].tap()
 
         let profile = app.staticTexts["root.title.profile"]
@@ -224,6 +263,21 @@ final class NavigationTests: XCTestCase {
         XCTAssertEqual(app.staticTexts["products.summary"].label, "0 продуктов")
         XCTAssertTrue(app.buttons["products.search.open"].isHittable)
         XCTAssertTrue(app.buttons["products.dishes"].isHittable)
+    }
+
+    @MainActor
+    private func assertReachableAboveTabBar(
+        _ element: XCUIElement,
+        tab: XCUIElement,
+        scrollView: XCUIElement,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        if !element.isHittable || element.frame.maxY > tab.frame.minY {
+            scrollView.swipeUp()
+        }
+        XCTAssertTrue(element.isHittable, file: file, line: line)
+        XCTAssertLessThanOrEqual(element.frame.maxY, tab.frame.minY, file: file, line: line)
     }
 
     @MainActor

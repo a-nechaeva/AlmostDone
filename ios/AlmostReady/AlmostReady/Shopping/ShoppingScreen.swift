@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct ShoppingScreen: View {
+    @Environment(\.floatingTabBarHeight) private var tabBarHeight
+
     private enum Presentation: Identifiable {
         case budget
         case purchased(ShoppingItem)
@@ -17,10 +19,16 @@ struct ShoppingScreen: View {
     @State private var presentation: Presentation?
     @State private var tabAfterDismissal: AppTab?
     private let onOpenTab: ((AppTab) -> Void)?
+    private let onCoverChange: (Bool) -> Void
 
-    init(items: [ShoppingItem] = [ShoppingDemoPlan.cheese], onOpenTab: ((AppTab) -> Void)? = nil) {
+    init(
+        items: [ShoppingItem] = [ShoppingDemoPlan.cheese],
+        onOpenTab: ((AppTab) -> Void)? = nil,
+        onCoverChange: @escaping (Bool) -> Void = { _ in }
+    ) {
         _shopping = State(initialValue: ShoppingState(items: items))
         self.onOpenTab = onOpenTab
+        self.onCoverChange = onCoverChange
     }
 
     var body: some View {
@@ -51,11 +59,9 @@ struct ShoppingScreen: View {
                     .padding(.top, 28)
             }
         }
-        .floatingTabBarInset {
-            if let onOpenTab {
-                FloatingTabBar(selection: .shopping, onSelect: onOpenTab)
-                    .accessibilityHidden(presentation != nil)
-            }
+        .safeAreaPadding(.bottom, tabBarHeight)
+        .onChange(of: presentation != nil) { _, isPresented in
+            onCoverChange(isPresented)
         }
         .rootScreenHeader()
         .fullScreenCover(item: $presentation, onDismiss: openTabAfterDismissal) { destination in
@@ -203,7 +209,7 @@ struct ShoppingScreen: View {
                 .buttonStyle(ShoppingActionStyle())
                 .padding(.top, 16)
             }
-            .floatingTabBarInset {
+            .safeAreaInset(edge: .bottom, spacing: 0) {
                 if onOpenTab != nil {
                     FloatingTabBar(
                         selection: .shopping,

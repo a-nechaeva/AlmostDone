@@ -3,9 +3,10 @@ import SwiftUI
 struct ProductsScreen: View {
     @Environment(DemoStore.self) private var store
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.floatingTabBarHeight) private var tabBarHeight
     @ScaledMetric(relativeTo: .subheadline) private var labelSize = 14.0
+    @Binding var isSearchPresented: Bool
     let onOpenDishes: () -> Void
-    let tabBar: FloatingTabBar
 
     private var palette: ProductsPalette { ProductsPalette(colorScheme: colorScheme) }
 
@@ -45,15 +46,18 @@ struct ProductsScreen: View {
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             dishesLink
+                .padding(.bottom, tabBarHeight)
         }
-        .floatingTabBarInset { tabBar }
         .rootScreenHeader()
         .background(Color(.demoBackground).ignoresSafeArea())
+        .navigationDestination(isPresented: $isSearchPresented) {
+            ProductsSearchScreen()
+        }
     }
 
     private var searchLink: some View {
-        NavigationLink {
-            ProductsSearchScreen()
+        Button {
+            isSearchPresented = true
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass")
@@ -124,7 +128,7 @@ struct ProductsScreen: View {
         .padding(.horizontal, 20)
         .padding(.top, 12)
         .padding(.bottom, 20)
-        .background(Color(.demoBackground))
+        .background(Color(.demoBackground), ignoresSafeAreaEdges: [])
     }
 
     private func summary(for count: Int) -> String {
