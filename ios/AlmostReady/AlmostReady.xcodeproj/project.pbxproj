@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		A87000000000000000000001 /* YandexLoginSDK in Frameworks */ = {isa = PBXBuildFile; productRef = A87000000000000000000002 /* YandexLoginSDK */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		8F01A870F64A43B701000001 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -24,6 +28,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		A87000000000000000000004 /* Auth.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Auth.xcconfig; sourceTree = "<group>"; };
+		A87000000000000000000005 /* Auth-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Auth-Info.plist"; sourceTree = "<group>"; };
 		7394AB2830A4AA9600AD49E3 /* AlmostReady.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AlmostReady.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8F01A870F64A43B701000002 /* AlmostReadyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AlmostReadyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8F01A870F64A43B702000002 /* AlmostReadyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AlmostReadyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -52,6 +58,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A87000000000000000000001 /* YandexLoginSDK in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,6 +85,8 @@
 				7394AB2A30A4AA9600AD49E3 /* AlmostReady */,
 				8F01A870F64A43B701000003 /* AlmostReadyTests */,
 				8F01A870F64A43B702000003 /* AlmostReadyUITests */,
+				A87000000000000000000004 /* Auth.xcconfig */,
+				A87000000000000000000005 /* Auth-Info.plist */,
 				7394AB2930A4AA9600AD49E3 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -112,6 +121,7 @@
 			);
 			name = AlmostReady;
 			packageProductDependencies = (
+				A87000000000000000000002 /* YandexLoginSDK */,
 			);
 			productName = AlmostReady;
 			productReference = 7394AB2830A4AA9600AD49E3 /* AlmostReady.app */;
@@ -195,6 +205,9 @@
 			);
 			mainGroup = 7394AB1F30A4AA9600AD49E3;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				A87000000000000000000003 /* XCRemoteSwiftPackageReference "yandex-login-sdk-ios" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7394AB2930A4AA9600AD49E3 /* Products */;
 			projectDirPath = "";
@@ -390,6 +403,7 @@
 		};
 		7394AB3430A4AA9800AD49E3 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A87000000000000000000004 /* Auth.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -397,6 +411,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Auth-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Почти готово";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -422,6 +437,7 @@
 		};
 		7394AB3530A4AA9800AD49E3 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A87000000000000000000004 /* Auth.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -429,6 +445,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Auth-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Почти готово";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -546,6 +563,24 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+/* Begin XCRemoteSwiftPackageReference section */
+		A87000000000000000000003 /* XCRemoteSwiftPackageReference "yandex-login-sdk-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/yandexmobile/yandex-login-sdk-ios.git";
+			requirement = {
+				kind = exactVersion;
+				version = 3.2.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A87000000000000000000002 /* YandexLoginSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A87000000000000000000003 /* XCRemoteSwiftPackageReference "yandex-login-sdk-ios" */;
+			productName = YandexLoginSDK;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 7394AB2030A4AA9600AD49E3 /* Project object */;
 }
