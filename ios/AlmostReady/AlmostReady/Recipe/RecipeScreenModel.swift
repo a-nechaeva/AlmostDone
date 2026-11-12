@@ -26,58 +26,117 @@ final class RecipeScreenModel {
         case loading
         case notFound
         case failed(retryAfter: Date?)
-        case loaded(RecipePresentation, RecipePhoto)
+        case loaded(RecipePresentation)
+    }
+
+    enum ServingsUpdate {
+        case loading(Int)
+        case failed(Int, retryAfter: Date?)
+
+        var servings: Int {
+            switch self {
+            case .loading(let servings), .failed(let servings, _): servings
+            }
+        }
+
+        var retryAfter: Date? {
+            if case .failed(_, let retryAfter) = self { return retryAfter }
+            return nil
+        }
     }
 
     private let repository: RecipeRepository
     private(set) var state: State = .loading
     private(set) var attempt = 0
+    private(set) var servingsUpdate: ServingsUpdate?
+    private(set) var photoURL: String?
+    private(set) var photo: RecipePhoto = .unavailable
 
     init(repository: RecipeRepository) {
         self.repository = repository
     }
 
-    func retry() {
-        guard case .failed(let retryAfter) = state, retryAfter.map({ $0 <= .now }) ?? true else { return }
-        state = .loading
+    var selectedServings: Int? {
+        guard case .loaded(let recipe) = state else { return nil }
+        return servingsUpdate?.servings ?? recipe.servings?.count
+    }
+
+    func changeServings(by delta: Int) {
+        guard repository.session.isCurrent(repository.account), let selectedServings,
+            Self.canRetry(after: servingsUpdate?.retryAfter)
+        else { return }
+        let servings = selectedServings + delta
+        guard servings != selectedServings, RecipeRequest.servingsRange.contains(servings) else { return }
+        servingsUpdate = .loading(servings)
         attempt += 1
     }
 
-    func load() async {
-        guard canApplyResult else { return }
+    func retry() {
+        guard repository.session.isCurrent(repository.account) else { return }
+        if case .failed(let retryAfter) = state, Self.canRetry(after: retryAfter) {
+            state = .loading
+        } else if case .failed(let servings, let retryAfter) = servingsUpdate, Self.canRetry(after: retryAfter) {
+            servingsUpdate = .loading(servings)
+        } else {
+            return
+        }
+        attempt += 1
+    }
 
-        if case .loading = state {
-            do {
-                let detail = try await repository.detail()
-                guard canApplyResult else { return }
-                // The server advertises photo availability. Keep the request on the configured API origin.
-                state = .loaded(
-                    RecipePresentation(detail: detail), detail.recipe.photoURL == nil ? .unavailable : .loading)
-            } catch {
-                guard canApplyResult else { return }
-                let metadata = (error as? APIClientError)?.metadata
-                if metadata?.statusCode == 404 {
-                    state = .notFound
-                } else {
-                    state = .failed(retryAfter: Self.retryDate(error, metadata: metadata))
-                }
-                return
-            }
+    func load(attempt: Int) async {
+        guard canApplyResult, attempt == self.attempt else { return }
+
+        let updatedServings: Int?
+        switch state {
+        case .loading:
+            updatedServings = nil
+        case .loaded:
+            guard case .loading(let selected) = servingsUpdate else { return }
+            updatedServings = selected
+        case .notFound, .failed:
+            return
         }
 
-        guard case .loaded(let presentation, .loading) = state else { return }
         do {
-            let response = try await repository.photo()
-            guard canApplyResult else { return }
-            state = .loaded(presentation, RecipePhoto(response: response))
+            let detail = try await repository.detail(servings: updatedServings ?? repository.request.servings)
+            guard canApplyResult, attempt == self.attempt else { return }
+            state = .loaded(RecipePresentation(detail: detail))
+            servingsUpdate = nil
+            if photoURL != detail.recipe.photoURL {
+                photoURL = detail.recipe.photoURL
+                photo = photoURL == nil ? .unavailable : .loading
+            }
         } catch {
-            guard canApplyResult else { return }
-            state = .loaded(presentation, .unavailable)
+            guard canApplyResult, attempt == self.attempt else { return }
+            let metadata = (error as? APIClientError)?.metadata
+            let retryAfter = Self.retryDate(error, metadata: metadata)
+            if let updatedServings {
+                servingsUpdate = .failed(updatedServings, retryAfter: retryAfter)
+            } else {
+                state = metadata?.statusCode == 404 ? .notFound : .failed(retryAfter: retryAfter)
+            }
+        }
+    }
+
+    func loadPhoto(for url: String?) async {
+        guard let url, canApplyResult, url == photoURL, case .loading = photo else { return }
+        do {
+            // Keep the request on the configured API origin. Photo completion only updates the photo.
+            let response = try await repository.photo()
+            guard canApplyResult, url == photoURL else { return }
+            photo = RecipePhoto(response: response)
+        } catch {
+            guard canApplyResult, url == photoURL else { return }
+            photo = .unavailable
         }
     }
 
     private var canApplyResult: Bool {
         !Task.isCancelled && repository.session.isCurrent(repository.account)
+    }
+
+    private static func canRetry(after date: Date?) -> Bool {
+        date.map { $0 <= .now } ?? true
     }
 
     private static func retryDate(_ error: Error, metadata: HTTPResponseMetadata?) -> Date? {
