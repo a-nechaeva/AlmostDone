@@ -4,6 +4,7 @@ import UIKit
 struct DishCard: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.colorScheme) private var colorScheme
+    @ScaledMetric(relativeTo: .headline) private var titleSize = 18.0
     let entry: DishesAvailability.Entry
 
     var body: some View {
@@ -20,9 +21,14 @@ struct DishCard: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(entry.recipe.title)
-                    .font(.headline.bold())
+                    .font(.system(size: titleSize, weight: .bold))
+                if let metrics {
+                    Text(metrics)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
                 availabilityLabel
-                    .font(.footnote)
+                    .font(.caption)
             }
             .fixedSize(horizontal: false, vertical: true)
         }
@@ -59,6 +65,15 @@ struct DishCard: View {
         colorScheme == .dark ? Color(red: 0.60, green: 0.82, blue: 0.68) : Color(red: 0.20, green: 0.41, blue: 0.29)
     }
 
+    private var metrics: String? {
+        guard let presentation = RecipePresentation.demo[entry.recipe.id] else { return nil }
+        let values = [
+            presentation.minutes.map { "\($0) мин" },
+            presentation.nutrition?.kilocalories.map { "\($0) ккал" }
+        ].compactMap { $0 }
+        return values.isEmpty ? nil : values.joined(separator: " · ")
+    }
+
     @ViewBuilder
     private var availabilityLabel: some View {
         if entry.missingIngredients.isEmpty {
@@ -66,9 +81,11 @@ struct DishCard: View {
                 .foregroundStyle(readyColor)
         } else {
             let names = entry.missingIngredients.map(\.name).joined(separator: ", ")
-            Text(names)
+            let missingIDs = Set(entry.missingIngredients.map(\.id))
+            let price = RecipePresentation.packagePrice(for: missingIDs)
+            let status = "Докупить: \(names)"
+            Text(price.map { "\(status) · \($0) за упаковку" } ?? status)
                 .foregroundStyle(Color.accentColor)
-                .accessibilityLabel("Докупить \(names)")
         }
     }
 }
