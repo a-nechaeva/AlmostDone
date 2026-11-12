@@ -13,11 +13,20 @@ final class FavoritesStore {
         var isLoading = false
         var isSaving = false
         var loadFailed = false
-        var failedChange: Change?
+        var failedChanges: [String: Change] = [:]
         var retryAfter: Date?
 
-        func contains(_ id: String) -> Bool {
-            snapshot?.entries.contains { $0.id == id } == true
+        func membership(of id: String) -> Bool? {
+            snapshot.map { $0.entries.contains { $0.id == id } }
+        }
+
+        func change(for entry: FavoriteEntry) -> Change? {
+            if let failed = failedChanges[entry.id] { return failed }
+            return membership(of: entry.id).map { Change(entry: entry, isFavorite: !$0) }
+        }
+
+        func canRequest(at date: Date = .now) -> Bool {
+            retryAfter.map { $0 <= date } ?? true
         }
     }
 
@@ -46,7 +55,7 @@ final class FavoritesStore {
             return
         }
         let state = state(for: category)
-        guard !state.isSaving, canRequest(state) else { return }
+        guard !state.isSaving, state.canRequest() else { return }
         guard force || state.loadFailed || (state.snapshot?.revision.stateVersion ?? -1) < latestKnownVersion else {
             return
         }
@@ -74,35 +83,35 @@ final class FavoritesStore {
 
     func set(_ change: Change, in category: FavoritesCategory) async {
         let state = state(for: category)
-        guard repository.isCurrent, !state.isLoading, !state.isSaving, canRequest(state),
+        guard repository.isCurrent, !state.isLoading, !state.isSaving, state.canRequest(),
             let snapshot = state.snapshot
         else { return }
 
         categories[category]?.isSaving = true
         defer { categories[category]?.isSaving = false }
         do {
-            var base = snapshot
             do {
-                try await write(change, in: category, basedOn: base)
+                try await write(change, in: category, basedOn: snapshot)
             } catch let error as APIClientError where error.metadata?.statusCode == 412 {
-                base = try await repository.reconcile(category)
-                try install(base, for: category)
-                if self.state(for: category).contains(change.entry.id) != change.isFavorite {
-                    try await write(change, in: category, basedOn: base)
+                let refreshed = try await repository.reconcile(category)
+                try install(refreshed, for: category)
+                let isFavorite = refreshed.entries.contains(where: { $0.id == change.entry.id })
+                if isFavorite != change.isFavorite {
+                    try await write(change, in: category, basedOn: refreshed)
                 }
             }
-            categories[category]?.failedChange = nil
+            categories[category]?.failedChanges[change.entry.id] = nil
         } catch {
             guard repository.isCurrent else { return }
-            categories[category]?.failedChange = change
+            categories[category]?.failedChanges[change.entry.id] = change
             rememberRetryAfter(error, for: category)
         }
     }
 
-    func dismissFailedChange(in category: FavoritesCategory) {
+    func dismissFailedChange(for id: String, in category: FavoritesCategory) {
         let state = state(for: category)
-        guard !state.isSaving, canRequest(state) else { return }
-        categories[category]?.failedChange = nil
+        guard repository.isCurrent, !state.isSaving else { return }
+        categories[category]?.failedChanges[id] = nil
     }
 
     private func write(_ change: Change, in category: FavoritesCategory, basedOn base: FavoritesSnapshot) async throws {
@@ -154,14 +163,17 @@ final class FavoritesStore {
         }
 
         let ingredient: CatalogIngredient
-        if entry.allowedUnits.isEmpty,
-            let resolved = try? await pantry.repository.ingredient(
-                for: PantryItem(ingredientID: entry.id, name: entry.name, quantity: nil)
-            )
-        {
+        if entry.allowedUnits.isEmpty {
+            guard
+                let resolved = try? await pantry.repository.ingredient(
+                    for: PantryItem(ingredientID: entry.id, name: entry.name, quantity: nil)
+                )
+            else { return false }
             ingredient = resolved
         } else {
-            ingredient = CatalogIngredient(id: entry.id, name: entry.name, allowedUnits: entry.allowedUnits)
+            ingredient = CatalogIngredient(
+                id: entry.id, name: entry.name, allowedUnits: entry.allowedUnits, nutrition: nil
+            )
         }
         guard repository.isCurrent, !Task.isCancelled, pantryDraft?.hasPendingAdd != true else { return false }
         pantryDraft = PantryDraft(kind: .add(ingredient), snapshot: snapshot)
@@ -173,12 +185,12 @@ final class FavoritesStore {
         if pantryDraft?.hasPendingAdd != true { pantryDraft = nil }
     }
 
-    private func canRequest(_ state: State) -> Bool {
-        state.retryAfter.map { $0 <= .now } ?? true
-    }
-
     private func rememberRetryAfter(_ error: Error, for category: FavoritesCategory) {
-        if let header = (error as? APIClientError)?.metadata?.retryAfter, let seconds = Int(header), seconds > 0 {
+        if case SessionError.refreshRateLimited(let until) = error {
+            categories[category]?.retryAfter = until
+        } else if let header = (error as? APIClientError)?.metadata?.retryAfter,
+            let seconds = Int(header), seconds > 0
+        {
             categories[category]?.retryAfter = .now.addingTimeInterval(Double(seconds))
         }
     }

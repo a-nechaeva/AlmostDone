@@ -39,14 +39,18 @@ final class FavoritesTests: XCTestCase {
             let entry = FavoriteEntry(id: id, name: name)
             let before = store.state(for: category)
             XCTAssertNotNil(before.snapshot)
-            XCTAssertFalse(before.contains(id))
-            await store.set(.init(entry: entry, isFavorite: true), in: category)
+            XCTAssertEqual(before.membership(of: id), false)
+            let addFromButton = try XCTUnwrap(before.change(for: entry))
+            XCTAssertTrue(addFromButton.isFavorite)
+            await store.set(addFromButton, in: category)
             let after = store.state(for: category)
-            XCTAssertTrue(after.contains(id))
+            XCTAssertEqual(after.membership(of: id), true)
             XCTAssertEqual(after.snapshot?.entries, [entry])
+            XCTAssertEqual(after.change(for: entry)?.isFavorite, false)
             await store.set(.init(entry: entry, isFavorite: false), in: category)
-            XCTAssertFalse(store.state(for: category).contains(id))
+            XCTAssertEqual(store.state(for: category).membership(of: id), false)
             XCTAssertEqual(store.state(for: category).snapshot?.entries, [])
+            XCTAssertEqual(store.state(for: category).change(for: entry)?.isFavorite, true)
         }
         XCTAssertEqual(store.repository.session.revision?.stateVersion, 11)
 
@@ -115,7 +119,7 @@ final class FavoritesTests: XCTestCase {
         }
 
         await store.load(.recipes)
-        XCTAssertTrue(store.state(for: .recipes).contains("old"))
+        XCTAssertEqual(store.state(for: .recipes).membership(of: "old"), true)
         await store.load(.ingredients)
         await store.load(.recipes)
         XCTAssertEqual(store.state(for: .recipes).snapshot?.entries, [])
@@ -158,7 +162,7 @@ final class FavoritesTests: XCTestCase {
             ])
         let state = store.state(for: .recipes)
         XCTAssertEqual(state.snapshot?.entries.map(\.id), ["new"])
-        XCTAssertNil(state.failedChange)
+        XCTAssertTrue(state.failedChanges.isEmpty)
         XCTAssertEqual(session.revision?.stateVersion, 9)
     }
 
@@ -181,17 +185,79 @@ final class FavoritesTests: XCTestCase {
         let entry = try XCTUnwrap(store.state(for: .ingredients).snapshot?.entries.first)
 
         await store.set(.init(entry: entry, isFavorite: false), in: .ingredients)
-        XCTAssertTrue(store.state(for: .ingredients).contains(entry.id))
-        let retry = try XCTUnwrap(store.state(for: .ingredients).failedChange)
+        XCTAssertEqual(store.state(for: .ingredients).membership(of: entry.id), true)
+        let retry = try XCTUnwrap(store.state(for: .ingredients).failedChanges[entry.id])
         XCTAssertFalse(retry.isFavorite)
         await store.set(retry, in: .ingredients)
-        XCTAssertFalse(store.state(for: .ingredients).contains(entry.id))
-        XCTAssertNil(store.state(for: .ingredients).failedChange)
+        XCTAssertEqual(store.state(for: .ingredients).membership(of: entry.id), false)
+        XCTAssertTrue(store.state(for: .ingredients).failedChanges.isEmpty)
 
         let sent = await requests.values
         XCTAssertEqual(sent.map(\.httpMethod), ["GET", "GET", "DELETE", "DELETE"])
         XCTAssertEqual(
             sent.suffix(2).map { $0.url?.path }, Array(repeating: Self.ingredientsPath + "/cheese", count: 2))
+    }
+
+    @MainActor
+    func testFavoriteButtonsKeepConfirmedStateAndRetryOnlyTheirOwnChange() async throws {
+        let requests = FavoritesRequestLog()
+        let firstWrite = expectation(description: "Initial favorite write reached transport")
+        let respondToFirstWrite = SessionResponseGate()
+        let store = try await restoredStore { request in
+            switch await requests.append(request) {
+            case 1:
+                return try Self.page(request, version: 7, entries: [Self.ingredient("salt")])
+            case 2:
+                firstWrite.fulfill()
+                await respondToFirstWrite.wait()
+                return try Fixture.error(request, status: 503, code: "service_unavailable")
+            case 3:
+                return try Self.mutation(request, version: 8)
+            case 4:
+                return try Self.page(request, version: 9, entries: [Self.ingredient("cheese")])
+            case 5:
+                return try Self.mutation(request, version: 9)
+            default:
+                throw URLError(.unsupportedURL)
+            }
+        }
+
+        let cheese = FavoriteEntry(id: "cheese", name: "Сыр", allowedUnits: [.grams])
+        XCTAssertNil(store.state(for: .ingredients).change(for: cheese))
+        await store.load(.ingredients)
+        let add = try XCTUnwrap(store.state(for: .ingredients).change(for: cheese))
+        let writing = Task { await store.set(add, in: .ingredients) }
+        await fulfillment(of: [firstWrite], timeout: 5)
+        XCTAssertEqual(store.state(for: .ingredients).membership(of: cheese.id), false)
+        XCTAssertEqual(store.state(for: .ingredients).snapshot?.entries.map(\.id), ["salt"])
+        await respondToFirstWrite.open()
+        await writing.value
+
+        let salt = try XCTUnwrap(store.state(for: .ingredients).snapshot?.entries.first)
+        let remove = try XCTUnwrap(store.state(for: .ingredients).change(for: salt))
+        XCTAssertFalse(remove.isFavorite)
+        await store.set(remove, in: .ingredients)
+        XCTAssertEqual(store.state(for: .ingredients).snapshot?.entries, [])
+        XCTAssertEqual(store.state(for: .ingredients).failedChanges[cheese.id]?.isFavorite, true)
+
+        await store.load(.ingredients, force: true)
+        let refreshed = store.state(for: .ingredients)
+        XCTAssertEqual(refreshed.membership(of: cheese.id), true)
+        let retry = try XCTUnwrap(refreshed.change(for: cheese))
+        XCTAssertTrue(retry.isFavorite)
+        await store.set(retry, in: .ingredients)
+        XCTAssertTrue(store.state(for: .ingredients).failedChanges.isEmpty)
+        XCTAssertEqual(store.state(for: .ingredients).change(for: cheese)?.isFavorite, false)
+
+        let sent = await requests.values
+        XCTAssertEqual(sent.map(\.httpMethod), ["GET", "PUT", "DELETE", "GET", "PUT"])
+        XCTAssertEqual(
+            sent.map { $0.url?.path },
+            [
+                Self.ingredientsPath, Self.ingredientsPath + "/cheese", Self.ingredientsPath + "/salt",
+                Self.ingredientsPath, Self.ingredientsPath + "/cheese"
+            ])
+        XCTAssertEqual(sent.last?.value(forHTTPHeaderField: "If-Match"), Self.etag(9))
     }
 
     @MainActor
@@ -224,7 +290,7 @@ final class FavoritesTests: XCTestCase {
         let entry = try XCTUnwrap(old.state(for: .recipes).snapshot?.entries.first)
         let deletion = Task { await old.set(.init(entry: entry, isFavorite: false), in: .recipes) }
         await fulfillment(of: [mutationStarted], timeout: 5)
-        XCTAssertTrue(old.state(for: .recipes).contains("old"))
+        XCTAssertEqual(old.state(for: .recipes).membership(of: "old"), true)
         _ = try await session.signOut()
         XCTAssertNil(old.state(for: .recipes).snapshot)
 
@@ -236,7 +302,7 @@ final class FavoritesTests: XCTestCase {
 
         XCTAssertEqual(current.state(for: .recipes).snapshot?.entries.map(\.id), ["new"])
         XCTAssertNil(old.state(for: .recipes).snapshot)
-        XCTAssertNil(old.state(for: .recipes).failedChange)
+        XCTAssertTrue(old.state(for: .recipes).failedChanges.isEmpty)
         XCTAssertEqual(session.revision?.stateVersion, 7)
     }
 
@@ -280,7 +346,7 @@ final class FavoritesTests: XCTestCase {
         let item = try XCTUnwrap(store.pantry.snapshot?.items.first)
         XCTAssertEqual(item.id, entry.id)
         XCTAssertNil(item.quantity)
-        XCTAssertTrue(store.state(for: .ingredients).contains(entry.id))
+        XCTAssertEqual(store.state(for: .ingredients).membership(of: entry.id), true)
         XCTAssertTrue(store.pantry.loadFailed)
         store.dismissPantryDraft()
         XCTAssertNil(store.pantryDraft)
@@ -341,12 +407,64 @@ final class FavoritesTests: XCTestCase {
     }
 
     @MainActor
+    func testFavoriteFromPantryCanRetryLoadingUnitsBeforeOpeningEditor() async throws {
+        let requests = FavoritesRequestLog()
+        let store = try await restoredStore { request in
+            switch await requests.append(request) {
+            case 1:
+                return try Self.page(request, version: 7, entries: [])
+            case 2:
+                return try Self.mutation(request, version: 8)
+            case 3:
+                return try Self.pantry(request, version: 8, items: [])
+            case 4:
+                return try Fixture.error(request, status: 503, code: "service_unavailable")
+            case 5:
+                return try Self.page(
+                    request, version: 8, entries: [Self.ingredient("other"), Self.ingredient("cheese")])
+            default:
+                throw URLError(.unsupportedURL)
+            }
+        }
+        await store.load(.ingredients)
+        let pantryEntry = FavoriteEntry(id: "cheese", name: "Сыр")
+        let add = try XCTUnwrap(store.state(for: .ingredients).change(for: pantryEntry))
+        await store.set(add, in: .ingredients)
+        let favorite = try XCTUnwrap(store.state(for: .ingredients).snapshot?.entries.first)
+
+        let preparedWithoutUnits = await store.preparePantryDraft(for: favorite)
+        XCTAssertFalse(preparedWithoutUnits)
+        XCTAssertNil(store.pantryDraft)
+        let prepared = await store.preparePantryDraft(for: favorite)
+        XCTAssertTrue(prepared)
+        let draft = try XCTUnwrap(store.pantryDraft)
+        XCTAssertEqual(draft.ingredientID, "cheese")
+        XCTAssertEqual(draft.allowedUnits, [.grams])
+        draft.quantityText = "12,5"
+        XCTAssertTrue(draft.canSave)
+
+        let sent = await requests.values
+        XCTAssertEqual(
+            sent.map { $0.url?.path },
+            [
+                Self.ingredientsPath, Self.ingredientsPath + "/cheese",
+                "/api/v1/me/pantry", "/api/v1/ingredients", "/api/v1/ingredients"
+            ])
+    }
+
+    @MainActor
     private func restoredStore(
         _ respond: @escaping @Sendable (URLRequest) async throws -> (Data, URLResponse)
     ) async throws -> FavoritesStore {
         let session = try Fixture.store(storage: SessionTestStorage(.active(Fixture.original))) { request in
-            if request.url?.path == "/api/v1/me/state" { return try Fixture.stateResponse(request) }
-            return try await respond(request)
+            switch request.url?.path {
+            case "/api/v1/me/state":
+                return try Fixture.stateResponse(request)
+            case "/api/v1/catalog":
+                return try Fixture.response(request, body: ["ingredients": []])
+            default:
+                return try await respond(request)
+            }
         }
         await session.restore()
         return FavoritesStore(session: session, account: try XCTUnwrap(session.account))

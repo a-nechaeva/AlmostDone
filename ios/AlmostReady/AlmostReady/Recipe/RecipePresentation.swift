@@ -76,6 +76,7 @@ struct RecipePresentation {
         let price: String
     }
 
+    let id: String
     let title: String
     let minutes: Int?
     let servings: Servings?
@@ -105,6 +106,7 @@ struct RecipePresentation {
     init(demo recipe: Recipe, missingIDs: Set<Ingredient.ID>) {
         let metadata = Self.demo[recipe.id]
         let demoPrice = Self.packagePrice(for: missingIDs)
+        id = recipe.id
         title = recipe.title
         minutes = metadata?.minutes
         servings = nil
@@ -128,6 +130,7 @@ struct RecipePresentation {
 
     init(detail: RecipeDetailDTO) {
         let card = detail.recipe
+        id = card.id
         title = card.title
         minutes = card.minutes
         servings = Servings(count: card.servings)
