@@ -244,6 +244,13 @@ fun PantryScreen(
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
+                                    ingredient.nutritionPer100g?.let { nutrition ->
+                                        Text(
+                                            "КБЖУ на 100 г: ${nutrition.kcal} ккал · Б ${nutrition.protein} · Ж ${nutrition.fat} · У ${nutrition.carbs} г",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
                                 }
                                 Icon(Icons.Default.Add, "Выбрать ${ingredient.name}")
                             }
@@ -361,6 +368,13 @@ fun PantryScreen(
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
+                                    ingredient.nutritionPer100g?.let { nutrition ->
+                                        Text(
+                                            "КБЖУ на 100 г: ${nutrition.kcal} ккал · Б ${nutrition.protein} · Ж ${nutrition.fat} · У ${nutrition.carbs} г",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
                                 }
                                 val isFavorite =
                                     ingredient.id in state.household.favoriteIngredients
