@@ -49,7 +49,7 @@ private struct DemoRecipeScreen: View {
         Group {
             if let recipe = store.recipe(id: recipeID) {
                 let missingIDs = Set(store.missingIngredients(for: recipe).map(\.id))
-                let image = RecipePresentation.demoPhotoName(for: recipe.id).flatMap { UIImage(named: $0) }
+                let image = RecipePresentation.demo[recipe.id].flatMap { UIImage(named: $0.photoName) }
                 RecipeDetailsScreen(
                     presentation: RecipePresentation(demo: recipe, missingIDs: missingIDs),
                     photo: image.map(RecipePhoto.image) ?? .unavailable

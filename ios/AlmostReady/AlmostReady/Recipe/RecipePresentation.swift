@@ -2,8 +2,15 @@ import Foundation
 
 struct RecipePresentation {
     struct Nutrition {
-        let kilocalories: String
+        let kilocalories: String?
         let macros: String
+    }
+
+    struct DemoMetadata {
+        let photoName: String
+        let minutes: Int?
+        let nutrition: Nutrition?
+        let allergens: [String]
     }
 
     struct Servings {
@@ -81,22 +88,25 @@ struct RecipePresentation {
     let costCaption: String
     let cost: String
 
-    private static let demoMetadata: [Recipe.ID: (photoName: String, minutes: Int, allergens: [String])] = [
-        "tomato-omelet": ("RecipeTomatoOmelet", 15, ["Яйца"]),
-        "tomato-cheese-pasta": ("RecipeTomatoCheesePasta", 20, ["Глютен", "Молоко"])
+    static let demo: [Recipe.ID: DemoMetadata] = [
+        "tomato-omelet": DemoMetadata(
+            photoName: "RecipeTomatoOmelet", minutes: 15, nutrition: nil, allergens: ["Яйца"]),
+        "tomato-cheese-pasta": DemoMetadata(
+            photoName: "RecipeTomatoCheesePasta", minutes: 20, nutrition: nil, allergens: ["Глютен", "Молоко"])
     ]
 
-    static func demoPhotoName(for id: Recipe.ID) -> String? {
-        demoMetadata[id]?.photoName
+    static func packagePrice(for missingIDs: Set<Ingredient.ID>) -> String? {
+        guard missingIDs == [DemoData.cheese.id], let price = ShoppingDemoPlan.cheese.estimatedPrice else { return nil }
+        return "≈\(shoppingRubles(price))"
     }
 
     init(demo recipe: Recipe, missingIDs: Set<Ingredient.ID>) {
-        let metadata = Self.demoMetadata[recipe.id]
-        let demoPrice = missingIDs == [DemoData.cheese.id] ? ShoppingDemoPlan.cheese.estimatedPrice : nil
+        let metadata = Self.demo[recipe.id]
+        let demoPrice = Self.packagePrice(for: missingIDs)
         title = recipe.title
         minutes = metadata?.minutes
         servings = nil
-        nutrition = nil
+        nutrition = metadata?.nutrition
         allergens = metadata?.allergens ?? []
         allergenNote = nil
         suitabilityNotes = []
@@ -111,7 +121,7 @@ struct RecipePresentation {
         steps = recipe.steps.enumerated().map { Step(number: $0.offset + 1, text: $0.element, minutes: nil) }
         purchases = []
         costCaption = demoPrice == nil ? "Докупка" : "За упаковку"
-        cost = demoPrice.map { "≈\(shoppingRubles($0))" } ?? (missingIDs.isEmpty ? "Не нужна" : "Нужна")
+        cost = demoPrice ?? (missingIDs.isEmpty ? "Не нужна" : "Нужна")
     }
 
     init(detail: RecipeDetailDTO) {
@@ -141,7 +151,7 @@ struct RecipePresentation {
         let skipOptionalIDs = Set(
             card.suitability.reasons.filter { $0.code == "skip_optional" }.flatMap(\.ingredientIDs))
         ingredients = detail.ingredients.map { ingredient in
-            let amount = ingredient.required.map(Self.quantity)
+            let amount = ingredient.required.map { Self.quantity($0) }
             let originalAmountNote =
                 amount == nil ? ingredient.originalAmount.map { "\($0) (в исходном рецепте)" } : nil
             let status =
@@ -159,11 +169,11 @@ struct RecipePresentation {
         purchases = detail.shoppingItems.map {
             Purchase(
                 id: $0.key, name: $0.name, packages: "\($0.packageCount) × \(Self.quantity($0.packageQuantity))",
-                price: $0.totalPrice.map(Self.money) ?? "Цена неизвестна"
+                price: $0.totalPrice.map { Self.money($0) } ?? "Цена неизвестна"
             )
         }
         costCaption = "Докупка"
-        cost = card.buyCost.map(Self.money) ?? "Цена неизвестна"
+        cost = card.buyCost.map { Self.money($0) } ?? "Цена неизвестна"
     }
 
     private static func ingredientStatus(
