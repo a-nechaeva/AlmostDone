@@ -10,9 +10,7 @@ struct AlmostReadyApp: App {
             case .demo:
                 DemoRoot()
             case .server(let session):
-                ServerSessionScreen()
-                    .id(session.account?.id)
-                    .environment(session)
+                ServerRoot(session: session)
             case .invalid:
                 ContentUnavailableView(
                     "Проверьте настройки подключения",
@@ -21,6 +19,30 @@ struct AlmostReadyApp: App {
                 )
             }
         }
+    }
+}
+
+struct ServerRoot: View {
+    enum Destination: Equatable {
+        case session
+        case products
+    }
+
+    let session: SessionStore
+
+    var destination: Destination {
+        session.account == nil ? .session : .products
+    }
+
+    var body: some View {
+        Group {
+            switch destination {
+            case .session: ServerSessionScreen()
+            case .products: ContentView()
+            }
+        }
+        .id(session.account?.id)
+        .environment(session)
     }
 }
 

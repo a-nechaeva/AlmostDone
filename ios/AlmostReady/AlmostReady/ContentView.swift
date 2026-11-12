@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(SessionStore.self) private var session: SessionStore?
+
     @State private var selection = AppTab.products
     @State private var tabBarHeight: CGFloat = 0
     @State private var isProductsSearchPresented = false
@@ -12,30 +14,59 @@ struct ContentView: View {
     var body: some View {
         TabView(selection: $selection) {
             tab(.products) {
-                NavigationStack {
-                    ProductsScreen(isSearchPresented: $isProductsSearchPresented, onOpenDishes: openDishes)
+                if let session {
+                    if let account = session.account {
+                        ServerProductsTab(
+                            repository: ProductsRepository(session: session, account: account),
+                            isSearchPresented: $isProductsSearchPresented,
+                            onOpenDishes: openDishes
+                        )
+                    }
+                } else {
+                    NavigationStack {
+                        ProductsScreen(isSearchPresented: $isProductsSearchPresented, onOpenDishes: openDishes)
+                    }
                 }
             }
             tab(.dishes) {
                 NavigationStack(path: $dishPath) {
-                    DishesScreen(isSearchFocused: $isDishSearchFocused, onOpenProducts: openProducts)
-                        .navigationDestination(for: Recipe.ID.self) { id in
-                            RecipeScreen(recipeID: id)
-                                .toolbar(.visible, for: .navigationBar)
-                        }
+                    if session != nil {
+                        serverPlaceholder(.dishes)
+                    } else {
+                        DishesScreen(isSearchFocused: $isDishSearchFocused, onOpenProducts: openProducts)
+                            .navigationDestination(for: Recipe.ID.self) { id in
+                                RecipeScreen(recipeID: id)
+                                    .toolbar(.visible, for: .navigationBar)
+                            }
+                    }
                 }
             }
             tab(.shopping) {
                 NavigationStack {
-                    ShoppingScreen(onOpenTab: selectTab) { isPresented in
-                        isShoppingCoverPresented = isPresented
+                    if session != nil {
+                        serverPlaceholder(.shopping)
+                    } else {
+                        ShoppingScreen(onOpenTab: selectTab) { isPresented in
+                            isShoppingCoverPresented = isPresented
+                        }
                     }
                 }
             }
             tab(.profile) {
                 NavigationStack {
-                    ProfileScreen(onOpenProducts: openProducts) { isPresented in
-                        isNutritionPresented = isPresented
+                    if let session {
+                        VStack(spacing: 16) {
+                            serverPlaceholder(.profile)
+                            Button("Выйти", role: .destructive) {
+                                Task { _ = try? await session.signOut() }
+                            }
+                            .buttonStyle(.bordered)
+                            .accessibilityIdentifier("profile.signOut")
+                        }
+                    } else {
+                        ProfileScreen(onOpenProducts: openProducts) { isPresented in
+                            isNutritionPresented = isPresented
+                        }
                     }
                 }
             }
@@ -50,6 +81,16 @@ struct ContentView: View {
                     }
             }
         }
+    }
+
+    private func serverPlaceholder(_ tab: AppTab) -> some View {
+        VStack(spacing: 12) {
+            RootScreenTitle(tab: tab)
+            Text("Экран пока недоступен в серверном режиме")
+                .foregroundStyle(.secondary)
+        }
+        .multilineTextAlignment(.center)
+        .padding(.horizontal)
     }
 
     private var showsTabBar: Bool {
