@@ -68,24 +68,14 @@ struct DishesScreen: View {
         .floatingTabBarInset {
             if !isSearchFocused { tabBar }
         }
+        .rootScreenHeader()
         .background(Color(.demoBackground).ignoresSafeArea())
-        .navigationTitle("Блюда")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Text("Демоданные")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
         .onDisappear { isSearchFocused = false }
     }
 
     private func pantryHeader(showsProductsLink: Bool) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Что приготовим?")
-                .font(.title.bold())
-                .accessibilityAddTraits(.isHeader)
+            RootScreenTitle(tab: .dishes)
 
             if showsProductsLink {
                 ViewThatFits(in: .horizontal) {

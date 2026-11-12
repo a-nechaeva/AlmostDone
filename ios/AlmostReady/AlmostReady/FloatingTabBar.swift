@@ -45,9 +45,13 @@ struct FloatingTabBar: View {
                 .glassEffect(.regular, in: shape)
         } else {
             tabButtons
-                .background(Color(uiColor: .secondarySystemGroupedBackground), in: shape)
+                .background(surfaceColor, in: shape)
                 .shadow(color: .black.opacity(0.09), radius: 24, y: 6)
         }
+    }
+
+    private var surfaceColor: Color {
+        colorScheme == .dark ? Color(uiColor: .secondarySystemGroupedBackground) : .white
     }
 
     private var tabButtons: some View {
@@ -56,6 +60,7 @@ struct FloatingTabBar: View {
                 tabButton(tab)
             }
         }
+        .padding(.vertical, 2)
     }
 
     private func tabButton(_ tab: AppTab) -> some View {
@@ -76,8 +81,8 @@ struct FloatingTabBar: View {
                     .minimumScaleFactor(0.75)
             }
             .foregroundStyle(isSelected ? selectedColor : unselectedColor)
-            .padding(.vertical, 6)
-            .frame(maxWidth: .infinity, minHeight: 64)
+            .padding(.vertical, 4)
+            .frame(maxWidth: .infinity, minHeight: 60)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

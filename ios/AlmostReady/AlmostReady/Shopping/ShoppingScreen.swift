@@ -25,8 +25,9 @@ struct ShoppingScreen: View {
 
     var body: some View {
         ShoppingPage {
+            RootScreenTitle(tab: .shopping)
+
             if shopping.items.isEmpty {
-                ShoppingHeading(title: "Что докупить")
                 ShoppingEmptyState(
                     title: "Список пока пуст",
                     message: "Подберите покупки на свой бюджет.",
@@ -35,7 +36,10 @@ struct ShoppingScreen: View {
                 )
                 .padding(.top, 100)
             } else {
-                ShoppingHeading(title: "Что докупить", subtitle: "Из выбранных рецептов")
+                Text("Из выбранных рецептов")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 6)
                 shoppingList
                     .padding(.top, 36)
                 total
@@ -53,15 +57,7 @@ struct ShoppingScreen: View {
                     .accessibilityHidden(presentation != nil)
             }
         }
-        .navigationTitle("Покупки")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Text("Демоданные")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
+        .rootScreenHeader()
         .fullScreenCover(item: $presentation, onDismiss: openTabAfterDismissal) { destination in
             switch destination {
             case .budget:
