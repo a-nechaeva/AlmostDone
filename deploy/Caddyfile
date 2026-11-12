@@ -16,6 +16,11 @@ https://51.250.76.77 {
 		file_server
 	}
 
+	@metrics path /metrics /metrics/*
+	handle @metrics {
+		respond 404
+	}
+
 	handle {
 		reverse_proxy api:8000
 	}

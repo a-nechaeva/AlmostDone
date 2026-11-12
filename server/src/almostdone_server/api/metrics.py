@@ -1,6 +1,7 @@
 """Bounded HTTP metrics, with a registry owned by each application instance."""
 from time import perf_counter
 
+from fastapi import Request
 from fastapi.responses import Response
 from prometheus_client import (
     CollectorRegistry, Counter, Gauge, Histogram, ProcessCollector,
@@ -69,7 +70,10 @@ def install_metrics(app):
     app.state.http_metrics = metrics
 
     @app.get("/metrics", include_in_schema=False)
-    def metrics_endpoint():
+    def metrics_endpoint(request: Request):
+        # Keep scrapes private during cutover from a Caddyfile that still proxies this path.
+        if "x-forwarded-proto" in request.headers:
+            return Response(status_code=404)
         return Response(generate_latest(metrics.registry),
                         headers={"Content-Type": CONTENT_TYPE_LATEST,
                                  "Cache-Control": "no-store"})

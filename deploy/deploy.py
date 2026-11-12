@@ -6,9 +6,12 @@ import hashlib
 import json
 import os
 import re
+import secrets
 import subprocess
 import tarfile
 import tempfile
+import time
+from datetime import datetime
 from pathlib import Path
 from urllib.request import Request, urlopen
 
@@ -26,6 +29,16 @@ MAIN = "refs/remotes/origin/main"
 MIGRATOR = "almostready-production-migrate"
 CURL = ("curl", "--noproxy", "*", "-fsS", "--max-time", "5", "--retry", "6",
         "--retry-delay", "2", "--retry-all-errors")
+API_PORTS = {
+    "api": {("127.0.0.1", "8000", "8000", "tcp")},
+    "caddy": {("0.0.0.0", "80", "80", "tcp"), ("0.0.0.0", "443", "443", "tcp")},
+    "migrate": set(),
+}
+MONITORING_PORTS = {
+    "prometheus": {("127.0.0.1", "9090", "9090", "tcp")},
+    "grafana": {("127.0.0.1", "3000", "3000", "tcp")},
+}
+MONITORING_PATHS = ("server/docker-compose.monitoring.yml", "server/monitoring")
 
 
 def valid_sha(sha):
@@ -91,19 +104,37 @@ def image_for(sha, legacy=False):
     return f"almostready-api:legacy-{sha}" if legacy else f"almostready-api:{sha}"
 
 
-def validate_ports(services):
-    expected = {
-        "api": {("127.0.0.1", "8000", "8000", "tcp")},
-        "caddy": {("0.0.0.0", "80", "80", "tcp"), ("0.0.0.0", "443", "443", "tcp")},
-        "migrate": set(),
-    }
+def validate_ports(services, expected=API_PORTS):
     actual = {
         service: {(port.get("host_ip"), str(port["published"]), str(port["target"]), port.get("protocol", "tcp"))
                   for port in config.get("ports", [])}
         for service, config in services.items()
     }
     if actual != expected:
-        raise ValueError("Production Compose must publish only Caddy publicly and API on loopback")
+        raise ValueError("Production Compose port bindings differ from the allowed bindings")
+
+
+def check_monitoring():
+    curl = ("curl", "--noproxy", "*", "-fsS", "--max-time", "3")
+    prometheus = "http://127.0.0.1:9090"
+    started_at = time.time()
+    deadline = time.monotonic() + 75
+    while time.monotonic() < deadline:
+        try:
+            run(*curl, prometheus + "/-/ready", stdout=subprocess.DEVNULL)
+            grafana = json.loads(run(*curl, "http://127.0.0.1:3000/api/health", capture=True))
+            scrape = json.loads(run(*curl, prometheus + "/api/v1/targets?state=active", capture=True))
+            if grafana.get("database") == "ok" and scrape.get("status") == "success" and any(
+                target["labels"].get("job") == "api-metrics"
+                and target["health"] == "up"
+                and datetime.fromisoformat(target["lastScrape"]).timestamp() >= started_at
+                for target in scrape["data"]["activeTargets"]
+            ):
+                return
+        except (subprocess.CalledProcessError, json.JSONDecodeError):
+            pass
+        time.sleep(3)
+    raise RuntimeError("Monitoring is not ready: check Grafana, Prometheus and the API scrape target")
 
 
 class Deployment:
@@ -118,6 +149,7 @@ class Deployment:
     def publish(self, state):
         attempt = state["attempt"]
         active = state["active"] if not attempt.get("cutover") else {}
+        monitoring = state.get("monitoring", {})
         status = {
             "active_sha": active.get("sha"),
             "active_run_number": active.get("run_number"),
@@ -127,6 +159,12 @@ class Deployment:
             "run_number": attempt.get("run_number"),
             "state": attempt["state"],
         }
+        if monitoring:
+            status.update(
+                monitoring_sha=monitoring["sha"],
+                monitoring_state=monitoring["state"],
+                monitoring_checked_at=monitoring.get("checked_at"),
+            )
         atomic_write(self.public / "status.json", json.dumps(status).encode(), 0o644)
 
     def save(self, state):
@@ -317,18 +355,85 @@ class Deployment:
             finally:
                 path.unlink(missing_ok=True)
 
+    def export(self, sha, destination, *paths):
+        archive_path = destination / "source.tar"
+        self.git("archive", f"--output={archive_path}", sha, *paths)
+        with tarfile.open(archive_path) as archive:
+            archive.extractall(destination, filter="data")
+        archive_path.unlink()
+
     def build(self, sha):
         with tempfile.TemporaryDirectory(dir=self.root) as directory:
             source = Path(directory)
-            archive_path = source / "source.tar"
-            self.git("archive", f"--output={archive_path}", sha, "server", "engine", "db", "docs/api", "deploy")
-            with tarfile.open(archive_path) as archive:
-                archive.extractall(source, filter="data")
-            archive_path.unlink()
+            self.export(sha, source, "server", "engine", "db", "docs/api", "deploy")
             release = self.prepare(sha, source / "deploy")
             run(*DOCKER, "build", "-f", str(source / "server/Dockerfile"),
                 "--build-arg", f"ALMOSTDONE_DEPLOY_REVISION={sha}", "-t", image_for(sha), str(source), timeout=600)
         return release
+
+    def monitoring_compose(self, compose, *args, **kwargs):
+        variables = self.root / "monitoring.env"
+        if not variables.exists():
+            atomic_write(variables, f"GRAFANA_ADMIN_PASSWORD={secrets.token_urlsafe(32)}\n".encode())
+        return run(
+            *DOCKER, "compose", "--project-name", "almostdone-monitoring",
+            "--env-file", str(variables), "--env-file", str(self.env_file),
+            "-f", str(compose), *args, **kwargs,
+        )
+
+    def monitoring_config(self, active):
+        sha = active["sha"]
+        entries = "" if active.get("legacy") else self.git("ls-tree", sha, "--", *MONITORING_PATHS, capture=True)
+        if entries:
+            return self.root / "monitoring" / hashlib.sha256(entries.encode()).hexdigest()
+
+    def start_monitoring(self, sha, directory):
+        compose = directory / MONITORING_PATHS[0]
+        if not directory.exists():
+            directory.parent.mkdir(exist_ok=True)
+            with tempfile.TemporaryDirectory(dir=directory.parent) as temporary:
+                source = Path(temporary) / "source"
+                source.mkdir()
+                self.export(sha, source, *MONITORING_PATHS)
+                config_root = source / MONITORING_PATHS[1]
+                # Grafana reads the bind-mounted directories as a different UID.
+                for path in (config_root, *config_root.rglob("*")):
+                    if path.is_dir() and not path.is_symlink():
+                        path.chmod(0o755)
+                source.rename(directory)
+        config = self.monitoring_compose(compose, "config", "--format", "json", capture=True)
+        validate_ports(json.loads(config)["services"], MONITORING_PORTS)
+        self.monitoring_compose(compose, "up", "-d", "--no-build", "--wait", "--wait-timeout", "120", timeout=240)
+
+    def reconcile_monitoring(self):
+        state = json.loads(self.state_file.read_text())
+        if state["attempt"].get("cutover") or state["attempt"].get("migrating"):
+            return
+        sha = state["active"]["sha"]
+        previous = state.get("monitoring", {})
+        already_started = previous.get("sha") == sha and previous.get("state") == "deployed"
+        monitoring = previous
+        if not already_started:
+            directory = self.monitoring_config(state["active"])
+            if directory is None:
+                compose = previous.get("compose")
+                if compose and Path(compose).is_file():
+                    self.monitoring_compose(compose, "stop")
+                if previous:
+                    self.save({**state, "monitoring": {}})
+                return
+            monitoring = {"sha": sha, "state": "deploying", "compose": str(directory / MONITORING_PATHS[0])}
+            self.save({**state, "monitoring": monitoring})
+        try:
+            if not already_started:
+                self.start_monitoring(sha, directory)
+            check_monitoring()
+        except Exception:
+            self.save({**state, "monitoring": {**monitoring, "state": "failed"}})
+            raise
+        self.save({**state, "monitoring": {**monitoring, "state": "deployed", "checked_at": int(time.time())}})
+        if not already_started:
+            print(f"Monitoring ready for {sha}")
 
     def remove_migrator(self):
         container = run(*DOCKER, "ps", "-aq", "--filter", f"name=^/{MIGRATOR}$", capture=True)
@@ -435,6 +540,12 @@ class Deployment:
             raise ValueError("Tested revision is not a fast-forward from the deployed revision")
         self.deploy(state, candidate)
 
+    def tick(self):
+        try:
+            self.update()
+        finally:
+            self.reconcile_monitoring()
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -458,8 +569,9 @@ def main():
             deployment.bootstrap()
         elif args.rollback:
             deployment.rollback()
+            deployment.reconcile_monitoring()
         else:
-            deployment.update()
+            deployment.tick()
 
 
 if __name__ == "__main__":

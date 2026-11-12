@@ -2,10 +2,11 @@ import json
 import subprocess
 import tempfile
 import unittest
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from deploy import MAIN, REPOSITORY, Deployment, select_run, validate_ports
+from deploy import MAIN, MONITORING_PORTS, REPOSITORY, Deployment, check_monitoring, select_run, validate_ports
 
 
 CURRENT = "a" * 40
@@ -78,6 +79,88 @@ class DeploymentTests(unittest.TestCase):
         self.assertEqual(run.call_args.args[3:8], (
             "compose", "--env-file", str(self.deployment.env_file), "--env-file", str(variables),
         ))
+
+    @patch("deploy.run")
+    def test_monitoring_keeps_password_file_and_uses_existing_env_override(self, run):
+        self.deployment.monitoring_compose("monitor.yml", "config")
+        variables = self.deployment.root / "monitoring.env"
+        initial = variables.read_bytes()
+        self.deployment.monitoring_compose("monitor.yml", "up")
+        self.assertEqual(variables.read_bytes(), initial)
+        self.assertTrue(initial.startswith(b"GRAFANA_ADMIN_PASSWORD="))
+        self.assertEqual(variables.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(run.call_args.args[3:], (
+            "compose", "--project-name", "almostdone-monitoring", "--env-file", str(variables),
+            "--env-file", str(self.deployment.env_file), "-f", "monitor.yml", "up",
+        ))
+
+    def test_monitoring_failure_keeps_api_live_and_retries_until_ready(self):
+        def export(_sha, destination, compose, monitoring):
+            (destination / monitoring).mkdir(parents=True)
+            (destination / compose).write_text("name: almostdone-monitoring\n")
+
+        config = {
+            "services": {
+                service: {"ports": [
+                    {"host_ip": host, "published": published, "target": target}
+                    for host, published, target, _protocol in bindings
+                ]}
+                for service, bindings in MONITORING_PORTS.items()
+            }
+        }
+        with (
+            patch.object(self.deployment, "git", return_value="committed monitoring files"),
+            patch.object(self.deployment, "export", side_effect=export) as snapshot,
+            patch.object(self.deployment, "monitoring_compose", return_value=json.dumps(config)) as compose,
+            patch("deploy.check_monitoring", side_effect=[RuntimeError("not ready"), None, None]) as health,
+            patch("deploy.time.time", side_effect=[100, 200]),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "not ready"):
+                self.deployment.reconcile_monitoring()
+            self.assertEqual(self.status()["active_sha"], CURRENT)
+            self.assertEqual(self.status()["state"], "deployed")
+            self.assertEqual(self.status()["monitoring_sha"], CURRENT)
+            self.assertEqual(self.status()["monitoring_state"], "failed")
+            self.deployment.reconcile_monitoring()
+            self.assertEqual(self.status()["monitoring_state"], "deployed")
+            self.assertEqual(self.status()["monitoring_checked_at"], 100)
+            self.deployment.reconcile_monitoring()
+            self.assertEqual(self.status()["monitoring_checked_at"], 200)
+        snapshot.assert_called_once()
+        self.assertEqual(compose.call_count, 4)
+        self.assertEqual(health.call_count, 3)
+        self.assertNotIn("compose", self.status())
+        monitoring = next(self.deployment.root.glob("monitoring/*/server/monitoring"))
+        self.assertEqual(monitoring.stat().st_mode & 0o777, 0o755)
+
+    def test_timer_retries_monitoring_if_github_lookup_fails(self):
+        with (
+            patch.object(self.deployment, "update", side_effect=TimeoutError),
+            patch.object(self.deployment, "reconcile_monitoring") as monitor,
+            self.assertRaises(TimeoutError),
+        ):
+            self.deployment.tick()
+        monitor.assert_called_once_with()
+
+    def test_monitoring_waits_for_api_cutover_recovery(self):
+        self.deployment.save({**self.state, "attempt": {**self.state["attempt"], "cutover": True}})
+        with patch.object(self.deployment, "monitoring_config") as config:
+            self.deployment.reconcile_monitoring()
+        config.assert_not_called()
+
+    def test_rollback_to_release_without_monitoring_stops_stack_with_its_config(self):
+        compose_file = self.deployment.root / "previous-monitoring.yml"
+        compose_file.touch()
+        self.deployment.save({
+            **self.state, "monitoring": {"sha": CANDIDATE, "state": "deployed", "compose": str(compose_file)},
+        })
+        with (
+            patch.object(self.deployment, "git", return_value=""),
+            patch.object(self.deployment, "monitoring_compose") as compose,
+        ):
+            self.deployment.reconcile_monitoring()
+        compose.assert_called_once_with(str(compose_file), "stop")
+        self.assertNotIn("monitoring_state", self.status())
 
     @patch("deploy.run", side_effect=["sha256:old-image", None])
     def test_bootstrap_adopts_existing_api_and_only_reconfigures_caddy(self, run):
@@ -342,5 +425,37 @@ class ProductionPortsTests(unittest.TestCase):
         }
         validate_ports(services)
         services["caddy"]["ports"][1]["host_ip"] = "127.0.0.1"
-        with self.assertRaisesRegex(ValueError, "publish only Caddy publicly"):
+        with self.assertRaisesRegex(ValueError, "allowed bindings"):
             validate_ports(services)
+
+    def test_rejects_public_monitoring_port(self):
+        services = {
+            "prometheus": {"ports": [{"host_ip": "127.0.0.1", "target": 9090, "published": 9090}]},
+            "grafana": {"ports": [{"host_ip": "127.0.0.1", "target": 3000, "published": 3000}]},
+        }
+        validate_ports(services, MONITORING_PORTS)
+        services["grafana"]["ports"][0]["host_ip"] = "0.0.0.0"
+        with self.assertRaisesRegex(ValueError, "allowed bindings"):
+            validate_ports(services, MONITORING_PORTS)
+
+
+class MonitoringReadinessTests(unittest.TestCase):
+    @patch("deploy.time.sleep")
+    @patch("deploy.time.time", return_value=100)
+    @patch("deploy.run")
+    def test_requires_healthy_grafana_and_a_fresh_successful_scrape(self, run, _time, sleep):
+        def scrape(timestamp, health="up"):
+            target = {"labels": {"job": "api-metrics"}, "health": health,
+                      "lastScrape": datetime.fromtimestamp(timestamp, UTC).isoformat()}
+            return json.dumps({"status": "success", "data": {"activeTargets": [target]}})
+
+        healthy_grafana = '{"database": "ok"}'
+        run.side_effect = [
+            None, healthy_grafana, scrape(99),
+            None, healthy_grafana, scrape(101, health="down"),
+            None, '{"database": "unavailable"}', scrape(102),
+            None, healthy_grafana, scrape(103),
+        ]
+        check_monitoring()
+        self.assertEqual(sleep.call_count, 3)
+        self.assertIn("http://127.0.0.1:9090/api/v1/targets?state=active", run.call_args.args)

@@ -7,6 +7,8 @@ on:
     paths: ['server/**', 'engine/**', 'db/**', 'docs/api/**', 'deploy/**', '.github/workflows/server*.yml']
 permissions:
   contents: read
+env:
+  UPGRADE_BASE: 09d24f2098eb5c7a9dd6ba14e4e7e2046fa5750f
 concurrency:
   group: server-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -32,7 +34,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           persist-credentials: false
+      - name: Check immutable migration history
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          git cat-file -e "$BASE_SHA^{commit}"
+          git cat-file -e "$UPGRADE_BASE^{commit}"
+          while IFS= read -r -d '' path; do
+            [[ "$path" == *.sql ]] || continue
+            reference=$UPGRADE_BASE
+            if ! git cat-file -e "$UPGRADE_BASE:$path" 2>/dev/null; then
+              reference=$(git log -1 --first-parent --diff-filter=A --format=%H "$BASE_SHA" -- "$path")
+            fi
+            if [[ -z "$reference" ]] || ! git diff --quiet "$reference" HEAD -- "$path"; then
+              echo "::error file=$path::Restore the recorded migration and put SQL changes in a new migration."
+              exit 1
+            fi
+          done < <(git ls-tree -r -z --name-only "$BASE_SHA" -- db/migrations/)
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -69,13 +90,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           persist-credentials: false
-      - name: Build production image and check readiness against temporary PostgreSQL
+      - name: Check production upgrade and monitoring on temporary PostgreSQL
         shell: bash
         run: |
           export ALMOSTREADY_STATUS_DIR="$RUNNER_TEMP/deploy-status"
           mkdir -p "$ALMOSTREADY_STATUS_DIR"
-          docker compose -f server/docker-compose.yml up -d --wait --wait-timeout 120 db
+          upgrade_dir="$RUNNER_TEMP/previous-release"
+          mkdir -p "$upgrade_dir"
+          git archive "$UPGRADE_BASE" db server/docker-compose.yml server/init-db.sh | tar -x -C "$upgrade_dir"
+          db=(docker compose -f "$upgrade_dir/server/docker-compose.yml")
+          "${db[@]}" up -d --wait --wait-timeout 120 db
           docker network create --subnet 172.30.232.0/28 almostdone_edge
           docker volume create almostdone_caddy_data
           docker volume create almostdone_caddy_config
@@ -85,8 +111,31 @@ jobs:
           caddy_image=$(jq -er '.services.caddy.image' <<<"$config")
           docker run --rm --network none --mount "type=bind,source=$ALMOSTREADY_CADDYFILE,target=/etc/caddy/Caddyfile,readonly" "$caddy_image" caddy validate --config /etc/caddy/Caddyfile
           docker build -f server/Dockerfile --build-arg "ALMOSTDONE_DEPLOY_REVISION=$GITHUB_SHA" -t "$ALMOSTREADY_IMAGE" .
+          "${compose[@]}" run --rm --no-deps -T --volume "$upgrade_dir/db/migrations:/previous-migrations:ro" \
+            migrate python -m almostdone_server.migrate --migrations-dir /previous-migrations
+          density() {
+            "${db[@]}" exec -T db psql -X -At -U koma -d almostdone -v ON_ERROR_STOP=1 \
+              -c "SELECT coalesce(grams_per_ml::text, 'missing') FROM public.ingredients WHERE code = 'ing_80ec6ff28b539412'"
+          }
+          [[ $(density) == missing ]]
           "${compose[@]}" run --rm --no-deps -T migrate
+          [[ $(density) == 1.1100 ]]
           "${compose[@]}" up -d --no-deps --no-build --wait --wait-timeout 120 api
           revision=$(curl -fsS --max-time 10 -o "$RUNNER_TEMP/readiness.json" -w '%header{x-almostready-revision}' http://127.0.0.1:8000/api/v1/health/ready)
           [[ "$revision" == "$GITHUB_SHA" ]]
           jq -e '.status == "ok"' "$RUNNER_TEMP/readiness.json"
+          PYTHONPATH=deploy python3 - <<'PY'
+          import os
+          from pathlib import Path
+          from deploy import Deployment, check_monitoring
+
+          os.umask(0o077)
+          root = Path(os.environ["RUNNER_TEMP"]) / "monitoring"
+          root.mkdir()
+          deployment = Deployment(root, Path.cwd())
+          deployment.repository = Path.cwd() / ".git"
+          deployment.env_file = Path(os.environ["ALMOSTREADY_ENV_FILE"])
+          sha = os.environ["GITHUB_SHA"]
+          deployment.start_monitoring(sha, deployment.monitoring_config({"sha": sha}))
+          check_monitoring()
+          PY
