@@ -13,6 +13,7 @@ from ..errors import (APIError, invalid, StorageError, StorageUnavailable,
                       StorageSchemaError, StorageConflict, StorageValueError)
 from .rate_limit import RateLimiter
 from .routes import create_router
+from .metrics import install_metrics
 
 
 def create_http_app(contract, service, rate_limiter=None):
@@ -105,9 +106,9 @@ def create_http_app(contract, service, rate_limiter=None):
 
     @app.exception_handler(Exception)
     async def internal_error(request, error):
-        # Do not echo payloads, SQL, tokens, provider errors or raw recognition data.
         return JSONResponse(APIError(500, "internal_error", "Внутренняя ошибка сервера").body(),
                             status_code=500, headers={"Cache-Control": "no-store"})
 
     app.include_router(create_router(contract, service))
+    install_metrics(app)
     return app

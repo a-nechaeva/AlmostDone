@@ -1,0 +1,551 @@
+{
+    "schemaVersion":  39,
+    "time":  {
+                 "to":  "now",
+                 "from":  "now-1h"
+             },
+    "version":  5,
+    "panels":  [
+                   {
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "unit":  "reqps"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "id":  20,
+                       "gridPos":  {
+                                       "y":  0,
+                                       "w":  8,
+                                       "h":  8,
+                                       "x":  0
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "title":  "RPS - requests per second",
+                       "targets":  [
+                                       {
+                                           "legendFormat":  "{{method}} {{route}} {{status}}",
+                                           "expr":  "sum(rate(almostdone_http_requests_total{job=\"api-metrics\"}[$__rate_interval])) or vector(0)",
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "type":  "timeseries",
+                       "options":  {
+                                       "legend":  {
+                                                      "placement":  "bottom",
+                                                      "displayMode":  "list"
+                                                  }
+                                   }
+                   },
+                   {
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "unit":  "percent"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "id":  21,
+                       "gridPos":  {
+                                       "y":  0,
+                                       "w":  8,
+                                       "h":  8,
+                                       "x":  8
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "title":  "Server errors (5xx), %",
+                       "targets":  [
+                                       {
+                                           "legendFormat":  "{{method}} {{route}} {{status}}",
+                                           "expr":  "100 * (sum(rate(almostdone_http_requests_total{job=\"api-metrics\",status=~\"5..\"}[$__rate_interval])) or vector(0)) / clamp_min(sum(rate(almostdone_http_requests_total{job=\"api-metrics\"}[$__rate_interval])) or vector(0), 1e-9)",
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "type":  "timeseries",
+                       "options":  {
+                                       "legend":  {
+                                                      "placement":  "bottom",
+                                                      "displayMode":  "list"
+                                                  }
+                                   }
+                   },
+                   {
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "unit":  "short"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "id":  22,
+                       "gridPos":  {
+                                       "y":  0,
+                                       "w":  8,
+                                       "h":  8,
+                                       "x":  16
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "title":  "Requests in progress",
+                       "targets":  [
+                                       {
+                                           "legendFormat":  "{{method}} {{route}} {{status}}",
+                                           "expr":  "sum(almostdone_http_requests_in_progress{job=\"api-metrics\"})",
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "type":  "timeseries",
+                       "options":  {
+                                       "legend":  {
+                                                      "placement":  "bottom",
+                                                      "displayMode":  "list"
+                                                  }
+                                   }
+                   },
+                   {
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "unit":  "s"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "id":  23,
+                       "gridPos":  {
+                                       "y":  8,
+                                       "w":  8,
+                                       "h":  8,
+                                       "x":  0
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "title":  "p50 response duration",
+                       "targets":  [
+                                       {
+                                           "legendFormat":  "p50",
+                                           "expr":  "histogram_quantile(0.50, sum by (le) (rate(almostdone_http_request_duration_seconds_bucket{job=\"api-metrics\"}[$__rate_interval])))",
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "type":  "timeseries",
+                       "options":  {
+                                       "legend":  {
+                                                      "placement":  "bottom",
+                                                      "displayMode":  "list"
+                                                  }
+                                   }
+                   },
+                   {
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "unit":  "s"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "id":  24,
+                       "gridPos":  {
+                                       "y":  8,
+                                       "w":  8,
+                                       "h":  8,
+                                       "x":  8
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "title":  "p95 response duration",
+                       "targets":  [
+                                       {
+                                           "legendFormat":  "p95",
+                                           "expr":  "histogram_quantile(0.95, sum by (le) (rate(almostdone_http_request_duration_seconds_bucket{job=\"api-metrics\"}[$__rate_interval])))",
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "type":  "timeseries",
+                       "options":  {
+                                       "legend":  {
+                                                      "placement":  "bottom",
+                                                      "displayMode":  "list"
+                                                  }
+                                   }
+                   },
+                   {
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "unit":  "s"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "id":  25,
+                       "gridPos":  {
+                                       "y":  8,
+                                       "w":  8,
+                                       "h":  8,
+                                       "x":  16
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "title":  "p99 response duration",
+                       "targets":  [
+                                       {
+                                           "legendFormat":  "p99",
+                                           "expr":  "histogram_quantile(0.99, sum by (le) (rate(almostdone_http_request_duration_seconds_bucket{job=\"api-metrics\"}[$__rate_interval])))",
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "type":  "timeseries",
+                       "options":  {
+                                       "legend":  {
+                                                      "placement":  "bottom",
+                                                      "displayMode":  "list"
+                                                  }
+                                   }
+                   },
+                   {
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "unit":  "reqps"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "id":  26,
+                       "gridPos":  {
+                                       "y":  16,
+                                       "w":  8,
+                                       "h":  8,
+                                       "x":  0
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "title":  "RPS by route",
+                       "targets":  [
+                                       {
+                                           "legendFormat":  "{{method}} {{route}}",
+                                           "expr":  "sum by (method, route) (rate(almostdone_http_requests_total{job=\"api-metrics\"}[$__rate_interval]))",
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "type":  "timeseries",
+                       "options":  {
+                                       "legend":  {
+                                                      "placement":  "bottom",
+                                                      "displayMode":  "list"
+                                                  }
+                                   }
+                   },
+                   {
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "unit":  "reqps"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "id":  27,
+                       "gridPos":  {
+                                       "y":  16,
+                                       "w":  8,
+                                       "h":  8,
+                                       "x":  8
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "title":  "Responses by status, per second",
+                       "targets":  [
+                                       {
+                                           "legendFormat":  "{{status}}",
+                                           "expr":  "sum by (status) (rate(almostdone_http_requests_total{job=\"api-metrics\"}[$__rate_interval]))",
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "type":  "timeseries",
+                       "options":  {
+                                       "legend":  {
+                                                      "placement":  "bottom",
+                                                      "displayMode":  "list"
+                                                  }
+                                   }
+                   },
+                   {
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "unit":  "bytes"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "id":  28,
+                       "gridPos":  {
+                                       "y":  16,
+                                       "w":  8,
+                                       "h":  8,
+                                       "x":  16
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "title":  "API resident memory",
+                       "targets":  [
+                                       {
+                                           "legendFormat":  "{{method}} {{route}} {{status}}",
+                                           "expr":  "process_resident_memory_bytes{job=\"api-metrics\"}",
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "type":  "timeseries",
+                       "options":  {
+                                       "legend":  {
+                                                      "placement":  "bottom",
+                                                      "displayMode":  "list"
+                                                  }
+                                   }
+                   },
+                   {
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "unit":  "short"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "id":  29,
+                       "gridPos":  {
+                                       "y":  24,
+                                       "w":  8,
+                                       "h":  8,
+                                       "x":  0
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "title":  "API CPU usage, cores",
+                       "targets":  [
+                                       {
+                                           "legendFormat":  "{{method}} {{route}} {{status}}",
+                                           "expr":  "rate(process_cpu_seconds_total{job=\"api-metrics\"}[$__rate_interval])",
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "type":  "timeseries",
+                       "options":  {
+                                       "legend":  {
+                                                      "placement":  "bottom",
+                                                      "displayMode":  "list"
+                                                  }
+                                   }
+                   },
+                   {
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "unit":  "short"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "id":  30,
+                       "gridPos":  {
+                                       "y":  24,
+                                       "w":  8,
+                                       "h":  8,
+                                       "x":  8
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "title":  "Metrics collection available",
+                       "targets":  [
+                                       {
+                                           "legendFormat":  "{{method}} {{route}} {{status}}",
+                                           "expr":  "up{job=\"api-metrics\"}",
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "type":  "timeseries",
+                       "options":  {
+                                       "legend":  {
+                                                      "placement":  "bottom",
+                                                      "displayMode":  "list"
+                                                  }
+                                   }
+                   },
+                   {
+                       "fieldConfig":  {
+                                           "defaults":  {
+
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "id":  7,
+                       "gridPos":  {
+                                       "y":  24,
+                                       "w":  8,
+                                       "h":  8,
+                                       "x":  16
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "title":  "Firing alerts",
+                       "targets":  [
+                                       {
+                                           "legendFormat":  "{{check}} {{alertname}}",
+                                           "expr":  "ALERTS{alertstate=\"firing\"}",
+                                           "refId":  "A",
+                                           "instant":  true,
+                                           "format":  "table"
+                                       }
+                                   ],
+                       "type":  "table",
+                       "options":  {
+
+                                   }
+                   },
+                   {
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "unit":  "s"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "id":  31,
+                       "gridPos":  {
+                                       "x":  0,
+                                       "y":  32,
+                                       "w":  12,
+                                       "h":  8
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "title":  "p95 response duration by route",
+                       "targets":  [
+                                       {
+                                           "expr":  "histogram_quantile(0.95, sum by (le, method, route) (rate(almostdone_http_request_duration_seconds_bucket{job=\"api-metrics\"}[$__rate_interval])))",
+                                           "refId":  "A",
+                                           "legendFormat":  "{{method}} {{route}}"
+                                       }
+                                   ],
+                       "type":  "timeseries",
+                       "options":  {
+                                       "legend":  {
+                                                      "placement":  "bottom",
+                                                      "displayMode":  "list"
+                                                  }
+                                   }
+                   },
+                   {
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "unit":  "reqps"
+                                                        },
+                                           "overrides":  [
+
+                                                         ]
+                                       },
+                       "id":  32,
+                       "gridPos":  {
+                                       "x":  12,
+                                       "y":  32,
+                                       "w":  12,
+                                       "h":  8
+                                   },
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "prometheus"
+                                      },
+                       "title":  "Server errors (5xx) by route, per second",
+                       "targets":  [
+                                       {
+                                           "expr":  "sum by (method, route) (rate(almostdone_http_requests_total{job=\"api-metrics\",status=~\"5..\"}[$__rate_interval])) or on (method, route) (0 * sum by (method, route) (rate(almostdone_http_requests_total{job=\"api-metrics\"}[$__rate_interval])))",
+                                           "refId":  "A",
+                                           "legendFormat":  "{{method}} {{route}}"
+                                       }
+                                   ],
+                       "type":  "timeseries",
+                       "options":  {
+                                       "legend":  {
+                                                      "placement":  "bottom",
+                                                      "displayMode":  "list"
+                                                  }
+                                   }
+                   }
+               ],
+    "tags":  [
+                 "almostdone",
+                 "api"
+             ],
+    "editable":  false,
+    "timezone":  "browser",
+    "refresh":  "15s",
+    "title":  "AlmostDone API",
+    "uid":  "almostdone-api",
+    "annotations":  {
+                        "list":  [
+                                     {
+                                         "hide":  true,
+                                         "iconColor":  "rgba(0, 211, 255, 1)",
+                                         "builtIn":  1,
+                                         "datasource":  {
+                                                            "type":  "grafana",
+                                                            "uid":  "-- Grafana --"
+                                                        },
+                                         "type":  "dashboard",
+                                         "name":  "Annotations \u0026 Alerts",
+                                         "enable":  true
+                                     }
+                                 ]
+                    }
+}
