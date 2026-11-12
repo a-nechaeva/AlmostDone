@@ -2,8 +2,9 @@ import SwiftUI
 
 struct RecipeStepsScreen: View {
     @ScaledMetric(relativeTo: .subheadline) private var numberSize = 32.0
-    let recipe: Recipe
+    let title: String
     let servings: RecipePresentation.Servings?
+    let steps: [RecipePresentation.Step]
 
     var body: some View {
         ScrollView {
@@ -18,8 +19,8 @@ struct RecipeStepsScreen: View {
                     .padding(.top, 8)
 
                 VStack(spacing: 16) {
-                    ForEach(recipe.steps.indices, id: \.self) { index in
-                        stepCard(number: index + 1, text: recipe.steps[index])
+                    ForEach(steps.indices, id: \.self) { index in
+                        stepCard(steps[index])
                     }
                 }
                 .padding(.top, 48)
@@ -34,28 +35,34 @@ struct RecipeStepsScreen: View {
     }
 
     private var subtitle: String {
-        guard let servings else { return recipe.title }
-        return "\(recipe.title) · \(servings.description)"
+        guard let servings else { return title }
+        return "\(title) · \(servings.description)"
     }
 
-    private func stepCard(number: Int, text: String) -> some View {
+    private func stepCard(_ step: RecipePresentation.Step) -> some View {
         HStack(alignment: .top, spacing: 14) {
-            Text("\(number)")
+            Text("\(step.number)")
                 .font(.subheadline.bold())
                 .foregroundStyle(Color.accentColor)
                 .frame(minWidth: numberSize, minHeight: numberSize)
                 .background(Color.accentColor.opacity(0.14), in: .capsule)
 
-            Text(text)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .padding(.top, 3)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(step.text)
+                    .font(.subheadline)
+                if let minutes = step.minutes {
+                    Text("\(minutes) мин")
+                        .font(.caption)
+                }
+            }
+            .foregroundStyle(.secondary)
+            .padding(.top, 3)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(16)
         .frame(minHeight: 114, alignment: .topLeading)
         .background(Color(uiColor: .secondarySystemGroupedBackground), in: .rect(cornerRadius: 22))
         .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("recipe.step.\(number)")
+        .accessibilityIdentifier("recipe.step.\(step.number)")
     }
 }
