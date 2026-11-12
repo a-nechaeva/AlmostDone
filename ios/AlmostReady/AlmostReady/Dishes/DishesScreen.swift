@@ -18,9 +18,11 @@ struct DishesScreen: View {
     }
 
     @Environment(DemoStore.self) private var store
-    @Environment(\.dismiss) private var dismiss
     @State private var query = ""
     @State private var filter = Filter.all
+    @FocusState private var isSearchFocused: Bool
+    let onOpenProducts: () -> Void
+    let tabBar: FloatingTabBar
 
     var body: some View {
         let availability = DishesAvailability(
@@ -38,7 +40,7 @@ struct DishesScreen: View {
                     ContentUnavailableView {
                         Label("Нет подходящих блюд", systemImage: "fork.knife")
                     } actions: {
-                        Button("К продуктам") { dismiss() }
+                        Button("К продуктам", action: onOpenProducts)
                             .buttonStyle(.borderedProminent)
                     }
                 } else {
@@ -63,6 +65,9 @@ struct DishesScreen: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
         }
+        .floatingTabBarInset {
+            if !isSearchFocused { tabBar }
+        }
         .background(Color(.demoBackground).ignoresSafeArea())
         .navigationTitle("Блюда")
         .navigationBarTitleDisplayMode(.inline)
@@ -73,6 +78,7 @@ struct DishesScreen: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .onDisappear { isSearchFocused = false }
     }
 
     private func pantryHeader(showsProductsLink: Bool) -> some View {
@@ -106,9 +112,7 @@ struct DishesScreen: View {
     }
 
     private var productsLink: some View {
-        Button {
-            dismiss()
-        } label: {
+        Button(action: onOpenProducts) {
             Text("К продуктам")
                 .font(.subheadline.weight(.medium))
                 .frame(minHeight: 44)
@@ -121,6 +125,9 @@ struct DishesScreen: View {
                 .foregroundStyle(.secondary)
                 .accessibilityHidden(true)
             TextField("Найти блюдо", text: $query)
+                .focused($isSearchFocused)
+                .submitLabel(.done)
+                .onSubmit { isSearchFocused = false }
         }
         .font(.subheadline)
         .padding(.horizontal, 16)
@@ -185,7 +192,7 @@ struct DishesScreen: View {
                 .accessibilityAddTraits(.isHeader)
 
                 ForEach(entries) { entry in
-                    NavigationLink(value: Route.recipe(entry.recipe.id)) {
+                    NavigationLink(value: entry.recipe.id) {
                         DishCard(entry: entry)
                     }
                     .buttonStyle(.plain)

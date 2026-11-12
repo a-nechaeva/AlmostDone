@@ -15,9 +15,12 @@ struct ShoppingScreen: View {
 
     @State private var shopping: ShoppingState
     @State private var presentation: Presentation?
+    @State private var tabAfterDismissal: AppTab?
+    private let onOpenTab: ((AppTab) -> Void)?
 
-    init(items: [ShoppingItem] = [ShoppingDemoPlan.cheese]) {
+    init(items: [ShoppingItem] = [ShoppingDemoPlan.cheese], onOpenTab: ((AppTab) -> Void)? = nil) {
         _shopping = State(initialValue: ShoppingState(items: items))
+        self.onOpenTab = onOpenTab
     }
 
     var body: some View {
@@ -44,6 +47,12 @@ struct ShoppingScreen: View {
                     .padding(.top, 28)
             }
         }
+        .floatingTabBarInset {
+            if let onOpenTab {
+                FloatingTabBar(selection: .shopping, onSelect: onOpenTab)
+                    .accessibilityHidden(presentation != nil)
+            }
+        }
         .navigationTitle("Покупки")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -53,7 +62,7 @@ struct ShoppingScreen: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .fullScreenCover(item: $presentation) { destination in
+        .fullScreenCover(item: $presentation, onDismiss: openTabAfterDismissal) { destination in
             switch destination {
             case .budget:
                 NavigationStack {
@@ -189,6 +198,15 @@ struct ShoppingScreen: View {
                 .buttonStyle(ShoppingActionStyle())
                 .padding(.top, 16)
             }
+            .floatingTabBarInset {
+                if onOpenTab != nil {
+                    FloatingTabBar(selection: .shopping, accessibilityNamespace: "purchased.tabs") { tab in
+                        guard tab != .shopping else { return }
+                        tabAfterDismissal = tab
+                        presentation = nil
+                    }
+                }
+            }
             .navigationTitle("Покупки")
             .navigationBarTitleDisplayMode(.inline)
         }
@@ -203,6 +221,12 @@ struct ShoppingScreen: View {
 
     private func showBudget() {
         presentation = .budget
+    }
+
+    private func openTabAfterDismissal() {
+        guard let tab = tabAfterDismissal else { return }
+        tabAfterDismissal = nil
+        onOpenTab?(tab)
     }
 }
 

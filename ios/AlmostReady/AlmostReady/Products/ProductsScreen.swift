@@ -5,6 +5,8 @@ struct ProductsScreen: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var query = ""
     @FocusState private var isSearchFocused: Bool
+    let onOpenDishes: () -> Void
+    let tabBar: FloatingTabBar
 
     private var isSearching: Bool {
         isSearchFocused || !query.isEmpty
@@ -30,11 +32,14 @@ struct ProductsScreen: View {
             .scrollDismissesKeyboard(.never)
             // Search results and pantry rows share IDs but have different actions.
             .id(isSearching)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                dishesLink
+            }
+            .floatingTabBarInset {
+                if !isSearchFocused { tabBar }
+            }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            dishesLink
-        }
-        .background(Color(.demoBackground))
+        .background(Color(.demoBackground).ignoresSafeArea())
         .navigationTitle("Мои продукты")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -43,7 +48,7 @@ struct ProductsScreen: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .onDisappear(perform: closeSearch)
+        .onDisappear(perform: dismissKeyboard)
     }
 
     private var searchBar: some View {
@@ -56,7 +61,7 @@ struct ProductsScreen: View {
                     .focused($isSearchFocused)
                     .autocorrectionDisabled()
                     .submitLabel(.done)
-                    .onSubmit { isSearchFocused = false }
+                    .onSubmit(dismissKeyboard)
                     .accessibilityIdentifier("products.search")
                     .frame(minHeight: 48)
             }
@@ -159,7 +164,7 @@ struct ProductsScreen: View {
     }
 
     private var dishesLink: some View {
-        NavigationLink(value: Route.dishes) {
+        Button(action: onOpenDishes) {
             Text("Подобрать блюда")
                 .foregroundStyle(colorScheme == .dark ? Color.black : Color.white)
                 .frame(maxWidth: .infinity)
@@ -170,11 +175,14 @@ struct ProductsScreen: View {
         .controlSize(.large)
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
-        .background(Color(.demoBackground))
     }
 
     private func closeSearch() {
-        isSearchFocused = false
+        dismissKeyboard()
         query = ""
+    }
+
+    private func dismissKeyboard() {
+        isSearchFocused = false
     }
 }
