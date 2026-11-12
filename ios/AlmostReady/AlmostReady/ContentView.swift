@@ -6,7 +6,7 @@ struct ContentView: View {
     @State private var selection = AppTab.products
     @State private var tabBarHeight: CGFloat = 0
     @State private var isProductsSearchPresented = false
-    @State private var dishPath: [Recipe.ID] = []
+    @State private var dishPath: [RecipeRequest] = []
     @FocusState private var isDishSearchFocused: Bool
     @State private var isShoppingCoverPresented = false
     @State private var isNutritionPresented = false
@@ -30,14 +30,26 @@ struct ContentView: View {
             }
             tab(.dishes) {
                 NavigationStack(path: $dishPath) {
-                    if session != nil {
-                        serverPlaceholder(.dishes)
-                    } else {
-                        DishesScreen(isSearchFocused: $isDishSearchFocused, onOpenProducts: openProducts)
-                            .navigationDestination(for: Recipe.ID.self) { id in
-                                RecipeScreen(recipeID: id)
-                                    .toolbar(.visible, for: .navigationBar)
+                    Group {
+                        if let session {
+                            if let account = session.account {
+                                ServerDishesScreen(
+                                    repository: RecommendationsRepository(session: session, account: account),
+                                    isSearchFocused: $isDishSearchFocused,
+                                    onOpenProducts: openProducts
+                                )
+                                .id(account.id)
                             }
+                        } else {
+                            DishesScreen(isSearchFocused: $isDishSearchFocused, onOpenProducts: openProducts)
+                        }
+                    }
+                    .navigationDestination(for: RecipeRequest.self) { request in
+                        RecipeScreen(
+                            recipeID: request.id, servings: request.servings,
+                            excludedAllergenIDs: request.excludedAllergenIDs
+                        )
+                        .toolbar(.visible, for: .navigationBar)
                     }
                 }
             }
