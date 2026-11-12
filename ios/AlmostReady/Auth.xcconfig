@@ -1,0 +1,6 @@
+// Private overrides for device builds. Clean checkouts run in demo mode.
+ALMOSTREADY_MODE = demo
+ALMOSTREADY_API_BASE_URL =
+ALMOSTREADY_YANDEX_CLIENT_ID =
+
+#include? "../../.local/ios-server.xcconfig"
