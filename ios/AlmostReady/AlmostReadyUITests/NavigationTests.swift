@@ -7,17 +7,16 @@ final class NavigationTests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        let products = app.navigationBars["Мои продукты"]
-        XCTAssertTrue(products.waitForExistence(timeout: 10))
+        assertRootHeader(app, tab: "products", title: "Мои продукты")
         XCTAssertTrue(app.buttons["tabs.products"].isSelected)
 
         let openDishes = app.buttons["products.dishes"]
         XCTAssertTrue(openDishes.isHittable)
         openDishes.tap()
 
-        let dishes = app.navigationBars["Блюда"]
+        let dishes = app.staticTexts["root.title.dishes"]
         let dishesTab = app.buttons["tabs.dishes"]
-        XCTAssertTrue(dishes.waitForExistence(timeout: 10))
+        assertRootHeader(app, tab: "dishes", title: "Что приготовим?")
         XCTAssertTrue(dishesTab.isSelected)
 
         let recipeLink = app.descendants(matching: .any)["dishes.recipe.tomato-omelet"].firstMatch
@@ -26,6 +25,7 @@ final class NavigationTests: XCTestCase {
 
         let recipe = app.navigationBars["Рецепт"]
         XCTAssertTrue(recipe.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.staticTexts["root.brand"].isHittable)
         XCTAssertFalse(dishesTab.exists)
         let recipeTitle = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Омлет")).firstMatch
         XCTAssertTrue(recipeTitle.waitForExistence(timeout: 10))
@@ -42,8 +42,8 @@ final class NavigationTests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        let products = app.navigationBars["Мои продукты"]
-        XCTAssertTrue(products.waitForExistence(timeout: 10))
+        let products = app.staticTexts["root.title.products"]
+        assertRootHeader(app, tab: "products", title: "Мои продукты")
 
         let productsTab = app.buttons["tabs.products"]
         let dishesTab = app.buttons["tabs.dishes"]
@@ -65,10 +65,9 @@ final class NavigationTests: XCTestCase {
         XCTAssertLessThanOrEqual(openDishes.frame.maxY, productsTab.frame.minY)
 
         dishesTab.tap()
-        XCTAssertTrue(app.navigationBars["Блюда"].waitForExistence(timeout: 10))
+        assertRootHeader(app, tab: "dishes", title: "Что приготовим?")
         shoppingTab.tap()
-        let shopping = app.navigationBars["Покупки"]
-        XCTAssertTrue(shopping.waitForExistence(timeout: 10))
+        assertRootHeader(app, tab: "shopping", title: "Что докупить")
         XCTAssertTrue(shoppingTab.isSelected)
 
         let openBudget = app.buttons["Подобрать покупки под бюджет"]
@@ -79,6 +78,7 @@ final class NavigationTests: XCTestCase {
         openBudget.tap()
         let budget = app.navigationBars["План покупок"]
         XCTAssertTrue(budget.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.staticTexts["root.brand"].isHittable)
         XCTAssertFalse(shoppingTab.isHittable)
         budget.buttons.firstMatch.tap()
         XCTAssertTrue(budget.waitForNonExistence(timeout: 10))
@@ -95,12 +95,13 @@ final class NavigationTests: XCTestCase {
         XCTAssertTrue(purchasedShoppingTab.isSelected)
         app.buttons["purchased.tabs.profile"].tap()
 
-        let profile = app.navigationBars["Профиль"]
-        XCTAssertTrue(profile.waitForExistence(timeout: 10))
+        let profile = app.staticTexts["root.title.profile"]
+        assertRootHeader(app, tab: "profile", title: "Профиль")
         XCTAssertTrue(profileTab.isSelected)
         app.buttons["profile.nutrition"].tap()
         let nutrition = app.navigationBars["Питание и аллергены"]
         XCTAssertTrue(nutrition.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.staticTexts["root.brand"].isHittable)
         XCTAssertFalse(profileTab.exists)
         nutrition.buttons.firstMatch.tap()
         XCTAssertTrue(profile.waitForExistence(timeout: 10))
@@ -110,7 +111,8 @@ final class NavigationTests: XCTestCase {
         XCTAssertTrue(productsTab.isSelected)
 
         shoppingTab.tap()
-        XCTAssertTrue(shopping.waitForExistence(timeout: 10))
+        XCTAssertTrue(cheese.waitForExistence(timeout: 10))
+        XCTAssertTrue(shoppingTab.isSelected)
         XCTAssertEqual(cheese.value as? String, "Куплено")
     }
 
@@ -151,7 +153,7 @@ final class NavigationTests: XCTestCase {
         XCTAssertTrue(addCheese.waitForExistence(timeout: 5))
 
         dishes.tap()
-        XCTAssertTrue(app.navigationBars["Блюда"].waitForExistence(timeout: 10))
+        assertRootHeader(app, tab: "dishes", title: "Что приготовим?")
         XCTAssertTrue(keyboard.waitForNonExistence(timeout: 5))
         app.buttons["tabs.products"].tap()
         XCTAssertTrue(search.waitForExistence(timeout: 5))
@@ -170,5 +172,22 @@ final class NavigationTests: XCTestCase {
         XCTAssertTrue(addCheese.waitForExistence(timeout: 5))
         cancel.tap()
         XCTAssertTrue(app.staticTexts["Яйца"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    private func assertRootHeader(
+        _ app: XCUIApplication,
+        tab: String,
+        title: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let heading = app.staticTexts["root.title.\(tab)"]
+        XCTAssertTrue(heading.waitForExistence(timeout: 10), file: file, line: line)
+        XCTAssertTrue(heading.isHittable, file: file, line: line)
+        XCTAssertEqual(heading.label, title, file: file, line: line)
+        XCTAssertTrue(app.staticTexts["root.brand"].isHittable, file: file, line: line)
+        XCTAssertTrue(app.staticTexts["root.demo"].isHittable, file: file, line: line)
+        XCTAssertFalse(app.navigationBars.firstMatch.isHittable, file: file, line: line)
     }
 }

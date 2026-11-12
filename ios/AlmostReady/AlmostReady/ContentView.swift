@@ -16,6 +16,7 @@ struct ContentView: View {
                     DishesScreen(onOpenProducts: openProducts, tabBar: tabBar)
                         .navigationDestination(for: Recipe.ID.self) { id in
                             RecipeScreen(recipeID: id)
+                                .toolbar(.visible, for: .navigationBar)
                         }
                 }
             }

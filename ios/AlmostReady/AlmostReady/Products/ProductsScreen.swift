@@ -14,6 +14,11 @@ struct ProductsScreen: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            RootScreenTitle(tab: .products)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+
             searchBar
                 .padding(.horizontal, 20)
                 .padding(.vertical, 8)
@@ -39,15 +44,8 @@ struct ProductsScreen: View {
                 if !isSearchFocused { tabBar }
             }
         }
+        .rootScreenHeader()
         .background(Color(.demoBackground).ignoresSafeArea())
-        .navigationTitle("Мои продукты")
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Text("Демоданные")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
         .onDisappear(perform: dismissKeyboard)
     }
 

@@ -11,6 +11,8 @@ struct ProfileScreen: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
+                RootScreenTitle(tab: .profile)
+
                 demoAccount
                     .padding(.vertical, 24)
 
@@ -43,16 +45,19 @@ struct ProfileScreen: View {
                     .foregroundStyle(.secondary)
                     .padding(.top, 24)
             }
-            .padding(20)
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            .padding(.bottom, 20)
         }
+        .rootScreenHeader()
         .background(Color(.demoBackground).ignoresSafeArea())
-        .navigationTitle("Профиль")
         .navigationDestination(isPresented: nutritionPresentation) {
             ProfileNutritionScreen(
                 draft: $nutrition.draft,
                 onSave: { nutrition.save() },
                 onCancel: { nutrition.cancel() }
             )
+            .toolbar(.visible, for: .navigationBar)
         }
     }
 

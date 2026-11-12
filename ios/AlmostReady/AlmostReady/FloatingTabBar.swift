@@ -32,22 +32,15 @@ struct FloatingTabBar: View {
     let onSelect: (AppTab) -> Void
 
     var body: some View {
-        surface
+        tabButtons
+            .background(surfaceColor, in: .rect(cornerRadius: 28))
+            .shadow(color: .black.opacity(0.09), radius: 24, y: 6)
             .padding(.horizontal, 20)
             .padding(.bottom, 4)
     }
 
-    @ViewBuilder
-    private var surface: some View {
-        let shape = RoundedRectangle(cornerRadius: 28)
-        if #available(iOS 26.0, *) {
-            tabButtons
-                .glassEffect(.regular, in: shape)
-        } else {
-            tabButtons
-                .background(Color(uiColor: .secondarySystemGroupedBackground), in: shape)
-                .shadow(color: .black.opacity(0.09), radius: 24, y: 6)
-        }
+    private var surfaceColor: Color {
+        colorScheme == .dark ? Color(uiColor: .secondarySystemGroupedBackground) : .white
     }
 
     private var tabButtons: some View {
@@ -56,6 +49,7 @@ struct FloatingTabBar: View {
                 tabButton(tab)
             }
         }
+        .padding(.vertical, 2)
     }
 
     private func tabButton(_ tab: AppTab) -> some View {
@@ -76,8 +70,8 @@ struct FloatingTabBar: View {
                     .minimumScaleFactor(0.75)
             }
             .foregroundStyle(isSelected ? selectedColor : unselectedColor)
-            .padding(.vertical, 6)
-            .frame(maxWidth: .infinity, minHeight: 64)
+            .padding(.vertical, 4)
+            .frame(maxWidth: .infinity, minHeight: 60)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -102,12 +96,7 @@ struct FloatingTabBar: View {
 }
 
 extension View {
-    @ViewBuilder
     func floatingTabBarInset<Bar: View>(@ViewBuilder content: () -> Bar) -> some View {
-        if #available(iOS 26.0, *) {
-            safeAreaBar(edge: .bottom, spacing: 0, content: content)
-        } else {
-            safeAreaInset(edge: .bottom, spacing: 0, content: content)
-        }
+        safeAreaInset(edge: .bottom, spacing: 0, content: content)
     }
 }
