@@ -23,15 +23,20 @@ jobs:
       EXPECTED_RUN: ${{ github.event.workflow_run.id }}
       EXPECTED_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
       EXPECTED_NUMBER: ${{ github.event.workflow_run.run_number }}
+      CI_COMPLETED_AT: ${{ github.event.workflow_run.updated_at }}
     steps:
-      - name: Wait for the tested revision on the VM
+      - name: Wait for the tested revision and monitoring on the VM
         shell: bash
         run: |
           [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          ci_completed=$(jq -en --arg completed "$CI_COMPLETED_AT" '$completed | fromdateiso8601')
           failed='.state == "failed" and .attempt_sha == $sha and .run_id == $run and .run_attempt == $attempt'
+          monitored='.monitoring_sha == $sha and .monitoring_state == "deployed" and .monitoring_checked_at >= $completed'
           ready_body=$(mktemp)
           trap 'rm -f "$ready_body"' EXIT
           deadline=$((SECONDS + 3000))
+          api_ready=false
+          monitoring_warning=false
           while (( SECONDS < deadline )); do
             if status=$(curl -fsS --max-time 8 "$API_URL/_deploy/status.json"); then
               if jq -e --arg sha "$EXPECTED_SHA" --argjson run "$EXPECTED_RUN" --argjson attempt "$EXPECTED_ATTEMPT" "$failed" <<<"$status" >/dev/null; then
@@ -41,8 +46,24 @@ jobs:
               if jq -e --arg sha "$EXPECTED_SHA" '.active_sha == $sha' <<<"$status" >/dev/null &&
                   revision=$(curl -fsS --max-time 8 -o "$ready_body" -w '%header{x-almostready-revision}' "$API_URL/api/v1/health/ready") &&
                   [[ "$revision" == "$EXPECTED_SHA" ]] && jq -e '.status == "ok"' "$ready_body" >/dev/null; then
-                echo "Deployed $EXPECTED_SHA"
-                exit 0
+                if ! "$api_ready"; then
+                  echo "API ready on $EXPECTED_SHA"
+                  api_ready=true
+                fi
+                if jq -e --arg sha "$EXPECTED_SHA" --argjson completed "$ci_completed" "$monitored" <<<"$status" >/dev/null &&
+                    metrics_code=$(curl -sS --max-time 8 -o /dev/null -w '%{http_code}' "$API_URL/metrics"); then
+                  if [[ "$metrics_code" != 404 ]]; then
+                    echo "::error::Public /metrics returned $metrics_code instead of 404."
+                    exit 1
+                  fi
+                  echo "Monitoring ready on $EXPECTED_SHA"
+                  exit 0
+                fi
+                if ! "$monitoring_warning" &&
+                    jq -e --arg sha "$EXPECTED_SHA" '.monitoring_sha == $sha and .monitoring_state == "failed"' <<<"$status" >/dev/null; then
+                  echo "::warning::API is ready; monitoring failed on the VM and will be retried by the timer."
+                  monitoring_warning=true
+                fi
               fi
               if jq -e --arg sha "$EXPECTED_SHA" --argjson number "$EXPECTED_NUMBER" '.active_sha != $sha and (.active_run_number // 0) > $number' <<<"$status" >/dev/null; then
                 echo "::notice::A newer server CI run superseded $EXPECTED_SHA."
@@ -51,5 +72,9 @@ jobs:
             fi
             sleep 30
           done
+          if "$api_ready"; then
+            echo "::error::API was ready, but monitoring did not report readiness for $EXPECTED_SHA within 50 minutes."
+            exit 1
+          fi
           echo "::error::The VM did not report healthy revision $EXPECTED_SHA within 50 minutes."
           exit 1

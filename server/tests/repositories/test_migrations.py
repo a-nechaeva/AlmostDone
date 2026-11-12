@@ -161,7 +161,6 @@ def catalogue_database(database):
 
 
 def test_volume_migration_preserves_catalogue_and_user_state(catalogue_database, tmp_path):
-    # Exercise the volume migration independently of later catalogue changes.
     (tmp_path / "002_ingredient_volume.sql").write_bytes((MIGRATIONS_DIR / "002_ingredient_volume.sql").read_bytes())
     dsn = catalogue_database
     with psycopg.connect(dsn) as connection:
@@ -187,6 +186,13 @@ def test_volume_migration_preserves_catalogue_and_user_state(catalogue_database,
         before = snapshot()
     first = run_migrations(dsn, tmp_path)
     assert first.applied == ("002_ingredient_volume",)
+    with psycopg.connect(dsn) as connection:
+        assert connection.execute("SELECT grams_per_ml FROM ingredients WHERE id=25").fetchone() == (None,)
+    update = "004_ingredient_volume_coefficients.sql"
+    (tmp_path / update).write_bytes((MIGRATIONS_DIR / update).read_bytes())
+    upgraded = run_migrations(dsn, tmp_path)
+    assert upgraded.applied == ("004_ingredient_volume_coefficients",)
+    assert upgraded.skipped == ("002_ingredient_volume",)
     with psycopg.connect(dsn) as connection:
         assert snapshot() == before
         assert connection.execute("SELECT kcal,protein,fat,carbs FROM ingredients WHERE id=12").fetchone() == (0, 0, 0, 0)

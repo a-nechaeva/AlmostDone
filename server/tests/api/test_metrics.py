@@ -21,6 +21,7 @@ def test_real_api_metrics_exclude_probes_and_scrapes(client, app):
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/plain")
     assert "almostdone_http_requests_total" in response.text
+    assert client.get("/metrics", headers={"X-Forwarded-Proto": "https"}).status_code == 404
 
 
 def test_route_templates_and_unmatched_paths_bound_cardinality():
