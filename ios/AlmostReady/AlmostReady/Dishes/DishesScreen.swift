@@ -146,10 +146,14 @@ struct DishesScreen: View {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
                 .accessibilityHidden(true)
-            TextField("Найти блюдо", text: $query, prompt: Text("Найти блюдо").foregroundStyle(.secondary))
-                .focused($isSearchFocused)
-                .submitLabel(.done)
-                .onSubmit { isSearchFocused = false }
+            TextField(
+                "Найти блюдо",
+                text: $query,
+                prompt: Text("Найти блюдо").foregroundColor(Color(uiColor: .label).opacity(0.6))
+            )
+            .focused($isSearchFocused)
+            .submitLabel(.done)
+            .onSubmit { isSearchFocused = false }
         }
         .font(.subheadline)
         .padding(.horizontal, 16)
