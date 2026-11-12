@@ -15,10 +15,12 @@ nonisolated struct CatalogIngredient: Decodable, Identifiable, Sendable {
     let id: String
     let name: String
     let allowedUnits: [PantryUnit]
+    let nutrition: IngredientNutrition?
 
     private enum CodingKeys: String, CodingKey {
         case id, name
         case allowedUnits = "allowed_units"
+        case nutrition = "nutrition_per_100g"
     }
 }
 

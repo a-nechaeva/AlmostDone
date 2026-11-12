@@ -89,7 +89,13 @@ private struct ServerRecipeScreen: View {
                     RecipeRetryButton(retryAfter: retryAfter, retry: model.retry)
                 }
             case .loaded(let presentation):
-                RecipeDetailsScreen(presentation: presentation, photo: model.photo, servingsModel: model)
+                RecipeDetailsScreen(
+                    presentation: presentation, photo: model.photo, servingsModel: model,
+                    ingredientNutrition: model.ingredientNutrition
+                )
+                .task(id: presentation.servings?.count) {
+                    await model.loadIngredientNutrition()
+                }
             }
         }
         .task(id: model.attempt) { [attempt = model.attempt] in
@@ -184,6 +190,7 @@ private struct RecipeDetailsScreen: View {
     let presentation: RecipePresentation
     let photo: RecipePhoto
     var servingsModel: RecipeScreenModel? = nil
+    var ingredientNutrition: [String: IngredientNutrition] = [:]
 
     var body: some View {
         ScrollView {
@@ -238,7 +245,9 @@ private struct RecipeDetailsScreen: View {
 
             VStack(spacing: 4) {
                 ForEach(presentation.ingredients) { ingredient in
-                    ingredientRow(ingredient)
+                    RecipeIngredientRow(
+                        ingredient: ingredient, nutrition: ingredientNutrition[ingredient.id], readyColor: readyColor
+                    )
                 }
             }
             .padding(.top, 8)
@@ -304,49 +313,6 @@ private struct RecipeDetailsScreen: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .background(tint.opacity(0.12), in: .rect(cornerRadius: 10))
-    }
-
-    private func ingredientRow(_ ingredient: RecipePresentation.IngredientRow) -> some View {
-        let (icon, tint): (String, Color) =
-            switch ingredient.availability {
-            case .enough: ("checkmark", readyColor)
-            case .missing: ("plus", .accentColor)
-            case .unknown: ("questionmark", .secondary)
-            case .optional: ("circle", .secondary)
-            }
-
-        return HStack(spacing: 12) {
-            Image(systemName: icon)
-                .foregroundStyle(tint)
-                .frame(width: 22)
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(ingredient.name)
-                    .font(.subheadline.weight(.medium))
-                Text(ingredient.status)
-                    .font(.caption)
-                    .foregroundStyle(ingredient.availability == .missing ? Color.accentColor : Color.secondary)
-                if let note = ingredient.originalAmountNote {
-                    Text(note)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .fixedSize(horizontal: false, vertical: true)
-
-            if let amount = ingredient.amount {
-                Text(amount)
-                    .font(.subheadline.weight(.medium))
-                    .multilineTextAlignment(.trailing)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: 94, alignment: .trailing)
-            }
-        }
-        .padding(.vertical, 8)
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("recipe.ingredient.\(ingredient.id)")
     }
 
     private var footer: some View {

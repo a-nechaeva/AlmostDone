@@ -327,8 +327,13 @@ final class ProductsAPITests: XCTestCase {
     private func repository(
         respond: @escaping @Sendable (URLRequest) async throws -> (Data, URLResponse)
     ) async throws -> ProductsRepository {
-        let session = try SessionFixture.store(
-            storage: SessionTestStorage(.active(SessionFixture.original)), respond: respond)
+        let session = try SessionFixture.store(storage: SessionTestStorage(.active(SessionFixture.original))) {
+            request in
+            if request.url?.path == "/api/v1/catalog" {
+                return try SessionFixture.response(request, body: ["ingredients": []])
+            }
+            return try await respond(request)
+        }
         await session.restore()
         return ProductsRepository(session: session, account: try XCTUnwrap(session.account))
     }

@@ -32,13 +32,7 @@ struct ServerProductsTab: View {
                         Button {
                             openEditor(.edit(item), snapshot: snapshot)
                         } label: {
-                            VStack(alignment: .leading) {
-                                Text(item.name)
-                                    .foregroundStyle(.primary)
-                                Text(item.quantity?.label ?? "Количество не указано")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                            }
+                            PantryItemLabel(item: item, model: model)
                         }
                         .accessibilityIdentifier("products.home.\(item.id)")
                     }
@@ -138,9 +132,11 @@ private struct ServerProductsSearchScreen: View {
                     .accessibilityIdentifier("products.search.empty")
             case .results(let ingredients):
                 ForEach(ingredients) { ingredient in
-                    Button(ingredient.name, systemImage: "plus") {
+                    Button {
                         searchFocused = false
                         onSelect(ingredient)
+                    } label: {
+                        IngredientSuggestionLabel(ingredient: ingredient)
                     }
                     .disabled(hasPendingAdd)
                     .accessibilityIdentifier("products.add.\(ingredient.id)")

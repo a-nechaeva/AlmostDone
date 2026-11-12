@@ -123,6 +123,11 @@ final class PantryModel {
 
     var isLoading: Bool { loadID != nil }
 
+    func nutrition(for item: PantryItem) -> IngredientNutrition? {
+        guard repository.isCurrent else { return nil }
+        return repository.session.ingredientNutritionCatalog.values[item.id]
+    }
+
     init(repository: ProductsRepository) {
         self.repository = repository
     }
@@ -131,8 +136,11 @@ final class PantryModel {
 
     func reloadIfNeeded() async {
         let known = repository.session.revision?.stateVersion ?? 0
-        guard snapshot.map({ $0.revision.stateVersion < known }) ?? true else { return }
-        await reload()
+        if let snapshot, snapshot.revision.stateVersion >= known {
+            loadIngredientNutrition(for: snapshot)
+        } else {
+            await reload()
+        }
     }
 
     func reload() async {
@@ -238,6 +246,13 @@ final class PantryModel {
         }
         snapshot = updated
         loadFailed = false
+        loadIngredientNutrition(for: updated)
+    }
+
+    private func loadIngredientNutrition(for snapshot: PantrySnapshot) {
+        guard !snapshot.items.isEmpty else { return }
+        let session = repository.session
+        session.ingredientNutritionCatalog.load(session: session, account: repository.account)
     }
 
     private func canReplayAdd(after error: Error) -> Bool {
