@@ -1,0 +1,13 @@
+[Unit]
+Description=Deploy the latest tested AlmostReady API revision
+Wants=network-online.target
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=deploy
+UMask=0077
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /home/deploy/almostready-deploy/bin/deploy.py
+TimeoutStartSec=40min

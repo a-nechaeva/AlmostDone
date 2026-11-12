@@ -19,6 +19,15 @@ def test_readiness_is_public_and_validates_against_contract():
     app.state.contract.response('readiness_get', 200, response.json())
 
 
+def test_readiness_identifies_deployed_image(monkeypatch):
+    revision = 'a' * 40
+    monkeypatch.setenv('ALMOSTDONE_DEPLOY_REVISION', revision)
+    with TestClient(create_app()) as client:
+        response = client.get('/api/v1/health/ready')
+    assert response.status_code == 200
+    assert response.headers['x-almostready-revision'] == revision
+
+
 @pytest.mark.parametrize('component', ['storage', 'engine', 'catalog'])
 def test_dependency_failure_changes_readiness_but_not_liveness(component, monkeypatch):
     app = create_app()

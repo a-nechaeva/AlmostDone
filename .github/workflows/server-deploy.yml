@@ -1,0 +1,55 @@
+name: Deploy API
+on:
+  workflow_run:
+    workflows: [REST API]
+    types: [completed]
+    branches: [main]
+permissions: {}
+jobs:
+  production:
+    if: >-
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 52
+    concurrency:
+      group: almostready-api-deployment-${{ github.event.workflow_run.head_sha }}
+      cancel-in-progress: true
+    env:
+      API_URL: https://51.250.76.77
+      EXPECTED_SHA: ${{ github.event.workflow_run.head_sha }}
+      EXPECTED_RUN: ${{ github.event.workflow_run.id }}
+      EXPECTED_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+      EXPECTED_NUMBER: ${{ github.event.workflow_run.run_number }}
+    steps:
+      - name: Wait for the tested revision on the VM
+        shell: bash
+        run: |
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          failed='.state == "failed" and .attempt_sha == $sha and .run_id == $run and .run_attempt == $attempt'
+          ready_body=$(mktemp)
+          trap 'rm -f "$ready_body"' EXIT
+          deadline=$((SECONDS + 3000))
+          while (( SECONDS < deadline )); do
+            if status=$(curl -fsS --max-time 8 "$API_URL/_deploy/status.json"); then
+              if jq -e --arg sha "$EXPECTED_SHA" --argjson run "$EXPECTED_RUN" --argjson attempt "$EXPECTED_ATTEMPT" "$failed" <<<"$status" >/dev/null; then
+                echo "::error::Deployment failed on the VM. See journalctl -u almostready-deploy.service."
+                exit 1
+              fi
+              if jq -e --arg sha "$EXPECTED_SHA" '.active_sha == $sha' <<<"$status" >/dev/null &&
+                  revision=$(curl -fsS --max-time 8 -o "$ready_body" -w '%header{x-almostready-revision}' "$API_URL/api/v1/health/ready") &&
+                  [[ "$revision" == "$EXPECTED_SHA" ]] && jq -e '.status == "ok"' "$ready_body" >/dev/null; then
+                echo "Deployed $EXPECTED_SHA"
+                exit 0
+              fi
+              if jq -e --arg sha "$EXPECTED_SHA" --argjson number "$EXPECTED_NUMBER" '.active_sha != $sha and (.active_run_number // 0) > $number' <<<"$status" >/dev/null; then
+                echo "::notice::A newer server CI run superseded $EXPECTED_SHA."
+                exit 0
+              fi
+            fi
+            sleep 30
+          done
+          echo "::error::The VM did not report healthy revision $EXPECTED_SHA within 50 minutes."
+          exit 1
