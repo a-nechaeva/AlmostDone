@@ -202,6 +202,13 @@ fun RecipeScreen(
                                 color = if (unknown || shortage != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodySmall,
                             )
+                            state.catalog.ingredient(need.ingredientId)?.nutritionPer100g?.let { nutrition ->
+                                Text(
+                                    "КБЖУ на 100 г: ${nutrition.kcal} ккал · Б ${nutrition.protein} · Ж ${nutrition.fat} · У ${nutrition.carbs} г",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
                         }
                         Text(
                             quantityLabel(need.quantity),

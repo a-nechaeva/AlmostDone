@@ -295,6 +295,60 @@ class RoomHouseholdRepository(
             markPurchaseChanges(purchases(before, quote), purchases(after, shoppingQuote(catalog, after)))
         }
     }
+
+    /**
+     * Полностью заменить локальное зеркало запасов серверным состоянием. Вызывается
+     * [com.example.mobile_android.data.remote.ServerHouseholdRepository] после успешного
+     * чтения или записи на сервере.
+     */
+    suspend fun mirrorPantry(items: List<PantryItem>) {
+        initialize()
+        database.withTransaction {
+            dao.clearPantry()
+            items.forEach { save(it) }
+        }
+    }
+
+    /** Полностью заменить локальное зеркало избранного серверным состоянием. */
+    suspend fun mirrorFavorites(recipes: Set<String>, ingredients: Set<String>) {
+        initialize()
+        database.withTransaction {
+            dao.clearFavorites()
+            recipes.forEach { dao.addFavorite(FavoriteEntity(it, ingredient = false)) }
+            ingredients.forEach { dao.addFavorite(FavoriteEntity(it, ingredient = true)) }
+        }
+    }
+
+    /** Точечно применить результат серверного PUT/DELETE избранного к зеркалу. */
+    suspend fun mirrorFavorite(id: String, ingredient: Boolean, favorite: Boolean) {
+        initialize()
+        database.withTransaction {
+            if (favorite) dao.addFavorite(FavoriteEntity(id, ingredient))
+            else dao.removeFavorite(id, ingredient)
+        }
+    }
+
+    /**
+     * Локальная часть переноса купленного в запасы, когда запасы уже обновил сервер
+     * (`pantry_add_purchased`): снять отметки и очистить обработанные строки списка.
+     */
+    suspend fun completeCheckedPurchases(checkedIds: Set<String>) {
+        initialize()
+        val catalog = catalogRepository.catalog.first()
+        database.withTransaction {
+            val before = snapshot()
+            val quote = shoppingQuote(catalog, before)
+            val checked = quote.lines.filter { it.checked && it.ingredientId in checkedIds }
+            checked.forEach { dao.removeManual(it.ingredientId) }
+            if (checked.size == quote.lines.size) {
+                dao.clearPlan()
+                dao.clearManual()
+            }
+            dao.clearChecked()
+            val after = snapshot()
+            markPurchaseChanges(purchases(before, quote), purchases(after, shoppingQuote(catalog, after)))
+        }
+    }
 }
 
 private val LEGACY_DEMO_PACKAGES = mapOf("hard-cheese" to "hard-cheese-200g", "tomatoes" to "tomatoes-500g")

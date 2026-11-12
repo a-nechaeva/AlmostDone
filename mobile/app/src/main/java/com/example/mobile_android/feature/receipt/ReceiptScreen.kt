@@ -65,6 +65,7 @@ internal fun ReceiptRoute(dependencies: LocalFeatureDependencies?, close: () -> 
                     createSavedStateHandle(),
                     photos::discard,
                     photoRecognizer = dependencies.receiptPhotoRecognizer,
+                    serverImporter = dependencies.serverReceiptImporter,
                 )
             }
         }

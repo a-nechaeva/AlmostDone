@@ -55,6 +55,15 @@ internal class OkHttpTransport : HttpTransport {
         .retryOnConnectionFailure(false)
         .build()
 
+    // Распознавание фото идёт прямо в ответе на загрузку (GigaChat, два шага) — до минуты и
+    // больше. С общими 20 с (и 10 с ожидания данных по умолчанию) приложение бросало запрос, а
+    // сервер дорабатывал его впустую.
+    private val uploads = client.newBuilder()
+        .callTimeout(UPLOAD_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .readTimeout(UPLOAD_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .writeTimeout(60, TimeUnit.SECONDS)
+        .build()
+
     override suspend fun execute(request: HttpRequest): HttpResponse = suspendCancellableCoroutine { continuation ->
         val body = request.multipart?.let { part ->
             MultipartBody.Builder().setType(MultipartBody.FORM).apply {
@@ -71,7 +80,7 @@ internal class OkHttpTransport : HttpTransport {
         }
         val builder = Request.Builder().url(request.url).method(request.method.name, body?.let(::SingleSendBody))
         request.headers.forEach { (name, value) -> builder.header(name, value) }
-        val call = client.newCall(builder.build())
+        val call = (if (request.multipart != null) uploads else client).newCall(builder.build())
         continuation.invokeOnCancellation { call.cancel() }
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
@@ -102,3 +111,5 @@ internal class OkHttpTransport : HttpTransport {
         override fun isOneShot() = true
     }
 }
+
+private const val UPLOAD_TIMEOUT_SECONDS = 150L

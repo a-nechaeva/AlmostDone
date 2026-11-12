@@ -3,6 +3,7 @@ package com.example.mobile_android.data.remote
 import com.example.mobile_android.data.DemoCatalog
 import com.example.mobile_android.domain.Allergen
 import com.example.mobile_android.domain.CookingMethod
+import com.example.mobile_android.domain.Nutrition
 import com.example.mobile_android.domain.Quantity
 import com.example.mobile_android.domain.QuantityUnit
 import java.io.IOException
@@ -26,9 +27,12 @@ class ServerCatalogRepositoryTest {
         {"catalog_version":"v1",
          "ingredients":[
            {"id":"milk","name":"Молоко","unit":"ml","allergens":["milk"],"allergen_data_complete":true,
+            "nutrition_per_100g":{"kcal":60.4,"protein_g":3.2,"fat_g":2.5,"carbs_g":4.7},
             "offer":{"quantity":{"value":1000,"unit":"ml"},"price":{"minor_units":11050,"currency":"RUB"}}},
-           {"id":"oats","name":"Овсянка","unit":"g","allergens":["gluten"],"allergen_data_complete":true,"offer":null},
-           {"id":"egg","name":"Яйцо","unit":"pcs","allergens":["eggs"],"allergen_data_complete":false,"offer":null}],
+           {"id":"oats","name":"Овсянка","unit":"g","allergens":["gluten"],"allergen_data_complete":true,
+            "nutrition_per_100g":null,"offer":null},
+           {"id":"egg","name":"Яйцо","unit":"pcs","allergens":["eggs"],"allergen_data_complete":false,
+            "nutrition_per_100g":{"kcal":-5,"protein_g":12.7,"fat_g":11.5,"carbs_g":0.7},"offer":null}],
          "recipes":[
            {"id":"1","title":"Каша","photo_url":"http://127.0.0.1:8000/api/v1/recipes/1/photo","servings":24,
             "minutes":10,"steps":["Сварить"],
@@ -53,6 +57,13 @@ class ServerCatalogRepositoryTest {
         assertEquals(QuantityUnit.MILLILITER, milk.unit)
         assertEquals(11050L, milk.offer!!.priceKopecks)
         assertNull(catalog.ingredient("oats")!!.offer)
+
+        // КБЖУ на 100 г: значения с сервера округляются до граммов/ккал
+        assertEquals(Nutrition(60, 3, 3, 5), milk.nutritionPer100g)
+        // null у сервера — данных нет, подменять нулём нельзя
+        assertNull(catalog.ingredient("oats")!!.nutritionPer100g)
+        // битые значения (отрицательные) считаем отсутствием данных, а не роняем каталог
+        assertNull(catalog.ingredient("egg")!!.nutritionPer100g)
 
         val porridge = catalog.recipe("1")!!
         // 24 порции → 12, количества пропорционально

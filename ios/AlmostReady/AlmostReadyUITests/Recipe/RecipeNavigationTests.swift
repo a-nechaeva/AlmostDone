@@ -54,7 +54,7 @@ extension NavigationTests {
         XCTAssertTrue(dishes.waitForExistence(timeout: 10))
         XCTAssertTrue(omeletLink.exists)
         XCTAssertTrue(pastaLink.exists)
-        dishes.buttons.firstMatch.tap()
+        app.buttons["tabs.products"].tap()
         XCTAssertTrue(products.waitForExistence(timeout: 10))
         XCTAssertEqual(productNames.filter { app.staticTexts[$0].exists }, initialProducts)
     }

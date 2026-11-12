@@ -2,9 +2,7 @@
 # Android «Почти готово»
 
 Приложение входит через Яндекс ID и проверяет серверную сессию запросом
-`GET /api/v1/me/state`. Каталог, продукты дома, подбор, граф, рецепт, профиль,
-избранное, покупки и чек ждут подключения к API. Их маршруты показывают
-«Пока недоступно».
+`GET /api/v1/me/state`.
 
 ## Запуск
 
@@ -13,21 +11,20 @@
 в Settings → Build, Execution, Deployment → Build Tools → Gradle.
 Путь Android SDK хранится в локальном `local.properties`.
 
-Выберите модуль `app` и устройство с Android 7.0 / API 24 или новее.
-Задайте адрес основного сервера через Gradle-свойство `almostReadyApiBaseUrl`.
-Укажите HTTPS-адрес развёрнутого `server/` без пути или с `/api/v1`. Например:
+Выберите конфигурацию `app`, устройство с Android 7.0 / API 24 или новее и
+нажмите **Run**. Приложение подключится к облачному API по адресу
+`https://51.250.76.77`. APK можно собрать из каталога `mobile`.
 
 ```bash
-./gradlew :app:assembleDebug -PalmostReadyApiBaseUrl=https://api.example.org
+./gradlew :app:assembleDebug
 
 ```
 
-Замените `api.example.org` адресом стенда. Для Android Studio можно задать
-свойство в пользовательском `~/.gradle/gradle.properties`. Сборка без свойства
-подходит для тестов с подменой транспорта. Для отладки через `adb reverse`
-debug-сборка принимает `http://127.0.0.1:8000`, если на этом порту запущен
-`server/`. На сервере настройте `ALMOSTDONE_YANDEX_CLIENT_ID` на публичный
-Client ID Android из `app/build.gradle.kts`.
+Для другого стенда передайте `-PalmostReadyApiBaseUrl=https://api.example.org`
+или задайте свойство в `~/.gradle/gradle.properties`. При отладке через
+`adb reverse` debug-сборка принимает `http://127.0.0.1:8000`, если на этом
+порту запущен `server/`. Для своего экземпляра `server/` укажите в
+`ALMOSTDONE_YANDEX_CLIENT_ID` публичный Client ID Android из `app/build.gradle.kts`.
 
 APK находится в `app/build/outputs/apk/debug/app-debug.apk`. Для проверки
 откройте приложение, войдите через Яндекс ID, перезапустите приложение, затем

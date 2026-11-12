@@ -67,6 +67,8 @@ data class Ingredient(
     val name: String,
     val unit: QuantityUnit,
     val offer: PackageOffer? = null,
+    /** КБЖУ на 100 г продукта из каталога сервера; null — данных нет, выдумывать нельзя. */
+    val nutritionPer100g: Nutrition? = null,
 )
 
 data class RecipeIngredient(val ingredientId: String, val quantity: Quantity)

@@ -68,7 +68,13 @@ internal fun parseServerCatalog(json: JSONObject): Catalog {
                     if (quantity == null || quantity.unit != unit || quantity.value <= 0) null
                     else PackageOffer(quantity, price)
                 }
-            Ingredient(item.getString("id"), item.getString("name"), unit, offer)
+            Ingredient(
+                item.getString("id"),
+                item.getString("name"),
+                unit,
+                offer,
+                nutritionPer100g = parseIngredientNutrition(item.optJSONObject("nutrition_per_100g")),
+            )
         }
     val known = ingredients.associateBy { it.id }
     val recipes =
@@ -124,6 +130,26 @@ private fun parseRecipe(item: JSONObject, known: Map<String, Ingredient>): Recip
                 CookingMethod.entries.find { it.name.equals(method, ignoreCase = true) }
             }.toSet(),
         photo = if (item.isNull("photo_url")) "" else item.getString("photo_url"),
+    )
+}
+
+/**
+ * КБЖУ ингредиента на 100 г (`nutrition_per_100g`). Сервер отдаёт null при неполных данных;
+ * битые или отрицательные значения тоже считаем отсутствием данных, а не ошибкой каталога.
+ */
+private fun parseIngredientNutrition(json: JSONObject?): Nutrition? {
+    json ?: return null
+    val values =
+        listOf("kcal", "protein_g", "fat_g", "carbs_g").map { key ->
+            val value = json.optDouble(key, Double.NaN)
+            if (!value.isFinite() || value < 0) return null
+            value
+        }
+    return Nutrition(
+        values[0].roundToInt(),
+        values[1].roundToInt(),
+        values[2].roundToInt(),
+        values[3].roundToInt(),
     )
 }
 

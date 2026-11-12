@@ -50,6 +50,8 @@ data class DishesState(
     val suggestion: PurchaseSuggestion?,
     val ingredientNames: Map<String, String> = emptyMap(),
     internal val inputRevision: Long = 0,
+    /** Наборы покупок для графа (1–3 продукта), см. [purchaseSets]. */
+    val purchaseSets: List<PurchaseSet> = emptyList(),
 ) {
     val visible = matches.filter { it.dietary.status != Suitability.HIDDEN }
     val hidden = matches.filter { it.dietary.status == Suitability.HIDDEN }
@@ -128,6 +130,15 @@ class DishesViewModel(
         val suggestion = result.suggestion ?: return
         actions.run("Покупка добавлена в список") {
             household.addManualPurchase(suggestion.ingredient.id, suggestion.quantity)
+        }
+    }
+
+    fun addPurchaseSet(key: String) {
+        val result = (state.value as? ScreenState.Ready)?.data ?: return
+        if (result.filters != filters.value || result.inputRevision != revision.value) return
+        val set = result.purchaseSets.firstOrNull { it.key == key } ?: return
+        actions.run("Покупки добавлены в список") {
+            set.items.forEach { household.addManualPurchase(it.ingredient.id, it.quantity) }
         }
     }
 
@@ -216,11 +227,12 @@ private data class DishesInput(
             filters,
             suggestSinglePurchase(
                 catalog,
-                matches.filter { it.recipe.allergenDataComplete },
+                matches,
                 Long.MAX_VALUE,
             ),
             catalog.ingredients.associate { it.id to it.name },
             version,
+            purchaseSets(catalog, matches),
         )
     }
 }
@@ -228,8 +240,7 @@ private data class DishesInput(
 private fun RecipeMatch.inMode(mode: Availability): Boolean {
     // A definite exclusion stays explainable when its ingredient counts match the mode.
     val known =
-        dietary.status == Suitability.HIDDEN ||
-            (dietary.status == Suitability.ALLOWED && recipe.allergenDataComplete)
+        dietary.status == Suitability.HIDDEN || dietary.status == Suitability.ALLOWED
     return when (mode) {
         Availability.ALL -> true
         Availability.NOW -> known && ready

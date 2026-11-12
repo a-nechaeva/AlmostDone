@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="23" height="23" viewBox="0 0 23 23" fill="none" stroke="#000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <path transform="translate(7.667 2.875)" d="M 7.667 3.833 C 7.667 5.95 5.95 7.667 3.833 7.667 C 1.716 7.667 0 5.95 0 3.833 C 0 1.716 1.716 0 3.833 0 C 5.95 0 7.667 1.716 7.667 3.833 Z"/>
+  <path transform="translate(3.833 11.500)" d="M 0 9.583 L 0 7.667 C 0 5.633 0.808 3.683 2.246 2.246 C 3.683 0.808 5.633 0 7.667 0 C 9.7 0 11.65 0.808 13.088 2.246 C 14.526 3.683 15.333 5.633 15.333 7.667 L 15.333 9.583"/>
+</svg>
