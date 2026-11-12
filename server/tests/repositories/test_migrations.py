@@ -194,6 +194,11 @@ def test_volume_migration_preserves_catalogue_and_user_state(catalogue_database,
         assert connection.execute("SELECT title,author_id FROM recipes WHERE id=100000").fetchone() == ("Personal recipe",100000)
         assert connection.execute("SELECT qty_g FROM recipe_ingredients WHERE recipe_id=100000").fetchone()[0] == 50
         assert connection.execute("SELECT grams_per_ml FROM ingredients WHERE id=12").fetchone()[0] is not None
+        densities = dict(connection.execute("SELECT id,grams_per_ml FROM ingredients WHERE id IN (25,43,59,100000)"))
+        assert float(densities[25]) == 1.11
+        assert float(densities[43]) == 1.05
+        assert float(densities[59]) == 1.43
+        assert densities[100000] is None
         # A repeated deployment must not reset new edits or reload the snapshot.
         connection.execute("UPDATE ingredients SET kcal=1 WHERE id=12")
     assert run_migrations(dsn, tmp_path).applied == ()
