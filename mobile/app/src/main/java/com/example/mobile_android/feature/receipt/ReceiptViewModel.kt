@@ -47,7 +47,8 @@ internal object DemoReceiptRecognizer : ReceiptRecognizer {
 }
 
 fun interface ReceiptImporter {
-    suspend fun add(quantities: Map<String, Quantity>)
+    /** null-количество — «продукт есть, вес неизвестен»; он добавляется без веса. */
+    suspend fun add(quantities: Map<String, Quantity?>)
 }
 
 /** Результат серверного распознавания фото: ID задачи и строки с их серверными line_id. */
@@ -166,7 +167,9 @@ internal class ReceiptViewModel(
                     val ingredient = ingredients.find { it.id == line.ingredientId }
                     if (ingredient == null) line.copy(
                         ingredientId = null, amount = "", unit = null, selected = false,
-                    ) else line.copy(selected = line.selected && line.quantity(ingredient) != null)
+                        // Распознанный продукт остаётся выбранным и без количества:
+                        // вес можно уточнить позже, строку не теряем.
+                    ) else line
                 }
                 if (lines.isEmpty()) ReceiptState.Capture(ReceiptPhotoIssue.EMPTY)
                 else ReceiptState.Review(
@@ -196,13 +199,13 @@ internal class ReceiptViewModel(
     }
 
     fun toggle(lineId: Int, selected: Boolean) = updateLine(lineId) { review, line ->
-        line.copy(selected = selected && line.quantity(review.ingredient(line)) != null)
+        // Блокируется только строка без продукта из каталога; неизвестный вес не мешает.
+        line.copy(selected = selected && review.ingredient(line) != null)
     }
 
     fun edit(lineId: Int, ingredient: Ingredient, amount: String) = updateLine(lineId) { review, line ->
         if (ingredient !in review.ingredients) return@updateLine line
-        val edited = line.copy(ingredientId = ingredient.id, unit = ingredient.unit, amount = amount)
-        edited.copy(selected = line.selected && edited.quantity(ingredient) != null)
+        line.copy(ingredientId = ingredient.id, unit = ingredient.unit, amount = amount)
     }
 
     private fun updateLine(lineId: Int, change: (ReceiptState.Review, ReceiptLine) -> ReceiptLine) {
@@ -223,16 +226,22 @@ internal class ReceiptViewModel(
             confirmOnServer(review, recognition, selected)
             return
         }
-        val totals = linkedMapOf<String, Quantity>()
+        val totals = linkedMapOf<String, Quantity?>()
         for (line in selected) {
             val ingredient = review.ingredient(line) ?: return
-            val quantity = line.quantity(ingredient) ?: return
+            val quantity = line.quantity(ingredient)
+            // Строка без количества добавляет продукт «без веса». Известные количества
+            // одного продукта суммируются, но неизвестное не превращается в число.
+            if (quantity == null || totals.containsKey(ingredient.id) && totals[ingredient.id] == null) {
+                totals[ingredient.id] = null
+                continue
+            }
             val total = quantity.value + (totals[ingredient.id]?.value ?: 0.0)
             if (total > 1_000_000) {
                 mutableState.value = review.copy(error = "Суммарное количество слишком велико. Проверьте строки.")
                 return
             }
-            totals[ingredient.id] = Quantity(total, ingredient.unit)
+            totals[ingredient.id] = Quantity(total, quantity.unit)
         }
         val writer = importer
         if (writer == null) {
@@ -261,8 +270,9 @@ internal class ReceiptViewModel(
 
     /**
      * Подтверждение через `POST /recognition-imports`: на сервер уходят только выбранные строки
-     * с canonical ID, положительным количеством и серверным line_id. Двойное нажатие блокируется
-     * флагом saving, повтор той же операции защищён Idempotency-Key в реализации импортёра.
+     * с canonical ID и серверным line_id; количество положительное либо явный null — «продукт
+     * есть, вес неизвестен». Двойное нажатие блокируется флагом saving, повтор той же операции
+     * защищён Idempotency-Key в реализации импортёра.
      * При отказе выбор строк сохраняется и ошибку можно повторить.
      */
     private fun confirmOnServer(
@@ -274,9 +284,8 @@ internal class ReceiptViewModel(
         for (line in selected) {
             val ingredient = review.ingredient(line) ?: return
             val lineId = line.serverLineId ?: return
-            // Выбрать строку можно только с корректным положительным количеством (см. toggle/edit).
-            val quantity = line.quantity(ingredient) ?: return
-            items += ReceiptImportLine(lineId, ingredient.id, quantity)
+            // Выбрать строку можно и без количества (см. toggle/edit): null передаём как есть.
+            items += ReceiptImportLine(lineId, ingredient.id, line.quantity(ingredient))
         }
         mutableState.value = review.copy(saving = true, error = null)
         viewModelScope.launch {

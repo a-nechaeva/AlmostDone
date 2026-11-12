@@ -72,7 +72,7 @@ class ReceiptViewModelTest {
     @Test
     fun selectedCanonicalLinesAggregateAndOnlyOneConfirmedWriteSucceeds() = runTest(dispatcher) {
         val firstWrite = CompletableDeferred<Unit>()
-        val writes = mutableListOf<Map<String, Quantity>>()
+        val writes = mutableListOf<Map<String, Quantity?>>()
         val vm = model(ReceiptImporter {
             writes += it
             if (writes.size == 1) {
@@ -193,6 +193,67 @@ class ReceiptViewModelTest {
         assertEquals(ReceiptState.Added(listOf("Твёрдый сыр")), vm.state.value)
         assertEquals(2, imports.size)
         assertEquals(imports.first(), imports.last())
+    }
+
+    @Test
+    fun lineWithoutQuantityStaysSelectedAndIsAddedWithoutWeight() = runTest(dispatcher) {
+        val writes = mutableListOf<Map<String, Quantity?>>()
+        val vm = model(
+            ReceiptImporter { writes += it },
+            recognizer = ReceiptRecognizer {
+                listOf(
+                    // Распознали продукт, но не вес: строка остаётся выбранной.
+                    ReceiptLine(1, "СЫР РОССИЙСКИЙ", "hard-cheese", "", null, true),
+                    ReceiptLine(2, "МОЛОКО ПАСТ. 1Л", "milk", "1000", QuantityUnit.MILLILITER),
+                )
+            },
+        )
+        vm.readPhoto {}
+        runCurrent()
+        val review = vm.state.value as ReceiptState.Review
+        assertTrue(review.lines[0].selected)
+        // Галочка активна и для строки без веса: можно снять и вернуть.
+        vm.toggle(1, false)
+        assertFalse((vm.state.value as ReceiptState.Review).lines[0].selected)
+        vm.toggle(1, true)
+        vm.toggle(2, true)
+        vm.confirm()
+        runCurrent()
+        assertEquals(
+            listOf(mapOf("hard-cheese" to null, "milk" to Quantity(1000.0, QuantityUnit.MILLILITER))),
+            writes,
+        )
+        assertEquals(ReceiptState.Added(listOf("Твёрдый сыр", "Молоко")), vm.state.value)
+    }
+
+    @Test
+    fun serverImportSendsExplicitNullQuantity() = runTest(dispatcher) {
+        val imports = mutableListOf<Triple<String, String, List<ReceiptImportLine>>>()
+        val vm = model(
+            photoRecognizer = { _, _ ->
+                RecognizedReceipt(
+                    "rec-7",
+                    listOf(ReceiptLine(1, "СЫР", "hard-cheese", "", null, true, serverLineId = "line-1")),
+                )
+            },
+            serverImporter = object : ServerReceiptImporter {
+                override suspend fun importReceipt(
+                    recognitionId: String,
+                    kind: String,
+                    lines: List<ReceiptImportLine>,
+                ) {
+                    imports += Triple(recognitionId, kind, lines)
+                }
+            },
+        )
+        vm.readImage { byteArrayOf(1) }
+        runCurrent()
+        vm.confirm()
+        runCurrent()
+        assertEquals(Triple("rec-7", "receipt", listOf(
+            ReceiptImportLine("line-1", "hard-cheese", null),
+        )), imports.single())
+        assertEquals(ReceiptState.Added(listOf("Твёрдый сыр")), vm.state.value)
     }
 
     private fun model(
