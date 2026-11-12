@@ -10,13 +10,18 @@ final class ProductsScreenshotTests: XCTestCase {
         app.launchArguments = ["-AppleLanguages", "(ru)", "-AppleLocale", "ru_RU"]
         app.launch()
 
-        XCTAssertTrue(app.staticTexts["root.title.products"].waitForExistence(timeout: 10))
+        let title = app.staticTexts["root.title.products"]
+        XCTAssertTrue(title.waitForExistence(timeout: 10))
+        XCTAssertTrue(title.isHittable)
+        let summary = app.staticTexts["products.summary"]
+        XCTAssertTrue(summary.isHittable)
+        XCTAssertEqual(summary.label, "4 продукта · всё под рукой")
         XCTAssertTrue(app.staticTexts["root.brand"].isHittable)
         XCTAssertTrue(app.staticTexts["root.demo"].isHittable)
         let eggs = app.staticTexts["Яйца"]
         XCTAssertTrue(eggs.waitForExistence(timeout: 10))
         XCTAssertTrue(eggs.isHittable)
-        let dishesLink = app.descendants(matching: .any)["products.dishes"].firstMatch
+        let dishesLink = app.buttons["products.dishes"]
         XCTAssertTrue(dishesLink.waitForExistence(timeout: 10))
         XCTAssertTrue(dishesLink.isHittable)
 
