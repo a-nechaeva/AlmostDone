@@ -4,7 +4,7 @@ import copy
 import pytest
 
 from almostdone_server.errors import APIError
-from almostdone_server.repositories.memory import Store
+from ..support.memory import Store
 from almostdone_server.services.auth import AuthService
 
 

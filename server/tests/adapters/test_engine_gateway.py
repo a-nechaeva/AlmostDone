@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from ..support.catalog import make_catalog
 from almostdone_server.errors import APIError
-from almostdone_server.main import create_app
+from ..support.application import create_app
 from almostdone_server.services.models import default_user
 from ..support.http import FILTERS, auth, check
 from ..support.catalog import custom_catalog
@@ -48,15 +48,17 @@ def test_graph_calls_ready_engine_with_original_snapshot_options(monkeypatch):
         assert "engine_options" not in page
 
 
-@pytest.mark.parametrize("field,value,capability", [
-    ("q", "Рис", "recipe_title_search"),
-])
-def test_missing_engine_filter_is_rejected(field, value, capability):
+def test_title_filter_selects_input_recipes_without_changing_engine_calculations(monkeypatch):
     catalog = make_catalog(custom_catalog())
-    with pytest.raises(APIError) as error:
-        catalog.matches(default_user(), {**FILTERS, field: value}, 2)
-    assert error.value.status == 503
-    assert error.value.details[0]["field"] == capability
+    original, calls = catalog.gateway.engine.reachable_dishes, []
+    def calculate(*args, **kwargs):
+        result = original(*args, **kwargs)
+        calls.append(result)
+        return result
+    monkeypatch.setattr(catalog.gateway.engine, "reachable_dishes", calculate)
+    result = catalog.matches(default_user(), {**FILTERS, "q": "  РИС  "}, 2)
+    assert [detail["recipe"]["id"] for detail, _ in result] == ["rice_tomato"]
+    assert [option for _, option in result] == calls[0]
 
 
 def test_unconvertible_stock_is_not_sent_to_engine_as_unlimited_presence():
@@ -101,3 +103,17 @@ def test_unknown_required_quantity_never_reaches_engine_calculations(monkeypatch
     assert detail["recipe"]["nutrition_per_serving"] is None
     assert detail["recipe"]["buy_cost"] is None
     assert detail["shopping_items"] == []
+
+
+def test_requested_portions_survive_snapshot_serialization():
+    from ..support.catalog import make_catalog, custom_catalog
+    catalog = make_catalog(custom_catalog())
+    gateway = catalog.gateway
+    option, _ = gateway.detail('rice_tomato', {}, set(), servings=4)
+    original = gateway.engine.dish_option(gateway.engine_catalog.recipe('rice_tomato'), {}, gateway.engine_catalog, servings=4)
+    assert option.missing_g == original.missing_g
+    assert option.metrics == original.metrics
+    restored = gateway.restore_option(gateway.serialize_option(option))
+    assert restored.portions == 4
+    assert restored.missing_g == option.missing_g
+    assert restored.metrics == option.metrics

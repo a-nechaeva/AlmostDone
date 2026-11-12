@@ -1,7 +1,7 @@
 """Shared HTTP fixtures for all server test packages."""
 import pytest
 from fastapi.testclient import TestClient
-from almostdone_server.main import create_app
+from .support.application import create_app
 
 
 @pytest.fixture

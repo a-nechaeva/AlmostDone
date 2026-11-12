@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 from almostdone_server.errors import (APIError, StorageUnavailable, StorageSchemaError,
                                       StorageConflict, StorageValueError)
-from almostdone_server.main import create_app
+from ..support.application import create_app
 from ..support.http import auth, check, session
 
 

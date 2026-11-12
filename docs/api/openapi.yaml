@@ -760,7 +760,7 @@ paths:
         schema:
           type: string
           minLength: 1
-          maxLength: 200
+          maxLength: 64
       - $ref: '#/components/parameters/Cursor'
       - $ref: '#/components/parameters/Limit'
   /me/pantry:
@@ -2437,8 +2437,8 @@ paths:
         не требуют покупки и не исключают рецепт из расчёта. budget: максимум альтернативных блюд в пределах бюджета, tie-break
         общая цена ASC, стабильный список package_id. Альтернативы не
         обещают одновременное приготовление. Неизвестные оценки — unpriced_recipe_ids и недостаточность
-        данных, не бесплатные покупки. found имеет непустые items и известный total_cost<=budget; no_plan
-        имеет пустые items, total_cost=null; insufficient_data тоже не обещает план. При выборе filters.mode=now
+        данных, не бесплатные покупки. found имеет непустые shopping_items и известный total_cost<=budget; no_plan
+        имеет пустые shopping_items, total_cost=null; insufficient_data тоже не обещает план. При выборе filters.mode=now
         возможен no_plan: фильтры применяются буквально. Изменений списка покупок/запасов нет.'
       requestBody:
         required: true

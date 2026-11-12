@@ -3,7 +3,7 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from almostdone_server.main import create_app
+from ..support.application import create_app
 from ..support.http import FILTERS, auth, check, mutation
 from ..support.catalog import custom_catalog
 
@@ -16,11 +16,12 @@ def test_unweighed_stock_uses_native_engine_semantics_and_portions():
             client.post("/api/v1/me/pantry/add", json={"ingredient_id": code, "quantity": None}, headers=mutation(client, headers))
         card = check(app, client.get("/api/v1/recipes/rice_tomato?servings=2", headers=headers), "RecipeDetail")["recipe"]
         assert card["availability"] == {"status": "ready", "missing_count": 0, "unknown_quantity_ids": ["rice", "tomato"]}
-        unavailable = check(app, client.get("/api/v1/recipes/rice_tomato?servings=12", headers=headers), "RecipeDetail")
-        assert unavailable["recipe"]["servings"] == 12
-        assert unavailable["recipe"]["availability"]["status"] == "unknown"
-        assert unavailable["recipe"]["buy_cost"] is None
-        assert all(item["required"] is None for item in unavailable["ingredients"])
+        scaled = check(app, client.get("/api/v1/recipes/rice_tomato?servings=12", headers=headers), "RecipeDetail")
+        assert scaled["recipe"]["servings"] == 12
+        assert scaled["recipe"]["availability"]["status"] == "ready"
+        assert scaled["recipe"]["buy_cost"] == {"minor_units": 0, "currency": "RUB"}
+        assert scaled["recipe"]["nutrition_per_serving"] == card["nutrition_per_serving"]
+        assert [item["required"]["value"] for item in scaled["ingredients"]] == [1200, 600]
         body = {"request_id": str(uuid4()), "servings": 2, "filters": {**FILTERS, "mode": "now"}, "visibility": "visible", "limit": 20}
         page = check(app, client.post("/api/v1/recommendations", json=body, headers=headers), "RecommendationPage", 201)
         assert [c["id"] for c in page["items"]] == ["rice_tomato"]

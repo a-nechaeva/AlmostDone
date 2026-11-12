@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 import pytest
 
 from almostdone_server.errors import StorageUnavailable
-from almostdone_server.main import create_app
+from ..support.application import create_app
 from almostdone_server.api.rate_limit import RateLimiter
 
 

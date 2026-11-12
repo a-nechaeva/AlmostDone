@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from almostdone_server.integrations import photos
-from almostdone_server.main import create_app
+from ..support.application import create_app
 from ..support.catalog import custom_catalog
 from ..support.http import FILTERS, auth, check, png
 

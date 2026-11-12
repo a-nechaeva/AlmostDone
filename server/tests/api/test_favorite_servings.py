@@ -1,11 +1,11 @@
 from fastapi.testclient import TestClient
 
-from almostdone_server.main import create_app
+from ..support.application import create_app
 from ..support.http import auth, check, mutation
 from ..support.catalog import custom_catalog
 
 
-def test_favorites_keep_recipes_without_supported_default_portion_scaling():
+def test_favorites_scale_recipes_to_default_portions():
     data = custom_catalog()
     data['recipes'][0]['servings'] = 20
     app = create_app(catalog_data=data)
@@ -16,5 +16,5 @@ def test_favorites_keep_recipes_without_supported_default_portion_scaling():
         card, = page['items']
         assert card['id'] == 'rice_tomato'
         assert card['servings'] == 2
-        assert card['availability']['status'] == 'unknown'
-        assert card['buy_cost'] is None
+        assert card['availability']['status'] == 'missing'
+        assert card['buy_cost'] is not None

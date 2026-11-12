@@ -3,7 +3,7 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from almostdone_server.main import create_app
+from ..support.application import create_app
 from ..support.http import FILTERS, auth, check, mutation
 from ..support.catalog import custom_catalog
 
@@ -86,23 +86,26 @@ def test_partial_recipe_does_not_satisfy_unconfirmed_filters(filters):
         assert [card["id"] for card in page["items"]] == ["tomato_cheese"]
 
 
-def test_mixed_servings_preserve_records_and_original_calculations():
+def test_mixed_servings_delegate_scaling_to_engine():
     data = custom_catalog()
     data["recipes"][0]["servings"] = 4
     app = create_app(catalog_data=data)
     with TestClient(app) as client:
         headers = auth(app)
-        for servings, calculated_id, unknown_id in [(2, "tomato_cheese", "rice_tomato"), (4, "rice_tomato", "tomato_cheese")]:
+        for servings in (2, 4):
             body = {"request_id": str(uuid4()), "servings": servings, "filters": FILTERS, "visibility": "visible", "limit": 20}
             page = check(app, client.post("/api/v1/recommendations", json=body, headers=headers), "RecommendationPage", 201)
             cards = {card["id"]: card for card in page["items"]}
             assert set(cards) == {"rice_tomato", "tomato_cheese"}
-            assert cards[calculated_id]["buy_cost"] is not None
-            assert cards[unknown_id]["buy_cost"] is None
-            assert cards[unknown_id]["availability"]["status"] == "unknown"
-            detail = check(app, client.get("/api/v1/recipes/" + unknown_id, params={"servings": servings}, headers=headers), "RecipeDetail")
-            assert detail["recipe"] == cards[unknown_id]
-            assert all(item["required"] is None for item in detail["ingredients"])
+            for recipe in data['recipes']:
+                recipe_id = recipe['id']
+                assert cards[recipe_id]['servings'] == servings
+                assert cards[recipe_id]['buy_cost'] is not None
+                assert cards[recipe_id]['nutrition_per_serving'] is not None
+                detail = check(app, client.get('/api/v1/recipes/' + recipe_id, params={'servings': servings}, headers=headers), 'RecipeDetail')
+                assert detail['recipe'] == cards[recipe_id]
+                expected = recipe['items'][0]['qty_g'] * servings / recipe['servings']
+                assert detail['ingredients'][0]['required'] == {'value': expected, 'unit': 'g'}
 
 
 def test_partial_recipe_is_not_lost_across_pages_or_presented_as_a_purchase():

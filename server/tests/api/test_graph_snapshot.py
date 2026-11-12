@@ -3,7 +3,7 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from almostdone_server.main import create_app
+from ..support.application import create_app
 from ..support.http import FILTERS, auth, check, mutation
 from ..support.catalog import custom_catalog
 
@@ -60,3 +60,26 @@ def test_full_graph_preserves_chains_counts_and_long_recipe_ids_across_pages():
         second = check(app, client.get(path, params={"cursor": page["page"]["next_cursor"]}, headers=headers), "RecommendationPage")
         assert second["items"][0]["id"] != page["items"][0]["id"]
         assert client.get(path + "/graph", headers=headers).json() == result
+
+
+def test_scaled_snapshot_preserves_portions_and_package_counts():
+    data = custom_catalog()
+    data['ingredients'][0]['package_g'] = 100
+    app = create_app(catalog_data=data)
+    with TestClient(app) as client:
+        headers = auth(app)
+        client.post('/api/v1/me/pantry/add', headers=mutation(client, headers),
+                    json={'ingredient_id': 'tomato', 'quantity': None})
+        request = {'request_id': str(uuid4()), 'servings': 4, 'filters': FILTERS,
+                   'visibility': 'visible', 'limit': 1}
+        page = check(app, client.post('/api/v1/recommendations', json=request, headers=headers), 'RecommendationPage', 201)
+        path = '/api/v1/recommendations/' + page['snapshot_id']
+        graph = check(app, client.get(path + '/graph', headers=headers), 'RecommendationGraph')
+        assert graph['servings'] == 4
+        purchases = [item for node in graph['graph']['nodes'] if node['kind'] == 'purchase' for item in node['shopping_items']]
+        rice = next(item for item in purchases if item['ingredient_id'] == 'rice')
+        assert rice['package_count'] == 4
+        assert all(node['recipe']['servings'] == 4 for node in graph['graph']['nodes'] if node['kind'] == 'recipe')
+        second = check(app, client.get(path, params={'cursor': page['page']['next_cursor']}, headers=headers), 'RecommendationPage')
+        assert all(card['servings'] == 4 and card['nutrition_per_serving'] is not None for card in page['items'] + second['items'])
+        assert client.get(path + '/graph', headers=headers).json() == graph

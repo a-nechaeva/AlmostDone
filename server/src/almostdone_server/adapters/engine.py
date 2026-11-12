@@ -3,8 +3,7 @@ import importlib
 from dataclasses import asdict
 from types import SimpleNamespace
 
-from ..errors import APIError
-from ..services.catalog import unsupported
+from ..errors import APIError, invalid
 
 
 class DishgraphGateway:
@@ -37,14 +36,7 @@ class DishgraphGateway:
             try:
                 if raw.get("no_cook") and any(raw.get("needs_" + method) for method in self.engine.EQUIPMENT):
                     raise ValueError("Contradictory no_cook is not supported by the engine model")
-                # The API permits unknown quantities for optional ingredients.
-                # Engine calculations use required_items only, so project that
-                # same required-only composition into its strict input model.
-                # Preserve all original optional rows for API presentation.
                 required = [item for item in raw["items"] if not item.get("is_optional")]
-                # New engine versions accept unknown required quantities and
-                # estimate a package when absent. The REST contract requires
-                # unknown availability/metrics instead, even if stock is present.
                 if any(item.get("qty_g") is None for item in required):
                     raise ValueError("Required ingredient quantity is unknown")
                 loaded = self.engine.catalog_from_dict({"ingredients": [self.ingredients[item["code"]] for item in required],
@@ -62,23 +54,22 @@ class DishgraphGateway:
         self.require_engine()
         from dishgraph.search import MAX_QUERY_LEN
         if len(query.strip()) > MAX_QUERY_LEN:
-            # The API accepts longer queries than the engine's search limit;
-            # 503 reports that capability gap without truncating the query.
-            raise unsupported("ingredient_search_query_length")
+            raise invalid("Ingredient search is limited to 64 characters", "q", "max_length")
         return [hit.code for hit in self.search_index.search(query, limit=len(self.ingredients))]
 
-    def detail(self, recipe_id, stock, banned):
+    def detail(self, recipe_id, stock, banned, servings=None):
         recipe = self.engine_catalog.recipe(recipe_id)
-        option = self.engine.dish_option(recipe, stock, self.engine_catalog)
+        option = self.engine.dish_option(recipe, stock, self.engine_catalog, servings=servings)
         single_catalog = self.engine.Catalog(self.engine_catalog.ingredients, (recipe,))
         visible = self.engine.reachable_dishes(stock, single_catalog,
-                                              max_missing=len(self.ingredients), exclude_allergens=banned)
+                                              max_missing=len(self.ingredients), exclude_allergens=banned, servings=servings)
         return option, bool(visible)
 
-    def reachable(self, stock, banned, arguments):
+    def reachable(self, stock, banned, arguments, dietary_hidden=()):
         options = self.engine.reachable_dishes(stock, self.engine_catalog, **arguments)
-        allowed = (self.engine.reachable_dishes(stock, self.engine_catalog, exclude_allergens=banned, **arguments)
-                   if banned else options)
+        allowed_arguments = {**arguments, 'hidden': set(arguments.get('hidden', ())) | set(dietary_hidden)}
+        allowed = (self.engine.reachable_dishes(stock, self.engine_catalog, exclude_allergens=banned, **allowed_arguments)
+                   if banned or dietary_hidden else options)
         return options, {option.recipe.id for option in allowed}
 
     def shopping_requirement(self, code, grams):
@@ -95,13 +86,16 @@ class DishgraphGateway:
         return self.engine.build_graph(options, self.engine_catalog)
 
     def serialize_option(self, option):
-        return {"recipe_id": option.recipe.id, "missing_g": dict(option.missing_g),
+        return {"recipe_id": option.recipe.id, "missing_g": dict(option.missing_g), "servings": option.servings,
                 "metrics": asdict(option.metrics)}
 
     def restore_option(self, value):
         return self.engine.DishOption(recipe=self.engine_catalog.recipe(value["recipe_id"]),
                                       missing_g=value["missing_g"],
-                                      metrics=self.engine.DishMetrics(**value["metrics"]))
+                                      metrics=self.engine.DishMetrics(**value["metrics"]), servings=value.get("servings"))
 
     def single_purchases(self, options):
         return self.engine.best_single_purchases(options, self.engine_catalog)
+
+    def budget_purchases(self, options, budget_minor):
+        return self.engine.best_purchases(options, self.engine_catalog, budget_minor / 100)

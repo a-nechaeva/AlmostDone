@@ -9,7 +9,6 @@ from .integrations.yandex import YandexProvider
 from .api.contract import Contract, PROJECT_ROOT
 from .api.app import create_http_app
 from .services.application import ApplicationService
-from .repositories.memory import Store
 
 
 def create_app(*, store=None, catalog_data=None, contract_path=None,
@@ -17,11 +16,10 @@ def create_app(*, store=None, catalog_data=None, contract_path=None,
     contract = Contract(contract_path)
     if store is None:
         database_url = os.environ.get("ALMOSTDONE_DATABASE_URL")
-        if database_url:
-            from .repositories.postgres import PostgresStore
-            store = PostgresStore(database_url)
-        else:
-            store = Store()
+        if not database_url or not database_url.strip():
+            raise RuntimeError("ALMOSTDONE_DATABASE_URL is required; start the server through Docker Compose")
+        from .repositories.postgres import PostgresStore
+        store = PostgresStore(database_url)
     catalog_path = Path(os.environ.get("ALMOSTDONE_CATALOG", PROJECT_ROOT / "server/data/demo_catalog.json"))
     if catalog_data is None:
         if store.mode == "postgresql" and "ALMOSTDONE_CATALOG" not in os.environ:

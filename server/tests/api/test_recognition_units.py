@@ -4,7 +4,7 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from almostdone_server.main import create_app
+from ..support.application import create_app
 from ..support.catalog import custom_catalog
 from ..support.http import auth, check, png
 

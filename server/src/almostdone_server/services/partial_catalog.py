@@ -7,7 +7,7 @@ def methods(raw):
     return sorted(method for method in ("stove", "oven", "microwave") if raw.get("needs_" + method))
 
 
-def suitability(catalog, raw, banned):
+def suitability(catalog, raw, banned, dietary=None):
     reasons, hidden, incomplete = [], False, []
     for item in raw["items"]:
         code = item["code"]
@@ -24,6 +24,23 @@ def suitability(catalog, raw, banned):
     if incomplete:
         reasons.append({"code": "incomplete_allergen_data", "message": "Сведения об аллергенах неполные",
                         "ingredient_ids": sorted(set(incomplete)), "restriction_ids": sorted(banned)})
+    if dietary and dietary.get('database'):
+        decision = dietary['recipes'].get(str(raw['id']))
+        if decision is None:
+            incomplete.append('dietary')
+            reasons.append({'code': 'dietary_data_unavailable', 'message': 'Dietary assessment is unavailable',
+                            'ingredient_ids': [], 'restriction_ids': []})
+        else:
+            hidden |= decision['hidden']
+            if decision.get('diet_violation', bool(decision['restrictions'])):
+                reasons.append({'code': 'excluded_diet', 'message': 'Recipe does not satisfy the configured diet rules',
+                                'ingredient_ids': [], 'restriction_ids': decision['restrictions']})
+            optional_ids = sorted(set(decision['skip_optional']) - {
+                code for reason in reasons if reason['code'] == 'skip_optional' for code in reason['ingredient_ids']
+            })
+            if optional_ids:
+                reasons.append({'code': 'skip_optional', 'message': 'Omit optional ingredients excluded by your profile',
+                                'ingredient_ids': optional_ids, 'restriction_ids': []})
     return {"status": "hidden" if hidden else "unknown" if incomplete else "allowed", "reasons": reasons}
 
 
@@ -49,7 +66,7 @@ def present(catalog, recipe_id, user, servings, banned):
             "availability": {"status": "unknown", "missing_count": 0,
                              "unknown_quantity_ids": sorted({item["code"] for item in raw["items"]
                                  if not item.get("is_optional") and item["code"] in user["pantry"] and user["pantry"][item["code"]] is None})},
-            "suitability": suitability(catalog, raw, banned),
+            "suitability": suitability(catalog, raw, banned, user.get("_dietary")),
             "allergens": catalog.allergen_assessment([item["code"] for item in raw["items"]]),
             "is_favorite": recipe_id in user["favorites"]["recipes"], "methods": methods(raw)}
     return {"state_version": user["version"], "catalog_version": catalog.version, "recipe": card,

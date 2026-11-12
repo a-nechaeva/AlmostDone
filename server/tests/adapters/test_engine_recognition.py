@@ -4,7 +4,7 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 
 from dishgraph.recognition import FakeProvider, RecognitionError
-from almostdone_server.main import create_app
+from ..support.application import create_app
 from ..support.http import auth, check, mutation, png
 
 

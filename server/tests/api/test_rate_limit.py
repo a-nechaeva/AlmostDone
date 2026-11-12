@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from almostdone_server.errors import APIError
-from almostdone_server.main import create_app
+from ..support.application import create_app
 from almostdone_server.api.rate_limit import RateLimiter
 from ..support.http import auth, check
 
