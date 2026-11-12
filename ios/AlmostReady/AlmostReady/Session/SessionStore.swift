@@ -23,6 +23,7 @@ final class SessionStore {
 
     private(set) var phase: Phase = .starting
     private(set) var revision: AccountRevision?
+    @ObservationIgnored private(set) var ingredientNutritionCatalog = IngredientNutritionCatalog()
 
     private let client: APIClient
     private let yandex: any YandexAuthorizing
@@ -357,6 +358,7 @@ final class SessionStore {
 
     private func resetAccount() {
         generation = UUID()
+        ingredientNutritionCatalog = IngredientNutritionCatalog()
         refreshTask = nil
         tokens = nil
         revision = nil

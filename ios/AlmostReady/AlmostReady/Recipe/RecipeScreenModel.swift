@@ -51,6 +51,7 @@ final class RecipeScreenModel {
     private(set) var servingsUpdate: ServingsUpdate?
     private(set) var photoURL: String?
     private(set) var photo: RecipePhoto = .unavailable
+    private(set) var ingredientNutrition: [String: IngredientNutrition] = [:]
 
     init(repository: RecipeRepository) {
         self.repository = repository
@@ -116,6 +117,15 @@ final class RecipeScreenModel {
                 state = metadata?.statusCode == 404 ? .notFound : .failed(retryAfter: retryAfter)
             }
         }
+    }
+
+    func loadIngredientNutrition() async {
+        guard canApplyResult, case .loaded(let presentation) = state, !presentation.ingredients.isEmpty else { return }
+        let session = repository.session
+        let catalog = session.ingredientNutritionCatalog
+        await catalog.load(session: session, account: repository.account)?.value
+        guard canApplyResult else { return }
+        ingredientNutrition = catalog.values
     }
 
     func loadPhoto(for url: String?) async {
