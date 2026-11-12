@@ -22,28 +22,41 @@ struct RecipeMetrics: View {
                 }
             }
 
-            if let macros = presentation.nutrition?.macros {
-                Text("На порцию: \(macros)")
+            if let nutrition = presentation.nutrition {
+                Text("На порцию: \(nutrition.macros)")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
 
-            if !presentation.allergens.isEmpty {
+            if !presentation.allergens.isEmpty || presentation.allergenNote != nil {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Аллергены")
                         .font(.subheadline.bold())
                         .accessibilityAddTraits(.isHeader)
-                    ViewThatFits(in: .horizontal) {
-                        HStack(spacing: 8) {
-                            allergenChips
-                        }
-                        .fixedSize(horizontal: true, vertical: false)
+                    if !presentation.allergens.isEmpty {
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: 8) {
+                                allergenChips
+                            }
+                            .fixedSize(horizontal: true, vertical: false)
 
-                        VStack(alignment: .leading, spacing: 8) {
-                            allergenChips
+                            VStack(alignment: .leading, spacing: 8) {
+                                allergenChips
+                            }
                         }
                     }
+                    if let note = presentation.allergenNote {
+                        Text(note)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
                 }
+            }
+
+            ForEach(presentation.suitabilityNotes.indices, id: \.self) { index in
+                Text(presentation.suitabilityNotes[index])
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
         }
     }

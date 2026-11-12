@@ -154,6 +154,10 @@ final class SessionStore {
         return try await authorized(request, id: account.id) { try await client.data(for: $0) }
     }
 
+    func publicData(path: [String]) async throws -> APIResponse<Data> {
+        try await client.data(for: APIRequest(path: path))
+    }
+
     func empty(for request: APIRequest, account: AccountSession) async throws -> APIResponse<Void> {
         try requireAccount(account)
         return try await authorized(request, id: account.id) { try await client.empty(for: $0) }
