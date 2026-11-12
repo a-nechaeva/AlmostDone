@@ -3,18 +3,24 @@ import UIKit
 
 struct RecipeScreen: View {
     @Environment(DemoStore.self) private var store
-    @AccessibilityFocusState(for: .voiceOver) private var isStepsHeadingFocused: Bool
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var showsSteps = false
     let recipeID: Recipe.ID
 
     var body: some View {
         Group {
             if let recipe = store.recipe(id: recipeID) {
-                recipeDetails(recipe, presentation: RecipePresentation.demo[recipe.id])
+                let presentation = RecipePresentation.demo[recipe.id]
+                recipeDetails(recipe, presentation: presentation)
+                    .navigationDestination(isPresented: $showsSteps) {
+                        RecipeStepsScreen(recipe: recipe, servings: presentation?.servings)
+                    }
             } else {
                 ContentUnavailableView("Рецепт не найден", systemImage: "fork.knife")
             }
         }
-        .background(Color(.demoBackground))
+        .background(Color(.demoBackground).ignoresSafeArea())
         .navigationTitle("Рецепт")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -29,52 +35,51 @@ struct RecipeScreen: View {
     private func recipeDetails(_ recipe: Recipe, presentation: RecipePresentation?) -> some View {
         let missingIDs = Set(store.missingIngredients(for: recipe).map(\.id))
 
-        return ScrollViewReader { scroll in
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    photo(named: presentation?.photoName)
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                photo(named: presentation?.photoName)
 
-                    VStack(alignment: .leading, spacing: 14) {
-                        Text(recipe.title)
-                            .font(.title.bold())
-                            .accessibilityAddTraits(.isHeader)
+                Text(recipe.title)
+                    .font(.title.bold())
+                    .accessibilityAddTraits(.isHeader)
+                    .padding(.top, 24)
+                    .padding(.bottom, 16)
 
-                        availability(isReady: missingIDs.isEmpty)
-                        metrics(presentation)
-                    }
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        ViewThatFits(in: .horizontal) {
-                            HStack {
-                                sectionTitle("Ингредиенты")
-                                Spacer()
-                                stepsButton(scroll)
-                            }
-                            VStack(alignment: .leading) {
-                                sectionTitle("Ингредиенты")
-                                stepsButton(scroll)
-                            }
-                        }
-
-                        ForEach(recipe.ingredients) { ingredient in
-                            ingredientRow(ingredient, isAtHome: !missingIDs.contains(ingredient.id))
-                        }
-                    }
-
-                    VStack(alignment: .leading, spacing: 12) {
-                        sectionTitle("Как приготовить")
-                            .accessibilityFocused($isStepsHeadingFocused)
-
-                        ForEach(recipe.steps.indices, id: \.self) { index in
-                            stepCard(number: index + 1, text: recipe.steps[index])
-                        }
-                    }
-                    .id(Section.steps)
+                availability(missingCount: missingIDs.count)
+                if let presentation {
+                    RecipeMetrics(presentation: presentation)
+                        .padding(.top, 20)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 12)
-                .padding(.bottom, 24)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Ингредиенты")
+                        .font(.title3.bold())
+                        .accessibilityAddTraits(.isHeader)
+
+                    if let servings = presentation?.servings {
+                        Text(servings.ingredientCaption)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    VStack(spacing: 4) {
+                        ForEach(recipe.ingredients) { ingredient in
+                            ingredientRow(
+                                ingredient,
+                                isAtHome: !missingIDs.contains(ingredient.id),
+                                amount: presentation?.ingredientAmounts[ingredient.id]
+                            )
+                        }
+                    }
+                    .padding(.top, 8)
+                }
+                .padding(.top, 28)
             }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            footer(missingIDs: missingIDs, hasSteps: !recipe.steps.isEmpty)
         }
     }
 
@@ -96,104 +101,31 @@ struct RecipeScreen: View {
             .clipShape(.rect(cornerRadius: 24))
     }
 
-    private func availability(isReady: Bool) -> some View {
-        let tint: Color = isReady ? .green : .accentColor
+    private func availability(missingCount: Int) -> some View {
+        let isReady = missingCount == 0
+        let tint = isReady ? readyColor : .accentColor
 
-        return Label(
-            isReady ? "Все продукты есть" : "Нужно докупить",
-            systemImage: isReady ? "checkmark" : "bag"
-        )
-        .font(.footnote.weight(.medium))
+        return Label {
+            if isReady {
+                Text("Все продукты есть")
+            } else {
+                Text(RecipePresentation.shoppingBadge(missingCount: missingCount))
+            }
+        } icon: {
+            Image(systemName: isReady ? "checkmark" : "bag")
+                .accessibilityHidden(true)
+        }
+        .font(.caption.weight(.medium))
+        .foregroundStyle(tint)
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .background(tint.opacity(0.12), in: .rect(cornerRadius: 10))
     }
 
-    @ViewBuilder
-    private func metrics(_ presentation: RecipePresentation?) -> some View {
-        if let presentation {
-            metric("\(presentation.minutes) мин", caption: "время приготовления", icon: "clock")
-
-            if let nutrition = presentation.nutrition {
-                metric("\(nutrition.kilocalories) ккал", caption: "на порцию", icon: "flame")
-                Text("На порцию — Б \(nutrition.protein) · Ж \(nutrition.fat) · У \(nutrition.carbohydrates) г")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-
-            if !presentation.allergens.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Аллергены")
-                        .font(.subheadline.bold())
-                        .accessibilityAddTraits(.isHeader)
-                    ViewThatFits(in: .horizontal) {
-                        HStack(spacing: 8) {
-                            allergenChips(presentation.allergens)
-                        }
-                        .fixedSize(horizontal: true, vertical: false)
-
-                        VStack(alignment: .leading, spacing: 8) {
-                            allergenChips(presentation.allergens)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private func metric(_ value: String, caption: String, icon: String) -> some View {
+    private func ingredientRow(_ ingredient: Ingredient, isAtHome: Bool, amount: String?) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: icon)
-                .foregroundStyle(Color.accentColor)
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(value).font(.headline)
-                Text(caption)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(Color.primary.opacity(0.05), in: .rect(cornerRadius: 20))
-    }
-
-    private func allergenChips(_ allergens: [String]) -> some View {
-        ForEach(allergens, id: \.self) { allergen in
-            Text(allergen)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(Color(uiColor: .systemBackground), in: .capsule)
-        }
-    }
-
-    private func sectionTitle(_ title: String) -> some View {
-        Text(title)
-            .font(.title3.bold())
-            .accessibilityAddTraits(.isHeader)
-    }
-
-    private func stepsButton(_ scroll: ScrollViewProxy) -> some View {
-        Button {
-            scroll.scrollTo(Section.steps, anchor: .top)
-            isStepsHeadingFocused = true
-        } label: {
-            Label("К шагам", systemImage: "arrow.down")
-                .font(.subheadline.weight(.medium))
-                .padding(.vertical, 12)
-        }
-        .buttonStyle(.borderless)
-        .fixedSize(horizontal: true, vertical: false)
-        .accessibilityIdentifier("recipe.steps")
-    }
-
-    private func ingredientRow(_ ingredient: Ingredient, isAtHome: Bool) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: isAtHome ? "checkmark" : "bag")
-                .foregroundStyle(isAtHome ? Color.green : Color.accentColor)
+            Image(systemName: isAtHome ? "checkmark" : "plus")
+                .foregroundStyle(isAtHome ? readyColor : Color.accentColor)
                 .frame(width: 22)
                 .accessibilityHidden(true)
 
@@ -201,8 +133,18 @@ struct RecipeScreen: View {
                 Text(ingredient.name)
                     .font(.subheadline.weight(.medium))
                 Text(isAtHome ? "Есть дома" : "Нужно докупить")
-                    .font(.footnote)
+                    .font(.caption)
                     .foregroundStyle(isAtHome ? Color.secondary : Color.accentColor)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+
+            if let amount {
+                Text(amount)
+                    .font(.subheadline.weight(.medium))
+                    .multilineTextAlignment(.trailing)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 94, alignment: .trailing)
             }
         }
         .padding(.vertical, 8)
@@ -210,26 +152,53 @@ struct RecipeScreen: View {
         .accessibilityIdentifier("recipe.ingredient.\(ingredient.id)")
     }
 
-    private func stepCard(number: Int, text: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Text("\(number)")
-                .font(.subheadline.bold())
-                .foregroundStyle(Color.accentColor)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Color.accentColor.opacity(0.12), in: .capsule)
+    private func footer(missingIDs: Set<Ingredient.ID>, hasSteps: Bool) -> some View {
+        let price = RecipePresentation.packagePrice(for: missingIDs)
+        let layout =
+            dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+            : AnyLayout(HStackLayout(spacing: 12))
 
-            Text(text)
-                .font(.body)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+        return layout {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(price == nil ? "Докупка" : "За упаковку")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(price ?? (missingIDs.isEmpty ? "Не нужна" : "Нужна"))
+                    .font(.title3.bold())
+            }
+            .frame(minWidth: 92, alignment: .leading)
+            .accessibilityElement(children: .combine)
+
+            if hasSteps {
+                Button("К приготовлению") {
+                    showsSteps = true
+                }
+                .buttonStyle(RecipeStepsButtonStyle())
+                .accessibilityIdentifier("recipe.steps")
+            }
         }
-        .padding(16)
-        .background(Color(uiColor: .systemBackground), in: .rect(cornerRadius: 20))
-        .accessibilityElement(children: .combine)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
+        .background(Color(.demoBackground))
     }
 
-    private enum Section {
-        case steps
+    private var readyColor: Color {
+        colorScheme == .dark ? Color(red: 0.60, green: 0.82, blue: 0.68) : Color(red: 0.20, green: 0.41, blue: 0.29)
+    }
+}
+
+private struct RecipeStepsButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.subheadline.bold())
+            .multilineTextAlignment(.center)
+            .foregroundStyle(Color.accentColor)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, minHeight: 48)
+            .background(Color.accentColor.opacity(0.14), in: .rect(cornerRadius: 16))
+            .opacity(configuration.isPressed ? 0.75 : 1)
     }
 }

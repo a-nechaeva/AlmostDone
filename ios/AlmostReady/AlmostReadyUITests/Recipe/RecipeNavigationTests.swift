@@ -2,60 +2,113 @@ import XCTest
 
 extension NavigationTests {
     @MainActor
-    @objc func testRecipeCardsOpenTheirOwnDetailsAndPreserveProductsOnBack() {
+    @objc func testRecipeStepsAndBackForReadyAndShoppingRecipes() {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launch()
 
-        let products = app.navigationBars["Мои продукты"]
-        XCTAssertTrue(products.waitForExistence(timeout: 10))
+        let openDishes = app.buttons["products.dishes"]
+        XCTAssertTrue(openDishes.waitForExistence(timeout: 10))
         let productNames = ["Яйца", "Томаты", "Макароны", "Сыр", "Оливковое масло"]
         let initialProducts = productNames.filter { app.staticTexts[$0].exists }
         XCTAssertTrue(initialProducts.contains("Томаты"))
-        app.descendants(matching: .any)["products.dishes"].firstMatch.tap()
+        openDishes.tap()
 
-        let dishes = app.navigationBars["Блюда"]
-        let recipe = app.navigationBars["Рецепт"]
-        XCTAssertTrue(dishes.waitForExistence(timeout: 10))
         let omeletLink = app.descendants(matching: .any)["dishes.recipe.tomato-omelet"].firstMatch
         let pastaLink = app.descendants(matching: .any)["dishes.recipe.tomato-cheese-pasta"].firstMatch
-        XCTAssertTrue(omeletLink.isHittable)
+        XCTAssertTrue(omeletLink.waitForExistence(timeout: 10))
         omeletLink.tap()
-        XCTAssertTrue(recipe.waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["Омлет с томатами"].exists)
-        XCTAssertTrue(app.staticTexts["15 мин"].exists)
-        XCTAssertTrue(app.staticTexts["Все продукты есть"].exists)
-        let eggs = app.descendants(matching: .any)["recipe.ingredient.eggs"].firstMatch
-        XCTAssertTrue(eggs.exists)
-        XCTAssertTrue(eggs.label.contains("Есть дома"))
-
-        recipe.buttons.firstMatch.tap()
-        XCTAssertTrue(dishes.waitForExistence(timeout: 10))
+        assertRecipe(
+            in: app,
+            title: "Омлет с томатами",
+            duration: "15 мин",
+            availability: "Все продукты есть",
+            ingredientID: "eggs",
+            ingredientStatus: "Есть дома",
+            firstStep: "Нарежьте томаты и слегка обжарьте их на оливковом масле."
+        )
+        XCTAssertTrue(omeletLink.waitForExistence(timeout: 10))
         XCTAssertTrue(pastaLink.isHittable)
+
         pastaLink.tap()
-        XCTAssertTrue(recipe.waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["Паста с томатами и сыром"].exists)
-        XCTAssertTrue(app.staticTexts["20 мин"].exists)
-        let cheese = app.descendants(matching: .any)["recipe.ingredient.cheese"].firstMatch
-        if !cheese.exists {
-            app.scrollViews.firstMatch.swipeUp()
-        }
-        XCTAssertTrue(cheese.exists)
-        XCTAssertTrue(cheese.label.contains("Нужно докупить"))
-
-        app.buttons["recipe.steps"].tap()
-        XCTAssertTrue(app.staticTexts["Как приготовить"].isHittable)
-        let pastaStep = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "label CONTAINS %@", "Сварите макароны по инструкции на упаковке."))
-            .firstMatch
-        XCTAssertTrue(pastaStep.exists)
-
-        recipe.buttons.firstMatch.tap()
-        XCTAssertTrue(dishes.waitForExistence(timeout: 10))
+        assertRecipe(
+            in: app,
+            title: "Паста с томатами и сыром",
+            duration: "20 мин",
+            availability: "Нужно докупить 1 продукт",
+            ingredientID: "cheese",
+            ingredientStatus: "Нужно докупить",
+            firstStep: "Сварите макароны по инструкции на упаковке."
+        )
+        XCTAssertTrue(pastaLink.waitForExistence(timeout: 10))
         XCTAssertTrue(omeletLink.exists)
-        XCTAssertTrue(pastaLink.exists)
         app.buttons["tabs.products"].tap()
-        XCTAssertTrue(products.waitForExistence(timeout: 10))
+        XCTAssertTrue(openDishes.waitForExistence(timeout: 10))
         XCTAssertEqual(productNames.filter { app.staticTexts[$0].exists }, initialProducts)
+    }
+
+    @MainActor
+    private func assertRecipe(
+        in app: XCUIApplication,
+        title: String,
+        duration: String,
+        availability: String,
+        ingredientID: String,
+        ingredientStatus: String,
+        firstStep: String
+    ) {
+        let recipeBar = app.navigationBars["Рецепт"]
+        let heading = app.staticTexts["Ингредиенты"]
+        let stepsHeading = app.staticTexts["Как приготовить"]
+        let stepsButton = app.buttons["recipe.steps"]
+        XCTAssertTrue(recipeBar.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts[title].exists)
+        XCTAssertTrue(app.staticTexts[duration].exists)
+        XCTAssertTrue(app.staticTexts[availability].exists)
+        XCTAssertTrue(heading.exists)
+        XCTAssertTrue(stepsButton.isHittable)
+        XCTAssertFalse(stepsHeading.exists)
+        attachScreenshot(named: "\(title) — детали", in: app)
+
+        let ingredient = app.descendants(matching: .any)["recipe.ingredient.\(ingredientID)"].firstMatch
+        let scroll = app.scrollViews.firstMatch
+        if !ingredient.isHittable {
+            scroll.swipeUp()
+        }
+        XCTAssertTrue(ingredient.isHittable)
+        XCTAssertTrue(ingredient.label.contains(ingredientStatus))
+        let lastIngredient = app.descendants(matching: .any)["recipe.ingredient.olive-oil"].firstMatch
+        if !lastIngredient.isHittable || lastIngredient.frame.maxY > stepsButton.frame.minY {
+            scroll.swipeUp()
+        }
+        XCTAssertTrue(lastIngredient.isHittable)
+        XCTAssertTrue(stepsButton.isHittable)
+        XCTAssertLessThanOrEqual(lastIngredient.frame.maxY, stepsButton.frame.minY)
+        stepsButton.tap()
+
+        XCTAssertTrue(stepsHeading.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts[title].exists)
+        XCTAssertFalse(heading.isHittable)
+        XCTAssertFalse(stepsButton.isHittable)
+        let step = app.descendants(matching: .any)["recipe.step.1"].firstMatch
+        XCTAssertTrue(step.isHittable)
+        XCTAssertTrue(step.label.contains("1"))
+        XCTAssertTrue(step.label.contains(firstStep))
+        attachScreenshot(named: "\(title) — шаги", in: app)
+
+        recipeBar.buttons.firstMatch.tap()
+        XCTAssertTrue(stepsButton.waitForExistence(timeout: 10))
+        XCTAssertTrue(heading.exists)
+        XCTAssertFalse(stepsHeading.isHittable)
+
+        recipeBar.buttons.firstMatch.tap()
+    }
+
+    @MainActor
+    private func attachScreenshot(named name: String, in app: XCUIApplication) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 }
