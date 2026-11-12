@@ -1,5 +1,7 @@
 """Каталог для подбора на устройстве и фото рецептов через сервер."""
 from uuid import uuid4
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 
 import pytest
 from fastapi.testclient import TestClient
@@ -68,6 +70,54 @@ def test_photo_errors(app, monkeypatch, tmp_path):
         assert check(app, client.get("/api/v1/recipes/rice_tomato/photo"), "Error", 503)
         assert check(app, client.get("/api/v1/recipes/tomato_cheese/photo"), "Error", 404)
         assert check(app, client.get("/api/v1/recipes/unknown/photo"), "Error", 404)
+
+
+def test_concurrent_photo_requests_publish_a_complete_cache(app, monkeypatch, tmp_path):
+    image = png()
+    downloading = Barrier(2)
+    publishing = Barrier(2)
+    replace = photos.Path.replace
+
+    def download(url):
+        downloading.wait(timeout=10)
+        return image
+
+    def publish(path, target):
+        publishing.wait(timeout=10)
+        return replace(path, target)
+
+    monkeypatch.setattr(photos, "download", download)
+    monkeypatch.setattr(photos, "CACHE_DIR", tmp_path)
+    with TestClient(app) as client:
+        with monkeypatch.context() as concurrent:
+            concurrent.setattr(photos.Path, "replace", publish)
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                responses = list(pool.map(
+                    lambda _: client.get("/api/v1/recipes/rice_tomato/photo"), range(2)))
+        assert all(response.status_code == 200 and response.content == image for response in responses)
+        # The next request must read the published file without downloading.
+        assert client.get("/api/v1/recipes/rice_tomato/photo").content == image
+    assert len(list(tmp_path.iterdir())) == 1
+
+
+@pytest.mark.parametrize("optional_complete", [True, False])
+def test_catalog_preserves_optional_allergens_and_completeness(optional_complete):
+    data = custom_catalog()
+    for ingredient in data["ingredients"]:
+        ingredient["allergen_data_complete"] = True
+        if ingredient["code"] == "cheese":
+            ingredient["allergen_data_complete"] = optional_complete
+    data["recipes"][0]["items"].append({"code": "cheese", "qty_g": None, "is_optional": True})
+    app = create_app(catalog_data=data)
+    with TestClient(app) as client:
+        headers = auth(app)
+        exported = check(app, client.get("/api/v1/catalog", headers=headers), "AppCatalog")
+        detail = check(app, client.get("/api/v1/recipes/rice_tomato", headers=headers), "RecipeDetail")
+    recipe = next(item for item in exported["recipes"] if item["id"] == "rice_tomato")
+    assert recipe["allergens"] == detail["recipe"]["allergens"]["contains"] == ["milk"]
+    assert recipe["allergen_data_complete"] is optional_complete
+    assert (detail["recipe"]["allergens"]["completeness"] == "complete") is optional_complete
+    assert "cheese" not in {item["ingredient_id"] for item in recipe["ingredients"]}
 
 
 def test_recipe_cards_point_photos_at_server(app):

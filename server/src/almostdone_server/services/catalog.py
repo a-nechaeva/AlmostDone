@@ -190,15 +190,18 @@ class Catalog:
                       for i in recipe.required_items if i.code not in staples and i.qty_g]
             if not listed or any(item["quantity"] is None or item["quantity"]["value"] <= 0 for item in listed):
                 continue
+            # Optional items do not affect quantities, but remain part of the
+            # recipe's allergen warnings, just as in its server-side detail.
+            allergens = self.allergen_assessment(
+                [item["code"] for item in self.recipes[recipe.id]["items"]])
             items.append({
                 "id": recipe.id, "title": recipe.title, "photo_url": self.photo_source(recipe.id),
                 "servings": recipe.servings, "minutes": max(1, metrics.cook_time_min),
                 "steps": list(recipe.steps), "ingredients": listed,
                 "nutrition_per_serving": {"kcal": metrics.kcal, "protein_g": metrics.protein,
                                           "fat_g": metrics.fat, "carbs_g": metrics.carbs},
-                "allergens": sorted(metrics.allergens),
-                "allergen_data_complete": self.allergen_assessment(
-                    [i.code for i in recipe.required_items])["completeness"] == "complete",
+                "allergens": allergens["contains"],
+                "allergen_data_complete": allergens["completeness"] == "complete",
                 "methods": list(recipe.methods)})
         return {"catalog_version": self.version, "ingredients": ingredients, "recipes": items}
 

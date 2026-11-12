@@ -58,9 +58,12 @@ def fetch(url: str, cache_dir: Path | None = None) -> tuple[bytes, str]:
         if media_type(data) is None:
             raise PhotoUnavailable("по ссылке не картинка")
         cache_dir.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(".tmp")
-        tmp.write_bytes(data)
-        tmp.replace(path)
+        # Concurrent requests (including other workers) must not share a
+        # temporary file. Publish only complete images on the same filesystem.
+        with tempfile.TemporaryDirectory(prefix="photo-", dir=cache_dir) as temporary:
+            tmp = Path(temporary) / path.name
+            tmp.write_bytes(data)
+            tmp.replace(path)
     kind = media_type(data)
     if kind is None:
         raise PhotoUnavailable("по ссылке не картинка")
