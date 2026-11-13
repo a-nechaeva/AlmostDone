@@ -38,6 +38,9 @@ final class SessionStore {
         self.storage = storage
     }
 
+    // Work around the Swift runtime's isolated deinit crash on iOS 26.2 (swiftlang/swift#88036).
+    nonisolated deinit {}
+
     var account: AccountSession? {
         guard case .signedIn(let account) = phase else { return nil }
         return account
