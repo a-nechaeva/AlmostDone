@@ -92,7 +92,7 @@ struct ShoppingScreen: View {
         .onChange(of: presentation != nil) { _, isPresented in
             onCoverChange(isPresented)
         }
-        .rootScreenHeader()
+        .rootScreenHeader(showsDemoLabel: server == nil)
         .fullScreenCover(item: $presentation, onDismiss: openTabAfterDismissal) { destination in
             switch destination {
             case .budget(let kind):
@@ -264,7 +264,7 @@ struct ShoppingScreen: View {
                     )
                 }
             }
-            .rootScreenHeader()
+            .rootScreenHeader(showsDemoLabel: server == nil)
         }
     }
 

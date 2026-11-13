@@ -43,7 +43,7 @@ struct PhotoImportLine: Identifiable {
 }
 
 @Observable
-final class PhotoImportModel {
+final class PhotoImportModel: Identifiable {
     enum Phase: Equatable {
         case source, recognizing, failed, empty, review, imported
     }
