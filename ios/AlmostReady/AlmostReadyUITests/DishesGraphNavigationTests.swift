@@ -56,6 +56,12 @@ extension NavigationTests {
         let row = app.buttons["shopping.item.rice:standard"]
         XCTAssertTrue(row.waitForExistence(timeout: 10))
         XCTAssertEqual(app.buttons.matching(identifier: "shopping.item.rice:standard").count, 1)
+        let demoLabel = app.staticTexts["root.demo"]
+        XCTAssertFalse(demoLabel.exists)
+
+        row.tap()
+        XCTAssertTrue(app.staticTexts["Покупка отмечена"].waitForExistence(timeout: 10))
+        XCTAssertFalse(demoLabel.exists)
     }
 
     @MainActor

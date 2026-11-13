@@ -2,6 +2,7 @@ import SwiftUI
 
 private struct RootScreenHeader: View {
     @ScaledMetric(relativeTo: .title3) private var logoSize = 26.0
+    let showsDemoLabel: Bool
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
@@ -38,11 +39,14 @@ private struct RootScreenHeader: View {
         }
     }
 
+    @ViewBuilder
     private var demoLabel: some View {
-        Text("Демоданные")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .accessibilityIdentifier("root.demo")
+        if showsDemoLabel {
+            Text("Демоданные")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("root.demo")
+        }
     }
 }
 
@@ -68,9 +72,9 @@ struct RootScreenTitle: View {
 }
 
 extension View {
-    func rootScreenHeader() -> some View {
+    func rootScreenHeader(showsDemoLabel: Bool = true) -> some View {
         safeAreaInset(edge: .top, spacing: 0) {
-            RootScreenHeader()
+            RootScreenHeader(showsDemoLabel: showsDemoLabel)
         }
         .toolbar(.hidden, for: .navigationBar)
     }
