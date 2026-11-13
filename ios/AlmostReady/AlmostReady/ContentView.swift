@@ -36,7 +36,7 @@ struct ContentView: View {
                                 ServerDishesScreen(
                                     repository: RecommendationsRepository(session: session, account: account),
                                     isSearchFocused: $isDishSearchFocused,
-                                    onOpenProducts: openProducts
+                                    onOpenProducts: openProducts, onOpenRecipe: { dishPath.append($0) }
                                 )
                                 .id(account.id)
                             }

@@ -5,7 +5,7 @@ nonisolated struct RecommendationRequest: Encodable, Sendable {
         case visible, hidden
     }
 
-    nonisolated struct Filters: Encodable, Sendable {
+    nonisolated struct Filters: Codable, Equatable, Sendable {
         let query: String
         let mode: DishesFilter
         let maxMinutes: Int?
@@ -141,6 +141,10 @@ final class RecommendationsRepository {
         let response = try await fetch(
             ProfileDictionary<ProfileAllergenOption>.self, for: APIRequest(path: ["allergens"]))
         return response.value.items
+    }
+
+    func graph(snapshotID: String) async throws -> APIResponse<RecommendationGraph> {
+        try await fetch(RecommendationGraph.self, for: APIRequest(path: ["recommendations", snapshotID, "graph"]))
     }
 
     func missingProducts(
