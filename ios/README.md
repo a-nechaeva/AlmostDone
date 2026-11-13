@@ -1,11 +1,43 @@
 
-# Серверная сессия iOS
+# iOS «Почти готово»
 
-Чистый checkout запускается в режиме `demo` с `DemoStore`. Этот же режим
-используют навигация и скриншоты в iOS GitHub Actions. Для получения пакета
-при сборке нужен доступ к GitHub.
+## Сборка и запуск
 
-## Вход на устройстве
+На macOS установите Xcode 26.2 (17C52) с платформой iOS и средой выполнения
+iOS Simulator. Эту версию Xcode использует [iOS CI](../.github/ios/README.md).
+Приложение рассчитано на iOS 17.0 и новее. Для первого разрешения зависимости
+`YandexLoginSDK` через Swift Package Manager нужен доступ к GitHub.
+
+Из корня репозитория откройте проект:
+
+```bash
+open ios/AlmostReady/AlmostReady.xcodeproj
+
+```
+
+Выберите схему `AlmostReady`, симулятор iPhone и нажмите **Run**.
+Чистый checkout запускается в режиме `demo` с `DemoStore`. Демо-сценарии
+навигации и тесты скриншотов используют демоданные. Серверные UI-тесты
+подменяют ответы API.
+
+Для сборки Debug-версии под симулятор из корня репозитория:
+
+```bash
+xcodebuild -project ios/AlmostReady/AlmostReady.xcodeproj \
+  -scheme AlmostReady -configuration Debug \
+  -destination 'generic/platform=iOS Simulator' \
+  -derivedDataPath "$PWD/.local/ios-build" build
+
+```
+
+Приложение появится в `.local/ios-build/Build/Products/Debug-iphonesimulator/AlmostReady.app`.
+
+## Серверный режим и вход
+
+Для запуска на iPhone выберите команду разработки в **Signing & Capabilities**
+для таргета `AlmostReady`. Для серверного режима на симуляторе оставьте
+включённой локальную подпись Xcode. Связке ключей нужна подпись приложения,
+поэтому сборка с `CODE_SIGNING_ALLOWED=NO` блокирует вход.
 
 1. В Яндекс OAuth включите платформу iOS для приложения, чей Client ID указан
    на целевом backend в `ALMOSTDONE_YANDEX_CLIENT_ID`. Сервер принимает токены
@@ -30,8 +62,8 @@
    `$()` сохраняет второй слеш в `https://` при разборе `xcconfig`.
    Для возврата к демо удалите локальный override или задайте `ALMOSTREADY_MODE = demo`.
 4. Откройте `ios/AlmostReady/AlmostReady.xcodeproj` в Xcode и установите
-   приложение на подписанное устройство. Нажмите «Войти через Яндекс ID»,
-   пройдите вход. После успешного `GET /api/v1/me/state` откроется вкладка
+   приложение на iPhone или запустите его на симуляторе. Нажмите «Войти через Яндекс ID»,
+   пройдите вход. После успешного `GET /api/v1/me/state` откроется экран
    «Мои продукты». Закройте и запустите приложение снова для проверки
    восстановления сессии. В «Профиле» нажмите «Выйти» и дождитесь, пока
    на экране входа появится кнопка «Войти через Яндекс ID». Перезапустите
@@ -55,7 +87,7 @@ Client ID задаётся локально. Client Secret приложению 
 
 `ServerRoot` передаёт общий `SessionStore` через SwiftUI Environment
 и привязывает дерево к `session.account?.id`. При активной сессии `ServerRoot`
-открывает `ContentView`, где по умолчанию выбрана вкладка «Мои продукты».
+открывает `ContentView` с выбранной вкладкой «Продукты» и экраном «Мои продукты».
 После выхода `ServerRoot` возвращает экран входа.
 
 В точке входа экрана используйте
