@@ -78,6 +78,7 @@ nonisolated struct APIClient: Sendable {
         charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
     )
 
+    let serverIdentity: String
     private let base: URLComponents
     private let timeout: TimeInterval
     private let transport: any HTTPTransport
@@ -111,6 +112,13 @@ nonisolated struct APIClient: Sendable {
         components.percentEncodedPath += "/" + Self.apiPrefix.joined(separator: "/")
 
         base = components
+        components.scheme = scheme
+        components.host = host.lowercased()
+        if (scheme == "https" && components.port == 443) || (scheme == "http" && components.port == 80) {
+            components.port = nil
+        }
+        guard let serverIdentity = components.string else { throw APIClientError.invalidConfiguration }
+        self.serverIdentity = serverIdentity
         self.timeout = timeout
         self.transport = transport
     }

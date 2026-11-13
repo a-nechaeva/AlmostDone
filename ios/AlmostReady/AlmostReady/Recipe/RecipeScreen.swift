@@ -194,6 +194,7 @@ private struct RecipeServingsControl: View {
 }
 
 private struct RecipeDetailsScreen: View {
+    @Environment(ServerShoppingModel.self) private var shopping: ServerShoppingModel?
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var showsSteps = false
@@ -270,6 +271,9 @@ private struct RecipeDetailsScreen: View {
                 .font(.title3.bold())
                 .accessibilityAddTraits(.isHeader)
 
+            let revision = servingsModel?.shoppingRevision
+            let packages = servingsModel?.shoppingPackages ?? []
+            let addition = revision.flatMap { shopping?.addition(for: packages, basedOn: $0) }
             ForEach(presentation.purchases) { purchase in
                 VStack(alignment: .leading, spacing: 4) {
                     Text(purchase.name)
@@ -277,9 +281,40 @@ private struct RecipeDetailsScreen: View {
                     Text("\(purchase.packages) · \(purchase.price)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    if addition != .alreadyAdded, let shopping,
+                        let package = packages.first(where: { $0.id == purchase.id }), shopping.contains(package)
+                    {
+                        Text("Уже в покупках").font(.caption).foregroundStyle(.secondary)
+                    }
                 }
                 .accessibilityElement(children: .combine)
             }
+
+            if let shopping, let servingsModel, let revision {
+                shoppingAction(shopping, recipe: servingsModel, revision: revision)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func shoppingAction(
+        _ shopping: ServerShoppingModel, recipe: RecipeScreenModel, revision: AccountRevision
+    ) -> some View {
+        let addition = shopping.addition(for: recipe.shoppingPackages, basedOn: revision)
+        if addition == .needsFreshSnapshot {
+            Button("Обновить рецепт", action: recipe.refreshShoppingSnapshot)
+                .buttonStyle(.bordered)
+                .disabled(recipe.servingsUpdate != nil)
+        } else {
+            Button(addition.recipeTitle) {
+                recipe.addToShopping(shopping)
+            }
+            .buttonStyle(.bordered)
+            .disabled(recipe.servingsUpdate != nil || (addition != .add && addition != .update))
+            .accessibilityIdentifier("recipe.shopping.add")
+        }
+        if shopping.storageUnavailable {
+            Text("Не удалось сохранить список покупок.").font(.footnote)
         }
     }
 
@@ -372,5 +407,18 @@ private struct RecipeStepsButtonStyle: ButtonStyle {
             .frame(maxWidth: .infinity, minHeight: 48)
             .background(Color.accentColor.opacity(0.14), in: .rect(cornerRadius: 16))
             .opacity(configuration.isPressed ? 0.75 : 1)
+    }
+}
+
+extension ServerShoppingModel.SuggestionAddition {
+    fileprivate var recipeTitle: LocalizedStringKey {
+        switch self {
+        case .add: "Добавить в покупки"
+        case .update: "Обновить список покупок"
+        case .alreadyAdded: "Уже в покупках"
+        case .marked: "Сначала снимите отметку «Куплено»"
+        case .needsFreshSnapshot: "Обновить рецепт"
+        case .transferPending: "Завершите перенос в запасы"
+        }
     }
 }

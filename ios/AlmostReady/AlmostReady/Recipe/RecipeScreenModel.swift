@@ -49,6 +49,8 @@ final class RecipeScreenModel {
     private(set) var state: State = .loading
     private(set) var attempt = 0
     private(set) var servingsUpdate: ServingsUpdate?
+    private(set) var shoppingPackages: [ShoppingPackage] = []
+    private(set) var shoppingRevision: AccountRevision?
     private(set) var photoURL: String?
     private(set) var photo: RecipePhoto = .unavailable
     private(set) var ingredientNutrition: [String: IngredientNutrition] = [:]
@@ -84,6 +86,18 @@ final class RecipeScreenModel {
         attempt += 1
     }
 
+    func refreshShoppingSnapshot() {
+        guard case .loaded(let recipe) = state, servingsUpdate == nil, let servings = recipe.servings else { return }
+        servingsUpdate = .loading(servings.count)
+        attempt += 1
+    }
+
+    @discardableResult
+    func addToShopping(_ shopping: ServerShoppingModel) -> ServerShoppingModel.AdditionResult {
+        guard canApplyResult, servingsUpdate == nil, let shoppingRevision else { return .needsFreshSnapshot }
+        return shopping.add(shoppingPackages, basedOn: shoppingRevision)
+    }
+
     func load(attempt: Int) async {
         guard canApplyResult, attempt == self.attempt else { return }
 
@@ -99,8 +113,13 @@ final class RecipeScreenModel {
         }
 
         do {
-            let detail = try await repository.detail(servings: updatedServings ?? repository.request.servings)
+            let (detail, revision) = try await repository.detailSnapshot(
+                servings: updatedServings ?? repository.request.servings
+            )
             guard canApplyResult, attempt == self.attempt else { return }
+            repository.session.noteShoppingRevision(revision, for: repository.account)
+            shoppingRevision = revision
+            shoppingPackages = detail.shoppingItems
             state = .loaded(RecipePresentation(detail: detail))
             servingsUpdate = nil
             if photoURL != detail.recipe.photoURL {

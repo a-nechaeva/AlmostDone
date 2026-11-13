@@ -23,6 +23,8 @@ final class SessionStore {
 
     private(set) var phase: Phase = .starting
     private(set) var revision: AccountRevision?
+    private(set) var shoppingRevision: AccountRevision?
+    @ObservationIgnored private weak var sharedShopping: ServerShoppingModel?
     @ObservationIgnored private(set) var ingredientNutritionCatalog = IngredientNutritionCatalog()
 
     private let client: APIClient
@@ -46,6 +48,23 @@ final class SessionStore {
         return account
     }
 
+    var serverIdentity: String { client.serverIdentity }
+
+    func shoppingModel(for account: AccountSession) -> ServerShoppingModel {
+        if let sharedShopping, isCurrent(account) { return sharedShopping }
+        let model = ServerShoppingModel(
+            repository: ShoppingRepository(session: self, account: account),
+            storage: ShoppingStorage(serverIdentity: serverIdentity, userID: account.userID)
+        )
+        if isCurrent(account) { sharedShopping = model }
+        return model
+    }
+
+    func noteShoppingRevision(_ updated: AccountRevision, for account: AccountSession) {
+        guard isCurrent(account), updated.stateVersion > (shoppingRevision?.stateVersion ?? -1) else { return }
+        shoppingRevision = updated
+    }
+
     func restore() async {
         guard phase == .starting || phase == .restoreFailed else { return }
         phase = .restoring
@@ -62,7 +81,7 @@ final class SessionStore {
                 let revision = try await verifyAccount(id: id, userID: restored.userID)
                 try requireCurrent(id)
                 self.revision = revision
-                phase = .signedIn(AccountSession(id: id))
+                phase = .signedIn(AccountSession(id: id, userID: restored.userID))
             }
         } catch {
             if generation == id { phase = .restoreFailed }
@@ -98,7 +117,7 @@ final class SessionStore {
             try save(.active(issued))
             tokens = issued
             self.revision = revision
-            phase = .signedIn(AccountSession(id: id))
+            phase = .signedIn(AccountSession(id: id, userID: issued.userID))
         } catch {
             guard generation == id else { return }
             switch error {
@@ -365,6 +384,8 @@ final class SessionStore {
         refreshTask = nil
         tokens = nil
         revision = nil
+        shoppingRevision = nil
+        sharedShopping = nil
     }
 
     private func save(_ session: StoredSession) throws {

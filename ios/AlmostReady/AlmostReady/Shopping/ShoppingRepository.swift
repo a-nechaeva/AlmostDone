@@ -56,9 +56,10 @@ nonisolated struct ShoppingPurchaseRequest: Encodable, Sendable {
     }
 }
 
-nonisolated struct ShoppingPackage: Decodable, Identifiable, Sendable {
+nonisolated struct ShoppingPackage: Codable, Identifiable, Sendable {
     let key: String
     let ingredientID: String
+    let packageID: String
     let name: String
     let packageQuantity: PantryQuantity
     let packageCount: Int
@@ -69,6 +70,7 @@ nonisolated struct ShoppingPackage: Decodable, Identifiable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case key, name
         case ingredientID = "ingredient_id"
+        case packageID = "package_id"
         case packageQuantity = "package_quantity"
         case packageCount = "package_count"
         case totalPrice = "total_price"
@@ -128,8 +130,8 @@ private nonisolated struct ShoppingRecommendationPayload: Decodable, Sendable {
     }
 }
 
-nonisolated struct ShoppingPurchasedBatch: Encodable, Sendable {
-    nonisolated struct Item: Encodable, Sendable {
+nonisolated struct ShoppingPurchasedBatch: Codable, Sendable {
+    nonisolated struct Item: Codable, Sendable {
         let ingredientID: String
         let quantity: PantryQuantity
 

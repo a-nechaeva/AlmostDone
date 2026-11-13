@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ShoppingScreen: View {
     @Environment(\.floatingTabBarHeight) private var tabBarHeight
+    @Environment(ServerShoppingModel.self) private var server: ServerShoppingModel?
 
     private enum Presentation: Identifiable {
         case budget(ShoppingRecommendationKind)
@@ -18,8 +19,9 @@ struct ShoppingScreen: View {
     }
 
     @State private var shopping: ShoppingState
-    @State private var server: ServerShoppingModel?
     @State private var presentation: Presentation?
+    @State private var recommendations: ServerShoppingRecommendationModel?
+    private let repository: ShoppingRepository?
     @State private var tabAfterDismissal: AppTab?
     private let onOpenTab: ((AppTab) -> Void)?
     private let onCoverChange: (Bool) -> Void
@@ -31,7 +33,7 @@ struct ShoppingScreen: View {
         onCoverChange: @escaping (Bool) -> Void = { _ in }
     ) {
         _shopping = State(initialValue: ShoppingState(items: items))
-        _server = State(initialValue: repository.map { ServerShoppingModel(repository: $0) })
+        self.repository = repository
         self.onOpenTab = onOpenTab
         self.onCoverChange = onCoverChange
     }
@@ -40,12 +42,17 @@ struct ShoppingScreen: View {
         ShoppingPage {
             RootScreenTitle(tab: .shopping)
 
+            if server?.storageUnavailable == true {
+                Text("Не удалось сохранить или открыть список покупок.").foregroundStyle(.secondary)
+                    .padding(.top, 12)
+            }
+
             if items.isEmpty {
                 ShoppingEmptyState(
                     title: "Список пока пуст",
                     message: "Подберите покупки на свой бюджет.",
                     buttonTitle: "Подобрать покупки",
-                    action: showBudget
+                    action: { showBudget() }
                 )
                 .padding(.top, 100)
             } else {
@@ -62,12 +69,18 @@ struct ShoppingScreen: View {
                         .buttonStyle(ShoppingActionStyle(isSecondary: true))
                         .padding(.top, 24)
                 }
-                Button("Подобрать покупки под бюджет", action: showBudget)
+                if let server, server.canUndoPlan {
+                    Button("Отменить добавление плана", action: server.undoPlan)
+                        .buttonStyle(ShoppingActionStyle(isSecondary: true))
+                        .accessibilityIdentifier("shopping.budget.undo")
+                        .padding(.top, 24)
+                }
+                Button("Подобрать покупки под бюджет", action: { showBudget() })
                     .buttonStyle(ShoppingActionStyle())
                     .padding(.top, 53)
             }
             if server != nil {
-                Button("Подобрать одиночную покупку") { presentation = .budget(.singlePurchase) }
+                Button("Подобрать одиночную покупку") { showBudget(.singlePurchase) }
                     .buttonStyle(ShoppingActionStyle(isSecondary: true))
                     .padding(.top, 28)
             } else if !items.isEmpty {
@@ -87,7 +100,7 @@ struct ShoppingScreen: View {
                     ShoppingBudgetScreen(
                         input: budgetInput,
                         hasDemoPlan: shopping.hasDemoPlan,
-                        server: server,
+                        server: recommendations,
                         kind: kind
                     ) {
                         if server == nil { shopping.addDemoPlan() }
@@ -105,8 +118,8 @@ struct ShoppingScreen: View {
     private var items: [ShoppingItem] { server?.items ?? shopping.items }
 
     private var budgetInput: Binding<String> {
-        guard let server else { return $shopping.budgetInput }
-        return Binding(get: { server.budgetInput }, set: { server.budgetInput = $0 })
+        guard let recommendations else { return $shopping.budgetInput }
+        return Binding(get: { recommendations.budgetInput }, set: { recommendations.budgetInput = $0 })
     }
 
     private var shoppingList: some View {
@@ -132,6 +145,10 @@ struct ShoppingScreen: View {
                                     .shoppingFont(16, weight: .bold, lineHeight: 22)
                                     .foregroundStyle(ShoppingColor.accent)
                                     .padding(.top, 20)
+                            } else {
+                                Text("Цена неизвестна")
+                                    .shoppingFont(12, lineHeight: 17)
+                                    .foregroundStyle(ShoppingColor.secondary)
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -224,8 +241,7 @@ struct ShoppingScreen: View {
 
                 if let item {
                     Button("Вернуть в список") {
-                        _ = setPurchased(false, id: item.id)
-                        presentation = nil
+                        if setPurchased(false, id: item.id) != nil { presentation = nil }
                     }
                     .buttonStyle(ShoppingActionStyle(isSecondary: true))
                     .accessibilityHint("Снимает отметку о покупке")
@@ -297,8 +313,11 @@ struct ShoppingScreen: View {
             .accessibilityHidden(true)
     }
 
-    private func showBudget() {
-        presentation = .budget(.budget)
+    private func showBudget(_ kind: ShoppingRecommendationKind = .budget) {
+        if recommendations == nil, let repository, let server {
+            recommendations = ServerShoppingRecommendationModel(repository: repository, shopping: server)
+        }
+        presentation = .budget(kind)
     }
 
     private func closePurchase(opening tab: AppTab) {

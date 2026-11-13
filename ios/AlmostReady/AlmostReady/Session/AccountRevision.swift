@@ -2,9 +2,10 @@ import Foundation
 
 nonisolated struct AccountSession: Sendable, Equatable {
     let id: UUID
+    let userID: String
 }
 
-nonisolated struct AccountRevision: Sendable, Equatable {
+nonisolated struct AccountRevision: Codable, Sendable, Equatable {
     let stateVersion: Int
     let etag: String
 

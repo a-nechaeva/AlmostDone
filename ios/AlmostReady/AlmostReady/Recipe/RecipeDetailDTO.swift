@@ -1,13 +1,15 @@
 import Foundation
 
 nonisolated struct RecipeDetailDTO: Decodable, Sendable {
+    let stateVersion: Int
     let recipe: Card
     let ingredients: [Ingredient]
     let steps: [Step]
-    let shoppingItems: [ShoppingItem]
+    let shoppingItems: [ShoppingPackage]
 
     private enum CodingKeys: String, CodingKey {
         case recipe, ingredients, steps
+        case stateVersion = "state_version"
         case shoppingItems = "shopping_items"
     }
 
@@ -127,20 +129,5 @@ nonisolated struct RecipeDetailDTO: Decodable, Sendable {
         let number: Int
         let text: String
         let minutes: Int?
-    }
-
-    struct ShoppingItem: Decodable, Sendable {
-        let key: String
-        let name: String
-        let packageQuantity: Quantity
-        let packageCount: Int
-        let totalPrice: Money?
-
-        private enum CodingKeys: String, CodingKey {
-            case key, name
-            case packageQuantity = "package_quantity"
-            case packageCount = "package_count"
-            case totalPrice = "total_price"
-        }
     }
 }

@@ -7,7 +7,7 @@ import XCTest
 final class ShoppingAPITests: XCTestCase {
     func testBothRecommendationRequestsUseBudgetInKopecksAndCurrentContext() async throws {
         let requests = ShoppingRequestLog()
-        let (model, _) = try await makeModel { request in
+        let (_, _, model) = try await makeModel { request in
             if request.url?.path == ShoppingFixture.state { return try SessionFixture.stateResponse(request) }
             _ = await requests.record(request)
             return try ShoppingFixture.recommendation(request)
@@ -69,7 +69,7 @@ final class ShoppingAPITests: XCTestCase {
     }
 
     func testInvalidBudgetStaysInDraftAndDoesNotSendRequests() async throws {
-        let (model, _) = try await makeModel { request in
+        let (_, _, model) = try await makeModel { request in
             XCTAssertEqual(request.url?.path, ShoppingFixture.state)
             return try SessionFixture.stateResponse(request)
         }
@@ -89,7 +89,7 @@ final class ShoppingAPITests: XCTestCase {
 
     func testNoPlanInsufficientDataAnd503AreDistinctAndCanRetry() async throws {
         let requests = ShoppingRequestLog()
-        let (model, _) = try await makeModel { request in
+        let (_, _, model) = try await makeModel { request in
             if request.url?.path == ShoppingFixture.state { return try SessionFixture.stateResponse(request) }
             switch await requests.record(request) {
             case 1:
@@ -137,7 +137,7 @@ final class ShoppingAPITests: XCTestCase {
         let started = SessionResponseGate()
         let release = SessionResponseGate()
         let requests = ShoppingRequestLog()
-        let (model, _) = try await makeModel { request in
+        let (_, _, model) = try await makeModel { request in
             if request.url?.path == ShoppingFixture.state { return try SessionFixture.stateResponse(request) }
             if await requests.record(request) == 1 {
                 await started.open()
@@ -163,7 +163,7 @@ final class ShoppingAPITests: XCTestCase {
     func testLateResponseForPreviousFiltersAndPortionsIsDiscarded() async throws {
         let started = SessionResponseGate()
         let release = SessionResponseGate()
-        let (model, _) = try await makeModel { request in
+        let (_, _, model) = try await makeModel { request in
             if request.url?.path == ShoppingFixture.state { return try SessionFixture.stateResponse(request) }
             await started.open()
             await release.wait()
@@ -185,7 +185,7 @@ final class ShoppingAPITests: XCTestCase {
         let started = SessionResponseGate()
         let release = SessionResponseGate()
         let states = ShoppingRequestLog()
-        let (model, session) = try await makeModel { request in
+        let (_, session, model) = try await makeModel { request in
             if request.url?.path == ShoppingFixture.state {
                 let count = await states.record(request)
                 return try SessionFixture.stateResponse(request, version: count == 1 ? 7 : 8)
@@ -209,7 +209,7 @@ final class ShoppingAPITests: XCTestCase {
 
     func testLocalMarkDoesNotWriteAndExplicitTransferUsesPackageQuantitiesAndSnapshotETag() async throws {
         let requests = ShoppingRequestLog()
-        let (model, session) = try await makeModel { request in
+        let (model, session, recommendations) = try await makeModel { request in
             switch request.url?.path {
             case ShoppingFixture.state:
                 return try SessionFixture.stateResponse(request)
@@ -221,7 +221,7 @@ final class ShoppingAPITests: XCTestCase {
             }
         }
 
-        try await addBudget(model)
+        try await addBudget(recommendations, shopping: model)
         XCTAssertEqual(session.revision?.stateVersion, 7)
         for item in model.items { _ = model.setPurchased(true, id: item.id) }
         XCTAssertEqual(model.markedCount, 2)
@@ -250,7 +250,7 @@ final class ShoppingAPITests: XCTestCase {
 
     func testPlanUpdatesExistingPackageCountWithoutSummingOrChangingMarkedRows() async throws {
         let requests = ShoppingRequestLog()
-        let (model, _) = try await makeModel { request in
+        let (model, _, recommendations) = try await makeModel { request in
             switch request.url?.path {
             case ShoppingFixture.state:
                 return try SessionFixture.stateResponse(request)
@@ -264,27 +264,27 @@ final class ShoppingAPITests: XCTestCase {
             }
         }
 
-        model.budgetInput = "600"
-        await model.loadRecommendation(.singlePurchase)
-        let single = try XCTUnwrap(result(model).suggestions.first)
-        XCTAssertTrue(model.add(single))
+        recommendations.budgetInput = "600"
+        await recommendations.loadRecommendation(.singlePurchase)
+        let single = try XCTUnwrap(result(recommendations).suggestions.first)
+        XCTAssertTrue(recommendations.add(single))
         let cheese = try XCTUnwrap(model.items.first)
         _ = model.setPurchased(true, id: cheese.id)
 
-        model.servings = 4
-        await model.loadRecommendation(.budget)
-        let plan = try XCTUnwrap(result(model).suggestions.first)
-        XCTAssertEqual(model.addition(for: plan), .marked)
-        XCTAssertFalse(model.add(plan))
+        recommendations.servings = 4
+        await recommendations.loadRecommendation(.budget)
+        let plan = try XCTUnwrap(result(recommendations).suggestions.first)
+        XCTAssertEqual(recommendations.addition(for: plan), .marked)
+        XCTAssertFalse(recommendations.add(plan))
         XCTAssertEqual(model.items.count, 1)
         XCTAssertEqual(model.items.first?.estimatedPrice, 230)
         XCTAssertEqual(model.markedCount, 1)
 
         _ = model.setPurchased(false, id: cheese.id)
-        XCTAssertEqual(model.addition(for: plan), .update)
-        XCTAssertTrue(model.add(plan))
-        XCTAssertEqual(model.addition(for: plan), .alreadyAdded)
-        XCTAssertFalse(model.add(plan))
+        XCTAssertEqual(recommendations.addition(for: plan), .update)
+        XCTAssertTrue(recommendations.add(plan))
+        XCTAssertEqual(recommendations.addition(for: plan), .alreadyAdded)
+        XCTAssertFalse(recommendations.add(plan))
         XCTAssertEqual(model.items.count, 2)
         XCTAssertEqual(model.items.first?.estimatedPrice, 460)
 
@@ -302,7 +302,7 @@ final class ShoppingAPITests: XCTestCase {
 
     func test412ReloadsRevisionAndPreservesMarksUntilExplicitConfirmation() async throws {
         let requests = ShoppingRequestLog()
-        let (model, session) = try await makeModel { request in
+        let (model, session, recommendations) = try await makeModel { request in
             if request.url?.path == ShoppingFixture.budget {
                 return try ShoppingFixture.recommendation(request)
             }
@@ -317,7 +317,7 @@ final class ShoppingAPITests: XCTestCase {
                 return try ShoppingFixture.mutation(request, version: 9)
             }
         }
-        try await addBudget(model)
+        try await addBudget(recommendations, shopping: model)
         let cheese = try XCTUnwrap(model.items.first)
         _ = model.setPurchased(true, id: cheese.id)
 
@@ -347,7 +347,7 @@ final class ShoppingAPITests: XCTestCase {
 
     func testTimedOutTransferReplaysSameOperationWithoutAddingTwice() async throws {
         let pantry = ShoppingReplayPantry()
-        let (model, session) = try await makeModel { request in
+        let (model, session, recommendations) = try await makeModel { request in
             switch request.url?.path {
             case ShoppingFixture.state:
                 return try SessionFixture.stateResponse(request)
@@ -357,7 +357,7 @@ final class ShoppingAPITests: XCTestCase {
                 return try await pantry.respond(request)
             }
         }
-        try await addBudget(model)
+        try await addBudget(recommendations, shopping: model)
         let item = try XCTUnwrap(model.items.first)
         _ = model.setPurchased(true, id: item.id)
         await model.confirmTransfer()
@@ -376,18 +376,261 @@ final class ShoppingAPITests: XCTestCase {
         XCTAssertEqual(model.items.map(\.name), ["Молоко"])
     }
 
+    func testRecipeAddsCanonicalPackagesToSharedListAndRequiresCurrentSnapshot() async throws {
+        let stateRequests = ShoppingRequestLog()
+        let (shopping, session, _) = try await makeModel { request in
+            switch request.url?.path {
+            case ShoppingFixture.state:
+                let number = await stateRequests.record(request)
+                return try SessionFixture.stateResponse(request, version: number == 1 ? 7 : 8)
+            case RecipeFixture.detailPath:
+                let stateReads = await stateRequests.all.count
+                return try RecipeFixture.detail(request, hasEstimates: false, stateVersion: stateReads == 1 ? 7 : 8)
+            default:
+                XCTFail("Unexpected request: \(request)")
+                throw URLError(.badURL)
+            }
+        }
+        let recipe = try RecipeFixture.model(session)
+        await recipe.load(attempt: recipe.attempt)
+        XCTAssertEqual(recipe.shoppingPackages.first?.ingredientID, "rice")
+        XCTAssertEqual(recipe.shoppingPackages.first?.packageID, "rice-default")
+        XCTAssertEqual(recipe.addToShopping(shopping), .added)
+        XCTAssertEqual(recipe.addToShopping(shopping), .alreadyAdded)
+        XCTAssertEqual(shopping.items.map(\.id), ["rice:rice-default"])
+        XCTAssertNil(shopping.items.first?.estimatedPrice)
+
+        _ = try await session.reloadRevision(for: XCTUnwrap(session.account))
+        XCTAssertEqual(recipe.addToShopping(shopping), .needsFreshSnapshot)
+        recipe.refreshShoppingSnapshot()
+        XCTAssertEqual(recipe.addToShopping(shopping), .needsFreshSnapshot)
+        await recipe.load(attempt: recipe.attempt)
+        XCTAssertEqual(recipe.addToShopping(shopping), .alreadyAdded)
+    }
+
+    func testBudgetUndoRestoresOnlyRowsThatThePlanLastEdited() async throws {
+        let (shopping, session, recommendations) = try await makeModel { request in
+            switch request.url?.path {
+            case ShoppingFixture.state:
+                return try SessionFixture.stateResponse(request)
+            case ShoppingFixture.single:
+                return try ShoppingFixture.recommendation(request, cheesePackages: 1)
+            case ShoppingFixture.budget:
+                return try ShoppingFixture.recommendation(request)
+            default:
+                return try RecipeFixture.detail(request)
+            }
+        }
+        await recommendations.loadRecommendation(.singlePurchase)
+        let single = try XCTUnwrap(result(recommendations).suggestions.first)
+        XCTAssertTrue(recommendations.add(single))
+        await recommendations.loadRecommendation(.budget)
+        let plan = try XCTUnwrap(result(recommendations).suggestions.first)
+        XCTAssertTrue(recommendations.add(plan, undoable: true))
+        XCTAssertFalse(recommendations.add(plan, undoable: true))
+        XCTAssertEqual(shopping.items.first?.estimatedPrice, 460)
+
+        let milk = try XCTUnwrap(shopping.items.last)
+        _ = shopping.setPurchased(true, id: milk.id)
+        let recipe = try RecipeFixture.model(session)
+        await recipe.load(attempt: recipe.attempt)
+        XCTAssertEqual(recipe.addToShopping(shopping), .added)
+
+        XCTAssertTrue(shopping.canUndoPlan)
+        shopping.undoPlan()
+        XCTAssertEqual(shopping.items.map(\.id), ["cheese:package-200g", "milk:package-1l", "rice:rice-default"])
+        XCTAssertEqual(shopping.items.first?.estimatedPrice, 230)
+        XCTAssertEqual(shopping.items.filter(\.isPurchased).map(\.id), [milk.id])
+        XCTAssertFalse(shopping.canUndoPlan)
+
+        XCTAssertTrue(recommendations.add(plan, undoable: true))
+        shopping.undoPlan()
+        XCTAssertEqual(shopping.items.first?.estimatedPrice, 230)
+    }
+
+    func testBudgetUndoRemovesNewPlanRowsAndKeepsExistingRows() async throws {
+        let (shopping, session, recommendations) = try await makeModel { request in
+            switch request.url?.path {
+            case ShoppingFixture.state: return try SessionFixture.stateResponse(request)
+            case ShoppingFixture.budget: return try ShoppingFixture.recommendation(request)
+            default: return try RecipeFixture.detail(request)
+            }
+        }
+        let recipe = try RecipeFixture.model(session)
+        await recipe.load(attempt: recipe.attempt)
+        XCTAssertEqual(recipe.addToShopping(shopping), .added)
+
+        await recommendations.loadRecommendation(.budget)
+        let plan = try XCTUnwrap(result(recommendations).suggestions.first)
+        XCTAssertTrue(recommendations.add(plan, undoable: true))
+        XCTAssertEqual(shopping.items.count, 3)
+        shopping.undoPlan()
+        XCTAssertEqual(shopping.items.map(\.id), ["rice:rice-default"])
+    }
+
+    func testListAndMarksSurviveNewSessionAndAreIsolatedByAccountAndServer() async throws {
+        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let (original, originalSession, recommendations) = try await makeModel(directory: directory) { request in
+            if request.url?.path == ShoppingFixture.state { return try SessionFixture.stateResponse(request) }
+            return try ShoppingFixture.recommendation(request)
+        }
+        try await addBudget(recommendations, shopping: original)
+        let cheese = try XCTUnwrap(original.items.first)
+        _ = original.setPurchased(true, id: cheese.id)
+
+        let (reopened, reopenedSession, _) = try await makeModel(directory: directory) { request in
+            try SessionFixture.stateResponse(request)
+        }
+        XCTAssertNotEqual(originalSession.account?.id, reopenedSession.account?.id)
+        XCTAssertEqual(originalSession.account?.userID, reopenedSession.account?.userID)
+        XCTAssertEqual(reopened.items.map(\.id), original.items.map(\.id))
+        XCTAssertEqual(reopened.items.filter(\.isPurchased).map(\.id), [cheese.id])
+
+        let (another, _, _) = try await makeModel(directory: directory, user: SessionFixture.another) { request in
+            try SessionFixture.stateResponse(request, user: SessionFixture.another)
+        }
+        XCTAssertTrue(another.items.isEmpty)
+
+        let (differentServer, _, _) = try await makeModel(
+            directory: directory, baseURL: URL(string: "https://example.test/preview")!
+        ) { request in
+            try SessionFixture.stateResponse(request)
+        }
+        XCTAssertTrue(differentServer.items.isEmpty)
+        XCTAssertEqual(reopened.markedCount, 1)
+    }
+
+    func testRelaunchAfterTimedOutTransferReplaysOriginalKeyPayloadAndPrecondition() async throws {
+        let pantry = ShoppingReplayPantry()
+        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let (shopping, _, recommendations) = try await makeModel(directory: directory) { request in
+            switch request.url?.path {
+            case ShoppingFixture.state: return try SessionFixture.stateResponse(request)
+            case ShoppingFixture.budget: return try ShoppingFixture.recommendation(request)
+            default: return try await pantry.respond(request)
+            }
+        }
+        try await addBudget(recommendations, shopping: shopping)
+        let cheese = try XCTUnwrap(shopping.items.first)
+        _ = shopping.setPurchased(true, id: cheese.id)
+        await shopping.confirmTransfer()
+        XCTAssertEqual(shopping.transferState, .retry)
+
+        let respond: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { request in
+            if request.url?.path == ShoppingFixture.state {
+                return try SessionFixture.stateResponse(request, version: 8)
+            }
+            return try await pantry.respond(request)
+        }
+        let (reopened, session, _) = try await makeModel(directory: directory, respond: respond)
+        XCTAssertEqual(reopened.transferState, .retry)
+        XCTAssertEqual(reopened.items.map(\.id), shopping.items.map(\.id))
+        XCTAssertEqual(reopened.items.filter(\.isPurchased).map(\.id), [cheese.id])
+        XCTAssertTrue(reopened.isSelectionLocked)
+        let beforeConfirmation = await pantry.calls
+        XCTAssertEqual(beforeConfirmation, 1)
+
+        await reopened.confirmTransfer()
+        XCTAssertEqual(reopened.transferState, .completed)
+        XCTAssertEqual(session.revision?.stateVersion, 8)
+        let added = await pantry.added
+        let calls = await pantry.calls
+        XCTAssertEqual(added, 1)
+        XCTAssertEqual(calls, 2)
+
+        let (completed, _, _) = try await makeModel(directory: directory, respond: respond)
+        XCTAssertEqual(completed.transferState, .idle)
+        XCTAssertEqual(completed.items.map(\.name), ["Молоко"])
+        XCTAssertEqual(completed.markedCount, 0)
+    }
+
+    func testNewerBudgetSnapshotMakesAnOpenRecipeStale() async throws {
+        let (shopping, session, recommendations) = try await makeModel { request in
+            switch request.url?.path {
+            case ShoppingFixture.state: return try SessionFixture.stateResponse(request)
+            case ShoppingFixture.budget: return try ShoppingFixture.recommendation(request, version: 8)
+            default: return try RecipeFixture.detail(request)
+            }
+        }
+        let recipe = try RecipeFixture.model(session)
+        await recipe.load(attempt: recipe.attempt)
+        await recommendations.loadRecommendation(.budget)
+        XCTAssertEqual(try result(recommendations).revision.stateVersion, 8)
+        XCTAssertEqual(recipe.addToShopping(shopping), .needsFreshSnapshot)
+        XCTAssertTrue(shopping.items.isEmpty)
+    }
+
+    func testServerRootsReuseShoppingModelWithinConfirmedAccount() async throws {
+        let (_, session, _) = try await makeModel { request in
+            try SessionFixture.stateResponse(request)
+        }
+        let account = try XCTUnwrap(session.account)
+        let first = session.shoppingModel(for: account)
+        let second = session.shoppingModel(for: account)
+        XCTAssertTrue(first === second)
+    }
+
+    func testExpiredTransferKeepsItemsAndMarksAndDoesNotReplay() async throws {
+        let requests = ShoppingRequestLog()
+        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let respond: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { request in
+            if request.url?.path == ShoppingFixture.state { return try SessionFixture.stateResponse(request) }
+            _ = await requests.record(request)
+            return try ShoppingFixture.recommendation(request)
+        }
+        let (shopping, session, recommendations) = try await makeModel(directory: directory, respond: respond)
+        try await addBudget(recommendations, shopping: shopping)
+        let cheese = try XCTUnwrap(shopping.items.first)
+        _ = shopping.setPurchased(true, id: cheese.id)
+        let account = try XCTUnwrap(session.account)
+        let storage = ShoppingStorage(
+            serverIdentity: session.serverIdentity, userID: account.userID, directory: directory
+        )
+        var snapshot = try storage.load()
+        snapshot.transfer = ShoppingListSnapshot.Transfer(
+            rowIDs: [cheese.id],
+            batch: .init(items: [.init(ingredientID: "cheese", quantity: .init(value: 400, unit: .grams))]),
+            stage: .submitted(revision: try XCTUnwrap(session.revision), firstAttempt: .distantPast)
+        )
+        try storage.save(snapshot)
+
+        let (reopened, _, _) = try await makeModel(directory: directory, respond: respond)
+        XCTAssertEqual(reopened.transferState, .expired)
+        await reopened.confirmTransfer()
+        reopened.dismissExpiredTransfer()
+        let paths = await requests.all.compactMap { $0.url?.path }
+        XCTAssertEqual(paths, [ShoppingFixture.budget])
+        XCTAssertFalse(reopened.isSelectionLocked)
+        XCTAssertEqual(reopened.items.map(\.id), shopping.items.map(\.id))
+        XCTAssertEqual(reopened.items.filter(\.isPurchased).map(\.id), [cheese.id])
+        XCTAssertNil(try storage.load().transfer)
+    }
+
     private func makeModel(
+        directory: URL? = nil, user: SessionTokens = SessionFixture.original,
+        baseURL: URL = URL(string: "https://example.test")!,
         respond: @escaping @Sendable (URLRequest) async throws -> (Data, URLResponse)
-    ) async throws -> (ServerShoppingModel, SessionStore) {
-        let session = try SessionFixture.store(
-            storage: SessionTestStorage(.active(SessionFixture.original)), respond: respond
+    ) async throws -> (ServerShoppingModel, SessionStore, ServerShoppingRecommendationModel) {
+        let client = try APIClient(baseURL: baseURL, transport: SessionTestTransport(respond: respond))
+        let session = SessionStore(
+            client: client, yandex: SessionTestYandex(), storage: SessionTestStorage(.active(user))
         )
         await session.restore()
         let account = try XCTUnwrap(session.account)
-        return (ServerShoppingModel(repository: ShoppingRepository(session: session, account: account)), session)
+        let storage = directory.map {
+            ShoppingStorage(serverIdentity: session.serverIdentity, userID: account.userID, directory: $0)
+        }
+        let repository = ShoppingRepository(session: session, account: account)
+        let shopping = ServerShoppingModel(repository: repository, storage: storage)
+        return (shopping, session, ServerShoppingRecommendationModel(repository: repository, shopping: shopping))
     }
 
-    private func result(_ model: ServerShoppingModel) throws -> ShoppingRecommendation {
+    private func result(_ model: ServerShoppingRecommendationModel) throws -> ShoppingRecommendation {
         guard case .result(let result) = model.recommendation else {
             XCTFail("Expected a recommendation result")
             throw APIClientError.invalidResponse(nil)
@@ -395,13 +638,13 @@ final class ShoppingAPITests: XCTestCase {
         return result
     }
 
-    private func addBudget(_ model: ServerShoppingModel) async throws {
+    private func addBudget(_ model: ServerShoppingRecommendationModel, shopping: ServerShoppingModel) async throws {
         model.budgetInput = "600"
         await model.loadRecommendation(.budget)
         let suggestion = try XCTUnwrap(result(model).suggestions.first)
         model.add(suggestion)
         model.add(suggestion)
-        XCTAssertEqual(model.items.count, 2)
+        XCTAssertEqual(shopping.items.count, 2)
     }
 }
 
