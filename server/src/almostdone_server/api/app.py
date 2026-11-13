@@ -64,9 +64,10 @@ def create_http_app(contract, service, rate_limiter=None):
 
     @app.middleware("http")
     async def limit_requests(request, call_next):
+        catalog_read = request.method == "GET" and request.url.path == "/api/v1/catalog"
         if request.url.path.startswith("/api/v1/") and request.url.path not in (
             '/api/v1/health', '/api/v1/health/ready',
-        ):
+        ) and not catalog_read:
             # Use the actual peer, never an untrusted X-Forwarded-For header.
             peer = request.client.host if request.client else "unknown"
             try:
