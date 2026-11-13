@@ -19,6 +19,15 @@ extension NavigationTests {
         XCTAssertTrue(mode.buttons["Список"].isSelected)
         mode.buttons["Граф"].tap()
 
+        let hiddenLink = app.descendants(matching: .any)["dishes.hidden"].firstMatch
+        XCTAssertTrue(hiddenLink.isHittable)
+        hiddenLink.tap()
+        let hiddenBar = app.navigationBars["Скрытые блюда"]
+        XCTAssertTrue(hiddenBar.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["dishes.hidden.recipe.hidden-dish"].waitForExistence(timeout: 10))
+        XCTAssertFalse(dishesTab.exists)
+        hiddenBar.buttons.firstMatch.tap()
+
         let graphRecipe = app.buttons["dishes.graph.recipe.rice-dish"]
         reveal(graphRecipe, in: app)
         XCTAssertTrue(mode.buttons["Граф"].isSelected)
@@ -77,6 +86,11 @@ private enum GraphNavigationFixture {
             "items": [ready], "visible_total": 2, "hidden_total": 1, "unknown_total": 0,
             "page": ["next_cursor": "next-page", "has_more": true]
         ]) { _, new in new }
+        let hidden = page.merging([
+            "snapshot_id": "hidden-snapshot", "visibility": "hidden",
+            "items": [card(id: "hidden-dish", title: "Сырники", missing: 0, hidden: true)],
+            "page": ["next_cursor": NSNull(), "has_more": false]
+        ]) { _, new in new }
         let graph = identity.merging([
             "filters": [
                 "q": "", "mode": "all", "max_minutes": NSNull(), "max_kcal_per_serving": NSNull(),
@@ -118,21 +132,31 @@ private enum GraphNavigationFixture {
                 "user_id": "graph-test", "state_version": 7, "catalog_version": "catalog"
             ]),
             "GET /api/v1/me/pantry": try response(["state_version": 7, "items": []]),
-            "POST /api/v1/recommendations": try response(page, status: 201, once: true),
+            "POST /api/v1/recommendations visible": try response(page, status: 201, once: true),
+            "POST /api/v1/recommendations hidden": try response(hidden, status: 201, once: true),
             "GET /api/v1/recommendations/visible-snapshot/graph": try response(graph, once: true),
             "GET /api/v1/recipes/rice-dish": try response(recipe)
         ]
         return String(decoding: try JSONSerialization.data(withJSONObject: responses), as: UTF8.self)
     }
 
-    private static func card(id: String, title: String, missing: Int) -> [String: Any] {
+    private static func card(id: String, title: String, missing: Int, hidden: Bool = false) -> [String: Any] {
         [
             "id": id, "title": title, "servings": 2, "photo_url": NSNull(), "minutes": 15,
             "nutrition_per_serving": NSNull(), "buy_cost": NSNull(),
             "availability": [
                 "status": missing == 0 ? "ready" : "missing", "missing_count": missing, "unknown_quantity_ids": []
             ],
-            "suitability": ["status": "allowed", "reasons": []],
+            "suitability": [
+                "status": hidden ? "hidden" : "allowed",
+                "reasons": hidden
+                    ? [
+                        [
+                            "code": "contains_allergen", "message": "Содержит молоко",
+                            "ingredient_ids": ["milk"], "restriction_ids": ["milk"]
+                        ]
+                    ] : []
+            ],
             "allergens": ["contains": [], "completeness": "complete"]
         ]
     }

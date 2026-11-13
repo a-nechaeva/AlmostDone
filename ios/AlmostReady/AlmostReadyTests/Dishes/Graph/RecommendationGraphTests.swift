@@ -49,6 +49,7 @@ final class RecommendationGraphTests: XCTestCase {
             onAddSet: {
                 added = $0
                 addedRevision = $1
+                return true
             }
         )
         try view.openRecipe(XCTUnwrap(rice.dishes.last))
@@ -93,7 +94,8 @@ final class RecommendationGraphTests: XCTestCase {
         await model.loadIfNeeded(for: snapshot)
         for _ in 0..<5 {
             guard case .failed = model.phase(for: snapshot) else { return XCTFail("Expected a retryable error") }
-            await model.retry(for: snapshot)
+            model.requestRetry(for: snapshot)
+            await model.loadIfNeeded(for: snapshot)
         }
         XCTAssertFalse(try content(model, snapshot: snapshot).isEmpty)
         await model.loadIfNeeded(for: snapshot)
@@ -103,12 +105,12 @@ final class RecommendationGraphTests: XCTestCase {
     }
 
     @MainActor
-    func testExpiredOrChangedSnapshotRequiresRefreshingTheList() async throws {
-        for code in ["snapshot_expired", "context_changed"] {
+    func testUnavailableSnapshotRequiresRefreshingTheList() async throws {
+        for (status, code) in [(409, "snapshot_expired"), (409, "context_changed"), (404, "not_found")] {
             let log = DishesRequestLog()
             let session = try await RecipeFixture.session { request in
                 await log.append(request)
-                return try SessionFixture.error(request, status: 409, code: code)
+                return try SessionFixture.error(request, status: status, code: code)
             }
             let model = try model(session)
             let snapshot = try RecommendationGraphFixture.snapshot()
@@ -116,24 +118,34 @@ final class RecommendationGraphTests: XCTestCase {
             guard case .refreshSnapshot = model.phase(for: snapshot) else {
                 return XCTFail("Expected a new list snapshot for \(code)")
             }
-            await model.retry(for: snapshot)
+            model.requestRetry(for: snapshot)
+            await model.loadIfNeeded(for: snapshot)
             let requests = await log.requests
             XCTAssertEqual(requests.count, 1)
         }
     }
 
     @MainActor
-    func testCancelledLoadDoesNotPublishAndCanRestart() async throws {
+    func testCancelledRetryDoesNotPublishAndCanRestart() async throws {
         let started = SessionResponseGate()
         let release = SessionResponseGate()
+        let log = DishesRequestLog()
         let session = try await RecipeFixture.session { request in
-            await started.open()
-            await release.wait()
+            switch await log.append(request) {
+            case 0: throw URLError(.notConnectedToInternet)
+            case 1:
+                await started.open()
+                await release.wait()
+            default: break
+            }
             return try RecommendationGraphFixture.response(request)
         }
         let model = try model(session)
         let snapshot = try RecommendationGraphFixture.snapshot()
-        let task = Task { await model.loadIfNeeded(for: snapshot) }
+        await model.loadIfNeeded(for: snapshot)
+        model.requestRetry(for: snapshot)
+        let retry = model.retryAttempt
+        let task = Task { await model.loadIfNeeded(for: snapshot, retryAttempt: retry) }
         await started.wait()
         task.cancel()
         await release.open()
@@ -294,6 +306,44 @@ final class RecommendationGraphTests: XCTestCase {
         guard case .refreshSnapshot = model.phase(for: snapshot) else {
             return XCTFail("Expired graph content became actionable")
         }
+    }
+
+    @MainActor
+    func testRecipeReadWithNewerRevisionMakesCachedGraphRefreshable() async throws {
+        let session = try await RecipeFixture.session { request in
+            if request.url?.path == RecipeFixture.detailPath {
+                return try RecipeFixture.detail(request, stateVersion: 8)
+            }
+            return try RecommendationGraphFixture.response(request, readyOnly: true)
+        }
+        let model = try model(session)
+        let snapshot = try RecommendationGraphFixture.snapshot()
+        await model.loadIfNeeded(for: snapshot)
+        XCTAssertTrue(try content(model, snapshot: snapshot).purchaseSets.isEmpty)
+        let recipe = try RecipeFixture.model(session)
+        await recipe.load(attempt: recipe.attempt)
+        XCTAssertEqual(session.shoppingRevision?.stateVersion, 8)
+        guard case .refreshSnapshot = model.phase(for: snapshot) else {
+            return XCTFail("The old graph is still actionable after a newer recipe read")
+        }
+    }
+
+    @MainActor
+    func testGraphAcceptsServerRoundingOfKcalFilter() async throws {
+        var context = RecommendationGraphFixture.context
+        context.advancedFilters.maxKcalPerServing = Decimal(string: "450.1234567890123456")
+        let snapshot = try RecommendationGraphFixture.snapshot(context: context)
+        let session = try await RecipeFixture.session { request in
+            try RecommendationGraphFixture.response(
+                request,
+                filters: [
+                    "q": "обед", "mode": "all", "max_minutes": 30, "max_kcal_per_serving": 450.1234567890123,
+                    "equipment": ["stove", "no_cook"], "exclude_allergens": ["eggs", "nuts"]
+                ])
+        }
+        let model = try model(session)
+        await model.loadIfNeeded(for: snapshot)
+        XCTAssertFalse(try content(model, snapshot: snapshot).isEmpty)
     }
 
     @MainActor

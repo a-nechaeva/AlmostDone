@@ -9,7 +9,9 @@ enum RecommendationGraphFixture {
     static let servings = 4
 
     @MainActor
-    static func snapshot(id: String = snapshotID) throws -> RecommendationGraphSnapshot {
+    static func snapshot(
+        id: String = snapshotID, context: ServerDishesModel.Context = context
+    ) throws -> RecommendationGraphSnapshot {
         let data = try JSONSerialization.data(withJSONObject: [
             "request_id": requestID.uuidString, "snapshot_id": id, "state_version": 7,
             "catalog_version": "catalog-1", "servings": servings, "visibility": "visible",

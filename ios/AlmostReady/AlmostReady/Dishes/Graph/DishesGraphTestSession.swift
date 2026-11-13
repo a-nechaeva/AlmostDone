@@ -31,7 +31,14 @@
                 else { throw URLError(.badURL) }
 
                 let path = String(url.path[prefix.lowerBound...])
-                let key = "\(request.httpMethod ?? "") \(path)"
+                let creation: [String: Any]?
+                if request.httpMethod == "POST", path == "/api/v1/recommendations", let data = request.httpBody {
+                    creation = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+                } else {
+                    creation = nil
+                }
+                let visibility = (creation?["visibility"] as? String).map { " " + $0 } ?? ""
+                let key = "\(request.httpMethod ?? "") \(path)\(visibility)"
                 guard let fixture = responses[key],
                     let response = HTTPURLResponse(
                         url: url, statusCode: fixture.status, httpVersion: nil, headerFields: ["ETag": #""state-7""#])
@@ -39,10 +46,7 @@
                 if fixture.once == true { responses[key] = nil }
 
                 var body = fixture.body
-                if key == "POST /api/v1/recommendations",
-                    let data = request.httpBody,
-                    let creation = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                    let requestID = creation["request_id"] as? String,
+                if let requestID = creation?["request_id"] as? String,
                     let page = try JSONSerialization.jsonObject(with: Data(body.utf8)) as? [String: Any],
                     let snapshotID = page["snapshot_id"] as? String
                 {

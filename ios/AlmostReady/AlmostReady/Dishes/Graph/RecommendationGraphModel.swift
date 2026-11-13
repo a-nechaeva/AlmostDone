@@ -23,7 +23,16 @@ struct RecommendationGraphSnapshot: Equatable {
     func matches(_ graph: RecommendationGraph) -> Bool {
         graph.snapshotID == id && graph.requestID == requestID && graph.stateVersion == stateVersion
             && graph.catalogVersion == catalogVersion && graph.servings == servings && graph.visibility == .visible
-            && graph.filters == filters
+            && graph.filters.query == filters.query && graph.filters.mode == filters.mode
+            && graph.filters.maxMinutes == filters.maxMinutes
+            && Set(graph.filters.equipment) == Set(filters.equipment)
+            && Set(graph.filters.excludedAllergenIDs) == Set(filters.excludedAllergenIDs)
+            && wireKcal(graph.filters.maxKcalPerServing) == wireKcal(filters.maxKcalPerServing)
+    }
+
+    private func wireKcal(_ amount: Decimal?) -> Double? {
+        // The server parses JSON numbers as binary floating point before echoing the filters.
+        amount.flatMap { Double($0.description) }
     }
 }
 
@@ -45,6 +54,7 @@ final class RecommendationGraphModel {
     private var activeSnapshot: RecommendationGraphSnapshot?
     private var activeLoad: UUID?
     private var state = Phase.loading
+    private(set) var retryAttempt = 0
 
     init(repository: RecommendationsRepository) {
         self.repository = repository
@@ -53,7 +63,13 @@ final class RecommendationGraphModel {
     nonisolated deinit {}
 
     func phase(for snapshot: RecommendationGraphSnapshot) -> Phase {
-        guard activeSnapshot == snapshot, canUse(snapshot) else { return .loading }
+        guard repository.session.isCurrent(repository.account),
+            snapshot.stateVersion >= (repository.session.revision?.stateVersion ?? 0)
+        else { return .loading }
+        if snapshot.stateVersion < (repository.session.shoppingRevision?.stateVersion ?? 0) {
+            return .refreshSnapshot
+        }
+        guard activeSnapshot == snapshot else { return .loading }
         if case .loaded(let content) = state, content.expiresAt <= .now { return .refreshSnapshot }
         return state
     }
@@ -63,15 +79,21 @@ final class RecommendationGraphModel {
         await load(snapshot)
     }
 
-    func retry(for snapshot: RecommendationGraphSnapshot) async {
+    func requestRetry(for snapshot: RecommendationGraphSnapshot) {
         guard case .failed = phase(for: snapshot) else { return }
-        await load(snapshot)
+        state = .loading
+        retryAttempt += 1
     }
 
     func reset() {
         activeLoad = nil
         activeSnapshot = nil
         state = .loading
+    }
+
+    func loadIfNeeded(for snapshot: RecommendationGraphSnapshot, retryAttempt: Int) async {
+        guard retryAttempt == self.retryAttempt else { return }
+        await loadIfNeeded(for: snapshot)
     }
 
     private func load(_ snapshot: RecommendationGraphSnapshot) async {
@@ -89,8 +111,10 @@ final class RecommendationGraphModel {
             state = .loaded(content)
         } catch {
             guard canPublish(snapshot, loadID: loadID) else { return }
-            if case APIClientError.server(let error, let metadata) = error, metadata.statusCode == 409,
-                error.code == "snapshot_expired" || error.code == "context_changed"
+            if case APIClientError.server(let error, let metadata) = error,
+                (metadata.statusCode == 404 && error.code == "not_found")
+                    || (metadata.statusCode == 409
+                        && (error.code == "snapshot_expired" || error.code == "context_changed"))
             {
                 state = .refreshSnapshot
             } else {
@@ -117,6 +141,7 @@ final class RecommendationGraphModel {
     private func canUse(_ snapshot: RecommendationGraphSnapshot) -> Bool {
         repository.session.isCurrent(repository.account)
             && snapshot.stateVersion >= (repository.session.revision?.stateVersion ?? 0)
+            && snapshot.stateVersion >= (repository.session.shoppingRevision?.stateVersion ?? 0)
     }
 
     private func canPublish(_ snapshot: RecommendationGraphSnapshot, loadID: UUID) -> Bool {

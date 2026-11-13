@@ -1,13 +1,16 @@
+import Accessibility
 import SwiftUI
 
 struct RecommendationGraphView: View {
+    @State private var failedSetID: String?
+
     let phase: RecommendationGraphModel.Phase
     let onRetry: () -> Void
     let onRefreshSnapshot: () -> Void
     let onOpenRecipe: (RecipeRequest) -> Void
     var shoppingState: ([ShoppingPackage], AccountRevision) -> ServerShoppingModel.SuggestionAddition? = { _, _ in .add
     }
-    let onAddSet: ([ShoppingPackage], AccountRevision) -> Void
+    let onAddSet: ([ShoppingPackage], AccountRevision) -> Bool
 
     var shoppingUnavailable = false
 
@@ -62,7 +65,7 @@ struct RecommendationGraphView: View {
                 Text("Наборов для докупки нет")
                     .foregroundStyle(.secondary)
             }
-            if shoppingUnavailable {
+            if shoppingUnavailable, failedSetID == nil {
                 Text("Не удалось сохранить или открыть список покупок.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -144,13 +147,19 @@ struct RecommendationGraphView: View {
                 if action == .needsFreshSnapshot {
                     onRefreshSnapshot()
                 } else {
-                    addSet(set, revision: revision)
+                    failedSetID = addSet(set, revision: revision) ? nil : set.id
+                    if failedSetID != nil {
+                        AccessibilityNotification.Announcement("Не удалось сохранить набор.").post()
+                    }
                 }
             }
             .buttonStyle(.bordered)
             .frame(minHeight: 44)
             .disabled(action != .add && action != .update && action != .needsFreshSnapshot)
             .accessibilityIdentifier("dishes.graph.add.\(set.id)")
+            if failedSetID == set.id {
+                Text("Не удалось сохранить набор.").font(.footnote)
+            }
         }
     }
 
@@ -187,7 +196,8 @@ struct RecommendationGraphView: View {
         onOpenRecipe(dish.request)
     }
 
-    func addSet(_ set: RecommendationGraphContent.PurchaseSet, revision: AccountRevision) {
+    @discardableResult
+    func addSet(_ set: RecommendationGraphContent.PurchaseSet, revision: AccountRevision) -> Bool {
         onAddSet(set.items, revision)
     }
 

@@ -127,11 +127,20 @@ struct ServerDishesScreen: View {
         }
     }
 
+    private struct GraphLoad: Equatable {
+        let snapshot: RecommendationGraphSnapshot
+        let retryAttempt: Int
+    }
+
     private func graph(_ snapshot: RecommendationGraphSnapshot) -> some View {
         let phase = model.graph.phase(for: snapshot)
+        let load = GraphLoad(snapshot: snapshot, retryAttempt: model.graph.retryAttempt)
         return RecommendationGraphView(
             phase: phase,
-            onRetry: { Task { await model.graph.retry(for: snapshot) } },
+            onRetry: {
+                guard model.graphSnapshot == snapshot else { return }
+                model.graph.requestRetry(for: snapshot)
+            },
             onRefreshSnapshot: { refreshGraph(snapshot) },
             onOpenRecipe: { request in
                 guard model.graphSnapshot == snapshot, case .loaded = model.graph.phase(for: snapshot) else { return }
@@ -141,14 +150,17 @@ struct ServerDishesScreen: View {
                 shopping?.addition(for: items, basedOn: revision)
             },
             onAddSet: { items, revision in
-                guard model.graphSnapshot == snapshot, case .loaded = model.graph.phase(for: snapshot) else { return }
-                if shopping?.add(items, basedOn: revision) == .needsFreshSnapshot {
-                    refreshGraph(snapshot)
+                guard model.graphSnapshot == snapshot, case .loaded = model.graph.phase(for: snapshot) else {
+                    return true
                 }
+                let result = shopping?.add(items, basedOn: revision)
+                if result == .needsFreshSnapshot { refreshGraph(snapshot) }
+                return result != .storageUnavailable
             },
             shoppingUnavailable: shopping?.storageUnavailable == true
         )
-        .task(id: snapshot) { await model.graph.loadIfNeeded(for: snapshot) }
+        .id(snapshot.requestID)
+        .task(id: load) { await model.graph.loadIfNeeded(for: load.snapshot, retryAttempt: load.retryAttempt) }
         .task(id: phase.expiration) {
             if let expiry = phase.expiration {
                 await model.graph.observeExpiration(for: snapshot, at: expiry)
