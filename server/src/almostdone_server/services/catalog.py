@@ -4,6 +4,7 @@ import hashlib
 import json
 import math
 import unicodedata
+from collections import OrderedDict
 from threading import Lock
 from decimal import Decimal, ROUND_HALF_UP
 from dataclasses import dataclass
@@ -37,6 +38,13 @@ class ExportValidation:
     validate: Callable[[dict], None]
 
 
+@dataclass(frozen=True)
+class ExportPresentation:
+    """Serialize shared snapshot data without modifying the input dictionary."""
+    key: str
+    render: Callable[[dict], bytes]
+
+
 class Catalog:
     """Read catalogue records from a repository and coordinate their use."""
     DIET_FACT_KEYS = ("vegetarian", "vegan", "gluten_free", "lactose_free")
@@ -55,6 +63,7 @@ class Catalog:
         self._export_version = None
         self._exported_data = None
         self._export_validated_schema = None
+        self._export_presentations = OrderedDict()
 
     def require_engine(self):
         self.gateway.require_engine()
@@ -143,11 +152,26 @@ class Catalog:
         raw = self.recipes.get(recipe_id)
         return raw.get("photo_url", raw.get("image_url")) or None if raw else None
 
-    def export(self, *, validation=None):
+    def export(self, *, validation=None, presentation=None):
         # A Catalog is a versioned snapshot, shared by all users. Return an
         # independent copy so URL rewriting/callers cannot alter the cached body.
         self.require_engine()
-        return copy.deepcopy(self._prepare_export(validation))
+        data = self._prepare_export(validation)
+        if presentation is None:
+            return copy.deepcopy(data)
+        # Snapshot-owned immutable bytes. Bound the variants because a request's
+        # origin may vary; refreshing the snapshot also replaces this cache.
+        key = (self.version, validation.schema_version if validation else None, presentation.key)
+        with self._export_lock:
+            if key not in self._export_presentations:
+                rendered = presentation.render(data)
+                if not isinstance(rendered, bytes):
+                    raise TypeError('Catalogue presentation must be immutable bytes')
+                self._export_presentations[key] = rendered
+                if len(self._export_presentations) > 4:
+                    self._export_presentations.popitem(last=False)
+            self._export_presentations.move_to_end(key)
+            return self._export_presentations[key]
 
     def validate_export(self, validation):
         """Validate this snapshot's private export before publishing the snapshot."""
@@ -161,6 +185,7 @@ class Catalog:
                 if validation is not None:
                     validation.validate(candidate)
                 self._exported_data = candidate
+                self._export_presentations.clear()
                 self._export_version = self.version
                 self._export_validated_schema = validation.schema_version if validation is not None else None
             elif validation is not None and self._export_validated_schema != validation.schema_version:

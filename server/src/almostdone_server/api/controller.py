@@ -10,7 +10,7 @@ class Controller:
     def __init__(self, contract, service):
         self.contract, self.service = contract, service
 
-    def handle(self, operation_id, body, parameters, headers):
+    def handle(self, operation_id, body, parameters, headers, *, catalog_presentation=None):
         _, _, operation = self.contract.operations[operation_id]
         names = {self.contract.resolve(p)["name"] for p in operation.get("parameters", [])}
         key = None
@@ -31,8 +31,8 @@ class Controller:
         )
         status = next(int(code) for code in operation["responses"] if str(code).startswith("2"))
         if operation_id == 'catalog_export':
-            # Validate the canonical snapshot before making the response copy.
-            result = self.service.execute(command, catalog_validation=self.contract.catalog_validation)
+            result = self.service.execute(command, catalog_validation=self.contract.catalog_validation,
+                                          catalog_presentation=catalog_presentation)
         else:
             result = self.service.execute(command, lambda result: self.contract.response(operation_id, status, result.data))
         response_headers = {}

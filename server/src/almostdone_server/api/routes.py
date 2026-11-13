@@ -1,5 +1,6 @@
 """Thin contract-driven REST routes: parse, invoke, serialize."""
 import json
+import gzip
 import os
 from urllib.parse import quote
 
@@ -8,6 +9,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse, Response
 
 from ..errors import APIError, invalid
+from ..services.catalog import ExportPresentation
 from ..integrations import photos
 from .bodies import image_body
 from .controller import Controller
@@ -50,6 +52,28 @@ def proxy_photo_urls(data, base_url):
     return result
 
 
+def accepts_gzip(header):
+    qualities = {}
+    for entry in header.lower().split(','):
+        name, *parameters = entry.split(';')
+        quality = 1.0
+        for parameter in parameters:
+            key, separator, value = parameter.strip().partition('=')
+            if key == 'q' and separator:
+                try:
+                    quality = float(value)
+                except ValueError:
+                    quality = 0.0
+        qualities[name.strip()] = quality
+    quality = qualities.get('gzip', qualities.get('*', 0.0))
+    return 0 < quality <= 1
+
+
+def render_catalog(data, base_url, compressed):
+    body = JSONResponse(proxy_photo_urls(data, base_url)).body
+    return gzip.compress(body, mtime=0) if compressed else body
+
+
 async def recipe_photo(service, recipe_id):
     url = service.catalog.photo_source(recipe_id)
     if url is None:
@@ -72,8 +96,23 @@ def create_router(contract, service):
             if operation_id == "recipes_photo":
                 return await recipe_photo(service, parameters["recipe_id"])
             body = await read_body(request, contract, operation_id)
+            presentation = None
+            compressed = False
+            if operation_id == "catalog_export":
+                base_url = str(request.base_url)
+                compressed = accepts_gzip(request.headers.get('accept-encoding', ''))
+                presentation = ExportPresentation(
+                    key=base_url + ('\ngzip' if compressed else '\nidentity'),
+                    render=lambda data: render_catalog(data, base_url, compressed),
+                )
             status, data, headers = await run_in_threadpool(
-                controller.handle, operation_id, body, parameters, dict(request.headers))
+                controller.handle, operation_id, body, parameters, dict(request.headers),
+                catalog_presentation=presentation)
+            if operation_id == "catalog_export":
+                headers['Vary'] = 'Accept-Encoding'
+                if compressed:
+                    headers['Content-Encoding'] = 'gzip'
+                return Response(data, status_code=status, headers=headers, media_type="application/json")
             if status == 204:
                 return Response(status_code=status, headers=headers)
             if operation_id == "readiness_get" and revision:

@@ -1,10 +1,12 @@
 import copy
+import json
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
 from almostdone_server.adapters.engine import DishgraphGateway
 from almostdone_server.services.catalog_cache import CatalogCache
+from almostdone_server.services.catalog import ExportPresentation, ExportValidation
 from ..support.catalog import custom_catalog
 
 
@@ -103,5 +105,37 @@ def test_commit_during_reload_is_not_lost():
     assert live.ingredients[code]['name'] == 'First change'
     assert live.refresh()
     assert live.ingredients[code]['name'] == 'Second change'
+
+
+def test_rendered_bytes_follow_the_pinned_snapshot_after_refresh():
+    repo = Repository()
+    live = catalog_cache(repo)
+    presentation = ExportPresentation('origin-a', lambda body: json.dumps(body).encode())
+    old = live.export(presentation=presentation)
+    with live.pin():
+        repo.change('Replacement name')
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            assert pool.submit(live.refresh).result(timeout=5)
+        assert live.export(presentation=presentation) is old
+    updated = live.export(presentation=presentation)
+    assert updated != old
+    assert any(item['name'] == 'Replacement name' for item in json.loads(updated)['ingredients'])
+
+
+def test_rendered_export_revalidates_when_contract_schema_changes():
+    live = catalog_cache(Repository())
+    renders, validations = [], []
+
+    def render(body):
+        renders.append(1)
+        return json.dumps(body).encode()
+
+    presentation = ExportPresentation('origin', render)
+    first = ExportValidation('schema-a', lambda body: validations.append('a'))
+    second = ExportValidation('schema-b', lambda body: validations.append('b'))
+    assert live.export(validation=first, presentation=presentation) == live.export(validation=first, presentation=presentation)
+    live.export(validation=second, presentation=presentation)
+    assert validations == ['a', 'b']
+    assert len(renders) == 2
 
 
