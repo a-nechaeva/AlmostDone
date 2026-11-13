@@ -16,6 +16,8 @@
 [Макеты приложения в Figma](https://www.figma.com/design/8njUSmyzvU1pzrUmEDnuJA/AlmostReady-sandbox?node-id=37-23)
 · [Требования](docs/task.md)
 · [Задачи проекта](https://github.com/a-nechaeva/AlmostDone/issues)
+· [Ролик](https://drive.google.com/file/d/1y-L6L7U4YhhB7SdEmUBCK-iMqlrv5Wm9/view?usp=drive_link)
+· [Презентация]()
 
 ## Сборка и запуск
 
