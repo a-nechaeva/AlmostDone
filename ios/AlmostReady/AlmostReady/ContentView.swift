@@ -6,7 +6,7 @@ struct ContentView: View {
     @State private var selection = AppTab.products
     @State private var tabBarHeight: CGFloat = 0
     @State private var isProductsSearchPresented = false
-    @State private var dishPath: [RecipeRequest] = []
+    @State private var dishPath = NavigationPath()
     @FocusState private var isDishSearchFocused: Bool
     @State private var isShoppingCoverPresented = false
     @State private var isNutritionPresented = false
@@ -122,7 +122,7 @@ struct ContentView: View {
     }
 
     private func openDishes() {
-        dishPath.removeAll()
+        dishPath = NavigationPath()
         selectTab(.dishes)
     }
 

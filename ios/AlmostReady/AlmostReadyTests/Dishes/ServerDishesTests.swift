@@ -465,17 +465,17 @@ final class ServerDishesTests: XCTestCase {
     }
 
     @MainActor
-    private func model(
+    func model(
         _ session: SessionStore, servings: Int = 2, exclusions: [String] = []
     ) throws -> ServerDishesModel {
         try ServerDishesModel(
             repository: RecommendationsRepository(session: session, account: XCTUnwrap(session.account)),
-            servings: servings, excludedAllergenIDs: exclusions
+            initialContext: .init(advancedFilters: .init(excludedAllergenIDs: Set(exclusions)), servings: servings)
         )
     }
 
     @MainActor
-    private func snapshot(_ model: ServerDishesModel) throws -> DishesSnapshot {
+    func snapshot(_ model: ServerDishesModel) throws -> DishesSnapshot {
         guard case .loaded(let snapshot) = model.phase else {
             XCTFail("Expected loaded snapshot")
             throw URLError(.cannotParseResponse)

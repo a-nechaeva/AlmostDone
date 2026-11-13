@@ -1,9 +1,15 @@
 import SwiftUI
 
+struct HiddenDishesRoute: Hashable {
+    let context: ServerDishesModel.Context
+}
+
 struct ServerDishesScreen: View {
+    @Environment(\.locale) private var locale
     @Environment(\.floatingTabBarHeight) private var tabBarHeight
     @ScaledMetric(relativeTo: .headline) private var sectionTitleSize = 18.0
     @State private var model: ServerDishesModel
+    @State private var showsAdvancedFilters = false
     @FocusState.Binding var isSearchFocused: Bool
 
     let onOpenProducts: () -> Void
@@ -31,6 +37,17 @@ struct ServerDishesScreen: View {
                 }
 
                 DishesControls(query: $model.query, filter: $model.filter, isSearchFocused: $isSearchFocused)
+                Button {
+                    isSearchFocused = false
+                    showsAdvancedFilters = true
+                } label: {
+                    Label(
+                        model.advancedFilters == DishesAdvancedFilters() ? "Фильтры" : "Фильтры применены",
+                        systemImage: "slider.horizontal.3"
+                    )
+                    .frame(minHeight: 44)
+                }
+                .accessibilityIdentifier("dishes.filters")
                 switch model.phase {
                 case .loading:
                     ProgressView("Подбираем блюда…")
@@ -52,6 +69,14 @@ struct ServerDishesScreen: View {
         .safeAreaPadding(.bottom, tabBarHeight)
         .toolbar(.hidden, for: .navigationBar)
         .background(Color(.demoBackground).ignoresSafeArea())
+        .navigationDestination(for: HiddenDishesRoute.self) { route in
+            ServerHiddenDishesScreen(repository: model.repository, route: route)
+        }
+        .sheet(isPresented: $showsAdvancedFilters) {
+            ServerDishesFiltersSheet(repository: model.repository, applied: model.advancedFilters, locale: locale) {
+                model.apply($0)
+            }
+        }
         .onDisappear { isSearchFocused = false }
         .task(id: context) {
             if !context.query.isEmpty {
@@ -66,21 +91,33 @@ struct ServerDishesScreen: View {
         let first = snapshot.firstPage
         VStack(alignment: .leading, spacing: 4) {
             Text("Найдено блюд — \(first.visibleTotal.formatted())")
-            Text("Скрыто — \(first.hiddenTotal.formatted())")
             Text("Пригодность неизвестна — \(first.unknownTotal.formatted())")
         }
         .font(.subheadline)
         .foregroundStyle(.secondary)
         .accessibilityElement(children: .combine)
 
+        if first.hiddenTotal > 0 {
+            NavigationLink(value: HiddenDishesRoute(context: snapshot.context)) {
+                Label("Скрыто — \(first.hiddenTotal.formatted())", systemImage: "eye.slash")
+                    .frame(minHeight: 44)
+            }
+            .accessibilityIdentifier("dishes.hidden")
+        } else {
+            Text("Скрыто — 0")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+
         if snapshot.items.isEmpty {
             ContentUnavailableView {
                 Label("Блюда не найдены", systemImage: "magnifyingglass")
             } actions: {
-                if model.filter != .all || !model.query.isEmpty {
-                    Button("Показать все блюда") {
+                if model.filter != .all || !model.query.isEmpty || model.advancedFilters != DishesAdvancedFilters() {
+                    Button("Сбросить поиск и фильтры") {
                         model.query = ""
                         model.filter = .all
+                        model.apply(DishesAdvancedFilters())
                         isSearchFocused = false
                     }
                 }
@@ -117,24 +154,7 @@ struct ServerDishesScreen: View {
             }
         }
 
-        if snapshot.nextCursor != nil {
-            VStack(spacing: 8) {
-                if model.pageLoadFailed {
-                    Text("Не удалось загрузить следующую страницу")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                if model.isLoadingMore {
-                    ProgressView("Загружаем блюда…")
-                } else {
-                    Button(model.pageLoadFailed ? "Повторить" : "Показать ещё") {
-                        Task { await model.loadMore() }
-                    }
-                    .buttonStyle(.bordered)
-                }
-            }
-            .frame(maxWidth: .infinity)
-        }
+        DishesNextPage(snapshot: snapshot, model: model)
     }
 }
 
