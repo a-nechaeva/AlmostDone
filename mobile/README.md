@@ -13,22 +13,38 @@
 
 Выберите конфигурацию `app`, устройство с Android 7.0 / API 24 или новее и
 нажмите **Run**. Приложение подключится к облачному API по адресу
-`https://51.250.76.77`. APK можно собрать из каталога `mobile`.
+<https://51.250.76.77>. Сервер приложения и база данных PostgreSQL развёрнуты
+на удалённой ВМ. Адрес задан в `mobile/gradle.properties`.
+На этой же ВМ работает [Grafana с метриками сервера](https://51.250.76.77/grafana/)
+(требуется вход). Подробнее о метриках — в [README сервера](../server/README.md).
+
+APK можно собрать из каталога `mobile`:
 
 ```bash
 ./gradlew :app:assembleDebug
 
 ```
 
-Для другого стенда передайте `-PalmostReadyApiBaseUrl=https://api.example.org`
-или задайте свойство в `~/.gradle/gradle.properties`. При отладке через
-`adb reverse` debug-сборка принимает `http://127.0.0.1:8000`, если на этом
-порту запущен `server/`. Для своего экземпляра `server/` укажите в
-`ALMOSTDONE_YANDEX_CLIENT_ID` публичный Client ID Android из `app/build.gradle.kts`.
-
 APK находится в `app/build/outputs/apk/debug/app-debug.apk`. Для проверки
 откройте приложение, войдите через Яндекс ID, перезапустите приложение, затем
 завершите сессию в профиле.
+
+### Подключение к локальному стенду
+
+Для другого стенда передайте `-PalmostReadyApiBaseUrl=https://api.example.org`
+или задайте свойство в `~/.gradle/gradle.properties`. Указывайте Base URL без
+`/api/v1`: клиент добавляет префикс сам.
+
+Для локальной отладки API должен быть запущен на компьютере на порту `8000`.
+Подключите телефон по USB и выполните `adb reverse tcp:8000 tcp:8000`.
+Соберите debug-версию Android из каталога `mobile`:
+
+```bash
+./gradlew :app:assembleDebug -PalmostReadyApiBaseUrl=http://127.0.0.1:8000
+```
+
+Для своего экземпляра сервера укажите в `ALMOSTDONE_YANDEX_CLIENT_ID`
+публичный Client ID Android из `mobile/app/build.gradle.kts`.
 
 ## Запрос из репозитория
 
