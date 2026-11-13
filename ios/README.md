@@ -34,6 +34,9 @@ xcodebuild -project ios/AlmostReady/AlmostReady.xcodeproj \
 
 ## Серверный режим и вход
 
+Сервер приложения и база данных PostgreSQL развёрнуты на удалённой ВМ
+по адресу <https://51.250.76.77>. Для подключения выполните настройку ниже.
+
 Для запуска на iPhone выберите команду разработки в **Signing & Capabilities**
 для таргета `AlmostReady`. Для серверного режима на симуляторе оставьте
 включённой локальную подпись Xcode. Связке ключей нужна подпись приложения,
@@ -82,6 +85,30 @@ Client ID задаётся локально. Client Secret приложению 
 [Настройка URL scheme](https://yandex.ru/dev/id/doc/ru/mobileauthsdk/ios/2.1.1/sdk-ios-install) ·
 [Справочник SDK](https://yandex.ru/dev/id/doc/ru/mobileauthsdk/ios/2.1.1/sdk-ios-methods) ·
 [Исходники SDK 3.2.0](https://github.com/yandexmobile/yandex-login-sdk-ios/tree/3.2.0)
+
+## Подключение к локальному стенду
+
+Для локальной отладки запустите API на компьютере и обеспечьте доступ к нему
+по HTTPS с сертификатом, которому доверяет устройство или симулятор.
+Серверный режим iOS принимает только HTTPS-адреса.
+
+В `.local/ios-server.xcconfig` укажите адрес своего стенда и Client ID Яндекса,
+заданный на этом сервере в `ALMOSTDONE_YANDEX_CLIENT_ID`. Например, для стенда
+с настроенным именем `api.local.test`:
+
+```xcconfig
+ALMOSTREADY_MODE = server
+ALMOSTREADY_API_BASE_URL = https:/$()/api.local.test
+ALMOSTREADY_YANDEX_CLIENT_ID = <Client ID из настроек локального backend>
+```
+
+Замените `api.local.test` на доступное с устройства имя своего стенда;
+при необходимости добавьте порт. Указывайте Base URL без `/api/v1`:
+клиент добавляет префикс сам. Для физического iPhone используйте адрес компьютера
+в доступной локальной сети; `localhost` на телефоне указывает на сам телефон.
+После изменения настроек пересоберите приложение в Xcode и выполните вход,
+как описано выше. Для возврата к удалённой ВМ восстановите
+`ALMOSTREADY_API_BASE_URL = https:/$()/51.250.76.77` и её Client ID.
 
 ## Подключение экранов
 
