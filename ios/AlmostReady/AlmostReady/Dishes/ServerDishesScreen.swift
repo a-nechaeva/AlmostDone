@@ -5,6 +5,7 @@ struct HiddenDishesRoute: Hashable {
 }
 
 struct ServerDishesScreen: View {
+    @Environment(ServerShoppingModel.self) private var shopping: ServerShoppingModel?
     @Environment(\.locale) private var locale
     @Environment(\.floatingTabBarHeight) private var tabBarHeight
     @ScaledMetric(relativeTo: .headline) private var sectionTitleSize = 18.0
@@ -13,14 +14,16 @@ struct ServerDishesScreen: View {
     @FocusState.Binding var isSearchFocused: Bool
 
     let onOpenProducts: () -> Void
+    let onOpenRecipe: (RecipeRequest) -> Void
 
     init(
         repository: RecommendationsRepository, isSearchFocused: FocusState<Bool>.Binding,
-        onOpenProducts: @escaping () -> Void
+        onOpenProducts: @escaping () -> Void, onOpenRecipe: @escaping (RecipeRequest) -> Void
     ) {
         _model = State(initialValue: ServerDishesModel(repository: repository))
         _isSearchFocused = isSearchFocused
         self.onOpenProducts = onOpenProducts
+        self.onOpenRecipe = onOpenRecipe
     }
 
     var body: some View {
@@ -48,6 +51,15 @@ struct ServerDishesScreen: View {
                     .frame(minHeight: 44)
                 }
                 .accessibilityIdentifier("dishes.filters")
+                Picker("Режим подбора", selection: $model.resultsMode) {
+                    ForEach(ServerDishesModel.ResultsMode.allCases) { mode in
+                        Text(mode.rawValue).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("dishes.resultsMode")
+                .onChange(of: model.resultsMode) { isSearchFocused = false }
+
                 switch model.phase {
                 case .loading:
                     ProgressView("Подбираем блюда…")
@@ -60,7 +72,12 @@ struct ServerDishesScreen: View {
                         Button("Повторить") { Task { await model.retry() } }
                     }
                 case .loaded(let snapshot):
-                    results(snapshot)
+                    summary(snapshot)
+                    if model.resultsMode == .graph, let graphSnapshot = model.graphSnapshot {
+                        graph(graphSnapshot)
+                    } else {
+                        results(snapshot)
+                    }
                 }
             }
             .padding(.horizontal, 20)
@@ -87,7 +104,7 @@ struct ServerDishesScreen: View {
     }
 
     @ViewBuilder
-    private func results(_ snapshot: DishesSnapshot) -> some View {
+    private func summary(_ snapshot: DishesSnapshot) -> some View {
         let first = snapshot.firstPage
         VStack(alignment: .leading, spacing: 4) {
             Text("Найдено блюд — \(first.visibleTotal.formatted())")
@@ -108,7 +125,56 @@ struct ServerDishesScreen: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
+    }
 
+    private struct GraphLoad: Equatable {
+        let snapshot: RecommendationGraphSnapshot
+        let retryAttempt: Int
+    }
+
+    private func graph(_ snapshot: RecommendationGraphSnapshot) -> some View {
+        let phase = model.graph.phase(for: snapshot)
+        let load = GraphLoad(snapshot: snapshot, retryAttempt: model.graph.retryAttempt)
+        return RecommendationGraphView(
+            phase: phase,
+            onRetry: {
+                guard model.graphSnapshot == snapshot else { return }
+                model.graph.requestRetry(for: snapshot)
+            },
+            onRefreshSnapshot: { refreshGraph(snapshot) },
+            onOpenRecipe: { request in
+                guard model.graphSnapshot == snapshot, case .loaded = model.graph.phase(for: snapshot) else { return }
+                onOpenRecipe(request)
+            },
+            shoppingState: { items, revision in
+                shopping?.addition(for: items, basedOn: revision)
+            },
+            onAddSet: { items, revision in
+                guard model.graphSnapshot == snapshot, case .loaded = model.graph.phase(for: snapshot) else {
+                    return true
+                }
+                let result = shopping?.add(items, basedOn: revision)
+                if result == .needsFreshSnapshot { refreshGraph(snapshot) }
+                return result != .storageUnavailable
+            },
+            shoppingUnavailable: shopping?.storageUnavailable == true
+        )
+        .id(snapshot.requestID)
+        .task(id: load) { await model.graph.loadIfNeeded(for: load.snapshot, retryAttempt: load.retryAttempt) }
+        .task(id: phase.expiration) {
+            if let expiry = phase.expiration {
+                await model.graph.observeExpiration(for: snapshot, at: expiry)
+            }
+        }
+    }
+
+    private func refreshGraph(_ snapshot: RecommendationGraphSnapshot) {
+        Task { await model.refreshSnapshot(requestID: snapshot.requestID) }
+    }
+
+    @ViewBuilder
+    private func results(_ snapshot: DishesSnapshot) -> some View {
+        let first = snapshot.firstPage
         if snapshot.items.isEmpty {
             ContentUnavailableView {
                 Label("Блюда не найдены", systemImage: "magnifyingglass")

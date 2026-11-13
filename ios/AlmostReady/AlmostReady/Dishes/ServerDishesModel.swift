@@ -70,6 +70,14 @@ final class ServerDishesModel {
         case failed
     }
 
+    enum ResultsMode: String, CaseIterable, Identifiable {
+        case list = "Список"
+        case graph = "Граф"
+
+        var id: Self { self }
+    }
+
+    var resultsMode = ResultsMode.list
     var query: String
     var filter: DishesFilter
     private(set) var advancedFilters: DishesAdvancedFilters
@@ -77,6 +85,7 @@ final class ServerDishesModel {
     private(set) var pageLoadFailed = false
 
     let repository: RecommendationsRepository
+    let graph: RecommendationGraphModel
     let visibility: RecommendationRequest.Visibility
     private let servings: Int
     private let minimumStateVersion: Int?
@@ -90,6 +99,7 @@ final class ServerDishesModel {
         visibility: RecommendationRequest.Visibility = .visible
     ) {
         self.repository = repository
+        graph = RecommendationGraphModel(repository: repository)
         self.visibility = visibility
         query = initialContext.query
         filter = initialContext.filter
@@ -116,9 +126,15 @@ final class ServerDishesModel {
         activeContext == context && repository.session.isCurrent(repository.account) ? state : .loading
     }
 
+    var graphSnapshot: RecommendationGraphSnapshot? {
+        guard visibility == .visible, case .loaded(let snapshot) = phase else { return nil }
+        return RecommendationGraphSnapshot(snapshot)
+    }
+
     func apply(_ filters: DishesAdvancedFilters) {
         guard advancedFilters != filters else { return }
         advancedFilters = filters
+        graph.reset()
         activeContext = nil
         activeRequestID = nil
         snapshotTask?.cancel()
@@ -184,6 +200,7 @@ final class ServerDishesModel {
         // Keep an in-flight snapshot when the tab disappears and reappears with the same context.
         if activeContext == context, snapshotTask != nil { return }
         snapshotTask?.cancel()
+        graph.reset()
         let requestID = UUID()
         activeRequestID = requestID
         activeContext = context

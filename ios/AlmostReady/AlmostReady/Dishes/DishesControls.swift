@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-nonisolated enum DishesFilter: String, CaseIterable, Encodable, Sendable {
+nonisolated enum DishesFilter: String, CaseIterable, Codable, Sendable {
     case all
     case ready = "now"
     case needsShopping = "buy_1_3"
