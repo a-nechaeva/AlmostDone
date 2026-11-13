@@ -1,9 +1,11 @@
 import json
 from uuid import uuid4
+from unittest.mock import Mock
 
 from fastapi.testclient import TestClient
 
-from dishgraph.recognition import FakeProvider, RecognitionError
+from dishgraph.recognition import RecognitionError
+from dishgraph.recognition.providers import VisionProvider
 from ..support.application import create_app
 from ..support.http import auth, check, mutation, png
 
@@ -16,7 +18,8 @@ def upload(client, headers, kind):
 def test_team_receipt_recognizer_is_connected_and_requires_confirmed_import():
     answer = {"items": [{"raw_name": "Рис", "candidates": [{"code": "rice", "confidence": 1}],
                          "quantity": {"value": 500, "unit": "g"}}]}
-    provider = FakeProvider(json.dumps(answer, ensure_ascii=False))
+    provider = Mock(spec=VisionProvider)
+    provider.complete.return_value = json.dumps(answer, ensure_ascii=False)
     app = create_app(recognition_provider=provider)
     with TestClient(app) as client:
         headers = auth(app)
@@ -30,32 +33,38 @@ def test_team_receipt_recognizer_is_connected_and_requires_confirmed_import():
                 "ingredient_id": "rice", "quantity": line["suggested_quantity"]}]}
         imported = check(app, client.post("/api/v1/recognition-imports", json=body, headers=mutation(client, headers)), "ImportResult")
         assert imported["pantry"][0]["ingredient_id"] == "rice"
-        assert len(provider.calls) == 1
+        provider.complete.assert_called_once()
+        provider.complete_text.assert_not_called()
 
 
 def test_team_product_recognizer_preserves_unknown_weight():
-    provider = FakeProvider([
-        json.dumps({"items": [{"name": "Рис", "confidence": 1, "count": 1, "quantity": None}]}, ensure_ascii=False),
-        json.dumps({"matches": [{"index": 0, "candidates": [{"code": "rice", "confidence": 1}]}]})])
+    provider = Mock(spec=VisionProvider)
+    provider.complete.return_value = json.dumps(
+        {"items": [{"name": "Рис", "confidence": 1, "count": 1, "quantity": None}]}, ensure_ascii=False)
+    provider.complete_text.return_value = json.dumps(
+        {"matches": [{"index": 0, "candidates": [{"code": "rice", "confidence": 1}]}]})
     app = create_app(recognition_provider=provider)
     with TestClient(app) as client:
         result = check(app, upload(client, auth(app), "products"), "Recognition", 202)
         assert result["items"][0]["candidates"][0]["ingredient_id"] == "rice"
         assert result["items"][0]["suggested_quantity"] is None
-        assert len(provider.calls) == 2
+        provider.complete.assert_called_once()
+        provider.complete_text.assert_called_once()
 
 
 def test_invalid_model_output_becomes_failed_job():
-    app = create_app(recognition_provider=FakeProvider("not JSON"))
+    provider = Mock(spec=VisionProvider)
+    provider.complete.return_value = "not JSON"
+    app = create_app(recognition_provider=provider)
     with TestClient(app) as client:
         result = check(app, upload(client, auth(app), "receipt"), "Recognition", 202)
         assert result["status"] == "failed" and result["failure"]["error"]["code"] == "recognition_failed"
 
 
 def test_team_provider_outage_is_503_without_secret_error_text():
-    def failure(*args):
-        raise RecognitionError("private-provider-key")
-    app = create_app(recognition_provider=FakeProvider(failure))
+    provider = Mock(spec=VisionProvider)
+    provider.complete.side_effect = RecognitionError("private-provider-key")
+    app = create_app(recognition_provider=provider)
     with TestClient(app) as client:
         response = upload(client, auth(app), "receipt")
         check(app, response, "Error", 503)
