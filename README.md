@@ -17,7 +17,7 @@
 · [Требования](docs/task.md)
 · [Задачи проекта](https://github.com/a-nechaeva/AlmostDone/issues)
 · [Ролик](https://drive.google.com/file/d/1y-L6L7U4YhhB7SdEmUBCK-iMqlrv5Wm9/view?usp=drive_link)
-· [Презентация](https://docs.google.com/presentation/d/1Uks7a0uoGl3Premaa8gb1hmMcJ9u7fyh/edit?usp=drive_link&ouid=109868786883732590708&rtpof=true&sd=true)
+· [Презентация](https://docs.google.com/presentation/d/1xjmVm-ACdc-sgqXaPO1jUIrN01sZxbm1)
 
 ## Сборка и запуск
 
