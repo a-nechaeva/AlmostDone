@@ -8,57 +8,22 @@ struct RecommendationGraphSnapshot: Equatable {
     let catalogVersion: String
     let servings: Int
 
-    init(visiblePage page: RecommendationPage) {
+    let filters: RecommendationRequest.Filters
+
+    init(_ snapshot: DishesSnapshot) {
+        let page = snapshot.firstPage
         id = page.snapshotID
         requestID = page.requestID
         stateVersion = page.stateVersion
         catalogVersion = page.catalogVersion
         servings = page.servings
+        filters = snapshot.context.requestFilters
     }
 
     func matches(_ graph: RecommendationGraph) -> Bool {
         graph.snapshotID == id && graph.requestID == requestID && graph.stateVersion == stateVersion
             && graph.catalogVersion == catalogVersion && graph.servings == servings && graph.visibility == .visible
-    }
-}
-
-@MainActor
-final class RecommendationGraphRepository {
-    let session: SessionStore
-    let account: AccountSession
-    private var retryAfter: ContinuousClock.Instant?
-
-    init(session: SessionStore, account: AccountSession) {
-        self.session = session
-        self.account = account
-    }
-
-    var isCurrent: Bool { session.isCurrent(account) }
-
-    func canUse(_ snapshot: RecommendationGraphSnapshot) -> Bool {
-        isCurrent && snapshot.stateVersion >= (session.revision?.stateVersion ?? 0)
-    }
-
-    func load(_ snapshot: RecommendationGraphSnapshot) async throws -> RecommendationGraphContent {
-        while let retryAfter, retryAfter > .now {
-            try await Task.sleep(until: retryAfter, clock: .continuous)
-        }
-        let response: APIResponse<RecommendationGraph>
-        do {
-            response = try await session.json(
-                RecommendationGraph.self,
-                for: APIRequest(path: ["recommendations", snapshot.id, "graph"]),
-                account: account
-            )
-        } catch let error as APIClientError {
-            if let seconds = error.metadata?.retryAfter.flatMap(Int.init), seconds > 0 {
-                let deadline = ContinuousClock.now + .seconds(seconds)
-                retryAfter = max(retryAfter ?? deadline, deadline)
-            }
-            throw error
-        }
-        guard snapshot.matches(response.value) else { throw APIClientError.invalidResponse(response.metadata) }
-        return try RecommendationGraphContent(response: response)
+            && graph.filters == filters
     }
 }
 
@@ -70,19 +35,26 @@ final class RecommendationGraphModel {
         case loaded(RecommendationGraphContent)
         case failed
         case refreshSnapshot
+
+        var expiration: Date? {
+            if case .loaded(let content) = self { content.expiresAt } else { nil }
+        }
     }
 
-    private let repository: RecommendationGraphRepository
+    private let repository: RecommendationsRepository
     private var activeSnapshot: RecommendationGraphSnapshot?
     private var activeLoad: UUID?
     private var state = Phase.loading
 
-    init(repository: RecommendationGraphRepository) {
+    init(repository: RecommendationsRepository) {
         self.repository = repository
     }
 
+    nonisolated deinit {}
+
     func phase(for snapshot: RecommendationGraphSnapshot) -> Phase {
-        guard activeSnapshot == snapshot, repository.canUse(snapshot) else { return .loading }
+        guard activeSnapshot == snapshot, canUse(snapshot) else { return .loading }
+        if case .loaded(let content) = state, content.expiresAt <= .now { return .refreshSnapshot }
         return state
     }
 
@@ -103,15 +75,17 @@ final class RecommendationGraphModel {
     }
 
     private func load(_ snapshot: RecommendationGraphSnapshot) async {
-        guard !Task.isCancelled, repository.canUse(snapshot) else { return }
+        guard !Task.isCancelled, canUse(snapshot) else { return }
         let loadID = UUID()
         activeLoad = loadID
         activeSnapshot = snapshot
         state = .loading
 
         do {
-            let content = try await repository.load(snapshot)
+            let response = try await repository.graph(snapshotID: snapshot.id)
             guard canPublish(snapshot, loadID: loadID) else { return }
+            guard snapshot.matches(response.value) else { throw APIClientError.invalidResponse(response.metadata) }
+            let content = try RecommendationGraphContent(response: response)
             state = .loaded(content)
         } catch {
             guard canPublish(snapshot, loadID: loadID) else { return }
@@ -125,7 +99,27 @@ final class RecommendationGraphModel {
         }
     }
 
+    func observeExpiration(for snapshot: RecommendationGraphSnapshot, at expiry: Date) async {
+        let remaining = expiry.timeIntervalSinceNow
+        if remaining > 0 {
+            do {
+                try await Task.sleep(for: .seconds(remaining))
+            } catch {
+                return
+            }
+        }
+        guard !Task.isCancelled, activeSnapshot == snapshot, case .loaded(let content) = state,
+            content.expiresAt == expiry, expiry <= .now
+        else { return }
+        state = .refreshSnapshot
+    }
+
+    private func canUse(_ snapshot: RecommendationGraphSnapshot) -> Bool {
+        repository.session.isCurrent(repository.account)
+            && snapshot.stateVersion >= (repository.session.revision?.stateVersion ?? 0)
+    }
+
     private func canPublish(_ snapshot: RecommendationGraphSnapshot, loadID: UUID) -> Bool {
-        !Task.isCancelled && activeLoad == loadID && repository.canUse(snapshot)
+        !Task.isCancelled && activeLoad == loadID && canUse(snapshot)
     }
 }

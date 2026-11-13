@@ -5,7 +5,11 @@ struct RecommendationGraphView: View {
     let onRetry: () -> Void
     let onRefreshSnapshot: () -> Void
     let onOpenRecipe: (RecipeRequest) -> Void
+    var shoppingState: ([ShoppingPackage], AccountRevision) -> ServerShoppingModel.SuggestionAddition? = { _, _ in .add
+    }
     let onAddSet: ([ShoppingPackage], AccountRevision) -> Void
+
+    var shoppingUnavailable = false
 
     var body: some View {
         switch phase {
@@ -41,7 +45,7 @@ struct RecommendationGraphView: View {
     }
 
     private func graph(_ content: RecommendationGraphContent) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
+        LazyVStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(content.homeTitle)
                     .font(.headline)
@@ -56,6 +60,11 @@ struct RecommendationGraphView: View {
 
             if content.purchaseSets.isEmpty {
                 Text("Наборов для докупки нет")
+                    .foregroundStyle(.secondary)
+            }
+            if shoppingUnavailable {
+                Text("Не удалось сохранить или открыть список покупок.")
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
             }
             ForEach(content.purchaseSets) { set in
@@ -112,14 +121,37 @@ struct RecommendationGraphView: View {
                 ForEach(set.dishes, content: dish)
             }
 
-            Button("Добавить набор в покупки") {
-                addSet(set, revision: revision)
+            shoppingAction(for: set, revision: revision)
+        }
+        .graphCard()
+    }
+
+    @ViewBuilder
+    private func shoppingAction(
+        for set: RecommendationGraphContent.PurchaseSet, revision: AccountRevision
+    ) -> some View {
+        if let action = shoppingState(set.items, revision) {
+            let title: LocalizedStringKey =
+                switch action {
+                case .add: "Добавить набор в покупки"
+                case .update: "Обновить список покупок"
+                case .alreadyAdded: "Уже в покупках"
+                case .marked: "Сначала снимите отметку «Куплено»"
+                case .needsFreshSnapshot: "Обновить подбор"
+                case .transferPending: "Завершите перенос в запасы"
+                }
+            Button(title) {
+                if action == .needsFreshSnapshot {
+                    onRefreshSnapshot()
+                } else {
+                    addSet(set, revision: revision)
+                }
             }
             .buttonStyle(.bordered)
             .frame(minHeight: 44)
+            .disabled(action != .add && action != .update && action != .needsFreshSnapshot)
             .accessibilityIdentifier("dishes.graph.add.\(set.id)")
         }
-        .graphCard()
     }
 
     private func dish(_ dish: RecommendationGraphContent.Dish) -> some View {

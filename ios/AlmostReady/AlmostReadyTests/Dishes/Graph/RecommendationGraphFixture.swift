@@ -16,12 +16,25 @@ enum RecommendationGraphFixture {
             "visible_total": 5, "hidden_total": 0, "unknown_total": 1, "items": [],
             "page": ["next_cursor": "next", "has_more": true]
         ])
-        return try RecommendationGraphSnapshot(visiblePage: JSONDecoder().decode(RecommendationPage.self, from: data))
+        let page = try JSONDecoder().decode(RecommendationPage.self, from: data)
+        return RecommendationGraphSnapshot(DishesSnapshot(page: page, context: context))
+    }
+
+    nonisolated static var context: ServerDishesModel.Context {
+        .init(
+            query: "обед",
+            advancedFilters: .init(
+                maxMinutes: 30, maxKcalPerServing: 400.5, equipment: [.stove],
+                excludedAllergenIDs: ["eggs", "nuts"]
+            ),
+            servings: servings, stateVersion: 7
+        )
     }
 
     static func response(
         _ request: URLRequest, id: String = snapshotID, version: Int = 7, readyOnly: Bool = false, empty: Bool = false,
-        unrepresented: Bool = true, requestID: UUID = requestID, etag: String? = nil
+        unrepresented: Bool = true, requestID: UUID = requestID, etag: String? = nil,
+        filters: [String: Any]? = nil, expiresAt: Date = .now.addingTimeInterval(600)
     ) throws -> (Data, URLResponse) {
         let rice = item("rice", name: "Рис", count: 1, price: 12_050)
         let extraRice = item("rice", name: "Рис", count: 2, price: 24_100)
@@ -64,11 +77,12 @@ enum RecommendationGraphFixture {
             request,
             body: [
                 "request_id": requestID.uuidString, "snapshot_id": id, "state_version": version,
-                "expires_at": "2026-11-13T12:10:00.123456Z", "catalog_version": "catalog-1", "servings": servings,
+                "expires_at": expiresAt.ISO8601Format(Date.ISO8601FormatStyle(includingFractionalSeconds: true)),
+                "catalog_version": "catalog-1", "servings": servings,
                 "visibility": "visible",
-                "filters": [
+                "filters": filters ?? [
                     "q": "обед", "mode": "all", "max_minutes": 30, "max_kcal_per_serving": 400.5,
-                    "equipment": ["stove"], "exclude_allergens": ["nuts", "eggs"]
+                    "equipment": ["stove", "no_cook"], "exclude_allergens": ["eggs", "nuts"]
                 ],
                 "graph": [
                     "scope": "snapshot", "nodes": nodes, "edges": edges,

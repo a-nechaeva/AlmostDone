@@ -28,6 +28,7 @@ struct RecommendationGraphContent {
     let purchaseSets: [PurchaseSet]
     let hasUnrepresentedDishes: Bool
     let revision: AccountRevision
+    let expiresAt: Date
 
     var isEmpty: Bool { homeDishes.isEmpty && purchaseSets.isEmpty }
 
@@ -35,6 +36,13 @@ struct RecommendationGraphContent {
         let value = response.value
         let graph = value.graph
         let invalid = APIClientError.invalidResponse(response.metadata)
+        guard
+            let expiry = (try? Date.ISO8601FormatStyle(includingFractionalSeconds: true).parse(value.expiresAt))
+                ?? (try? Date.ISO8601FormatStyle().parse(value.expiresAt))
+        else {
+            throw invalid
+        }
+        expiresAt = expiry
         revision = try AccountRevision(etag: response.metadata.etag, stateVersion: value.stateVersion)
 
         var nodes: [String: RecommendationGraph.Node] = [:]
@@ -51,7 +59,7 @@ struct RecommendationGraphContent {
                 guard (1...3).contains(node.level), purchase.items.count == node.level else { throw invalid }
             case .recipe(let recipe):
                 let card = recipe.card
-                guard recipe.id == card.id, card.servings == value.servings,
+                guard recipe.id == card.id, card.servings == value.servings, card.suitability.status != .hidden,
                     (0...3).contains(node.level), card.availability.missingCount == node.level,
                     recipeIDs.insert(recipe.id).inserted
                 else { throw invalid }

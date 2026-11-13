@@ -54,7 +54,7 @@ final class RecommendationGraphTests: XCTestCase {
         try view.openRecipe(XCTUnwrap(rice.dishes.last))
         view.addSet(both, revision: graph.revision)
         XCTAssertEqual(
-            opened, RecipeRequest(id: "rice-alternative", servings: 4, excludedAllergenIDs: ["nuts", "eggs"]))
+            opened, RecipeRequest(id: "rice-alternative", servings: 4, excludedAllergenIDs: ["eggs", "nuts"]))
         XCTAssertEqual(added.map(\.key), ["rice:standard", "milk:standard"])
         XCTAssertEqual(added.map(\.packageCount), [3, 1])
         XCTAssertNil(added.last?.totalPrice)
@@ -224,8 +224,81 @@ final class RecommendationGraphTests: XCTestCase {
     }
 
     @MainActor
+    func testRefreshingExpiredGraphReplacesTheSharedSnapshotAndKeepsGraphMode() async throws {
+        let log = DishesRequestLog()
+        let creations = DishesRequestLog()
+        let session = try await RecipeFixture.session { request in
+            await log.append(request)
+            if request.httpMethod == "POST" {
+                let index = await creations.append(request)
+                return try DishesFixture.page(
+                    request, snapshotID: index == 0 ? "expired" : "fresh",
+                    items: [DishesFixture.card(index == 0 ? "old" : "ready", servings: 4)]
+                )
+            }
+            if request.url?.path == "/api/v1/recommendations/expired/graph" {
+                return try SessionFixture.error(request, status: 409, code: "snapshot_expired")
+            }
+            XCTAssertEqual(request.url?.path, "/api/v1/recommendations/fresh/graph")
+            let requests = await creations.requests
+            let creation = try XCTUnwrap(requests.last)
+            let body = try DishesFixture.body(creation)
+            let requestID = try XCTUnwrap((body["request_id"] as? String).flatMap(UUID.init(uuidString:)))
+            let filters = try XCTUnwrap(body["filters"] as? [String: Any])
+            return try RecommendationGraphFixture.response(
+                request, id: "fresh", readyOnly: true, requestID: requestID, filters: filters
+            )
+        }
+        let repository = try RecommendationsRepository(session: session, account: XCTUnwrap(session.account))
+        let dishes = ServerDishesModel(repository: repository, initialContext: RecommendationGraphFixture.context)
+        await dishes.loadIfNeeded(for: dishes.context)
+        let expired = try XCTUnwrap(dishes.graphSnapshot)
+        XCTAssertEqual(expired.id, "expired")
+        dishes.resultsMode = .graph
+        await dishes.graph.loadIfNeeded(for: expired)
+        guard case .refreshSnapshot = dishes.graph.phase(for: expired) else {
+            return XCTFail("Expected graph to refresh the list snapshot")
+        }
+        await dishes.refreshSnapshot(requestID: expired.requestID)
+        let fresh = try XCTUnwrap(dishes.graphSnapshot)
+        XCTAssertEqual(fresh.id, "fresh")
+        XCTAssertNotEqual(fresh.requestID, expired.requestID)
+        XCTAssertEqual(dishes.resultsMode, .graph)
+        await dishes.graph.loadIfNeeded(for: fresh)
+        let graph = try content(dishes.graph, snapshot: fresh)
+        XCTAssertEqual(graph.homeDishes.first?.request.excludedAllergenIDs, ["eggs", "nuts"])
+        dishes.resultsMode = .list
+        guard case .loaded(let list) = dishes.phase else { return XCTFail("Expected the refreshed list") }
+        XCTAssertEqual(list.items.map(\.id), ["ready"])
+        XCTAssertEqual(list.firstPage.snapshotID, fresh.id)
+        dishes.resultsMode = .graph
+        await dishes.graph.loadIfNeeded(for: fresh)
+        let requests = await log.requests
+        XCTAssertEqual(
+            requests.compactMap { $0.url?.path },
+            [
+                "/api/v1/recommendations", "/api/v1/recommendations/expired/graph",
+                "/api/v1/recommendations", "/api/v1/recommendations/fresh/graph"
+            ]
+        )
+    }
+
+    @MainActor
+    func testAlreadyExpiredGraphResponseCannotBeUsed() async throws {
+        let session = try await RecipeFixture.session {
+            try RecommendationGraphFixture.response($0, expiresAt: .now.addingTimeInterval(-1))
+        }
+        let model = try model(session)
+        let snapshot = try RecommendationGraphFixture.snapshot()
+        await model.loadIfNeeded(for: snapshot)
+        guard case .refreshSnapshot = model.phase(for: snapshot) else {
+            return XCTFail("Expired graph content became actionable")
+        }
+    }
+
+    @MainActor
     private func model(_ session: SessionStore) throws -> RecommendationGraphModel {
-        let repository = try RecommendationGraphRepository(session: session, account: XCTUnwrap(session.account))
+        let repository = try RecommendationsRepository(session: session, account: XCTUnwrap(session.account))
         return RecommendationGraphModel(repository: repository)
     }
 

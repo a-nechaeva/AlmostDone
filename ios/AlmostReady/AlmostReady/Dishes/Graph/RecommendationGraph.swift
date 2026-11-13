@@ -1,27 +1,6 @@
 import Foundation
 
 nonisolated struct RecommendationGraph: Decodable, Sendable {
-    struct Filters: Decodable, Sendable {
-        let query: String
-        let mode: String
-        let maxMinutes: Int?
-        let maxKcalPerServing: Decimal?
-        let equipment: [String]
-        let excludedAllergenIDs: [String]
-
-        private enum CodingKeys: String, CodingKey {
-            case mode, equipment
-            case query = "q"
-            case maxMinutes = "max_minutes"
-            case maxKcalPerServing = "max_kcal_per_serving"
-            case excludedAllergenIDs = "exclude_allergens"
-        }
-    }
-
-    enum Visibility: String, Decodable, Sendable {
-        case visible, hidden
-    }
-
     struct Graph: Decodable, Sendable {
         enum Scope: String, Decodable, Sendable {
             case snapshot
@@ -138,8 +117,8 @@ nonisolated struct RecommendationGraph: Decodable, Sendable {
     let stateVersion: Int
     let catalogVersion: String
     let servings: Int
-    let filters: Filters
-    let visibility: Visibility
+    let filters: RecommendationRequest.Filters
+    let visibility: RecommendationRequest.Visibility
     let graph: Graph
 
     private enum CodingKeys: String, CodingKey {

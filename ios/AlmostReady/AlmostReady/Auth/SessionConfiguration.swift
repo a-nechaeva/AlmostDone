@@ -6,6 +6,12 @@ enum SessionConfiguration {
     case invalid
 
     init(bundle: Bundle = .main) {
+        #if DEBUG && targetEnvironment(simulator)
+            if let session = DishesGraphTestSession.make() {
+                self = .server(session)
+                return
+            }
+        #endif
         let mode = bundle.object(forInfoDictionaryKey: "AlmostReadyMode") as? String
         switch mode {
         case nil, "", "demo":
