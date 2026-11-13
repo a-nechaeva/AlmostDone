@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ServerProductsTab: View {
     @Environment(FavoritesStore.self) private var favorites: FavoritesStore?
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.floatingTabBarHeight) private var tabBarHeight
     @Binding var isSearchPresented: Bool
     @State private var model: PantryModel
@@ -64,11 +65,8 @@ struct ServerProductsTab: View {
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
-            .safeAreaInset(edge: .bottom) {
-                Button("Подобрать блюда", action: onOpenDishes)
-                    .buttonStyle(.borderedProminent)
-                    .accessibilityIdentifier("products.dishes")
-                    .padding(.bottom, tabBarHeight)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                dishesButton
             }
             .refreshable { await model.reload() }
             .task { await model.reloadIfNeeded() }
@@ -97,6 +95,25 @@ struct ServerProductsTab: View {
                 }
             }
         }
+    }
+
+    private var dishesButton: some View {
+        Button(action: onOpenDishes) {
+            Text("Подобрать блюда")
+                .font(.headline)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(colorScheme == .dark ? Color.black : Color.white)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .frame(maxWidth: .infinity, minHeight: 56)
+                .background(ProductsPalette(colorScheme: colorScheme).action, in: .rect(cornerRadius: 16))
+                .contentShape(.rect(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("products.dishes")
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
+        .padding(.bottom, tabBarHeight + 20)
     }
 
     private var hasPendingAdd: Bool { draft?.hasPendingAdd == true }
