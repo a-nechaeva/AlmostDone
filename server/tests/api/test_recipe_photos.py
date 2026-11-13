@@ -2,6 +2,7 @@
 from uuid import uuid4
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -22,16 +23,10 @@ def app():
 
 
 @pytest.fixture
-def downloads(monkeypatch, tmp_path):
-    calls = []
-
-    def download(url):
-        calls.append(url)
-        return png()
-
-    monkeypatch.setattr(photos, "download", download)
-    monkeypatch.setattr(photos, "CACHE_DIR", tmp_path)
-    return calls
+def downloads(tmp_path):
+    with patch.object(photos, "download", autospec=True, return_value=png()) as download, \
+            patch.object(photos, "CACHE_DIR", tmp_path):
+        yield download
 
 
 def test_catalog_lists_engine_recipes_with_proxied_photo(app):
@@ -57,22 +52,19 @@ def test_photo_is_downloaded_once_and_served_without_session(app, downloads):
     assert first.status_code == second.status_code == 200
     assert first.headers["content-type"] == "image/png"
     assert first.content == png()
-    assert downloads == [PHOTO]
+    downloads.assert_called_once_with(PHOTO)
 
 
-def test_photo_errors(app, monkeypatch, tmp_path):
-    def broken(url):
-        raise photos.PhotoUnavailable("timeout")
-
-    monkeypatch.setattr(photos, "download", broken)
-    monkeypatch.setattr(photos, "CACHE_DIR", tmp_path)
-    with TestClient(app) as client:
+def test_photo_errors(app, tmp_path):
+    with patch.object(photos, "download", autospec=True, side_effect=photos.PhotoUnavailable("timeout")) as download, \
+            patch.object(photos, "CACHE_DIR", tmp_path), TestClient(app) as client:
         assert check(app, client.get("/api/v1/recipes/rice_tomato/photo"), "Error", 503)
         assert check(app, client.get("/api/v1/recipes/tomato_cheese/photo"), "Error", 404)
         assert check(app, client.get("/api/v1/recipes/unknown/photo"), "Error", 404)
+    download.assert_called_once_with(PHOTO)
 
 
-def test_concurrent_photo_requests_publish_a_complete_cache(app, monkeypatch, tmp_path):
+def test_concurrent_photo_requests_publish_a_complete_cache(app, tmp_path):
     image = png()
     downloading = Barrier(2)
     publishing = Barrier(2)
@@ -86,17 +78,17 @@ def test_concurrent_photo_requests_publish_a_complete_cache(app, monkeypatch, tm
         publishing.wait(timeout=10)
         return replace(path, target)
 
-    monkeypatch.setattr(photos, "download", download)
-    monkeypatch.setattr(photos, "CACHE_DIR", tmp_path)
-    with TestClient(app) as client:
-        with monkeypatch.context() as concurrent:
-            concurrent.setattr(photos.Path, "replace", publish)
+    with patch.object(photos, "download", autospec=True, side_effect=download) as downloader, \
+            patch.object(photos, "CACHE_DIR", tmp_path), TestClient(app) as client:
+        with patch.object(photos.Path, "replace", autospec=True, side_effect=publish):
             with ThreadPoolExecutor(max_workers=2) as pool:
                 responses = list(pool.map(
                     lambda _: client.get("/api/v1/recipes/rice_tomato/photo"), range(2)))
         assert all(response.status_code == 200 and response.content == image for response in responses)
+        assert downloader.call_count == 2
         # The next request must read the published file without downloading.
         assert client.get("/api/v1/recipes/rice_tomato/photo").content == image
+        assert downloader.call_count == 2
     assert len(list(tmp_path.iterdir())) == 1
 
 
@@ -155,4 +147,4 @@ def test_partial_recipe_keeps_detail_and_photo_without_blocking_catalog(missing_
         request = {"request_id": str(uuid4()), "filters": FILTERS, "visibility": "visible", "limit": 20, "servings": 2}
         page = check(app, client.post("/api/v1/recommendations", json=request, headers=headers), "RecommendationPage", 201)
         assert {recipe["id"] for recipe in page["items"]} == {"rice_tomato", "tomato_cheese"}
-    assert downloads == [PHOTO]
+    downloads.assert_called_once_with(PHOTO)

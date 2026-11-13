@@ -2,10 +2,13 @@ from ..support.http import FILTERS, auth, check, mutation, png, session
 import copy
 from concurrent.futures import ThreadPoolExecutor
 from uuid import uuid4
+from unittest.mock import Mock
 
+import pytest
 from fastapi.testclient import TestClient
 
 from ..support.application import create_app
+from almostdone_server.services.ports import AuthProvider, Recognizer
 
 
 def test_all_contract_operations_have_routes_and_runtime_docs(app, client):
@@ -36,11 +39,9 @@ def test_auth_required_and_provider_not_faked():
 
 
 def test_yandex_identity_is_stable_and_users_are_isolated():
-    class Provider:
-        def exchange(self, payload):
-            return payload["oauth_token"]
-
-    app = create_app(auth_providers={"yandex": Provider()})
+    provider = Mock(spec=AuthProvider)
+    provider.exchange.side_effect = lambda payload: payload["oauth_token"]
+    app = create_app(auth_providers={"yandex": provider})
     with TestClient(app) as client:
         first = check(app, client.post("/api/v1/auth/yandex", json={"oauth_token": "first-user"}), "Session")
         repeated = check(app, client.post("/api/v1/auth/yandex", json={"oauth_token": "first-user"}), "Session")
@@ -220,18 +221,18 @@ def test_single_purchases_and_budget_plan_use_engine(app, client):
     assert client.get("/api/v1/me/state", headers=headers).json() == before
 
 
-class RecognitionFake:
-    def __init__(self):
-        self.calls = 0
+@pytest.fixture
+def recognizer():
+    provider = Mock(spec=Recognizer)
+    provider.recognize.return_value = [
+        {"line_id": "line-1", "raw_name": "Рис",
+         "candidates": [{"ingredient_id": "rice", "name": "Рис", "confidence": 0.9}],
+         "suggested_quantity": None, "status": "matched"},
+    ]
+    return provider
 
-    def recognize(self, image, kind):
-        self.calls += 1
-        return [{"line_id": "line-1", "raw_name": "Рис", "candidates": [{"ingredient_id": "rice", "name": "Рис", "confidence": 0.9}],
-                 "suggested_quantity": None, "status": "matched"}]
 
-
-def test_recognition_import_confirmation_replay_and_owner(tmp_path):
-    recognizer = RecognitionFake()
+def test_recognition_import_confirmation_replay_and_owner(recognizer):
     app = create_app(recognizer=recognizer)
     with TestClient(app) as client:
         headers = auth(app)
@@ -239,7 +240,8 @@ def test_recognition_import_confirmation_replay_and_owner(tmp_path):
         uploaded = client.post("/api/v1/recognitions", data={"kind": "products"}, files={"file": ("photo.png", png(), "image/png")}, headers=upload_headers)
         result = check(app, uploaded, "Recognition", 202)
         repeated = client.post("/api/v1/recognitions", data={"kind": "products"}, files={"file": ("photo.png", png(), "image/png")}, headers=upload_headers)
-        assert repeated.json() == result and recognizer.calls == 1
+        assert repeated.json() == result
+        recognizer.recognize.assert_called_once_with(png(), "products")
         assert client.get("/api/v1/me/pantry", headers=headers).json()["items"] == []
         assert client.get(uploaded.headers["location"], headers=auth(app, "bob")).status_code == 404
         body = {"recognition_id": result["id"], "kind": "products", "items": [{"line_id": "line-1", "ingredient_id": "rice", "quantity": None}]}
@@ -268,8 +270,7 @@ def test_receipt_import_allows_unknown_quantity_and_invalid_image_is_rejected(ap
           "Error", 404)
 
 
-def test_receipt_import_with_null_quantity_adds_product_without_weight(tmp_path):
-    recognizer = RecognitionFake()
+def test_receipt_import_with_null_quantity_adds_product_without_weight(recognizer):
     app = create_app(recognizer=recognizer)
     with TestClient(app) as client:
         headers = auth(app)
@@ -283,6 +284,7 @@ def test_receipt_import_with_null_quantity_adds_product_without_weight(tmp_path)
                                           headers=mutation(client, headers)), "ImportResult")
         assert imported["pantry"][0]["ingredient_id"] == "rice"
         assert imported["pantry"][0]["quantity"] is None
+        recognizer.recognize.assert_called_once_with(png(), "receipt")
 
 
 def test_without_engine_no_server_search_or_calculation_fallback_is_used(app, client):
