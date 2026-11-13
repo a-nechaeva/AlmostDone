@@ -18,6 +18,7 @@ extension NavigationTests {
         let mode = app.segmentedControls["dishes.resultsMode"]
         XCTAssertTrue(mode.buttons["Список"].isSelected)
         mode.buttons["Граф"].tap()
+        XCTAssertTrue(app.buttons["dishes.graph.recipe.ready-dish"].waitForExistence(timeout: 10))
 
         let hiddenLink = app.descendants(matching: .any)["dishes.hidden"].firstMatch
         XCTAssertTrue(hiddenLink.isHittable)
