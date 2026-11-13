@@ -9,7 +9,7 @@ struct ServerProductsTab: View {
     @State private var draft: PantryDraft?
     @State private var isEditorPresented = false
     @State private var photoImport: PhotoImportModel?
-    @State private var isPhotoImportPresented = false
+    @State private var photoImportPresentation: PhotoImportModel?
     let onOpenDishes: () -> Void
 
     init(repository: ProductsRepository, isSearchPresented: Binding<Bool>, onOpenDishes: @escaping () -> Void) {
@@ -32,7 +32,7 @@ struct ServerProductsTab: View {
                         if photoImport?.hasPendingImport != true {
                             photoImport = PhotoImportModel(pantry: model)
                         }
-                        isPhotoImportPresented = true
+                        photoImportPresentation = photoImport
                     }
                     .accessibilityIdentifier("products.photo.open")
                     if snapshot.items.isEmpty {
@@ -81,12 +81,12 @@ struct ServerProductsTab: View {
             }
         }
         .fullScreenCover(
-            isPresented: $isPhotoImportPresented,
+            item: $photoImportPresentation,
             onDismiss: {
                 if photoImport?.hasPendingImport != true { photoImport = nil }
             }
-        ) {
-            if let photoImport { PhotoImportScreen(model: photoImport) }
+        ) { photoImport in
+            PhotoImportScreen(model: photoImport)
         }
         .sheet(isPresented: $isEditorPresented) {
             if let editorDraft {

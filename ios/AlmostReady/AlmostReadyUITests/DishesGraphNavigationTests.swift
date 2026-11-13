@@ -59,6 +59,27 @@ extension NavigationTests {
     }
 
     @MainActor
+    func testServerPhotoImportOpensAndCloses() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchEnvironment["ALMOSTREADY_GRAPH_TEST_RESPONSES"] = try GraphNavigationFixture.responses()
+        app.launch()
+
+        let open = app.buttons["products.photo.open"]
+        XCTAssertTrue(open.waitForExistence(timeout: 15))
+        for _ in 0..<2 {
+            open.tap()
+            let close = app.buttons["products.photo.close"]
+            XCTAssertTrue(close.waitForExistence(timeout: 10))
+            XCTAssertTrue(app.buttons["products.photo.camera"].isHittable)
+            XCTAssertTrue(app.buttons["products.photo.gallery"].isHittable)
+            close.tap()
+            XCTAssertTrue(open.waitForExistence(timeout: 10))
+            XCTAssertTrue(app.buttons["tabs.products"].isHittable)
+        }
+    }
+
+    @MainActor
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
         let scroll = app.scrollViews.firstMatch
         for _ in 0..<4 {
