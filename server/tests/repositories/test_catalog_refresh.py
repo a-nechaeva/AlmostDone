@@ -3,6 +3,7 @@ import asyncio
 from contextlib import asynccontextmanager, aclosing
 from threading import Event
 from uuid import uuid4
+from concurrent.futures import ThreadPoolExecutor
 
 from fastapi.testclient import TestClient
 import pytest
@@ -34,6 +35,21 @@ def records(database):
         with store.transaction() as db:
             db.execute('DELETE FROM recipes WHERE id=%s', (recipe_id,))
             db.execute('DELETE FROM ingredients WHERE id=%s AND code=%s', (ingredient_id, code))
+
+
+def test_catalog_response_does_not_wait_for_user_row_lock(database):
+    app = application(database)
+    with TestClient(app) as client:
+        headers, session = login(client)
+        assert client.get('/api/v1/catalog', headers=headers).status_code == 200
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            with app.state.service.store.transaction() as db:
+                db.execute('SELECT id FROM users WHERE id=%s FOR UPDATE', (int(session['user_id']),))
+                # A state read would block here until lock_timeout. A catalogue
+                # response only authenticates the session and must finish now.
+                response = pool.submit(client.get, '/api/v1/catalog', headers=headers).result(timeout=2)
+                assert response.status_code == 200
+                assert 'etag' not in response.headers
 
 
 def test_background_worker_updates_export_and_search_without_restart(database, records):

@@ -45,12 +45,14 @@ class ApplicationService:
     def recognizer(self, value):
         self.recognition.recognizer = value
 
-    def execute(self, command: Command, validate_result=lambda result: None, *, catalog_validation=None) -> Result:
+    def execute(self, command: Command, validate_result=lambda result: None, *, catalog_validation=None,
+                catalog_presentation=None) -> Result:
         pin = getattr(self.catalog, 'pin', None)
         with pin() if pin is not None else nullcontext():
-            return self._execute(command, validate_result, catalog_validation=catalog_validation)
+            return self._execute(command, validate_result, catalog_validation=catalog_validation,
+                                 catalog_presentation=catalog_presentation)
 
-    def _execute(self, command: Command, validate_result, *, catalog_validation=None) -> Result:
+    def _execute(self, command: Command, validate_result, *, catalog_validation=None, catalog_presentation=None) -> Result:
         """Validate the result before committing mutations or recording a replay."""
         oid, body, params = command.operation, command.payload, command.parameters
         if oid == "health_get":
@@ -67,15 +69,12 @@ class ApplicationService:
             return self.auth.refresh(body["refresh_token"], validate_result)
 
         if oid == "catalog_export":
-            # The shared catalogue does not depend on user state. Finish the
-            # authenticated state read before building/validating its large body.
+            # A public catalogue snapshot has no per-user state version. Check
+            # the live session, but do not load/lock/write the user's account.
             with self.store.transaction() as db:
-                session = self.auth.authenticate(db, command.access_token)
-                version = self.states.load(db, session["user_id"])["version"]
                 self.auth.authenticate(db, command.access_token)
-            data = (self.catalog.export(validation=catalog_validation) if catalog_validation is not None
-                    else self.catalog.export())
-            result = Result(data, version)
+            data = self.catalog.export(validation=catalog_validation, presentation=catalog_presentation)
+            result = Result(data)
             validate_result(result)
             return result
 

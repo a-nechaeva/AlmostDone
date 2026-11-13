@@ -24,5 +24,5 @@ RETRYABLE_COMMANDS = frozenset({
 
 @dataclass(frozen=True)
 class Result:
-    data: dict | None
+    data: dict | bytes | None
     version: int | None = None
